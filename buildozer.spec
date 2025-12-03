@@ -1,15 +1,15 @@
 [app]
 
 # (str) Title of your application
-title = Laner
+title = Waller
 
 # (str) Package name
 # package.name = antester
-package.name = lan_ft
+package.name = waller
 
 # (str) Package domain (needed for android/ios packaging)
 # package.domain = org.antester
-package.domain = org.laner
+package.domain = org.wally
 
 # (str) Source code where the main.py live
 source.dir = .
@@ -40,17 +40,17 @@ version = 1.0
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,kivy,https://github.com/kivymd/KivyMD/archive/master.zip,materialyoucolor,asynckivy,asyncgui,pyjnius,docutils,netifaces,filetype,requests_toolbelt,websockets, android-notify,python-osc,https://github.com/kivy/plyer/archive/master.zip
+requirements = python3,kivy,https://github.com/kivymd/KivyMD/archive/master.zip,materialyoucolor,asynckivy,asyncgui,pyjnius,docutils,netifaces,filetype,requests_toolbelt,websockets, android-notify==1.60.4.dev0,python-osc,https://github.com/kivy/plyer/archive/master.zip
 #requirements = python3,kivy,https://github.com/kivymd/KivyMD/archive/master.zip,android-notify,materialyoucolor,asynckivy,asyncgui,pyjnius,docutils,netifaces,filetype,requests_toolbelt,websockets
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
 # requirements.source.kivy = ../../kivy
 
 # (str) Presplash of the application
-presplash.filename = %(source.dir)s/assets/imgs/presplash.png
+#presplash.filename = %(source.dir)s/assets/imgs/presplash.png
 
 # (str) Icon of the application
-icon.filename = %(source.dir)s/assets/imgs/icon.png
+#icon.filename = %(source.dir)s/assets/imgs/icon.png
 
 # (list) Supported orientations
 # Valid options are: landscape, portrait, portrait-reverse or landscape-reverse
@@ -58,7 +58,7 @@ orientation = portrait
 
 # (list) List of service to declare
 #services = NAME:ENTRYPOINT_TO_PY,NAME2:ENTRYPOINT2_TO_PY
-services = Download:./android/services/download.py:True,Upload:./android/services/upload.py:True,Sendnoti:./android/services/old.py:True,Mydownloader:./android/services/mydownloader.py:foreground
+#services = Download:./android/services/download.py:True,Upload:./android/services/upload.py:True,Sendnoti:./android/services/old.py:True,Mydownloader:./android/services/mydownloader.py:foreground
 #,Final:./services/finalact.py:foreground
 
 #
@@ -79,7 +79,7 @@ osx.kivy_version = 1.9.1
 #
 
 # (bool) Indicate if the application should be fullscreen or not
-fullscreen = 1
+fullscreen = 0
 
 # (string) Presplash background color (for android toolchain)
 # Supported formats are: #RRGGBB #AARRGGBB or one of the following names:
@@ -101,7 +101,7 @@ fullscreen = 1
 # (list) Permissions
 # (See https://python-for-android.readthedocs.io/en/latest/buildoptions/#build-options-1 for all the supported syntaxes and properties)
 #android.permissions = android.permission.INTERNET, (name=android.permission.WRITE_EXTERNAL_STORAGE;maxSdkVersion=18)
-android.permissions = INTERNET, FOREGROUND_SERVICE, FOREGROUND_SERVICE_DATA_SYNC, POST_NOTIFICATIONS, android.permission.ACCESS_ALL_DOWNLOADS, READ_EXTERNAL_STORAGE, MANAGE_EXTERNAL_STORAGE
+android.permissions = INTERNET, FOREGROUND_SERVICE, FOREGROUND_SERVICE_DATA_SYNC, POST_NOTIFICATIONS, SET_WALLPAPER, android.permission.ACCESS_ALL_DOWNLOADS, READ_EXTERNAL_STORAGE, MANAGE_EXTERNAL_STORAGE
 
 # (list) features (adds uses-feature -tags to manifest)
 #android.features = android.hardware.usb.host
@@ -184,7 +184,7 @@ android.api = 35
 
 # (list) List of Java files to add to the android project (can be java or a
 # directory containing the files)
-android.add_src = android/src
+#android.add_src = android/src
 
 # (list) Android AAR archives to add
 #android.add_aars =
@@ -205,11 +205,11 @@ android.add_src = android/src
 # 3) A directory, here 'legal_resources' must contain one or more directories, 
 # each of a resource kind:  drawable, xml, etc...
 # android.add_resources = legal_resources
-android.add_resources = android/res
+#android.add_resources = android/res
 #, icons
 
 # (list) Gradle dependencies to add
-android.gradle_dependencies = androidx.core:core-ktx:1.15.0, androidx.core:core:1.6.0
+#android.gradle_dependencies = androidx.core:core-ktx:1.15.0, androidx.core:core:1.6.0
 #, androidx.work:work-runtime:2.2.0
 
 # (bool) Enable AndroidX support. Enable when 'android.gradle_dependencies'
@@ -342,7 +342,7 @@ android.allow_backup = True
 #p4a.local_recipes =
 
 # (str) Filename to the hook for p4a
-p4a.hook = for-build/p4a/hook.py
+#p4a.hook = for-build/p4a/hook.py
 
 # (str) Bootstrap to use for android builds
 # p4a.bootstrap = sdl2
