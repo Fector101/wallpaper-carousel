@@ -34,7 +34,7 @@ jobs:
         uses: n8marti/buildozer-action@fix-user-doesnt-exist
         id: buildozer
         with:
-          workdir: mobile
+          workdir: .
           buildozer_version: stable
 
       - name: Upload artifacts
