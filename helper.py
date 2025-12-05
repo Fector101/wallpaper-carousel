@@ -69,3 +69,49 @@ def start_logging(log_folder_name="logs", file_name="all_output1.txt"):
     tee = Tee(log_file_path)
     sys.stdout = tee
     sys.stderr = tee
+
+
+
+class Service:
+    def __init__(self,name,args_str="",extra=True):
+        from android import mActivity
+        self.mActivity = mActivity
+        self.args_str=args_str
+        self.name=name
+        self.extra=extra
+        self.start_service_if_not_running()
+    def get_service_name(self):
+        context = self.mActivity.getApplicationContext()
+        return str(context.getPackageName()) + '.Service' + self.name
+
+    def service_is_running(self):
+        service_name = self.get_service_name()
+        context = self.mActivity.getApplicationContext()
+        thing=self.mActivity.getSystemService(context.ACTIVITY_SERVICE)
+        
+        manager = cast('android.app.ActivityManager',thing)
+        for service in manager.getRunningServices(100):
+        	found_service=service.service.getClassName()
+        	print("found_service: ",found_service)
+        	if found_service== service_name:
+        		return True
+        return False
+            #
+            
+        
+
+    def start_service_if_not_running(self):
+    	state=self.service_is_running()
+    	print(state,"||",self.name,"||", self.get_service_name())
+    	if state:
+    		return
+    	service = autoclass(self.get_service_name())
+    	title=self.name +' Service'
+    	msg='Started'
+    	arg=str(self.args_str)
+    	icon='round_music_note_white_24'
+    	if self.extra:
+    		service.start(self.mActivity, icon, title, msg, arg)
+    	else:
+    		service.start(self.mActivity, arg)
+    	
