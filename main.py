@@ -91,7 +91,7 @@ class WallpaperCarouselApp(App):
         self.sm.add_widget(carousel_screen)
 
         self.load_saved()
-        Clock.schedule_interval(self.auto_next, 5)
+        Clock.schedule_once(lambda dt: Clock.schedule_interval(self.auto_next, 5), 1)
 
         return self.sm
 
@@ -162,9 +162,13 @@ class WallpaperCarouselApp(App):
     def update_label(self):
         if not self.wallpapers:
             self.info_label.text = "No wallpapers yet"
-        else:
-            idx = (self.carousel.index % len(self.wallpapers)) + 1
-            self.info_label.text = f"Image {idx} of {len(self.wallpapers)}"
+            return
+        idx = self.carousel.index
+        if idx is None:
+            idx=0
+        
+        idx = (idx % len(self.wallpapers)) + 1
+        self.info_label.text = f"Image {idx} of {len(self.wallpapers)}"
 
     def auto_next(self, dt):
         if len(self.wallpapers) > 1:
