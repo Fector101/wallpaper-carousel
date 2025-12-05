@@ -10,7 +10,7 @@ import os
 import time
 import random
 from android_notify import Notification
-from android_notify.config import get_python_activity,get_python_activity_context
+from android_notify.config import get_python_service,get_python_activity_context
 from jnius import autoclass
 
 # --- Android classes ---
@@ -22,7 +22,7 @@ BitmapFactory = autoclass('android.graphics.BitmapFactory')
 PythonActivity = autoclass('org.kivy.android.PythonActivity')
 
 # --- Service and Wallpaper setup ---
-service = get_python_activity()
+service = get_python_service()
 foreground_type = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC if BuildVersion.SDK_INT >= 30 else 0
 context=get_python_activity_context()
 wm = WallpaperManager.getInstance(context)
