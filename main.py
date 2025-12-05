@@ -1,6 +1,8 @@
 # Complete Kivy Wallpaper Carousel App (Kivy FileChooser version)
 
-import os
+import sys
+import os, traceback
+from datetime import datetime
 import json
 import shutil
 from pathlib import Path
@@ -12,22 +14,18 @@ from kivy.uix.image import Image
 from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.carousel import Carousel
+from kivy.clock import Clock
 #from kivy.uix.filechooser import FileChooserListView
 from plyer import filechooser # pylint: disable=import-error
 
-from kivy.clock import Clock
-
 IMAGE_FILTERS = ['*.png', '*.jpg', '*.jpeg', '*.gif', '*.bmp', '*.webp']
 
-import sys
-import os, traceback
-from datetime import datetime
 try:
     from .permissions import PermissionHandler
     PermissionHandler().requestStorageAccess()
 except Exception as e:
     traceback.print_exc()
-from .helper import makeDownloadFolder, makeFolder,start_logging
+from .helper import Service,makeDownloadFolder, makeFolder,start_logging
 
 
 
@@ -37,9 +35,13 @@ except Exception as e:
     traceback.print_exc()
 
 class WallpaperCarouselApp(App):
+    def on_start(self):
+        def android_service():
+            Service(name='MyCarousel')
+        Clock.schedule_once(lambda dt:android_service(),2)
     def build(self):
         self.sm = ScreenManager()
-        self.app_dir = Path(self.user_data_dir)
+        self.app_dir = Path(makeDownloadFolder())#Path(self.user_data_dir)
         self.wallpapers_dir = self.app_dir / 'wallpapers'
         self.config_file = self.app_dir / 'config.json'
         self.setup_storage()
