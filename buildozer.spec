@@ -58,9 +58,7 @@ orientation = portrait
 
 # (list) List of service to declare
 #services = NAME:ENTRYPOINT_TO_PY,NAME2:ENTRYPOINT2_TO_PY
-#services = Download:./android/services/download.py:True,Upload:./android/services/upload.py:True,Sendnoti:./android/services/old.py:True,Mydownloader:./android/services/mydownloader.py:foreground
-#,Final:./services/finalact.py:foreground
-
+services = MyCarousel:./services/wallpaper.py:foreground
 #
 # OSX Specific
 #
