@@ -121,7 +121,7 @@ class WallpaperCarouselApp(App):
     def open_filechooser(self, *_):
         def finish(files_list):
             if files_list:
-                selected=[file_paths] if isinstance(file_paths,str) else file_paths[0]
+                selected=[files_list] if isinstance(files_list,str) else files_list[0]
                 self.copy_and_add(selected)
                 
         filechooser.open_file(on_selection=finish, multiple=True)
