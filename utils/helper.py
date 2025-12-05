@@ -1,6 +1,7 @@
 import os, platform
 import sys
 from datetime import datetime
+from jnius import autoclass, cast
 
 def is_wine():
 	"""
