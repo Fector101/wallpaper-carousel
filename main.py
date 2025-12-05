@@ -68,7 +68,7 @@ class WallpaperCarouselApp(App):
         btn_del = Button(text='Remove Current')
         btn_del.bind(on_release=self.remove_current)
         btn_view = Button(text='Fullscreen View')
-        btn_view.bind(on_release=lambda *_: self.sm.current.__set__('carousel'))
+        btn_view.bind(on_release=lambda *_: setattr(self.sm, 'current', 'carousel'))
         btns.add_widget(btn_add)
         btns.add_widget(btn_del)
         btns.add_widget(btn_view)
@@ -84,7 +84,7 @@ class WallpaperCarouselApp(App):
         fs = BoxLayout(orientation='vertical')
         self.fullscreen_carousel = Carousel(direction='right', loop=True)
         btn_back = Button(text='Back', size_hint_y=0.1)
-        btn_back.bind(on_release=lambda *_: self.sm.current.__set__('main'))
+        btn_back.bind(on_release=lambda *_: setattr(self.sm, 'current', 'main'))
         fs.add_widget(self.fullscreen_carousel)
         fs.add_widget(btn_back)
         carousel_screen.add_widget(fs)
@@ -127,6 +127,7 @@ class WallpaperCarouselApp(App):
         filechooser.open_file(on_selection=finish, multiple=True)
         
     def copy_and_add(self, files):
+        new_images = []
         for src in files:
             if not os.path.exists(src):
                 continue
@@ -139,12 +140,18 @@ class WallpaperCarouselApp(App):
                 i += 1
             try:
                 shutil.copy2(src, dest)
-                self.wallpapers.append(str(dest))
-                self.add_to_carousel(str(dest))
+                new_images.append(str(dest))
             except Exception as e:
                 print("Copy error:", e)
-        self.save_list()
-        self.update_label()
+
+        def update_ui(dt):
+            for path in new_images:
+                self.wallpapers.append(path)
+                self.add_to_carousel(path)
+            self.save_list()
+            self.update_label()
+        
+        Clock.schedule_once(update_ui)
 
     def add_to_carousel(self, path):
         self.carousel.add_widget(Image(source=path, allow_stretch=True, keep_ratio=True))
