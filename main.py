@@ -154,7 +154,10 @@ class WallpaperCarouselApp(App):
         Clock.schedule_once(update_ui)
 
     def add_to_carousel(self, path):
-        self.carousel.add_widget(Image(source=path, allow_stretch=True, keep_ratio=True))
+        img_main=Image(source=path, allow_stretch=True, keep_ratio=True)
+        img_full = Image(source=path, allow_stretch=True, keep_ratio=True)
+        self.carousel.add_widget(img_main)
+        self.fullscreen_carousel.add_widget(img_full)
 
     def remove_current(self, *_):
         if not self.wallpapers or not self.carousel.slides:
