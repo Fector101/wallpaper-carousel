@@ -21,11 +21,11 @@ from plyer import filechooser # pylint: disable=import-error
 IMAGE_FILTERS = ['*.png', '*.jpg', '*.jpeg', '*.gif', '*.bmp', '*.webp']
 
 try:
-    from permissions import PermissionHandler
+    from utils.permissions import PermissionHandler
     PermissionHandler().requestStorageAccess()
 except Exception as e:
     traceback.print_exc()
-from helper import Service,makeDownloadFolder, makeFolder,start_logging
+from utils.helper import Service,makeDownloadFolder, makeFolder,start_logging
 
 
 
