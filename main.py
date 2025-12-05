@@ -12,10 +12,29 @@ from kivy.uix.image import Image
 from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.carousel import Carousel
-from kivy.uix.filechooser import FileChooserListView
+#from kivy.uix.filechooser import FileChooserListView
+from plyer import filechooser # pylint: disable=import-error
+
 from kivy.clock import Clock
 
 IMAGE_FILTERS = ['*.png', '*.jpg', '*.jpeg', '*.gif', '*.bmp', '*.webp']
+
+import sys
+import os, traceback
+from datetime import datetime
+try:
+    from .permissions import PermissionHandler
+    PermissionHandler().requestStorageAccess()
+except Exception as e:
+    traceback.print_exc()
+from .helper import makeDownloadFolder, makeFolder,start_logging
+
+
+
+try:
+    start_logging()
+except Exception as e:
+    traceback.print_exc()
 
 class WallpaperCarouselApp(App):
     def build(self):
@@ -90,27 +109,13 @@ class WallpaperCarouselApp(App):
             json.dump({'wallpapers': self.wallpapers}, f, indent=2)
 
     def open_filechooser(self, *_):
-        content = BoxLayout(orientation='vertical', spacing=8)
-        fc = FileChooserListView(filters=IMAGE_FILTERS, multiselect=True)
-        content.add_widget(fc)
-        btns = BoxLayout(size_hint_y=None, height=50, spacing=8)
-        btn_ok = Button(text='Select')
-        btn_cancel = Button(text='Cancel')
-        btns.add_widget(btn_ok)
-        btns.add_widget(btn_cancel)
-        content.add_widget(btns)
-        popup = Popup(title="Select Images", content=content, size_hint=(0.9, 0.9))
-
-        def finish(*_):
-            sel = fc.selection
-            popup.dismiss()
-            if sel:
-                self.copy_and_add(sel)
-
-        btn_ok.bind(on_release=finish)
-        btn_cancel.bind(on_release=lambda *_: popup.dismiss())
-        popup.open()
-
+        def finish(files_list):
+            if files_list:
+                selected=[file_paths] if isinstance(file_paths,str) else file_paths[0]
+                self.copy_and_add(selected)
+                
+        filechooser.open_file(on_selection=finish)
+        
     def copy_and_add(self, files):
         for src in files:
             if not os.path.exists(src):
