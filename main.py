@@ -16,8 +16,8 @@ from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.carousel import Carousel
 from kivy.clock import Clock
 #from kivy.uix.filechooser import FileChooserListView
+from android_notify import NotificationHandler
 from plyer import filechooser # pylint: disable=import-error
-
 IMAGE_FILTERS = ['*.png', '*.jpg', '*.jpeg', '*.gif', '*.bmp', '*.webp']
 
 try:
