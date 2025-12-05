@@ -21,11 +21,11 @@ from plyer import filechooser # pylint: disable=import-error
 IMAGE_FILTERS = ['*.png', '*.jpg', '*.jpeg', '*.gif', '*.bmp', '*.webp']
 
 try:
-    from .permissions import PermissionHandler
+    from permissions import PermissionHandler
     PermissionHandler().requestStorageAccess()
 except Exception as e:
     traceback.print_exc()
-from .helper import Service,makeDownloadFolder, makeFolder,start_logging
+from helper import Service,makeDownloadFolder, makeFolder,start_logging
 
 
 
@@ -37,7 +37,10 @@ except Exception as e:
 class WallpaperCarouselApp(App):
     def on_start(self):
         def android_service():
-            Service(name='MyCarousel')
+            try: 
+                Service(name='MyCarousel')
+            except Exception as e:
+                traceback.print_exc()
         Clock.schedule_once(lambda dt:android_service(),2)
     def build(self):
         self.sm = ScreenManager()
