@@ -1,7 +1,22 @@
-import os 
+import os, platform
 import sys
 from datetime import datetime
 
+def is_wine():
+	"""
+	Detect if the application is running under Wine.
+	"""
+	# Check environment variables set by Wine
+	if "WINELOADER" in os.environ:
+		return True
+
+	# Check platform.system for specific hints
+	if platform.system().lower() == "windows":
+	# If running in "Windows" mode but in a Linux environment, it's likely Wine
+		return "XDG_SESSION_TYPE" in os.environ or "HOME" in os.environ
+
+	return False
+    
 def makeFolder(my_folder: str):
     """Safely creates a folder if it doesn't exist."""
     # Normalize path for Wine (Windows-on-Linux)
