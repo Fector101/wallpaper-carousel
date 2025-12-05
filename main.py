@@ -50,7 +50,7 @@ class WallpaperCarouselApp(App):
     def build(self):
         self.sm = ScreenManager()
         self.app_dir = Path(makeDownloadFolder())#Path(self.user_data_dir)
-        self.wallpapers_dir = self.app_dir / 'wallpapers'
+        self.wallpapers_dir = self.app_dir / '.wallpapers'
         self.config_file = self.app_dir / 'config.json'
         self.setup_storage()
 
