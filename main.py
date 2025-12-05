@@ -43,7 +43,7 @@ class WallpaperCarouselApp(App):
         
         def android_service():
             try: 
-                Service(name='MyCarousel')
+                Service(name='Mycarousel')
             except Exception as e:
                 traceback.print_exc()
         Clock.schedule_once(lambda dt:android_service(),2)
