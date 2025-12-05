@@ -28,7 +28,7 @@ context=get_python_activity_context()
 wm = WallpaperManager.getInstance(context)
 
 # --- Folder setup ---
-download_folder_path = makeDownloadFolder()
+download_folder_path = os.path.join(makeDownloadFolder(),"wallpapers")
 
 # --- Notification setup ---
 def create_notification(title: str, message: str):
