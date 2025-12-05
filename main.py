@@ -36,6 +36,11 @@ except Exception as e:
 
 class WallpaperCarouselApp(App):
     def on_start(self):
+        try:
+            NotificationHandler.asks_permission()
+        except Exception as e:
+            traceback.print_exc()
+        
         def android_service():
             try: 
                 Service(name='MyCarousel')
@@ -119,7 +124,7 @@ class WallpaperCarouselApp(App):
                 selected=[file_paths] if isinstance(file_paths,str) else file_paths[0]
                 self.copy_and_add(selected)
                 
-        filechooser.open_file(on_selection=finish)
+        filechooser.open_file(on_selection=finish, multiple=True)
         
     def copy_and_add(self, files):
         for src in files:
