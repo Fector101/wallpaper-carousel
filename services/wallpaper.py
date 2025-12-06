@@ -81,23 +81,32 @@ def main_loop():
     next_wallpaper_name, next_wallpaper_path = get_next_wallpaper()
     next_wallpaper_name = next_wallpaper_name or "No image"
     
+    # Create ONE notification outside the loop
+    n_runtime = Notification(
+        title="Wallpaper Service Running",
+        message=f"Next: {next_wallpaper_name}"
+    )
+    
+    # Set initial large icon if available
+    if next_wallpaper_path and os.path.exists(next_wallpaper_path):
+        n_runtime.setLargeIcon(next_wallpaper_path)
+    
+    # Send the notification once
+    n_runtime.send()
+    
     while True:
         try:
             elapsed = time.time() - start
             
-            # Create notification showing NEXT wallpaper (upcoming)
-            n_runtime = Notification(
-                title=f"Running for {int(elapsed//3600)}h {int((elapsed%3600)//60)}m {int(elapsed%60)}s",
-                message=f"Next: {next_wallpaper_name}"
-            )
+            # Update the existing notification
+            n_runtime.updateTitle(f"Running for {int(elapsed//3600)}h {int((elapsed%3600)//60)}m {int(elapsed%60)}s")
+            n_runtime.updateMessage(f"Next: {next_wallpaper_name}")
             
+            # Update large icon with upcoming wallpaper
             if next_wallpaper_path and os.path.exists(next_wallpaper_path):
-                # Show NEXT wallpaper as preview
                 n_runtime.setLargeIcon(next_wallpaper_path)
             
-            n_runtime.send()
-            
-            # Now actually set the wallpaper (the one we just previewed)
+            # Actually set the wallpaper (the one we just previewed)
             if next_wallpaper_path:
                 set_wallpaper(next_wallpaper_path)
             
