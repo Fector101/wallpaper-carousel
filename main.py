@@ -28,6 +28,14 @@ from plyer import filechooser
 from android_notify import NotificationHandler
 from utils.helper import Service, makeDownloadFolder, start_logging
 
+
+try:
+    from utils.permissions import PermissionHandler
+    PermissionHandler().requestStorageAccess()
+except Exception as e:
+    traceback.print_exc()
+
+
 try:
     start_logging()
 except:
@@ -175,6 +183,12 @@ class WallpaperCarouselApp(MDApp):
             NotificationHandler.asks_permission()
         except:
             traceback.print_exc()
+        def android_service():
+            try:
+                Service(name='Mycarousel')
+            except:
+                traceback.print_exc()
+        Clock.schedule_once(lambda dt:android_service(),2)
     
     def build(self):
         # Change to MDScreenManager
