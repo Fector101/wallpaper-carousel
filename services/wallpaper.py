@@ -75,68 +75,64 @@ def set_wallpaper(wallpaper_path):
 INTERVAL = 120  # 2 minutes
 
 def main_loop():
+    global notification
     start = time.time()
     
-    # Get first upcoming wallpaper
-    next_wallpaper_name, next_wallpaper_path = get_next_wallpaper()
-    next_wallpaper_name = next_wallpaper_name or "No image"
+    # Get initial wallpaper
+    wallpaper_name, wallpaper_path = get_next_wallpaper()
+    wallpaper_name = wallpaper_name or "No image"
     
-    # Create ONE notification outside the loop
-    n_runtime = Notification(
-        title="Wallpaper Service Running",
-        message=f"Next: {next_wallpaper_name}"
-    )
+    # Send initial notification
+    notification.updateTitle(f"Running for 0h 0m 0s")
+    notification.updateMessage(f"Next: {wallpaper_name}")
+    if wallpaper_path and os.path.exists(wallpaper_path):
+        notification.setLargeIcon(wallpaper_path)
+    notification.send()
     
-    # Set initial large icon if available
-    if next_wallpaper_path and os.path.exists(next_wallpaper_path):
-        n_runtime.setLargeIcon(next_wallpaper_path)
-    
-    # Send the notification once
-    n_runtime.send()
+    last_update = start
     
     while True:
         try:
-            elapsed = time.time() - start
+            current_time = time.time()
+            elapsed = current_time - start
             
-            # Update the existing notification
-            n_runtime.updateTitle(f"Running for {int(elapsed//3600)}h {int((elapsed%3600)//60)}m {int(elapsed%60)}s")
-            n_runtime.updateMessage(f"Next: {next_wallpaper_name}")
+            # Update elapsed time every minute even while waiting
+            if current_time - last_update >= 60:  # Update every minute
+                notification.updateTitle(f"Running for {int(elapsed//3600)}h {int((elapsed%3600)//60)}m {int(elapsed%60)}s")
+                last_update = current_time
             
-            # Update large icon with upcoming wallpaper
-            if next_wallpaper_path and os.path.exists(next_wallpaper_path):
-                n_runtime.setLargeIcon(next_wallpaper_path)
+            # Check if it's time to change wallpaper
+            if current_time - start >= INTERVAL:
+                # Set the wallpaper that was previewed
+                if wallpaper_path:
+                    set_wallpaper(wallpaper_path)
+                
+                # Get NEXT wallpaper for preview
+                wallpaper_name, wallpaper_path = get_next_wallpaper()
+                wallpaper_name = wallpaper_name or "No image"
+                
+                # Update notification with new preview
+                notification.updateMessage(f"Next: {wallpaper_name}")
+                if wallpaper_path and os.path.exists(wallpaper_path):
+                    notification.setLargeIcon(wallpaper_path)
+                
+                # Reset interval counter
+                start = time.time()
+                last_update = start
             
-            # Actually set the wallpaper (the one we just previewed)
-            if next_wallpaper_path:
-                set_wallpaper(next_wallpaper_path)
-            
-            # Wait for interval
-            time.sleep(INTERVAL)
-            
-            # Get NEXT wallpaper for the next cycle
-            next_wallpaper_name, next_wallpaper_path = get_next_wallpaper()
-            next_wallpaper_name = next_wallpaper_name or "No image"
+            # Short sleep to keep loop responsive
+            time.sleep(10)  # Check every 10 seconds
             
         except Exception as e:
             print("Fatal Error: Error in main loop, restarting in 5s:", e)
             time.sleep(5)
 
+
 # --- Start foreground service ---
-# Initial notification showing first upcoming wallpaper
-next_wallpaper_name, next_wallpaper_path = get_next_wallpaper()
-next_wallpaper_name = next_wallpaper_name or "No image"
-
-n_init = Notification(
-    title="Foreground Service Active", 
-    message=f"Next: {next_wallpaper_name}"
-)
-
-# Set large icon with upcoming wallpaper if available
-if next_wallpaper_path and os.path.exists(next_wallpaper_path):
-    n_init.setLargeIcon(next_wallpaper_path)
-
-builder = n_init.start_building()
-service.startForeground(n_init.id, builder.build(), foreground_type)
+# Create and send initial notification for foreground service
+notification = Notification(title="Wallpaper Service Starting", message="Initializing...")
+builder = notification.start_building()
+service.startForeground(notification.id, builder.build(), foreground_type)
 service.setAutoRestartService(True)  # auto-restart if killed
 
 # --- Run main loop ---
