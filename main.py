@@ -1,5 +1,3 @@
-# Complete Kivy Wallpaper Carousel App (Kivy FileChooser version)
-
 import sys
 import os, traceback
 from datetime import datetime
