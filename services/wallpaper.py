@@ -107,7 +107,7 @@ def main_loop():
     global notification
     service_start_time = time.time()
     wallpaper_change_time = service_start_time
-    countdown_start = INTERVAL
+    countdown_start = get_interval()
     
     # Get initial wallpaper
     wallpaper_name, wallpaper_path = get_next_wallpaper()
@@ -124,7 +124,7 @@ def main_loop():
             current_time = time.time()
             elapsed_since_service_start = current_time - service_start_time
             elapsed_since_wallpaper_change = current_time - wallpaper_change_time
-            time_remaining = max(0, INTERVAL - elapsed_since_wallpaper_change)
+            time_remaining = max(0, get_interval() - elapsed_since_wallpaper_change)
             
             # Update countdown every second
             notification.updateTitle(f"Next in {format_time_remaining(time_remaining)}")
@@ -134,7 +134,7 @@ def main_loop():
                 notification.updateMessage(get_service_lifespan_text(elapsed_since_service_start))
             
             # Check if it's time to change wallpaper
-            if elapsed_since_wallpaper_change >= INTERVAL:
+            if elapsed_since_wallpaper_change >= get_interval():
                 # Set the wallpaper that was previewed
                 if wallpaper_path:
                     set_wallpaper(wallpaper_path)
