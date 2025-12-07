@@ -3,18 +3,10 @@ import os
 import shutil
 import traceback
 from pathlib import Path
-#from kivy.app import App
+
 from kivymd.app import MDApp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
-# Change these imports to KivyMD
-from kivymd.uix.screenmanager import MDScreenManager
-from kivymd.uix.screen import MDScreen
-
-from kivymd.uix.boxlayout import MDBoxLayout
-
-from kivymd.uix.floatlayout import MDFloatLayout
-
 from kivy.uix.recycleview import RecycleView
 from kivy.uix.recyclegridlayout import RecycleGridLayout
 from kivy.uix.image import AsyncImage
@@ -24,10 +16,21 @@ from kivy.clock import Clock
 from kivy.properties import StringProperty, ListProperty, NumericProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.metrics import dp
+from kivy.uix.popup import Popup
+from kivy.core.window import Window
+from kivy.uix.widget import Widget
+
+from kivymd.uix.screenmanager import MDScreenManager
+from kivymd.uix.screen import MDScreen
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.floatlayout import MDFloatLayout
+from kivymd.uix.textfield import MDTextField
+from kivymd.toast import toast
+
 from plyer import filechooser
 from android_notify import NotificationHandler
-from utils.helper import Service, makeDownloadFolder, start_logging
-
+from utils.helper import Service, makeDownloadFolder, start_logging, smart_convert_minutes
+from utils.config_manager import ConfigManager
 
 try:
     from utils.permissions import PermissionHandler
@@ -57,9 +60,6 @@ class ThumbListScreen(MDScreen):  # Changed to MDScreen
 
 # ---------- FULLSCREEN VIEWER ----------
 
-from kivy.uix.popup import Popup
-from kivy.core.window import Window
-
 class FullscreenScreen(MDScreen):  # Changed to MDScreen
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -73,7 +73,7 @@ class FullscreenScreen(MDScreen):  # Changed to MDScreen
         
         # Image
         self.full_img = AsyncImage(
-            allow_stretch=True,
+            allow_stretch=True,fit_mode="contain",
             size_hint=(1, 1 - self.bottom_height),
             pos_hint={'x': 0, 'y': self.bottom_height}
         )
@@ -136,6 +136,7 @@ class FullscreenScreen(MDScreen):  # Changed to MDScreen
             self.full_img.keep_ratio = True
             self.full_img.size_hint = (1, 1 - self.bottom_height)
             self.full_img.pos_hint = {'x': 0, 'y': self.bottom_height}
+            self.full_img.fit_mode="contain"
             self.btn_layout.opacity = 1
             self.btn_layout.disabled = False
             self.btn_toggle.text = "Back"
@@ -149,6 +150,7 @@ class FullscreenScreen(MDScreen):  # Changed to MDScreen
         if app.wallpapers:
             idx = app.current_index
             path = app.wallpapers.pop(idx)
+            app.config.remove_wallpaper(path)
             if os.path.exists(path):
                 os.remove(path)
             app.update_thumbnails()
@@ -168,11 +170,133 @@ class FullscreenScreen(MDScreen):  # Changed to MDScreen
 
 # ---------- SETTINGS SCREEN ----------
 
-class SettingsScreen(MDScreen):  # Changed to MDScreen
+class SettingsScreen(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.md_bg_color = [0.2, 0.2, 0.3, 1]  # Blueish background
+        self.md_bg_color = [0.2, 0.2, 0.3, 1]
 
+        app = MDApp.get_running_app()
+        app.interval = float(app.config.get_interval())
+
+        root = MDBoxLayout(orientation="vertical", padding=dp(20), spacing=dp(15))
+
+        # ---------- HEADER ----------
+        root.add_widget(Label(
+            text="Settings",
+            font_size="22sp",
+            size_hint_y=None,
+            height=dp(40)
+        ))
+
+        # ---------- INTERVAL SECTION ----------
+        root.add_widget(Label(
+            text="Wallpaper Change Interval (minutes)",
+            size_hint_y=None,
+            height=dp(30)
+        ))
+
+        input_row = MDBoxLayout(orientation="horizontal", spacing=dp(10),
+                                size_hint_y=None, height=dp(50))
+
+        self.interval_input = MDTextField(
+            text=str(app.interval),
+            hint_text="mins",
+            size_hint_x=0.55,
+            mode="outlined")
+        self.interval_input.input_filter="float"
+        
+        save_btn = Button(text="Save", size_hint_x=0.35)
+        save_btn.bind(on_release=self.save_interval)
+
+        input_row.add_widget(self.interval_input)
+        input_row.add_widget(save_btn)
+        root.add_widget(input_row)
+
+        self.interval_label = Label(
+            text=f"Saved: {smart_convert_minutes(app.interval)}",
+            size_hint_y=None,
+            height=dp(30)
+        )
+        root.add_widget(self.interval_label)
+
+        # ---------- FLEXIBLE SPACER ----------
+        root.add_widget(Widget(size_hint_y=1))
+
+        # ---------- SERVICE BOOSTER (BOTTOM SITS HERE) ----------
+        root.add_widget(Label(
+            text="Carousel Tools",
+            size_hint_y=None,
+            height=dp(30)
+        ))
+
+        restart_btn = Button(
+            text="Restart Carousel Worker",
+            size_hint_y=None,
+            height=dp(50)
+        )
+        restart_btn.bind(on_release=self.restart_service)
+        root.add_widget(restart_btn)
+
+        #------STOP SERVICE -------
+        stop_btn = Button(
+            text="Stop Carousel Worker",
+            size_hint_y=None,
+            height=dp(50)
+        )
+        stop_btn.bind(on_release=self.terminate_carousel)
+        root.add_widget(stop_btn)
+
+        # ---------- BACK ----------
+        back_btn = Button(
+            text="Back",
+            size_hint_y=None,
+            height=dp(50),
+            on_release=lambda *_: setattr(app.sm, 'current', 'thumbs')
+        )
+        root.add_widget(back_btn)
+        self.add_widget(root)
+
+    def terminate_carousel(self,*args):
+        try:
+            Service(name="Mycarousel").stop()
+            toast("Successfully Terminated")
+        except:
+            toast("Stop failed")
+
+    # SAVE ONLY
+    def save_interval(self, *args):
+        app = MDApp.get_running_app()
+        try:
+            new_val = float(self.interval_input.text)
+        except:
+            toast("Enter a valid number")
+            return
+
+        if new_val < 0.17:
+            toast("Min allowed is 0.17 mins")
+            return
+
+        app.interval = new_val
+        app.config.set_interval(new_val)
+        self.interval_label.text = f"Saved: {smart_convert_minutes(new_val)}"
+        toast("Saved")
+
+    # RESTART SERVICE ONLY
+    def restart_service(self, *args):
+        app = MDApp.get_running_app()
+
+        def after_stop(*_):
+            try:
+                Service(name="Mycarousel").start()
+                toast("Service boosted!")
+            except:
+                toast("Start failed")
+
+        try:
+            Service(name="Mycarousel").stop()
+            Clock.schedule_once(after_stop, 1.2)
+        except:
+            toast("Stop failed")
 # ---------- MAIN APP ----------
 
 class WallpaperCarouselApp(MDApp):
@@ -185,17 +309,24 @@ class WallpaperCarouselApp(MDApp):
             traceback.print_exc()
         def android_service():
             try:
-                Service(name='Mycarousel')
+                Service(name='Mycarousel').start()
             except:
                 traceback.print_exc()
         Clock.schedule_once(lambda dt:android_service(),2)
-    
+
+    def on_resume(self):
+        try:
+            self.load_saved()
+        except:
+            toast("Error loading saved")
+
     def build(self):
         # Change to MDScreenManager
         self.sm = MDScreenManager()
         self.sm.md_bg_color = [0.05, 0.05, 0.05, 1]  # Manager background
         
         self.app_dir = Path(makeDownloadFolder())
+        self.config = ConfigManager(self.app_dir)
         self.wallpapers_dir = self.app_dir / ".wallpapers"
         self.wallpapers_dir.mkdir(parents=True, exist_ok=True)
         
@@ -205,9 +336,8 @@ class WallpaperCarouselApp(MDApp):
         self.build_settings_screen()
         
         # Load saved wallpapers
-        self.load_saved()
-        Clock.schedule_interval(self.auto_rotate, self.interval)
         
+        self.load_saved()
         return self.sm
     
     # ---------- BUILD SCREENS ----------
@@ -246,17 +376,6 @@ class WallpaperCarouselApp(MDApp):
     
     def build_settings_screen(self):
         screen = SettingsScreen(name="settings")
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=20)
-        
-        title = Label(text="Settings", size_hint_y=0.1, font_size="22sp")
-        self.interval_label = Label(text=f"Interval: {self.interval} mins", size_hint_y=0.2)
-        
-        layout.add_widget(title)
-        layout.add_widget(self.interval_label)
-        layout.add_widget(Button(text="Back", size_hint_y=0.1,
-                                 on_release=lambda *_: setattr(self.sm, 'current', 'thumbs')))
-        
-        screen.add_widget(layout)
         self.sm.add_widget(screen)
     
     # ---------- LOAD WALLPAPERS ----------
@@ -266,6 +385,7 @@ class WallpaperCarouselApp(MDApp):
             if p.suffix.lower() in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"]
         ]
         print("Loaded wallpapers:", self.wallpapers)
+        self.config.set_wallpapers(self.wallpapers)
         self.update_thumbnails()
     
     def update_thumbnails(self):
@@ -285,18 +405,6 @@ class WallpaperCarouselApp(MDApp):
         self.current_index = index
         self.sm.current = "fullscreen"
     
-    def next_image(self):
-        if not self.wallpapers:
-            return
-        self.current_index = (self.current_index + 1) % len(self.wallpapers)
-        self.full_img.source = self.wallpapers[self.current_index]
-    
-    def prev_image(self):
-        if not self.wallpapers:
-            return
-        self.current_index = (self.current_index - 1) % len(self.wallpapers)
-        self.full_img.source = self.wallpapers[self.current_index]
-    
     # ---------- ADD IMAGES ----------
     def open_filechooser(self, *args):
         filechooser.open_file(on_selection=self.copy_add, multiple=True)
@@ -315,6 +423,7 @@ class WallpaperCarouselApp(MDApp):
                 continue
             new_images.append(str(dest))
             self.wallpapers.append(str(dest))
+        self.config.add_wallpaper(path)
         self.update_thumbnails()
     
     def unique(self, dest_name):
@@ -326,11 +435,6 @@ class WallpaperCarouselApp(MDApp):
             i += 1
         return dest
     
-    # ---------- AUTO ROTATION ----------
-    def auto_rotate(self, dt):
-        if self.sm.current == "fullscreen" or len(self.wallpapers) < 2:
-            return
-        pass
 
 if __name__ == '__main__':
     WallpaperCarouselApp().run()

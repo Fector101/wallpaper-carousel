@@ -1,5 +1,5 @@
 import os, platform
-import sys
+import sys, traceback
 from datetime import datetime
 from jnius import autoclass, cast
 
@@ -94,8 +94,8 @@ class Service:
         self.mActivity = mActivity
         self.args_str=args_str
         self.name=name
+        self.service = autoclass(self.get_service_name())
         self.extra=extra
-        self.start_service_if_not_running()
     def get_service_name(self):
         context = self.mActivity.getApplicationContext()
         return str(context.getPackageName()) + '.Service' + self.name
@@ -112,22 +112,48 @@ class Service:
         	if found_service== service_name:
         		return True
         return False
-            #
-            
-        
 
-    def start_service_if_not_running(self):
+    def stop(self):
+    	try:
+    		if self.service_is_running:
+    			self.service.stop(self.mActivity)
+    		return True
+    	except:
+    		traceback.print_exc()
+    		return False
+
+    def start(self):
     	state=self.service_is_running()
     	print(state,"||",self.name,"||", self.get_service_name())
     	if state:
     		return
-    	service = autoclass(self.get_service_name())
+    	
     	title=self.name +' Service'
     	msg='Started'
     	arg=str(self.args_str)
     	icon='round_music_note_white_24'
     	if self.extra:
-    		service.start(self.mActivity, icon, title, msg, arg)
+    		self.service.start(self.mActivity, icon, title, msg, arg)
     	else:
-    		service.start(self.mActivity, arg)
+    		self.service.start(self.mActivity, arg)
     	
+def smart_convert_minutes(minutes: float) -> str:
+    total_seconds = int(minutes * 60)
+
+    hours = total_seconds // 3600
+    remaining_seconds = total_seconds % 3600
+    mins = remaining_seconds // 60
+    secs = remaining_seconds % 60
+
+    result_parts = []
+
+    if hours > 0:
+        result_parts.append(f"{hours}hr" if hours == 1 else f"{hours}hrs")
+
+    if mins > 0:
+        result_parts.append(f"{mins}min" if mins == 1 else f"{mins}mins")
+
+    if secs > 0:
+        result_parts.append(f"{secs}sec" if secs == 1 else f"{secs}secs")
+
+    return " ".join(result_parts) if result_parts else "0secs"

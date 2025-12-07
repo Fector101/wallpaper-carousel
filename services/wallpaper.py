@@ -8,7 +8,7 @@ except Exception as e:
 print("Entered Wallpaper Foreground Service...")
 import os
 import time
-import random
+import random, traceback
 from android_notify import Notification
 from android_notify.config import get_python_service, get_python_activity_context
 from jnius import autoclass
@@ -72,7 +72,18 @@ def set_wallpaper(wallpaper_path):
         return False
 
 # --- Main service loop with auto-restart ---
-INTERVAL = 120  # 2 minutes
+def get_interval():
+    try:
+        from utils.config_manager import ConfigManager
+        config = ConfigManager(makeDownloadFolder())
+        t=float(config.get_interval()) * 60
+        return t
+    except Exception as e:
+        print("Service Failed to get Interval:", e)
+        traceback.print_exc()
+        return 120
+    
+    
 SERVICE_LIFESPAN_HOURS = 6  # Service will run for 6 hours
 SERVICE_LIFESPAN_SECONDS = SERVICE_LIFESPAN_HOURS * 3600
 
@@ -91,7 +102,7 @@ def main_loop():
     global notification
     service_start_time = time.time()
     wallpaper_change_time = service_start_time
-    countdown_start = INTERVAL
+    countdown_start = get_interval()
     
     # Get initial wallpaper
     wallpaper_name, wallpaper_path = get_next_wallpaper()
@@ -108,7 +119,7 @@ def main_loop():
             current_time = time.time()
             elapsed_since_service_start = current_time - service_start_time
             elapsed_since_wallpaper_change = current_time - wallpaper_change_time
-            time_remaining = max(0, INTERVAL - elapsed_since_wallpaper_change)
+            time_remaining = max(0, get_interval() - elapsed_since_wallpaper_change)
             
             # Update countdown every second
             notification.updateTitle(f"Next in {format_time_remaining(time_remaining)}")
@@ -118,7 +129,7 @@ def main_loop():
                 notification.updateMessage(get_service_lifespan_text(elapsed_since_service_start))
             
             # Check if it's time to change wallpaper
-            if elapsed_since_wallpaper_change >= INTERVAL:
+            if elapsed_since_wallpaper_change >= get_interval():
                 # Set the wallpaper that was previewed
                 if wallpaper_path:
                     set_wallpaper(wallpaper_path)
