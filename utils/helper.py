@@ -94,7 +94,7 @@ class Service:
         self.mActivity = mActivity
         self.args_str=args_str
         self.name=name
-		self.service = autoclass(self.get_service_name())
+        self.service = autoclass(self.get_service_name())
         self.extra=extra
     def get_service_name(self):
         context = self.mActivity.getApplicationContext()
@@ -113,14 +113,14 @@ class Service:
         		return True
         return False
 
-	def stop(self):
-		try:
-			if self.service_is_running:
-				self.service.stop(self.mActivity)
-			return True
-		except:
-			traceback.print_exc()
-			return False
+    def stop(self):
+    	try:
+    		if self.service_is_running:
+    			self.service.stop(self.mActivity)
+    		return True
+    	except:
+    		traceback.print_exc()
+    		return False
 
     def start(self):
     	state=self.service_is_running()
