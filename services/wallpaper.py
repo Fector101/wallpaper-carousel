@@ -102,7 +102,6 @@ def main_loop():
     notification.updateMessage(get_service_lifespan_text(0))
     if wallpaper_path and os.path.exists(wallpaper_path):
         notification.setLargeIcon(wallpaper_path)
-    notification.send()
     
     while True:
         try:
