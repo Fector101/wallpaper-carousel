@@ -1,6 +1,11 @@
 import json
 import os
 from pathlib import Path
+try:
+    from kivymd.toast import toast
+except:
+    def toast(txt):
+        print("Fallback toast:", txt)
 
 class ConfigManager:
     DEFAULT_CONFIG = {
@@ -21,12 +26,18 @@ class ConfigManager:
             with open(self.config_path, "r") as f:
                 return json.load(f)
         except:
-            self._write(self.DEFAULT_CONFIG)
-            return self.DEFAULT_CONFIG
+            try:
+                self._write(self.DEFAULT_CONFIG)
+                return self.DEFAULT_CONFIG
+            except Exception as e:
+                toast(str(e))
 
     def _write(self, data):
-        with open(self.config_path, "w") as f:
-            json.dump(data, f, indent=4)
+        try:
+            with open(self.config_path, "w") as f:
+                json.dump(data, f, indent=4)
+        except Exception as e:
+            toast(str(e))
 
     # ---------- INTERVAL ----------
     def get_interval(self):
