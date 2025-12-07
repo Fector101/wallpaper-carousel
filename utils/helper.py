@@ -137,46 +137,23 @@ class Service:
     	else:
     		self.service.start(self.mActivity, arg)
     	
-def convert_minutes_to_time_units(minutes, show_days=True, show_hours=True):
-    """
-    Convert minutes to time units and return as formatted string.
-    Only displays units that are meaningful (e.g., won't show hours if less than 1 hour).
-    
-    Args:
-        minutes (float or int): Time in minutes
-        show_days (bool): Whether to include days in output
-        show_hours (bool): Whether to include hours in output
-        
-    Returns:
-        str: Formatted string showing relevant conversions
-        
-    Raises:
-        ValueError: If input is not a valid number
-    """
-    try:
-        # Ensure input is numeric
-        minutes_float = float(minutes)
-        
-        # Convert to different units
-        seconds = minutes_float * 60
-        hours = minutes_float / 60
-        days = hours / 24
-        
-        # Build output string
-        result = f"{minutes_float:.2f} minutes equals:\n\n"
-        
-        # Always show seconds
-        result += f"• {seconds:.0f} seconds\n"
-        
-        # Only show hours if meaningful (>= 1 hour)
-        if show_hours and hours >= 1:
-            result += f"• {hours:.2f} hours\n"
-        
-        # Only show days if meaningful (>= 1 day)
-        if show_days and days >= 1:
-            result += f"• {days:.3f} days"
-        
-        return result.rstrip()  # Remove trailing newline if needed
-        
-    except (ValueError, TypeError):
-        raise ValueError("Input must be a valid number")
+def smart_convert_minutes(minutes: float) -> str:
+    total_seconds = int(minutes * 60)
+
+    hours = total_seconds // 3600
+    remaining_seconds = total_seconds % 3600
+    mins = remaining_seconds // 60
+    secs = remaining_seconds % 60
+
+    result_parts = []
+
+    if hours > 0:
+        result_parts.append(f"{hours}hr" if hours == 1 else f"{hours}hrs")
+
+    if mins > 0:
+        result_parts.append(f"{mins}min" if mins == 1 else f"{mins}mins")
+
+    if secs > 0:
+        result_parts.append(f"{secs}sec" if secs == 1 else f"{secs}secs")
+
+    return " ".join(result_parts) if result_parts else "0secs"
