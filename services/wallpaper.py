@@ -140,7 +140,6 @@ def main_loop():
                 notification.updateTitle("Service Completed")
                 notification.updateMessage("6 hours service lifespan finished")
                 time.sleep(5)
-                # You might want to stop the service here
                 # service.stopSelf()
                 break
             
