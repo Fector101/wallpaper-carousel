@@ -82,11 +82,6 @@ def get_interval():
         print("Service Failed to get Interval:", e)
         traceback.print_exc()
         return 120
-
-
-INTERVAL =   get_interval() #120
-
-    
     
     
 SERVICE_LIFESPAN_HOURS = 6  # Service will run for 6 hours
