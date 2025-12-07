@@ -29,7 +29,7 @@ from kivymd.toast import toast
 
 from plyer import filechooser
 from android_notify import NotificationHandler
-from utils.helper import Service, makeDownloadFolder, start_logging
+from utils.helper import Service, makeDownloadFolder, start_logging, convert_minutes_to_time_units
 from utils.config_manager import ConfigManager
 
 try:
