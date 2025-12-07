@@ -283,7 +283,7 @@ class SettingsScreen(MDScreen):
             text=str(app.interval),
             hint_text="mins",
             size_hint_x=0.55,
-            #mode="outlined"
+            mode="outlined"
             )
         self.interval_input.input_filter="float"
         
