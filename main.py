@@ -29,7 +29,7 @@ from kivymd.toast import toast
 
 from plyer import filechooser
 from android_notify import NotificationHandler
-from utils.helper import Service, makeDownloadFolder, start_logging, convert_minutes_to_time_units
+from utils.helper import Service, makeDownloadFolder, start_logging, smart_convert_minutes
 from utils.config_manager import ConfigManager
 
 try:
@@ -213,7 +213,7 @@ class SettingsScreen(MDScreen):
         root.add_widget(input_row)
 
         self.interval_label = Label(
-            text=f"Saved: {app.interval} mins",
+            text=f"Saved: {smart_convert_minutes(app.interval)}",
             size_hint_y=None,
             height=dp(30)
         )
@@ -278,7 +278,7 @@ class SettingsScreen(MDScreen):
 
         app.interval = new_val
         app.config.set_interval(new_val)
-        self.interval_label.text = f"Saved: {new_val} mins"
+        self.interval_label.text = f"Saved: {smart_convert_minutes(new_val)}"
         toast("Saved")
 
     # RESTART SERVICE ONLY
