@@ -19,6 +19,8 @@ from kivy.metrics import dp
 from kivy.uix.popup import Popup
 from kivy.core.window import Window
 from kivy.uix.widget import Widget
+from kivy.animation import Animation
+from kivy.uix.carousel import Carousel
 
 from kivymd.uix.screenmanager import MDScreenManager
 from kivymd.uix.screen import MDScreen
@@ -60,43 +62,43 @@ class ThumbListScreen(MDScreen):  # Changed to MDScreen
 
 # ---------- FULLSCREEN VIEWER ----------
 
-class FullscreenScreen(MDScreen):  # Changed to MDScreen
+class FullscreenScreen(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.md_bg_color = [0, 0, 0, 1]  # Black background for fullscreen
+        self.md_bg_color = [0, 0, 0, 1]
         self.bottom_height = 0.15
         self.is_fullscreen = False
-        
-        
-        self.layout = MDFloatLayout(md_bg_color= [0, 0, 0, 1])
+
+        # Main layout container
+        self.layout = MDFloatLayout(md_bg_color=[0, 0, 0, 1])
         self.add_widget(self.layout)
-        
-        # Image
-        self.full_img = AsyncImage(
-            allow_stretch=True,fit_mode="contain",
-            size_hint=(1, 1 - self.bottom_height),
-            pos_hint={'x': 0, 'y': self.bottom_height}
-        )
-        self.layout.add_widget(self.full_img)
-        
-        # Bottom buttons
+
+        # === SWIPE CAROUSEL ===
+        self.carousel = Carousel(direction="right", loop=True,
+                                size_hint=(1, 1 - self.bottom_height),
+                                pos_hint={'x': 0, 'y': self.bottom_height})
+        self.layout.add_widget(self.carousel)
+
+        # === BOTTOM BUTTONS ===
         self.btn_layout = MDBoxLayout(
             orientation='horizontal',
             size_hint=(1, self.bottom_height),
             pos_hint={'x': 0, 'y': 0},
-            spacing=5,
+            spacing=dp(5),
             padding=dp(5),
-            md_bg_color= [0, 0,0, 1]  
+            md_bg_color=[0, 0, 0, 1]
         )
+
         self.btn_delete = Button(text="Delete")
         self.btn_info = Button(text="Info")
         self.btn_fullscreen = Button(text="Fullscreen")
+
         self.btn_layout.add_widget(self.btn_delete)
         self.btn_layout.add_widget(self.btn_info)
         self.btn_layout.add_widget(self.btn_fullscreen)
         self.layout.add_widget(self.btn_layout)
-        
-        # Top-left toggle button
+
+        # === BACK / EXIT FULLSCREEN ===
         self.btn_toggle = Button(
             text="Back",
             size_hint=(None, None),
@@ -104,69 +106,109 @@ class FullscreenScreen(MDScreen):  # Changed to MDScreen
             pos_hint={'x': 0.02, 'y': 0.9}
         )
         self.layout.add_widget(self.btn_toggle)
-        
-        # Bind buttons
+
+        # Bind events
         self.btn_delete.bind(on_release=self.delete_current)
         self.btn_info.bind(on_release=self.show_info)
         self.btn_fullscreen.bind(on_release=self.toggle_fullscreen)
         self.btn_toggle.bind(on_release=self.toggle_top_button)
-    
-    # -------------------- FULLSCREEN --------------------
+
+    # ====================================================================
+    #               FULLSCREEN TOGGLE BEHAVIOR
+    # ====================================================================
     def toggle_fullscreen(self, *args):
+        print(self.carousel.children[0].children)
         self.is_fullscreen = True
-        self.full_img.size_hint = (None, None)
-        self.full_img.allow_stretch=True
-        self.full_img.fit_mode="cover"
-        
-        self.full_img.width = Window.width
-        self.full_img.height = Window.height
-        self.full_img. pos_hint={'center_x': 0.5, 'center_y':0.5}
-        
+
+        self.carousel.size_hint = (1, 1)
+        self.carousel.pos_hint = {'center_x': .5, 'center_y': .5}
+
         self.btn_layout.opacity = 0
         self.btn_layout.disabled = True
-        
+
         self.btn_toggle.text = "Exit"
-        self.btn_toggle.opacity = 1
-        self.btn_toggle.disabled = False
-        
+        for img in self.carousel.slides:
+        	img.fit_mode = "cover"
+        	
         self.layout.do_layout()
-    
+
     def toggle_top_button(self, *args):
+        # If in fullscreen mode → restore controls
         if self.btn_toggle.text == "Exit":
-            self.full_img.keep_ratio = True
-            self.full_img.size_hint = (1, 1 - self.bottom_height)
-            self.full_img.pos_hint = {'x': 0, 'y': self.bottom_height}
-            self.full_img.fit_mode="contain"
+            self.carousel.size_hint = (1, 1 - self.bottom_height)
+            self.carousel.pos_hint = {'x': 0, 'y': self.bottom_height}
+
             self.btn_layout.opacity = 1
             self.btn_layout.disabled = False
+
             self.btn_toggle.text = "Back"
             self.is_fullscreen = False
+            
+            for img in self.carousel.slides:
+            	img.fit_mode = "contain"
+
+        # If not fullscreen → go back to thumbnails screen
         else:
             MDApp.get_running_app().sm.current = "thumbs"
-    
-    # -------------------- DELETE IMAGE --------------------
+
+    # ====================================================================
+    #               DELETE IMAGE
+    # ====================================================================
     def delete_current(self, *args):
         app = MDApp.get_running_app()
-        if app.wallpapers:
-            idx = app.current_index
-            path = app.wallpapers.pop(idx)
-            app.config.remove_wallpaper(path)
-            if os.path.exists(path):
-                os.remove(path)
-            app.update_thumbnails()
-            MDApp.get_running_app().sm.current = "thumbs"
-    
-    # -------------------- SHOW IMAGE INFO --------------------
+
+        if not app.wallpapers:
+            return
+
+        idx = self.carousel.index
+        path = app.wallpapers.pop(idx)
+
+        if path and os.path.exists(path):
+            os.remove(path)
+
+        app.config.remove_wallpaper(path)
+        app.update_thumbnails()
+        app.refresh_carousel()  # rebuild carousel images
+
+        # Go back if nothing left
+        if not app.wallpapers:
+            app.sm.current = "thumbs"
+
+    # ====================================================================
+    #               IMAGE INFO POPUP
+    # ====================================================================
     def show_info(self, *args):
         app = MDApp.get_running_app()
-        if app.wallpapers:
-            path = app.wallpapers[app.current_index]
-            popup = Popup(
-                title="Image Info",
-                content=Label(text=f"Path: {path}"),
-                size_hint=(0.8, 0.4)
+        if not app.wallpapers:
+            return
+
+        idx = self.carousel.index
+        path = app.wallpapers[idx]
+
+        popup = Popup(
+            title="Image Info",
+            content=Label(text=f"Path:\n{path}"),
+            size_hint=(0.8, 0.4)
+        )
+        popup.open()
+
+    # ====================================================================
+    #               REBUILD CAROUSEL IMAGES
+    # ====================================================================
+    def update_images(self):
+        """Rebuild carousel anytime wallpapers change."""
+        app = MDApp.get_running_app()
+        self.carousel.clear_widgets()
+
+        for p in app.wallpapers:
+            img = AsyncImage(
+                source=p,
+                allow_stretch=True,
+                keep_ratio=True,
+                fit_mode="contain"
             )
-            popup.open()
+            self.carousel.add_widget(img)
+
 
 # ---------- SETTINGS SCREEN ----------
 
@@ -202,7 +244,8 @@ class SettingsScreen(MDScreen):
             text=str(app.interval),
             hint_text="mins",
             size_hint_x=0.55,
-            mode="outlined")
+            mode="outlined"
+            )
         self.interval_input.input_filter="float"
         
         save_btn = Button(text="Save", size_hint_x=0.35)
@@ -364,7 +407,7 @@ class WallpaperCarouselApp(MDApp):
         # Buttons
         btns = BoxLayout(size_hint_y=0.1, spacing=10)
         btns.add_widget(Button(text="Add Images", on_release=self.open_filechooser))
-        btns.add_widget(Button(text="Settings (WIP)", on_release=lambda *_: setattr(self.sm, 'current', 'settings')))
+        btns.add_widget(Button(text="Settings", on_release=lambda *_: setattr(self.sm, 'current', 'settings')))
         layout.add_widget(btns)
         
         screen.add_widget(layout)
@@ -401,10 +444,11 @@ class WallpaperCarouselApp(MDApp):
     
     # ---------- FULLSCREEN ----------
     def open_fullscreen(self, path, index):
-        self.full_screen.full_img.source = path
-        self.current_index = index
-        self.sm.current = "fullscreen"
-    
+    	self.current_index = index
+    	self.full_screen.update_images()
+    	self.full_screen.carousel.index = index
+    	self.sm.current = "fullscreen"
+
     # ---------- ADD IMAGES ----------
     def open_filechooser(self, *args):
         filechooser.open_file(on_selection=self.copy_add, multiple=True)
