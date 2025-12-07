@@ -76,7 +76,7 @@ INTERVAL = 120  # 2 minutes
 try:
     from utils.config_manager import ConfigManager
     config = ConfigManager(makeDownloadFolder())
-    INTERVAL=float(config.get_interval())
+    INTERVAL=float(config.get_interval()) * 60
 except Exception as e:
     print("Service Failed to get Interval:", e)
     traceback.print_exc()
