@@ -202,9 +202,9 @@ class SettingsScreen(MDScreen):
             text=str(app.interval),
             hint_text="mins",
             size_hint_x=0.55,
-            mode="rectangle",
-            input_filter="float"
-        )
+            mode="outlined")
+        self.interval_input.input_filter="float"
+        
         save_btn = Button(text="Save", size_hint_x=0.35)
         save_btn.bind(on_release=self.save_interval)
 
