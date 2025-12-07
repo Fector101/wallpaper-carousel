@@ -1,43 +1,59 @@
 import json
+import os
 from pathlib import Path
 
 class ConfigManager:
-    def __init__(self, app_dir: Path):
-        self.config_path = app_dir / "config.json"
-        self.default_data = {
-            "interval_minutes": 2,  # Default rotation time
-            "wallpapers": []        # Optional: Store paths here later if needed
-        }
-        self._load()
+    DEFAULT_CONFIG = {
+        "interval_mins": 2,
+        "wallpapers": []
+    }
 
-    # Load or create default config
-    def _load(self):
+    def __init__(self, config_dir: Path):
+        self.config_path = Path(config_dir) / "config.json"
+        self._ensure_config()
+
+    def _ensure_config(self):
         if not self.config_path.exists():
-            self._write(self.default_data)
-        try:
-            with self.config_path.open("r", encoding="utf-8") as f:
-                self.data = json.load(f)
-        except:
-            self.data = self.default_data.copy()
-            self._write(self.data)
+            self._write(self.DEFAULT_CONFIG)
 
-    # Write data to file
+    def _read(self):
+        try:
+            with open(self.config_path, "r") as f:
+                return json.load(f)
+        except:
+            self._write(self.DEFAULT_CONFIG)
+            return self.DEFAULT_CONFIG
+
     def _write(self, data):
-        with self.config_path.open("w", encoding="utf-8") as f:
+        with open(self.config_path, "w") as f:
             json.dump(data, f, indent=4)
 
-    # ===== Interval Management ===== #
-    def get_interval(self) -> int:
-        return self.data.get("interval_minutes", 2)
+    # ---------- INTERVAL ----------
+    def get_interval(self):
+        return self._read().get("interval_mins", 2)
 
-    def set_interval(self, minutes: int):
-        self.data["interval_minutes"] = max(1, int(minutes))  # min 1 min
-        self._write(self.data)
+    def set_interval(self, mins: int):
+        data = self._read()
+        data["interval_mins"] = mins
+        self._write(data)
 
-    # ===== Wallpapers List (optional future use) ===== #
+    # ---------- WALLPAPERS ----------
     def get_wallpapers(self):
-        return self.data.get("wallpapers", [])
+        return self._read().get("wallpapers", [])
 
-    def set_wallpapers(self, wallpapers: list):
-        self.data["wallpapers"] = wallpapers
-        self._write(self.data)
+    def set_wallpapers(self, lst):
+        data = self._read()
+        data["wallpapers"] = lst
+        self._write(data)
+
+    def add_wallpaper(self, path):
+        data = self._read()
+        if path not in data["wallpapers"]:
+            data["wallpapers"].append(path)
+            self._write(data)
+
+    def remove_wallpaper(self, path):
+        data = self._read()
+        if path in data["wallpapers"]:
+            data["wallpapers"].remove(path)
+            self._write(data)
