@@ -8,7 +8,7 @@ except Exception as e:
 print("Entered Wallpaper Foreground Service...")
 import os
 import time
-import random
+import random, traceback
 from android_notify import Notification
 from android_notify.config import get_python_service, get_python_activity_context
 from jnius import autoclass
@@ -73,6 +73,14 @@ def set_wallpaper(wallpaper_path):
 
 # --- Main service loop with auto-restart ---
 INTERVAL = 120  # 2 minutes
+try:
+    from utils.config_manager import ConfigManager
+    config = ConfigManager(makeDownloadFolder())
+    INTERVAL=float(config.get_interval())
+except Exception as e:
+    print("Service Failed to get Interval:" e)
+    traceback.print_exc()
+    
 SERVICE_LIFESPAN_HOURS = 6  # Service will run for 6 hours
 SERVICE_LIFESPAN_SECONDS = SERVICE_LIFESPAN_HOURS * 3600
 
