@@ -72,14 +72,22 @@ def set_wallpaper(wallpaper_path):
         return False
 
 # --- Main service loop with auto-restart ---
-INTERVAL = 120  # 2 minutes
-try:
-    from utils.config_manager import ConfigManager
-    config = ConfigManager(makeDownloadFolder())
-    INTERVAL=float(config.get_interval()) * 60
-except Exception as e:
-    print("Service Failed to get Interval:", e)
-    traceback.print_exc()
+def get_interval():
+    try:
+        from utils.config_manager import ConfigManager
+        config = ConfigManager(makeDownloadFolder())
+        t=float(config.get_interval()) * 60
+        return t
+    except Exception as e:
+        print("Service Failed to get Interval:", e)
+        traceback.print_exc()
+        return 120
+
+
+INTERVAL =   get_interval() #120
+
+    
+    
     
 SERVICE_LIFESPAN_HOURS = 6  # Service will run for 6 hours
 SERVICE_LIFESPAN_SECONDS = SERVICE_LIFESPAN_HOURS * 3600
