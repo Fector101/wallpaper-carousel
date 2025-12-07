@@ -96,7 +96,6 @@ class Service:
         self.name=name
 		self.service = autoclass(self.get_service_name())
         self.extra=extra
-        self.start_service_if_not_running()
     def get_service_name(self):
         context = self.mActivity.getApplicationContext()
         return str(context.getPackageName()) + '.Service' + self.name
@@ -123,7 +122,7 @@ class Service:
 			traceback.print_exc()
 			return False
 
-    def start_service_if_not_running(self):
+    def start(self):
     	state=self.service_is_running()
     	print(state,"||",self.name,"||", self.get_service_name())
     	if state:
