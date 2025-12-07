@@ -78,7 +78,7 @@ try:
     config = ConfigManager(makeDownloadFolder())
     INTERVAL=float(config.get_interval())
 except Exception as e:
-    print("Service Failed to get Interval:" e)
+    print("Service Failed to get Interval:", e)
     traceback.print_exc()
     
 SERVICE_LIFESPAN_HOURS = 6  # Service will run for 6 hours
