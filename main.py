@@ -223,18 +223,27 @@ class SettingsScreen(MDScreen):
 
         # ---------- SERVICE BOOSTER (BOTTOM SITS HERE) ----------
         root.add_widget(Label(
-            text="Service Booster (Keep alive 🛡️)",
+            text="Carousel Tools",
             size_hint_y=None,
             height=dp(30)
         ))
 
         restart_btn = Button(
-            text="Restart Service",
+            text="Restart Carousel Worker",
             size_hint_y=None,
             height=dp(50)
         )
         restart_btn.bind(on_release=self.restart_service)
         root.add_widget(restart_btn)
+
+        #------STOP SERVICE -------
+        stop_btn = Button(
+            text="Stop Carousel Worker",
+            size_hint_y=None,
+            height=dp(50)
+        )
+        stop_btn.bind(on_release=self.terminate_carousel)
+        root.add_widget(stop_btn)
 
         # ---------- BACK ----------
         back_btn = Button(
@@ -244,8 +253,14 @@ class SettingsScreen(MDScreen):
             on_release=lambda *_: setattr(app.sm, 'current', 'thumbs')
         )
         root.add_widget(back_btn)
-
         self.add_widget(root)
+
+    def terminate_carousel(self,*args):
+        try:
+            Service(name="Mycarousel").stop()
+            toast("Successfully Terminated")
+        except:
+            toast("Stop failed")
 
     # SAVE ONLY
     def save_interval(self, *args):
