@@ -73,7 +73,7 @@ class FullscreenScreen(MDScreen):  # Changed to MDScreen
         
         # Image
         self.full_img = AsyncImage(
-            allow_stretch=True,
+            allow_stretch=True,fit_mode="contain",
             size_hint=(1, 1 - self.bottom_height),
             pos_hint={'x': 0, 'y': self.bottom_height}
         )
@@ -136,6 +136,7 @@ class FullscreenScreen(MDScreen):  # Changed to MDScreen
             self.full_img.keep_ratio = True
             self.full_img.size_hint = (1, 1 - self.bottom_height)
             self.full_img.pos_hint = {'x': 0, 'y': self.bottom_height}
+            self.full_img.fit_mode="contain"
             self.btn_layout.opacity = 1
             self.btn_layout.disabled = False
             self.btn_toggle.text = "Back"
