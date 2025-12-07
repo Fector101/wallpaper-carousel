@@ -13,7 +13,6 @@ def after_apk_build(toolchain: ToolchainCL):
     # ==========================================
     services = {
         "Mycarousel": "dataSync"
-        # "Tracker": "location",
     }
 
     for name, fgs_type in services.items():
@@ -29,16 +28,16 @@ def after_apk_build(toolchain: ToolchainCL):
                         f' android:foregroundServiceType="{fgs_type}"' +
                         text[end:]
                     )
-                    print(f"✅ Added foregroundServiceType='{fgs_type}' to Service{name.capitalize()}")
+                    print(f"Successfully_101: Added foregroundServiceType='{fgs_type}' to Service{name.capitalize()}")
                 else:
-                    print(f"ℹ️ Service{name.capitalize()} already has foregroundServiceType")
+                    print(f"Error_101: Service{name.capitalize()} already has foregroundServiceType")
             else:
-                print(f"⚠️ Service{name.capitalize()} found but no '/>' closing tag")
+                print(f"Error_101: Service{name.capitalize()} found but no '/>' closing tag")
         else:
-            print(f"⚠️ Service{name.capitalize()} not found in manifest")
+            print(f"Error_101: Service{name.capitalize()} not found in manifest")
 
     # ====================================================
     # Save final manifest back
     # ====================================================
     manifest_file.write_text(text, encoding="utf-8")
-    print("🎯 Manifest update completed successfully!")
+    print("Successfully_101: Manifest update completed successfully!")
