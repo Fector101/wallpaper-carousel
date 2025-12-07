@@ -287,8 +287,8 @@ class SettingsScreen(MDScreen):
 
         def after_stop(*_):
             try:
-                Service(name="Mycarousel", args_str=str(app.interval))
-                toast("Service boosted 💪")
+                Service(name="Mycarousel").start()
+                toast("Service boosted!")
             except:
                 toast("Start failed")
 
