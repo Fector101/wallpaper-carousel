@@ -87,46 +87,33 @@ def main_loop():
     notification.updateMessage(f"Next: {wallpaper_name}")
     if wallpaper_path and os.path.exists(wallpaper_path):
         notification.setLargeIcon(wallpaper_path)
-    notification.send()
-    
-    last_update = start
     
     while True:
         try:
-            current_time = time.time()
-            elapsed = current_time - start
+            elapsed = time.time() - start
             
-            # Update elapsed time every minute even while waiting
-            if current_time - last_update >= 60:  # Update every minute
-                notification.updateTitle(f"Running for {int(elapsed//3600)}h {int((elapsed%3600)//60)}m {int(elapsed%60)}s")
-                last_update = current_time
+            # Wait first (so we show the preview for the full interval)
+            time.sleep(INTERVAL)
             
-            # Check if it's time to change wallpaper
-            if current_time - start >= INTERVAL:
-                # Set the wallpaper that was previewed
-                if wallpaper_path:
-                    set_wallpaper(wallpaper_path)
-                
-                # Get NEXT wallpaper for preview
-                wallpaper_name, wallpaper_path = get_next_wallpaper()
-                wallpaper_name = wallpaper_name or "No image"
-                
-                # Update notification with new preview
-                notification.updateMessage(f"Next: {wallpaper_name}")
-                if wallpaper_path and os.path.exists(wallpaper_path):
-                    notification.setLargeIcon(wallpaper_path)
-                
-                # Reset interval counter
-                start = time.time()
-                last_update = start
+            # Now set the wallpaper that was previewed
+            if wallpaper_path:
+                set_wallpaper(wallpaper_path)
             
-            # Short sleep to keep loop responsive
-            time.sleep(10)  # Check every 10 seconds
+            # Get NEXT wallpaper for preview
+            wallpaper_name, wallpaper_path = get_next_wallpaper()
+            wallpaper_name = wallpaper_name or "No image"
+            
+            # Update notification with new preview
+            notification.updateTitle(f"Running for {int(elapsed//3600)}h {int((elapsed%3600)//60)}m {int(elapsed%60)}s")
+            notification.updateMessage(f"Next: {wallpaper_name}")
+            
+            # Update large icon with upcoming wallpaper
+            if wallpaper_path and os.path.exists(wallpaper_path):
+                notification.setLargeIcon(wallpaper_path)
             
         except Exception as e:
             print("Fatal Error: Error in main loop, restarting in 5s:", e)
             time.sleep(5)
-
 
 # --- Start foreground service ---
 # Create and send initial notification for foreground service
