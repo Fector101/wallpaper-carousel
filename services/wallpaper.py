@@ -73,43 +73,80 @@ def set_wallpaper(wallpaper_path):
 
 # --- Main service loop with auto-restart ---
 INTERVAL = 120  # 2 minutes
+SERVICE_LIFESPAN_HOURS = 6  # Service will run for 6 hours
+SERVICE_LIFESPAN_SECONDS = SERVICE_LIFESPAN_HOURS * 3600
+
+def format_time_remaining(seconds):
+    """Format seconds into minutes:seconds for countdown"""
+    minutes = int(seconds // 60)
+    secs = int(seconds % 60)
+    return f"{minutes:02d}:{secs:02d}"
+
+def get_service_lifespan_text(elapsed_seconds):
+    """Get service lifespan text like 'service lifespan: 6hrs'"""
+    remaining_hours = max(0, SERVICE_LIFESPAN_HOURS - int(elapsed_seconds // 3600))
+    return f"service lifespan: {remaining_hours}hrs"
 
 def main_loop():
     global notification
-    start = time.time()
+    service_start_time = time.time()
+    wallpaper_change_time = service_start_time
+    countdown_start = INTERVAL
     
     # Get initial wallpaper
     wallpaper_name, wallpaper_path = get_next_wallpaper()
     wallpaper_name = wallpaper_name or "No image"
     
-    # Send initial notification
-    notification.updateTitle(f"Running for 0h 0m 0s")
-    notification.updateMessage(f"Next: {wallpaper_name}")
+    # Set initial notification
+    notification.updateTitle(f"Next in {format_time_remaining(countdown_start)}")
+    notification.updateMessage(get_service_lifespan_text(0))
     if wallpaper_path and os.path.exists(wallpaper_path):
         notification.setLargeIcon(wallpaper_path)
+    notification.send()
     
     while True:
         try:
-            elapsed = time.time() - start
+            current_time = time.time()
+            elapsed_since_service_start = current_time - service_start_time
+            elapsed_since_wallpaper_change = current_time - wallpaper_change_time
+            time_remaining = max(0, INTERVAL - elapsed_since_wallpaper_change)
             
-            # Wait first (so we show the preview for the full interval)
-            time.sleep(INTERVAL)
+            # Update countdown every second
+            notification.updateTitle(f"Next in {format_time_remaining(time_remaining)}")
             
-            # Now set the wallpaper that was previewed
-            if wallpaper_path:
-                set_wallpaper(wallpaper_path)
+            # Update service lifespan every hour
+            if int(elapsed_since_service_start) % 3600 == 0:  # Every hour
+                notification.updateMessage(get_service_lifespan_text(elapsed_since_service_start))
             
-            # Get NEXT wallpaper for preview
-            wallpaper_name, wallpaper_path = get_next_wallpaper()
-            wallpaper_name = wallpaper_name or "No image"
+            # Check if it's time to change wallpaper
+            if elapsed_since_wallpaper_change >= INTERVAL:
+                # Set the wallpaper that was previewed
+                if wallpaper_path:
+                    set_wallpaper(wallpaper_path)
+                
+                # Reset wallpaper change timer
+                wallpaper_change_time = current_time
+                
+                # Get NEXT wallpaper for preview
+                wallpaper_name, wallpaper_path = get_next_wallpaper()
+                wallpaper_name = wallpaper_name or "No image"
+                
+                # Update large icon with upcoming wallpaper
+                if wallpaper_path and os.path.exists(wallpaper_path):
+                    notification.setLargeIcon(wallpaper_path)
             
-            # Update notification with new preview
-            notification.updateTitle(f"Running for {int(elapsed//3600)}h {int((elapsed%3600)//60)}m {int(elapsed%60)}s")
-            notification.updateMessage(f"Next: {wallpaper_name}")
+            # Check if service lifespan has expired
+            if elapsed_since_service_start >= SERVICE_LIFESPAN_SECONDS:
+                print("Service lifespan expired. Stopping service.")
+                notification.updateTitle("Service Completed")
+                notification.updateMessage("6 hours service lifespan finished")
+                time.sleep(5)
+                # You might want to stop the service here
+                # service.stopSelf()
+                break
             
-            # Update large icon with upcoming wallpaper
-            if wallpaper_path and os.path.exists(wallpaper_path):
-                notification.setLargeIcon(wallpaper_path)
+            # Update more frequently for smooth countdown
+            time.sleep(1)  # Update every second
             
         except Exception as e:
             print("Fatal Error: Error in main loop, restarting in 5s:", e)
@@ -117,7 +154,7 @@ def main_loop():
 
 # --- Start foreground service ---
 # Create and send initial notification for foreground service
-notification = Notification(title="Wallpaper Service Starting", message="Initializing...")
+notification = Notification(title="Next in 02:00", message="service lifespan: 6hrs")
 builder = notification.start_building()
 service.startForeground(notification.id, builder.build(), foreground_type)
 service.setAutoRestartService(True)  # auto-restart if killed
