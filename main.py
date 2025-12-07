@@ -210,45 +210,6 @@ class FullscreenScreen(MDScreen):
             self.carousel.add_widget(img)
 
 
-    def animate_transition(self, direction):
-        width = Window.width
-        offset = width if direction == "left" else -width
-
-        img = self.full_img
-
-        # Slide out old image
-        anim_out = Animation(x=offset, duration=self.anim_duration, t="out_quad")
-
-        def on_out_complete(*_):
-            app = MDApp.get_running_app()
-            img.x = -offset  # position next image off-screen opposite
-
-            # Update image source
-            img.source = app.wallpapers[app.current_index]
-
-            # Slide new image into screen
-            anim_in = Animation(x=0, duration=self.anim_duration, t="out_quad")
-            anim_in.start(img)
-
-        anim_out.bind(on_complete=on_out_complete)
-        anim_out.start(img)
-
-    def next_image(self):
-        app = MDApp.get_running_app()
-        if not app.wallpapers:
-            return
-        app.current_index = (app.current_index + 1) % len(app.wallpapers)
-        self.animate_transition("left")
-
-    def prev_image(self):
-        app = MDApp.get_running_app()
-        if not app.wallpapers:
-            return
-        app.current_index = (app.current_index - 1) % len(app.wallpapers)
-        self.animate_transition("right")
-
-
-
 # ---------- SETTINGS SCREEN ----------
 
 class SettingsScreen(MDScreen):
