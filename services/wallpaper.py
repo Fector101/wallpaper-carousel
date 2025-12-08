@@ -169,4 +169,7 @@ service.startForeground(notification.id, builder.build(), foreground_type)
 service.setAutoRestartService(True)  # auto-restart if killed
 
 # --- Run main loop ---
-main_loop()
+try:
+    main_loop()
+except Exception as e:
+    pass # Avoiding process is bad java.lang.SecurityException
