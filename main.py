@@ -167,13 +167,16 @@ class FullscreenScreen(MDScreen):
             os.remove(path)
 
         app.config.remove_wallpaper(path)
-        app.update_thumbnails()
-        app.refresh_carousel()  # rebuild carousel images
-
-        # Go back if nothing left
         if not app.wallpapers:
+            app.update_thumbnails()
             app.sm.current = "thumbs"
+            return
 
+        new_index = max(0, min(idx, len(app.wallpapers) - 1))
+        app.update_thumbnails()
+        self.update_images()
+        self.carousel.index = new_index
+        
     # ====================================================================
     #               IMAGE INFO POPUP
     # ====================================================================
@@ -467,7 +470,8 @@ class WallpaperCarouselApp(MDApp):
                 continue
             new_images.append(str(dest))
             self.wallpapers.append(str(dest))
-        self.config.add_wallpaper(path)
+        for img in new_images:
+            self.config.add_wallpaper(img)
         self.update_thumbnails()
     
     def unique(self, dest_name):
