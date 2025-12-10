@@ -218,7 +218,7 @@ class FullscreenScreen(MDScreen):
 class SettingsScreen(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.md_bg_color = [0.2, 0.2, 0.3, 1]
+        self.md_bg_color = [0.1, 0.1, 0.1, 1]
 
         app = MDApp.get_running_app()
         app.interval = float(app.config.get_interval())
