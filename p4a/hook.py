@@ -12,7 +12,8 @@ def after_apk_build(toolchain: ToolchainCL):
     # Add foregroundServiceType to multiple services
     # ==========================================
     services = {
-        "Mycarousel": "dataSync"
+        "Mycarousel": "dataSync",
+        "MyTester": "dataSync",
     }
 
     for name, fgs_type in services.items():
@@ -35,6 +36,27 @@ def after_apk_build(toolchain: ToolchainCL):
                 print(f"Error_101: Service{name.capitalize()} found but no '/>' closing tag")
         else:
             print(f"Error_101: Service{name.capitalize()} not found in manifest")
+
+    receiver_xml = f'''
+    <receiver android:name="{package}.WallexWidgetProvider"
+              android:enabled="true"
+              android:exported="false">
+        <intent-filter>
+            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+        </intent-filter>
+        <meta-data android:name="android.appwidget.provider"
+               android:resource="@xml/widgetproviderinfo" />
+    </receiver>
+    '''
+
+    if receiver_xml.strip() not in text:
+        if "</application>" in text:
+            text = text.replace("</application>", f"{receiver_xml}\n</application>")
+            print("Receiver added")
+        else: 
+            print("Could not find </application> to insert receiver")
+    else: 
+        print("Receiver already exists in manifest")
 
     # ====================================================
     # Save final manifest back
