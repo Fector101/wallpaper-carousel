@@ -13,7 +13,7 @@ def after_apk_build(toolchain: ToolchainCL):
     # ==========================================
     services = {
         "Mycarousel": "dataSync",
-        "MyTester": "dataSync",
+        "Mytester": "dataSync",
     }
 
     for name, fgs_type in services.items():
