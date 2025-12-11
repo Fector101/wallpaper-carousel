@@ -182,7 +182,7 @@ android.api = 35
 
 # (list) List of Java files to add to the android project (can be java or a
 # directory containing the files)
-#android.add_src = android/src
+android.add_src = src
 
 # (list) Android AAR archives to add
 #android.add_aars =
@@ -203,7 +203,7 @@ android.api = 35
 # 3) A directory, here 'legal_resources' must contain one or more directories, 
 # each of a resource kind:  drawable, xml, etc...
 # android.add_resources = legal_resources
-#android.add_resources = android/res
+android.add_resources = res
 #, icons
 
 # (list) Gradle dependencies to add
