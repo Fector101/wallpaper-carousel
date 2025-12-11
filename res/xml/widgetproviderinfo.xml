@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<AppWidgetProviderInfo xmlns:android="http://schemas.android.com/apk/res/android"
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="120dp"
     android:minHeight="60dp"
     android:updatePeriodMillis="1800000"   <!-- 30 mins -->
@@ -7,3 +6,4 @@
     android:previewImage="@drawable/ic_launcher_foreground"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen" />
+</appwidget-provider>
