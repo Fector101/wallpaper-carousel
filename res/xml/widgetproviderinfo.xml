@@ -1,7 +1,7 @@
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="120dp"
     android:minHeight="60dp"
-    android:updatePeriodMillis="1800000"   <!-- 30 mins -->
+    android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/simple_widget"
     android:previewImage="@drawable/ic_launcher_foreground"
     android:resizeMode="horizontal|vertical"
