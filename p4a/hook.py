@@ -38,7 +38,7 @@ def after_apk_build(toolchain: ToolchainCL):
             print(f"Error_101: Service{name.capitalize()} not found in manifest")
 
     receiver_xml = f'''
-    <receiver android:name="{package}.WallexWidgetProvider"
+    <receiver android:name="{package}.SimpleWidget"
               android:enabled="true"
               android:exported="false">
         <intent-filter>
@@ -63,3 +63,4 @@ def after_apk_build(toolchain: ToolchainCL):
     # ====================================================
     manifest_file.write_text(text, encoding="utf-8")
     print("Successfully_101: Manifest update completed successfully!")
+
