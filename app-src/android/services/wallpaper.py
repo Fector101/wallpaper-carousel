@@ -1,3 +1,4 @@
+print("Entered Service File...")
 try:
     from utils.helper import start_logging, makeDownloadFolder
     start_logging()
@@ -172,4 +173,6 @@ service.setAutoRestartService(True)  # auto-restart if killed
 try:
     main_loop()
 except Exception as e:
-    pass # Avoiding process is bad java.lang.SecurityException
+    print("Service Main loop Failed:",e)
+    traceback.print_exc()
+    # Avoiding process is bad java.lang.SecurityException
