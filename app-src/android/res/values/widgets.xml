@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_button_description">
+        Tap to increment a counter
+    </string>
+    <string name="widget_simple_demo_description">
+        A simple text widget showing a greeting message
+    </string>
+</resources>

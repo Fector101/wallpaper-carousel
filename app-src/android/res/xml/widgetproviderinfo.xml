@@ -5,5 +5,6 @@
     android:initialLayout="@layout/simple_widget"
     android:previewImage="@drawable/ic_launcher_foreground"
     android:resizeMode="horizontal|vertical"
-    android:widgetCategory="home_screen">
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_simple_demo_description" >
 </appwidget-provider>

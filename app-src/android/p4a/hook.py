@@ -40,13 +40,28 @@ def after_apk_build(toolchain: ToolchainCL):
     receiver_xml = f'''
     <receiver android:name="{package}.SimpleWidget"
               android:enabled="true"
-              android:exported="false">
+              android:exported="false"
+              android:label="Simple Text">
         <intent-filter>
             <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
         </intent-filter>
         <meta-data android:name="android.appwidget.provider"
                android:resource="@xml/widgetproviderinfo" />
     </receiver>
+    
+    <receiver
+        android:name="{package}.ButtonWidget"
+        android:exported="false"
+        android:label="Counter Button Demo">
+        <intent-filter>
+            <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+        </intent-filter>
+    
+        <meta-data
+            android:name="android.appwidget.provider"
+            android:resource="@xml/button_widget_provider" />
+    </receiver>
+
     '''
 
     if receiver_xml.strip() not in text:
