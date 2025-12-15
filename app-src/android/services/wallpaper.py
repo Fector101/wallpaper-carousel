@@ -1,5 +1,5 @@
 try:
-    from source.utils.helper import start_logging, makeDownloadFolder
+    from utils.helper import start_logging, makeDownloadFolder
     start_logging()
     print("Service Logging started. All console output will also be saved.")
 except Exception as e:

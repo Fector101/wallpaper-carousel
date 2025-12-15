@@ -58,7 +58,7 @@ orientation = portrait
 
 # (list) List of service to declare
 #services = NAME:ENTRYPOINT_TO_PY,NAME2:ENTRYPOINT2_TO_PY
-services = Mycarousel:./app-src/services/wallpaper.py:foreground
+services = Mycarousel:./app-src/android/services/wallpaper.py:foreground
 #
 # OSX Specific
 #
@@ -182,7 +182,7 @@ android.api = 35
 
 # (list) List of Java files to add to the android project (can be java or a
 # directory containing the files)
-android.add_src = app-src/src
+android.add_src = app-src/android/src
 
 # (list) Android AAR archives to add
 #android.add_aars =
@@ -203,7 +203,7 @@ android.add_src = app-src/src
 # 3) A directory, here 'legal_resources' must contain one or more directories, 
 # each of a resource kind:  drawable, xml, etc...
 # android.add_resources = legal_resources
-android.add_resources = app-src/res
+android.add_resources = app-src/android/res
 #, icons
 
 # (list) Gradle dependencies to add
@@ -340,7 +340,7 @@ android.allow_backup = True
 #p4a.local_recipes =
 
 # (str) Filename to the hook for p4a
-p4a.hook = app-src/p4a/hook.py
+p4a.hook = app-src/android/p4a/hook.py
 
 # (str) Bootstrap to use for android builds
 # p4a.bootstrap = sdl2
