@@ -58,7 +58,7 @@ orientation = portrait
 
 # (list) List of service to declare
 #services = NAME:ENTRYPOINT_TO_PY,NAME2:ENTRYPOINT2_TO_PY
-services = Mycarousel:./app-src/android/services/wallpaper.py:foreground
+services = Wallpapercarousel:./android/services/wallpaper.py:foreground, Test:./android/services/test.py:foreground
 #
 # OSX Specific
 #
@@ -457,3 +457,4 @@ warn_on_root = 1
 #    Then, invoke the command line with the "demo" profile:
 #
 #buildozer --profile demo android debug
+
