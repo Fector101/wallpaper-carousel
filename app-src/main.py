@@ -304,7 +304,7 @@ class SettingsScreen(MDScreen):
 
     def terminate_carousel(self,*args):
         try:
-            Service(name="Mycarousel").stop()
+            Service(name="Wallpapercarousel").stop()
             toast("Successfully Terminated")
         except:
             toast("Stop failed")
@@ -333,13 +333,13 @@ class SettingsScreen(MDScreen):
 
         def after_stop(*_):
             try:
-                Service(name="Mycarousel").start()
+                Service(name="Wallpapercarousel").start()
                 toast("Service boosted!")
             except:
                 toast("Start failed")
 
         try:
-            Service(name="Mycarousel").stop()
+            Service(name="Wallpapercarousel").stop()
             Clock.schedule_once(after_stop, 1.2)
         except:
             toast("Stop failed")
@@ -355,7 +355,7 @@ class WallpaperCarouselApp(MDApp):
             traceback.print_exc()
         def android_service():
             try:
-                Service(name='Mycarousel').start()
+                Service(name='Wallpapercarousel').start()
             except:
                 traceback.print_exc()
         Clock.schedule_once(lambda dt:android_service(),2)
