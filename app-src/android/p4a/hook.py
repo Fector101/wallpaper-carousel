@@ -12,7 +12,7 @@ def after_apk_build(toolchain: ToolchainCL):
     # Add foregroundServiceType to multiple services
     # ==========================================
     services = {
-        "Mycarousel": "dataSync",
+        "Wallpapercarousel": "dataSync",
         "Mytester": "dataSync",
     }
 

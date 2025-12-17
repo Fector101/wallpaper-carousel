@@ -3,28 +3,29 @@ import sys, traceback
 from datetime import datetime
 from jnius import autoclass, cast
 
+
 def is_wine():
-	"""
+    """
 	Detect if the application is running under Wine.
 	"""
-	# Check environment variables set by Wine
-	if "WINELOADER" in os.environ:
-		return True
+    # Check environment variables set by Wine
+    if "WINELOADER" in os.environ:
+        return True
 
-	# Check platform.system for specific hints
-	if platform.system().lower() == "windows":
-	# If running in "Windows" mode but in a Linux environment, it's likely Wine
-		return "XDG_SESSION_TYPE" in os.environ or "HOME" in os.environ
+    # Check platform.system for specific hints
+    if platform.system().lower() == "windows":
+        # If running in "Windows" mode but in a Linux environment, it's likely Wine
+        return "XDG_SESSION_TYPE" in os.environ or "HOME" in os.environ
 
-	return False
-    
+    return False
+
+
 def makeFolder(my_folder: str):
     """Safely creates a folder if it doesn't exist."""
     # Normalize path for Wine (Windows-on-Linux)
     if is_wine():
         my_folder = my_folder.replace('\\', '/')
 
-   
     if not os.path.exists(my_folder):
         try:
             os.makedirs(my_folder)
@@ -49,6 +50,7 @@ def makeDownloadFolder():
 
 class Tee:
     """Redirects writes to both the original stream and a file."""
+
     def __init__(self, file_path, mode='a'):
         self.file = open(file_path, mode, encoding='utf-8')
         self.stdout = sys.__stdout__  # keep original console output
@@ -77,9 +79,9 @@ def start_logging(log_folder_name="logs", file_name="all_output1.txt"):
 
     # Add a timestamp header for new session
     with open(log_file_path, 'a', encoding='utf-8') as f:
-        f.write("\n" + "="*60 + "\n")
+        f.write("\n" + "=" * 60 + "\n")
         f.write(f"New session started: {datetime.now()}\n")
-        f.write("="*60 + "\n")
+        f.write("=" * 60 + "\n")
 
     # Redirect stdout and stderr
     tee = Tee(log_file_path)
@@ -87,15 +89,15 @@ def start_logging(log_folder_name="logs", file_name="all_output1.txt"):
     sys.stderr = tee
 
 
-
 class Service:
-    def __init__(self,name,args_str="",extra=True):
+    def __init__(self, name, args_str="", extra=True):
         from android import mActivity
         self.mActivity = mActivity
-        self.args_str=args_str
-        self.name=name
+        self.args_str = args_str
+        self.name = name
         self.service = autoclass(self.get_service_name())
-        self.extra=extra
+        self.extra = extra
+
     def get_service_name(self):
         context = self.mActivity.getApplicationContext()
         return str(context.getPackageName()) + '.Service' + self.name
@@ -103,40 +105,45 @@ class Service:
     def service_is_running(self):
         service_name = self.get_service_name()
         context = self.mActivity.getApplicationContext()
-        thing=self.mActivity.getSystemService(context.ACTIVITY_SERVICE)
-        
-        manager = cast('android.app.ActivityManager',thing)
+        thing = self.mActivity.getSystemService(context.ACTIVITY_SERVICE)
+
+        manager = cast('android.app.ActivityManager', thing)
         for service in manager.getRunningServices(100):
-        	found_service=service.service.getClassName()
-        	print("found_service: ",found_service)
-        	if found_service== service_name:
-        		return True
+            found_service = service.service.getClassName()
+            print("found_service: ", found_service)
+            if found_service == service_name:
+                return True
         return False
 
     def stop(self):
-    	try:
-    		if self.service_is_running:
-    			self.service.stop(self.mActivity)
-    		return True
-    	except:
-    		traceback.print_exc()
-    		return False
+        try:
+            if self.service_is_running:
+                self.service.stop(self.mActivity)
+            return True
+        except:
+            traceback.print_exc()
+            return False
 
     def start(self):
-    	state=self.service_is_running()
-    	print(state,"||",self.name,"||", self.get_service_name())
-    	if state:
-    		return
-    	
-    	title=self.name +' Service'
-    	msg='Started'
-    	arg=str(self.args_str)
-    	icon='round_music_note_white_24'
-    	if self.extra:
-    		self.service.start(self.mActivity, icon, title, msg, arg)
-    	else:
-    		self.service.start(self.mActivity, arg)
-    	
+        state = self.service_is_running()
+        print(state, "||", self.name, "||", self.get_service_name())
+        # if state:
+        #     return
+
+        title = self.name + ' Service'
+        msg = 'Started'
+        arg = str(self.args_str)
+        icon = 'round_music_note_white_24'
+        try:
+            if self.extra:
+                print('Calling Start Service...')
+                self.service.start(self.mActivity, icon, title, msg, arg)
+            else:
+                self.service.start(self.mActivity, arg)
+        except Exception as e:
+            print("Error starting service:",e)
+            traceback.print_exc()
+
 def smart_convert_minutes(minutes: float) -> str:
     total_seconds = int(minutes * 60)
 
