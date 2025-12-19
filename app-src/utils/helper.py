@@ -91,18 +91,26 @@ def start_logging(log_folder_name="logs", file_name="all_output1.txt"):
 
 class Service:
     def __init__(self, name, args_str="", extra=True):
-        from android import mActivity
+        try:
+            from android import mActivity
+        except ModuleNotFoundError:
+            mActivity = None
         self.mActivity = mActivity
         self.args_str = args_str
         self.name = name
-        self.service = autoclass(self.get_service_name())
+        self.service = autoclass(self.get_service_name()) if self.mActivity else None
         self.extra = extra
 
     def get_service_name(self):
+        if not self.mActivity:
+            return None
         context = self.mActivity.getApplicationContext()
         return str(context.getPackageName()) + '.Service' + self.name
 
     def service_is_running(self):
+        if not self.mActivity:
+            return None
+
         service_name = self.get_service_name()
         context = self.mActivity.getApplicationContext()
         thing = self.mActivity.getSystemService(context.ACTIVITY_SERVICE)
@@ -116,6 +124,9 @@ class Service:
         return False
 
     def stop(self):
+        if not self.mActivity:
+            return None
+
         try:
             if self.service_is_running:
                 self.service.stop(self.mActivity)
@@ -125,6 +136,9 @@ class Service:
             return False
 
     def start(self):
+        if not self.mActivity:
+            return None
+
         state = self.service_is_running()
         print(state, "||", self.name, "||", self.get_service_name())
         # if state:

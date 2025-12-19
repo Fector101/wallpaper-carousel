@@ -36,6 +36,7 @@ else:
     mActivity=MActivity()
     app_storage_path=''
     primary_external_storage_path=''
+    api_version=None
 
 class PermissionHandler:
     def __init__(self):
@@ -47,6 +48,9 @@ class PermissionHandler:
         - If Android 11+, requests 'All Files Access'.  
         - Otherwise, requests storage read and write permissions.
         """
+        if api_version == None:
+            return None
+
         if api_version >= 30:
             self.requestAllFilesAccess()
         else:
@@ -54,6 +58,9 @@ class PermissionHandler:
             
     def requestAllFilesAccess(self):
         """Requests 'All Files Access' permission for Android 11+"""
+        if api_version == None:
+            return True
+
         if not Environment.isExternalStorageManager():
             try:
                 intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
@@ -66,6 +73,9 @@ class PermissionHandler:
 
     def requestReadWriteAccess(self):
         """Requests storage read and write permissions."""
+        if api_version == None:
+            return True
+
         permission_fail_msgs = {
             Permission.READ_EXTERNAL_STORAGE: "Rejected access to Read Storage",
             Permission.WRITE_EXTERNAL_STORAGE: "Rejected access to Write Storage"
@@ -83,6 +93,9 @@ class PermissionHandler:
             grants (list): List of granted permissions.
             fail_msgs (dict): Dictionary mapping permissions to failure messages.
         """
+        if api_version == None:
+            return True
+
         for permission in permissions:
             if permission not in grants:
                 txt = fail_msgs.get(permission, "Permission denied")
