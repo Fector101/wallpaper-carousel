@@ -12,7 +12,7 @@ package.name = waller
 package.domain = org.wally
 
 # (str) Source code where the main.py live
-source.dir = app-src
+source.dir = app_src
 
 # (list) Source files to include (let empty to include all the files)
 source.include_exts = py,png,jpg,kv,atlas,ttf,json,xml,wav
@@ -22,7 +22,7 @@ source.include_exts = py,png,jpg,kv,atlas,ttf,json,xml,wav
 #source.include_patterns = assets/*,images/*.png
 
 # (list) Source files to exclude (let empty to not exclude anything)
-#source.exclude_exts = spec
+#source.exclude_exts = spec, __pycache__
 
 # (list) List of directory to exclude (let empty to not exclude anything)
 source.exclude_dirs = tests, bin, venv,lab, worked, __pycache__, .idea, dist, for-download,laner-linux, .filereader
@@ -182,7 +182,7 @@ android.api = 35
 
 # (list) List of Java files to add to the android project (can be java or a
 # directory containing the files)
-android.add_src = app-src/android/src
+android.add_src = app_src/android/src
 
 # (list) Android AAR archives to add
 #android.add_aars =
@@ -203,7 +203,7 @@ android.add_src = app-src/android/src
 # 3) A directory, here 'legal_resources' must contain one or more directories, 
 # each of a resource kind:  drawable, xml, etc...
 # android.add_resources = legal_resources
-android.add_resources = app-src/android/res
+android.add_resources = app_src/android/res
 #, icons
 
 # (list) Gradle dependencies to add
@@ -340,7 +340,7 @@ android.allow_backup = True
 #p4a.local_recipes =
 
 # (str) Filename to the hook for p4a
-p4a.hook = app-src/android/p4a/hook.py
+p4a.hook = app_src/android/p4a/hook.py
 
 # (str) Bootstrap to use for android builds
 # p4a.bootstrap = sdl2
