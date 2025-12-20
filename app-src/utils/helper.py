@@ -1,7 +1,10 @@
 import os, platform
 import sys, traceback
 from datetime import datetime
+from pathlib import Path
+
 from jnius import autoclass, cast
+from .config_manager import ConfigManager
 
 
 def is_wine():
@@ -93,7 +96,7 @@ class Service:
     def __init__(self, name, args_str="", extra=True):
         try:
             from android import mActivity
-        except ModuleNotFoundError:
+        except (ModuleNotFoundError, ImportError):
             mActivity = None
         self.mActivity = mActivity
         self.args_str = args_str
@@ -178,3 +181,38 @@ def smart_convert_minutes(minutes: float) -> str:
         result_parts.append(f"{secs}sec" if secs == 1 else f"{secs}secs")
 
     return " ".join(result_parts) if result_parts else "0secs"
+
+import shutil
+
+class FileOperation:
+    def __init__(self,update_thumbnails_function):
+        self.app_dir = Path(makeDownloadFolder())
+        self.myconfig = ConfigManager(self.app_dir)
+        self.wallpapers_dir = self.app_dir / ".wallpapers"
+        self.update_thumbnails_function = update_thumbnails_function
+
+    def copy_add(self, files):
+        if not files:
+            return
+        new_images = []
+        for src in files:
+            if not os.path.exists(src):
+                continue
+            dest = self.unique(os.path.basename(src))
+            try:
+                shutil.copy2(src, dest)
+            except:
+                continue
+            new_images.append(str(dest))
+        for img in new_images:
+            self.myconfig.add_wallpaper(img)
+        self.update_thumbnails_function(new_images)
+
+    def unique(self, dest_name):
+        dest = self.wallpapers_dir / dest_name
+        base, ext = os.path.splitext(dest_name)
+        i = 1
+        while dest.exists():
+            dest = self.wallpapers_dir / f"{base}_{i}{ext}"
+            i += 1
+        return dest
