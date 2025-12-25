@@ -1,5 +1,5 @@
 import os, platform
-import sys, traceback
+import sys, traceback, socket
 from datetime import datetime
 from pathlib import Path
 
@@ -216,3 +216,93 @@ class FileOperation:
             dest = self.wallpapers_dir / f"{base}_{i}{ext}"
             i += 1
         return dest
+
+
+def get_free_port():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.bind(("", 0))  # bind to a random free port
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+
+from android_notify.config import get_python_activity_context
+
+def test_java_action():
+    from jnius import autoclass, cast
+    # from android import python_act
+
+    # Get current activity and context
+    # mActivity = autoclass("org.kivy.android.PythonActivity").mActivity
+    context = get_python_activity_context()#mActivity.getApplicationContext()
+
+    # Autoclass necessary Java classes
+    RingtoneManager = autoclass("android.media.RingtoneManager")
+    Uri = autoclass("android.net.Uri")
+    AudioAttributesBuilder = autoclass("android.media.AudioAttributes$Builder")
+    AudioAttributes = autoclass("android.media.AudioAttributes")
+    AndroidString = autoclass("java.lang.String")
+    NotificationManager = autoclass("android.app.NotificationManager")
+    NotificationChannel = autoclass("android.app.NotificationChannel")
+    NotificationCompat = autoclass("androidx.core.app.NotificationCompat")
+    NotificationCompatBuilder = autoclass("androidx.core.app.NotificationCompat$Builder")
+    NotificationManagerCompat = autoclass("androidx.core.app.NotificationManagerCompat")
+    NotificationCompatActionBuilder = autoclass("androidx.core.app.NotificationCompat$Action$Builder")
+
+    func_from = getattr(NotificationManagerCompat, "from")
+    Intent = autoclass("android.content.Intent")
+    PendingIntent = autoclass("android.app.PendingIntent")
+
+    # Autoclass your own Java class
+    action1 = autoclass("org.wally.waller.Action1")
+
+    # Variables
+    channel_id = "channel_id"
+    notification_id = 101
+    id = 1  # action id
+
+    # === CREATE CHANNEL ===
+    sound = cast(Uri, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+    att = AudioAttributesBuilder()
+    att.setUsage(AudioAttributes.USAGE_NOTIFICATION)
+    att.setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+    att = cast(AudioAttributes, att.build())
+
+    name = cast("java.lang.CharSequence", AndroidString("Channel Name"))
+    description = AndroidString("Channel Description")
+    importance = NotificationManager.IMPORTANCE_HIGH
+
+    channel = NotificationChannel(channel_id, name, importance)
+    channel.setDescription(description)
+    channel.enableLights(True)
+    channel.enableVibration(True)
+    channel.setSound(sound, att)
+
+    notificationManager = context.getSystemService(NotificationManager)
+    notificationManager.createNotificationChannel(channel)
+
+    # === CREATE NOTIFICATION ===
+    builder = NotificationCompatBuilder(context, channel_id)
+    builder.setSmallIcon(context.getApplicationInfo().icon)
+    builder.setContentTitle(cast("java.lang.CharSequence", AndroidString("Notification Title")))
+    builder.setContentText(cast("java.lang.CharSequence", AndroidString("Notification Text")))
+    builder.setSound(sound)
+    builder.setPriority(NotificationCompat.PRIORITY_HIGH)
+    builder.setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+
+    # Intent for action button
+    intent = Intent(context, action1)
+    pendingintent = PendingIntent.getBroadcast(
+        context, id, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE
+    )
+    title = cast("java.lang.CharSequence", AndroidString("Action 1"))
+
+    action1_button = NotificationCompatActionBuilder(
+        id, title, pendingintent
+    ).build()
+    builder.addAction(action1_button)
+
+    # Send the notification
+    compatmanager = func_from(context)
+    compatmanager.notify(notification_id, builder.build())
+

@@ -58,27 +58,26 @@ class MyRoundButton(Button):    # (RoundedButton):
         self.background_color = (0, 0, 0, 0)
 
         self.font_name = "RobotoMono"
-        r = 10
+        r = 25
 
         with self.canvas.before:
             self.bg_color_instr = Color(*bg_color)
-            self.rect = RoundedRectangle(radius=[dp(r)])
+            self.rect = RoundedRectangle(radius=[r,r,r,r])
 
-            Color(*inset_color)
+            Color(0,0,0,0.6)#*inset_color)
             # Color(5 / 255, 1 / 255, 1, 1)
             self.bg = BoxShadow(
-                offset=[0, -10],
+                offset=[-10, -10],
                 inset=True,
-                spread_radius=[-20, -20],
+                spread_radius=[-15, -15],
                 border_radius=[r, r, r, r],
-                blur_radius=80 if self.state == "normal" else 20
+                blur_radius=20 if self.state == "normal" else 50
             )
         self.bind(size=self.update_rect, pos=self.update_rect,state=self.update_rect)
-        # Clock.schedule_once(self.update_bg_enable_btn)
 
     def update_rect(self, *args):
         self.bg.pos = self.pos
         self.bg.size = self.size
-        self.bg.blur_radius = 80 if self.state == "normal" else 50
+        self.bg.blur_radius = 20 if self.state == "normal" else 50
         self.rect.pos = self.pos
         self.rect.size = self.size

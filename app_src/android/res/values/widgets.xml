@@ -6,4 +6,7 @@
     <string name="widget_simple_demo_description">
         A simple text widget showing a greeting message
     </string>
+    <string name="widget_carousel_description">
+        View Add Images in Home Screen
+    </string>
 </resources>

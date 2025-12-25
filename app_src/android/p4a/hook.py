@@ -38,6 +38,13 @@ def after_apk_build(toolchain: ToolchainCL):
             print(f"Error_101: Service{name.capitalize()} not found in manifest")
 
     receiver_xml = f'''
+    <receiver android:name="{package}.Action1"
+              android:enabled="true"
+              android:exported="false">
+        <intent-filter>
+            <action android:name="android.intent.action.BOOT_COMPLETED" />
+        </intent-filter>
+    </receiver>
     <receiver android:name="{package}.SimpleWidget"
               android:enabled="true"
               android:exported="false"
@@ -61,7 +68,17 @@ def after_apk_build(toolchain: ToolchainCL):
             android:name="android.appwidget.provider"
             android:resource="@xml/button_widget_provider" />
     </receiver>
-
+    
+    <receiver android:name="{package}.Image1"
+          android:enabled="true"
+          android:exported="false">
+    <intent-filter>
+            <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+    </intent-filter>
+    <meta-data android:name="android.appwidget.provider"
+           android:resource="@xml/image_test_widget_info" />
+</receiver>
     '''
 
     if receiver_xml.strip() not in text:
@@ -73,9 +90,14 @@ def after_apk_build(toolchain: ToolchainCL):
     else: 
         print("Receiver already exists in manifest")
 
+
+
+
     # ====================================================
     # Save final manifest back
     # ====================================================
     manifest_file.write_text(text, encoding="utf-8")
     print("Successfully_101: Manifest update completed successfully!")
+    print(text)
+
 

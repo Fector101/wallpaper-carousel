@@ -105,7 +105,7 @@ class NotificationRequestLayout(MDGridLayout):
             size_hint_y=None,
             height=dp(48),
             font_size=sp(16),
-            on_press=self.enable_notifications,
+            on_release=self.enable_notifications,
         )
 
         skip_btn = MyRoundButton(
@@ -118,7 +118,7 @@ class NotificationRequestLayout(MDGridLayout):
             width=sp(248),
             font_size=dp(14),
             pos_hint={'center_x': .5},
-            on_press=self.skip_feature,
+            on_release=self.skip_feature,
         )
         skip_btn.font_name = "RobotoMono"
         btns_layout.add_widget(self.enable_btn)

@@ -1,3 +1,4 @@
+import time
 import traceback
 from pathlib import Path
 
@@ -10,15 +11,17 @@ from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
 
+from android_notify.core import asks_permission_if_needed
+from android_notify import NotificationHandler
+
 try:
     from kivymd.toast import toast
+    from jnius import autoclass
 except TypeError:
     def toast(*args):
         print('Fallback toast:',args)
 
 
-from plyer import filechooser
-from android_notify import NotificationHandler
 from utils.helper import Service, makeDownloadFolder, start_logging, smart_convert_minutes
 from utils.config_manager import ConfigManager
 
@@ -33,7 +36,7 @@ class SettingsScreen(MDScreen):
         self.myconfig = ConfigManager(self.app_dir)
         self.wallpapers_dir = self.app_dir / ".wallpapers"
         self.interval = self.myconfig.get_interval()
-
+        self.i = 1
         root = MDBoxLayout(orientation="vertical", padding=dp(20), spacing=dp(15))
 
         # ---------- HEADER ----------
@@ -111,7 +114,34 @@ class SettingsScreen(MDScreen):
             on_release=lambda *_: setattr(self.manager, 'current', 'thumbs')
         )
         root.add_widget(back_btn)
+
+        # Tests
+
+        ai_btn = Button(
+            text="test",
+            size_hint_y=None,
+            height=dp(50),
+            on_release=lambda widget: self.open_notify_settings()
+        )
+        root.add_widget(ai_btn)
         self.add_widget(root)
+    def open_notify_settings(self):
+        print('Hello world')
+        if self.i == 1:
+            try:
+                asks_permission_if_needed()
+            except Exception as e:
+                print('1error', e)
+                traceback.print_exc()
+            self.i = 0
+            return
+        try:
+            NotificationHandler.asks_permission()
+        except Exception as e:
+            print('1error',e)
+
+        self.i = 1
+
 
     def terminate_carousel(self,*args):
         try:

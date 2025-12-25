@@ -1,6 +1,6 @@
 print("Entered python Service File...")
 try:
-    from utils.helper import start_logging, makeDownloadFolder
+    from utils.helper import start_logging, makeDownloadFolder, test_java_action
 
     start_logging()
     print("Service Logging started. All console output will also be saved.")
@@ -8,12 +8,15 @@ except Exception as e:
     print("File Logger Failed", e)
 
 print("Entered Wallpaper Foreground Service...")
-import os
+import os, threading
 import time
 import random, traceback
+from os import environ
+from jnius import autoclass
 from android_notify import Notification
 from android_notify.config import get_python_service, get_python_activity_context
-from jnius import autoclass
+from android_notify.core import get_app_root_path
+from pythonosc import dispatcher, osc_server, udp_client
 
 # --- Android classes ---
 BuildVersion = autoclass("android.os.Build$VERSION")
@@ -22,20 +25,32 @@ PythonService = autoclass('org.kivy.android.PythonService')
 WallpaperManager = autoclass('android.app.WallpaperManager')
 BitmapFactory = autoclass('android.graphics.BitmapFactory')
 PythonActivity = autoclass('org.kivy.android.PythonActivity')
-
-# --- Service and Wallpaper setup ---
-service = get_python_service()
-foreground_type = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC if BuildVersion.SDK_INT >= 30 else 0
-context = get_python_activity_context()
-wm = WallpaperManager.getInstance(context)
+AndroidString = autoclass("java.lang.String")
 
 # --- Folder setup ---
 download_folder_path = os.path.join(makeDownloadFolder(), ".wallpapers")
 
+try:
+    test_java_action()
+except Exception as e:
+    print("Error calling test_java_action", e)
+    traceback.print_exc()
+
+
+def get_service_port():
+    service_port = None
+    try:
+        service_port = int(environ.get('PYTHON_SERVICE_ARGUMENT', '5006'))
+    except (TypeError, ValueError):
+        service_port = 5006
+    return service_port
+
 
 # --- Get next wallpaper function ---
 def get_next_wallpaper():
-    """Get the next wallpaper path and name without setting it yet"""
+    """Get the next wallpaper path and name without setting it yet
+    :return: [absolute_path, name]
+    """
     try:
         images = [
             os.path.join(download_folder_path, f)
@@ -44,13 +59,13 @@ def get_next_wallpaper():
         ]
         if not images:
             print(f"Warning: No images found in {download_folder_path}")
-            return None, None
+            return '', ''
 
         wallpaper_path = random.choice(images)
         return os.path.basename(wallpaper_path), wallpaper_path
     except Exception as e:
         print("Failed to get next wallpaper:", e)
-        return None, None
+        return '', ''
 
 
 # --- Set wallpaper function ---
@@ -106,80 +121,473 @@ def get_service_lifespan_text(elapsed_seconds):
     return f"service lifespan: {remaining_hours}hrs"
 
 
-def main_loop():
-    global notification
-    service_start_time = time.time()
-    wallpaper_change_time = service_start_time
-    countdown_start = get_interval()
+# Start foreground service
 
-    # Get initial wallpaper
-    wallpaper_name, wallpaper_path = get_next_wallpaper()
-    wallpaper_name = wallpaper_name or "No image"
+service = get_python_service()
+foreground_type = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC if BuildVersion.SDK_INT >= 30 else 0
+context = get_python_activity_context()
+wm = WallpaperManager.getInstance(context)
 
-    # Set initial notification
-    notification.updateTitle(f"Next in {format_time_remaining(countdown_start)}")
-    notification.updateMessage(get_service_lifespan_text(0))
-    if wallpaper_path and os.path.exists(wallpaper_path):
-        notification.setLargeIcon(wallpaper_path)
-
-    while True:
-        try:
-            current_time = time.time()
-            elapsed_since_service_start = current_time - service_start_time
-            elapsed_since_wallpaper_change = current_time - wallpaper_change_time
-            time_remaining = max(0, get_interval() - elapsed_since_wallpaper_change)
-
-            # Update countdown every second
-            notification.updateTitle(f"Next in {format_time_remaining(time_remaining)}")
-
-            # Update service lifespan every hour
-            if int(elapsed_since_service_start) % 3600 == 0:  # Every hour
-                notification.updateMessage(get_service_lifespan_text(elapsed_since_service_start))
-
-            # Check if it's time to change wallpaper
-            if elapsed_since_wallpaper_change >= get_interval():
-                # Set the wallpaper that was previewed
-                if wallpaper_path:
-                    set_wallpaper(wallpaper_path)
-
-                # Reset wallpaper change timer
-                wallpaper_change_time = current_time
-
-                # Get NEXT wallpaper for preview
-                wallpaper_name, wallpaper_path = get_next_wallpaper()
-                wallpaper_name = wallpaper_name or "No image"
-
-                # Update large icon with upcoming wallpaper
-                if wallpaper_path and os.path.exists(wallpaper_path):
-                    notification.setLargeIcon(wallpaper_path)
-
-            # Check if service lifespan has expired
-            if elapsed_since_service_start >= SERVICE_LIFESPAN_SECONDS:
-                print("Service lifespan expired. Stopping service.")
-                notification.updateTitle("Service Completed")
-                notification.updateMessage("6 hours service lifespan finished")
-                time.sleep(5)
-                # service.stopSelf()
-                break
-
-            # Update more frequently for smooth countdown
-            time.sleep(1)  # Update every second
-
-        except Exception as e:
-            print("Fatal Error: Error in main loop, restarting in 5s:", e)
-            time.sleep(5)
-
-
-# --- Start foreground service ---
-# Create and send initial notification for foreground service
 notification = Notification(title="Next in 02:00", message="service lifespan: 6hrs")
 builder = notification.start_building()
 service.startForeground(notification.id, builder.build(), foreground_type)
 service.setAutoRestartService(True)  # auto-restart if killed
 
-# --- Run main loop ---
+
+class MyWallpaperReceiver:
+    def __init__(self):
+        self.live = True
+        self.next_wallpaper_path = ''
+        self.current_sleep = 1
+        self.current_wait_seconds = get_interval()
+        self.service_start_time = time.time()
+        self.__start_main_loop()
+
+    def __start_main_loop(self):
+        threading.Thread(target=self.heart, daemon=True).start()
+
+    def __count_down(self):
+        self.current_wait_seconds = get_interval()
+
+        while self.current_wait_seconds:
+            notification.updateTitle(f"Next in {format_time_remaining(self.current_wait_seconds)}")
+            time.sleep(self.current_sleep)
+            self.current_wait_seconds -= 1
+
+            current_time = time.time()
+            elapsed_since_service_start = current_time - self.service_start_time
+            if int(elapsed_since_service_start) % 3600 == 0:  # Every hour
+                notification.updateMessage(get_service_lifespan_text(elapsed_since_service_start))
+
+    def heart(self):
+        # wait - so it waits before first change so user can cancel if they don't want feature
+        # set
+
+        while self.live:
+            # Get Upcoming
+            wallpaper = get_next_wallpaper()
+            self.next_wallpaper_path = wallpaper[1]
+            self.__set_next_img_in_notification(self.next_wallpaper_path)
+
+            # Wait for a while
+            # time.sleep(get_interval())
+            self.__count_down()
+
+            # Then change wallpaper
+            set_wallpaper(self.next_wallpaper_path)
+            self.__write_wallpaper_path_to_file(self.next_wallpaper_path)
+
+    def __write_wallpaper_path_to_file(self, wallpaper_path):
+        # Writing for Java to see for home screen widget
+        if not os.path.exists(wallpaper_path):
+            self.__log(f"Image - {wallpaper_path} does not exist, can't store path", "ERROR")
+            return
+
+        current_wallpaper_store_path = os.path.join(get_app_root_path(), 'wallpaper.txt')
+        with open(current_wallpaper_store_path, "w") as f:
+            f.write(wallpaper_path)
+        # try:
+        #     self.mad_test_2()
+        # except Exception as e:
+        #     self.__log(f"Error mad_test_2 -{e} ping Java Listener", "WARNING")
+        #     traceback.print_exc()
+
+        try:
+            self.update_widget_image(wallpaper_path)
+        except Exception as e:
+            self.__log(f"Error mad_test  -{e} ping Java Listener", "WARNING")
+            traceback.print_exc()
+
+    def __set_next_img_in_notification(self, wallpaper_path):
+        if os.path.exists(wallpaper_path):  # setting next in notification
+            notification.setLargeIcon(wallpaper_path)
+        else:
+            self.__log(f"Image - {wallpaper_path} does not exist, can't set notification preview", "ERROR")
+
+    @staticmethod
+    def __log(msg, _type):
+        print(f"\n{_type.upper()}: {msg}")
+
+    def start(self, data=None):
+        # self.__start_main_loop()
+        pass
+
+    def stop(self, data=None):
+        self.live = False
+        notification.cancel()
+
+    def pause(self, data=None):
+        notification.updateTitle("Carousel Pause")
+        self.current_sleep = 1000 ** 100
+        pass
+
+    def resume(self, data=None):
+        self.current_sleep = 1
+
+    def next(self, data=None):
+        self.current_wait_seconds = 0
+
+    def set_wallpaper(self, wallpaper_path):
+        set_wallpaper(self.wallpaper_path)
+
+    def destroy(self, data=None):
+        service.stopSelf()
+
+    def first_test(self):
+        # Can find Action1 broadcast listener but can't find Image1 listener for Home Screen Widget
+
+        PythonActivity = autoclass('org.kivy.android.PythonActivity')
+        Intent = autoclass('android.content.Intent')
+        AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
+        ComponentName = autoclass('android.content.ComponentName')
+
+        action1 = autoclass("org.wally.waller.Action1")
+        print(action1)
+        context = get_python_activity_context()  # PythonActivity.mActivity
+        action1 = autoclass("org.wally.waller.Image1")
+        intent = Intent(context, action1)
+        intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
+
+        component = ComponentName(context, action1)
+        ids = AppWidgetManager.getInstance(context).getAppWidgetIds(component)
+
+        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
+        context.sendBroadcast(intent)
+
+    def did_not_cause_error_but_no_change(self):
+        from jnius import autoclass
+
+        PythonActivity = autoclass('org.kivy.android.PythonActivity')
+        Intent = autoclass('android.content.Intent')
+        AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
+        ComponentName = autoclass('android.content.ComponentName')
+
+        context = get_python_activity_context()  # PythonActivity.mActivity.getApplicationContext()
+
+        # Create update intent
+        intent = Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
+
+        # IMPORTANT: use CLASS NAME STRING, NOT autoclass
+        component = ComponentName(
+            context,
+            'org.wally.waller.ImageTestWidget'
+        )
+
+        appWidgetManager = AppWidgetManager.getInstance(context)
+        ids = appWidgetManager.getAppWidgetIds(component)
+
+        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
+
+        context.sendBroadcast(intent)
+        print('got here')
+
+    def worked_changed_widget_from_service(self):
+        # This worked for Changing widget text
+        AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
+        ComponentName = autoclass('android.content.ComponentName')
+        RemoteViews = autoclass('android.widget.RemoteViews')
+
+        context = get_python_activity_context()  # PythonActivity.mActivity.getApplicationContext()
+        resources = context.getResources()
+        package_name = context.getPackageName()
+
+        # IMPORTANT: use CLASS NAME STRING, NOT autoclass
+        component = ComponentName(
+            context,
+            'org.wally.waller.Image1'
+        )
+
+        appWidgetManager = AppWidgetManager.getInstance(context)
+        ids = appWidgetManager.getAppWidgetIds(component)
+
+        text_layout = resources.getIdentifier("image_test_widget", "layout", package_name)
+        title_id = resources.getIdentifier("widget_text", "id", package_name)
+
+        views = RemoteViews(package_name, text_layout)
+        views.setTextViewText(title_id, AndroidString("Madness"))
+        appWidgetManager.updateAppWidget(ids, views)
+        print('got------- here')
+
+    def update_widget_image(self, wallpaper_path):
+        # --------------------------------------------------
+        # Java classes
+        # --------------------------------------------------
+        Bitmap = autoclass('android.graphics.Bitmap')
+        BitmapConfig = autoclass('android.graphics.Bitmap$Config')
+        Canvas = autoclass('android.graphics.Canvas')
+        Paint = autoclass('android.graphics.Paint')
+        Rect = autoclass('android.graphics.Rect')
+        RectF = autoclass('android.graphics.RectF')
+        PorterDuffMode = autoclass('android.graphics.PorterDuff$Mode')
+        PorterDuffXfermode = autoclass('android.graphics.PorterDuffXfermode')
+
+        BitmapFactory = autoclass('android.graphics.BitmapFactory')
+        BitmapFactoryOptions = autoclass('android.graphics.BitmapFactory$Options')
+
+        AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
+        ComponentName = autoclass('android.content.ComponentName')
+        RemoteViews = autoclass('android.widget.RemoteViews')
+
+        # --------------------------------------------------
+        # Context
+        # --------------------------------------------------
+        context = get_python_activity_context()
+        resources = context.getResources()
+        package_name = context.getPackageName()
+
+        # --------------------------------------------------
+        # Resolve image path
+        # --------------------------------------------------
+        image_file = os.path.join(
+            context.getFilesDir().getAbsolutePath(),
+            "app",
+            wallpaper_path
+        )
+
+        if not os.path.exists(image_file):
+            self.__log(f"Image not found: {image_file}", "ERROR")
+            return
+
+        # --------------------------------------------------
+        # Decode bitmap
+        # --------------------------------------------------
+        opts = BitmapFactoryOptions()
+        opts.inSampleSize = 4  # widget-safe memory usage
+        src = BitmapFactory.decodeFile(image_file, opts)
+
+        if src is None:
+            self.__log("Bitmap decode failed", "ERROR")
+            return
+
+        # --------------------------------------------------
+        # Crop bitmap to square
+        # --------------------------------------------------
+        size = min(src.getWidth(), src.getHeight())
+        x = (src.getWidth() - size) // 2
+        y = (src.getHeight() - size) // 2
+        square = Bitmap.createBitmap(src, x, y, size, size)
+
+        # --------------------------------------------------
+        # Scale bitmap to widget size
+        # --------------------------------------------------
+        widget_dp = 120  # widget layout width/height in dp
+        density = context.getResources().getDisplayMetrics().density
+        widget_px = int(widget_dp * density)  # convert dp to pixels
+
+        scaled_bitmap = Bitmap.createScaledBitmap(square, widget_px, widget_px, True)
+
+        # --------------------------------------------------
+        # Create rounded bitmap using Canvas
+        # --------------------------------------------------
+        output = Bitmap.createBitmap(widget_px, widget_px, BitmapConfig.ARGB_8888)
+        canvas = Canvas(output)
+
+        paint = Paint()
+        paint.setAntiAlias(True)
+
+        rect = Rect(0, 0, widget_px, widget_px)
+        rectF = RectF(rect)
+
+        corner_radius_px = 16 * density  # 16dp corners
+        canvas.drawARGB(0, 0, 0, 0)
+        canvas.drawRoundRect(rectF, corner_radius_px, corner_radius_px, paint)
+
+        paint.setXfermode(PorterDuffXfermode(PorterDuffMode.SRC_IN))
+        canvas.drawBitmap(scaled_bitmap, rect, rect, paint)
+
+        # --------------------------------------------------
+        # Update widget
+        # --------------------------------------------------
+        layout_id = resources.getIdentifier("image_test_widget", "layout", package_name)
+        image_id = resources.getIdentifier("test_image", "id", package_name)
+
+        views = RemoteViews(package_name, layout_id)
+        views.setImageViewBitmap(image_id, output)
+
+        component = ComponentName(context, f"{package_name}.Image1")
+        appWidgetManager = AppWidgetManager.getInstance(context)
+        ids = appWidgetManager.getAppWidgetIds(component)
+        appWidgetManager.updateAppWidget(ids, views)
+
+        self.__log(f"Changed Home Screen Widget: {wallpaper_path}", "SUCCESS")
+
+    # def update_widget_image(self, wallpaper_path):
+    #     # Some images didn't fill layout leaving white coners on the edge
+    #     Bitmap = autoclass('android.graphics.Bitmap')
+    #     BitmapConfig = autoclass('android.graphics.Bitmap$Config')
+    #     Canvas = autoclass('android.graphics.Canvas')
+    #     Paint = autoclass('android.graphics.Paint')
+    #     Rect = autoclass('android.graphics.Rect')
+    #     RectF = autoclass('android.graphics.RectF')
+    #     PorterDuffMode = autoclass('android.graphics.PorterDuff$Mode')
+    #     PorterDuffXfermode = autoclass('android.graphics.PorterDuffXfermode')
+    #
+    #     BitmapFactory = autoclass('android.graphics.BitmapFactory')
+    #     BitmapFactoryOptions = autoclass('android.graphics.BitmapFactory$Options')
+    #
+    #     AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
+    #     ComponentName = autoclass('android.content.ComponentName')
+    #     RemoteViews = autoclass('android.widget.RemoteViews')
+    #
+    #     # --------------------------------------------------
+    #     # Context
+    #     # --------------------------------------------------
+    #     context = get_python_activity_context()
+    #     resources = context.getResources()
+    #     package_name = context.getPackageName()
+    #
+    #     # --------------------------------------------------
+    #     # Resolve image path
+    #     # --------------------------------------------------
+    #     image_file = os.path.join(
+    #         context.getFilesDir().getAbsolutePath(),
+    #         "app",
+    #         wallpaper_path
+    #     )
+    #
+    #     if not os.path.exists(image_file):
+    #         self.__log(f"Image not found: {image_file}", "ERROR")
+    #         return
+    #
+    #     # --------------------------------------------------
+    #     # Decode bitmap (downscaled for widget)
+    #     # --------------------------------------------------
+    #     opts = BitmapFactoryOptions()
+    #     opts.inSampleSize = 4  # widget-safe memory usage
+    #
+    #     src = BitmapFactory.decodeFile(image_file, opts)
+    #
+    #     if src is None:
+    #         self.__log("Bitmap decode failed", "ERROR")
+    #         return
+    #
+    #     # --------------------------------------------------
+    #     # Crop bitmap to square
+    #     # --------------------------------------------------
+    #     size = min(src.getWidth(), src.getHeight())
+    #     x = (src.getWidth() - size) // 2
+    #     y = (src.getHeight() - size) // 2
+    #
+    #     square = Bitmap.createBitmap(src, x, y, size, size)
+    #
+    #     # --------------------------------------------------
+    #     # Create rounded bitmap using Canvas
+    #     # --------------------------------------------------
+    #     output = Bitmap.createBitmap(
+    #         size,
+    #         size,
+    #         BitmapConfig.ARGB_8888
+    #     )
+    #
+    #     canvas = Canvas(output)
+    #
+    #     paint = Paint()
+    #     paint.setAntiAlias(True)
+    #
+    #     rect = Rect(0, 0, size, size)
+    #     rectF = RectF(rect)
+    #
+    #     density = context.getResources().getDisplayMetrics().density
+    #     corner_radius_px = 16 * density
+    #     radius = corner_radius_px
+    #
+    #     canvas.drawARGB(0, 0, 0, 0)
+    #     canvas.drawRoundRect(rectF, radius, radius, paint)
+    #
+    #     paint.setXfermode(
+    #         PorterDuffXfermode(PorterDuffMode.SRC_IN)
+    #     )
+    #
+    #     canvas.drawBitmap(square, rect, rect, paint)
+    #
+    #     # --------------------------------------------------
+    #     # Update widget RemoteViews
+    #     # --------------------------------------------------
+    #     layout_id = resources.getIdentifier(
+    #         "image_test_widget",
+    #         "layout",
+    #         package_name
+    #     )
+    #
+    #     image_id = resources.getIdentifier(
+    #         "test_image",
+    #         "id",
+    #         package_name
+    #     )
+    #
+    #     views = RemoteViews(package_name, layout_id)
+    #     views.setImageViewBitmap(image_id, output)
+    #
+    #     component = ComponentName(
+    #         context,
+    #         f"{package_name}.Image1"
+    #     )
+    #
+    #     appWidgetManager = AppWidgetManager.getInstance(context)
+    #     ids = appWidgetManager.getAppWidgetIds(component)
+    #
+    #     appWidgetManager.updateAppWidget(ids, views)
+    #
+    #     self.__log(f"Changed Home Screen Widget: {wallpaper_path}", "SUCCESS")
+
+    # def update_widget_image(self, wallpaper_path):
+    # Works but no rounded corners
+    #     BitmapFactory = autoclass('android.graphics.BitmapFactory')
+    #     BitmapFactoryOptions = autoclass('android.graphics.BitmapFactory$Options')
+    #     AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
+    #     ComponentName = autoclass('android.content.ComponentName')
+    #     RemoteViews = autoclass('android.widget.RemoteViews')
+    #
+    #     context = get_python_activity_context()
+    #     resources = context.getResources()
+    #     package_name = context.getPackageName()
+    #
+    #     image_file = os.path.join(context.getFilesDir().getAbsolutePath(), "app", wallpaper_path)
+    #
+    #     if not os.path.exists(image_file):
+    #         self.__log(f"Image -{image_file} file not found, Can't Change Home Screen Widget:", "ERROR")
+    #         return
+    #
+    #     opts = BitmapFactoryOptions()
+    #     opts.inSampleSize = 4  # reduce memory usage for widget
+    #
+    #     bitmap = BitmapFactory.decodeFile(image_file, opts)
+    #
+    #     if bitmap is None:
+    #         self.__log(f"Failed getting bitmap -{image_file}, Can't Change Home Screen Widget:", "ERROR")
+    #         return
+    #
+    #     layout_id = resources.getIdentifier("image_test_widget", "layout", package_name)
+    #     image_id = resources.getIdentifier("test_image", "id", package_name)
+    #
+    #     views = RemoteViews(package_name, layout_id)
+    #     views.setImageViewBitmap(image_id, bitmap)
+    #
+    #     component = ComponentName(context, f"{package_name}.Image1")
+    #
+    #     appWidgetManager = AppWidgetManager.getInstance(context)
+    #     ids = appWidgetManager.getAppWidgetIds(component)
+    #
+    #     appWidgetManager.updateAppWidget(ids, views)
+    #
+    #     self.__log(f"Changed Home Screen Widget: {wallpaper_path}", "SUCCESS")
+
+
+myWallpaperReceiver = MyWallpaperReceiver()
+myDispatcher = dispatcher.Dispatcher()
+
+myDispatcher.map("/start", myWallpaperReceiver.start)
+myDispatcher.map("/pause", myWallpaperReceiver.pause)
+myDispatcher.map("/resume", myWallpaperReceiver.resume)
+myDispatcher.map("/next", myWallpaperReceiver.next)
+myDispatcher.map("/stop", myWallpaperReceiver.stop)
+myDispatcher.map("/destroy", myWallpaperReceiver.destroy)
+myDispatcher.map("/set", myWallpaperReceiver.set_wallpaper)
+
+server = osc_server.ThreadingOSCUDPServer(("0.0.0.0", get_service_port()), myDispatcher)
+
 try:
-    main_loop()
+    server.serve_forever()
 except Exception as e:
     print("Service Main loop Failed:", e)
     traceback.print_exc()

@@ -18,7 +18,7 @@ except TypeError:
     def toast(*args):
         print('Fallback toast:', args)
 
-from utils.helper import Service, start_logging
+from utils.helper import Service, start_logging, get_free_port
 from ui.screens.gallery_screen import GalleryScreen
 from ui.screens.settings_screen import SettingsScreen
 from ui.screens.full_screen import FullscreenScreen
@@ -121,7 +121,7 @@ class WallpaperCarouselApp(MDApp):
         print('starting app...')
         def android_service():
             try:
-                Service(name='Wallpapercarousel').start()
+                Service(name='Wallpapercarousel',args_str=get_free_port()).start()
             except Exception as error_call_service_on_start:
                 toast(error_call_service_on_start)
                 traceback.print_exc()
