@@ -1,5 +1,40 @@
+import traceback
 from pathlib import Path
 from pythonforandroid.toolchain import ToolchainCL
+
+from android_widgets.maker import Receiver, inject_foreground_service_types
+
+
+
+def generate_receivers(package: str) -> str:
+    receivers = [
+        Receiver(
+            name="Action1",
+            actions=["android.intent.action.BOOT_COMPLETED"],
+        ),
+        Receiver(
+            name="SimpleWidget",
+            label="Simple Text",
+            actions=["android.appwidget.action.APPWIDGET_UPDATE"],
+            meta_resource="@xml/widgetproviderinfo",
+        ),
+        Receiver(
+            name="ButtonWidget",
+            label="Counter Button Demo",
+            actions=["android.appwidget.action.APPWIDGET_UPDATE"],
+            meta_resource="@xml/button_widget_provider",
+        ),
+        Receiver(
+            name="Image1",
+            actions=[
+                "android.intent.action.BOOT_COMPLETED",
+                "android.appwidget.action.APPWIDGET_UPDATE",
+            ],
+            meta_resource="@xml/image_test_widget_info",
+        ),
+    ]
+
+    return "\n\n".join(r.to_xml(package) for r in receivers)
 
 
 def after_apk_build(toolchain: ToolchainCL):
@@ -8,78 +43,16 @@ def after_apk_build(toolchain: ToolchainCL):
 
     package = "org.wally.waller"
 
-    # ==========================================
     # Add foregroundServiceType to multiple services
-    # ==========================================
-    services = {
-        "Wallpapercarousel": "dataSync",
-        "Mytester": "dataSync",
-    }
+    services = { "Wallpapercarousel": "dataSync", "Mytester": "dataSync" }
 
-    for name, fgs_type in services.items():
-        target = f'android:name="{package}.Service{name.capitalize()}"'
-        pos = text.find(target)
+    text = inject_foreground_service_types(
+        manifest_text=text,
+        package=package,
+        services=services,
+    )
 
-        if pos != -1:
-            end = text.find("/>", pos)
-            if end != -1:
-                if "foregroundServiceType=" not in text[pos:end]:
-                    text = (
-                        text[:end] +
-                        f' android:foregroundServiceType="{fgs_type}"' +
-                        text[end:]
-                    )
-                    print(f"Successfully_101: Added foregroundServiceType='{fgs_type}' to Service{name.capitalize()}")
-                else:
-                    print(f"Error_101: Service{name.capitalize()} already has foregroundServiceType")
-            else:
-                print(f"Error_101: Service{name.capitalize()} found but no '/>' closing tag")
-        else:
-            print(f"Error_101: Service{name.capitalize()} not found in manifest")
-
-    receiver_xml = f'''
-    <receiver android:name="{package}.Action1"
-              android:enabled="true"
-              android:exported="false">
-        <intent-filter>
-            <action android:name="android.intent.action.BOOT_COMPLETED" />
-        </intent-filter>
-    </receiver>
-    <receiver android:name="{package}.SimpleWidget"
-              android:enabled="true"
-              android:exported="false"
-              android:label="Simple Text">
-        <intent-filter>
-            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-        </intent-filter>
-        <meta-data android:name="android.appwidget.provider"
-               android:resource="@xml/widgetproviderinfo" />
-    </receiver>
-    
-    <receiver
-        android:name="{package}.ButtonWidget"
-        android:exported="false"
-        android:label="Counter Button Demo">
-        <intent-filter>
-            <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
-        </intent-filter>
-    
-        <meta-data
-            android:name="android.appwidget.provider"
-            android:resource="@xml/button_widget_provider" />
-    </receiver>
-    
-    <receiver android:name="{package}.Image1"
-          android:enabled="true"
-          android:exported="false">
-    <intent-filter>
-            <action android:name="android.intent.action.BOOT_COMPLETED" />
-        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-    </intent-filter>
-    <meta-data android:name="android.appwidget.provider"
-           android:resource="@xml/image_test_widget_info" />
-</receiver>
-    '''
+    receiver_xml = generate_receivers(package)
 
     if receiver_xml.strip() not in text:
         if "</application>" in text:

@@ -13,10 +13,12 @@ import time
 import random, traceback
 from os import environ
 from jnius import autoclass
+from pythonosc import dispatcher, osc_server, udp_client
+
 from android_notify import Notification
 from android_notify.config import get_python_service, get_python_activity_context
 from android_notify.core import get_app_root_path
-from pythonosc import dispatcher, osc_server, udp_client
+from android_widgets import Layout, RemoteViews, AppWidgetManager
 
 # --- Android classes ---
 BuildVersion = autoclass("android.os.Build$VERSION")
@@ -69,7 +71,7 @@ def get_next_wallpaper():
 
 
 # --- Set wallpaper function ---
-def set_wallpaper(wallpaper_path):
+def change_wallpaper(wallpaper_path):
     """Actually set the wallpaper"""
     try:
         if not wallpaper_path or not os.path.exists(wallpaper_path):
@@ -96,7 +98,7 @@ def get_interval():
     try:
         from utils.config_manager import ConfigManager
         config = ConfigManager(makeDownloadFolder())
-        t = float(config.get_interval()) * 60
+        t = int(float(config.get_interval()) * 60)
         return t
     except Exception as e:
         print("Service Failed to get Interval:", e)
@@ -142,17 +144,18 @@ class MyWallpaperReceiver:
         self.current_wait_seconds = get_interval()
         self.service_start_time = time.time()
         self.__start_main_loop()
-
+        self.changes = 0
     def __start_main_loop(self):
         threading.Thread(target=self.heart, daemon=True).start()
 
     def __count_down(self):
         self.current_wait_seconds = get_interval()
-
+        print(self.current_wait_seconds,'here it is')
         while self.current_wait_seconds:
-            notification.updateTitle(f"Next in {format_time_remaining(self.current_wait_seconds)}")
+
             time.sleep(self.current_sleep)
             self.current_wait_seconds -= 1
+            notification.updateTitle(f"Next in {format_time_remaining(self.current_wait_seconds)}")
 
             current_time = time.time()
             elapsed_since_service_start = current_time - self.service_start_time
@@ -174,7 +177,7 @@ class MyWallpaperReceiver:
             self.__count_down()
 
             # Then change wallpaper
-            set_wallpaper(self.next_wallpaper_path)
+            change_wallpaper(self.next_wallpaper_path)
             self.__write_wallpaper_path_to_file(self.next_wallpaper_path)
 
     def __write_wallpaper_path_to_file(self, wallpaper_path):
@@ -186,17 +189,19 @@ class MyWallpaperReceiver:
         current_wallpaper_store_path = os.path.join(get_app_root_path(), 'wallpaper.txt')
         with open(current_wallpaper_store_path, "w") as f:
             f.write(wallpaper_path)
-        # try:
-        #     self.mad_test_2()
-        # except Exception as e:
-        #     self.__log(f"Error mad_test_2 -{e} ping Java Listener", "WARNING")
-        #     traceback.print_exc()
 
         try:
             self.update_widget_image(wallpaper_path)
         except Exception as e:
-            self.__log(f"Error mad_test  -{e} ping Java Listener", "WARNING")
+            self.__log(f"Error update_widget_image  -{e} ping Java Listener", "WARNING")
             traceback.print_exc()
+
+        try:
+            self.changed_widget_text()
+        except Exception as e:
+            self.__log(f"Error changed_widget_text -{e} ping Java Listener", "WARNING")
+            traceback.print_exc()
+        self.changes += 1
 
     def __set_next_img_in_notification(self, wallpaper_path):
         if os.path.exists(wallpaper_path):  # setting next in notification
@@ -228,13 +233,14 @@ class MyWallpaperReceiver:
         self.current_wait_seconds = 0
 
     def set_wallpaper(self, wallpaper_path):
-        set_wallpaper(self.wallpaper_path)
+        change_wallpaper(wallpaper_path)
 
     def destroy(self, data=None):
         service.stopSelf()
 
     def first_test(self):
         # Can find Action1 broadcast listener but can't find Image1 listener for Home Screen Widget
+        from jnius import autoclass
 
         PythonActivity = autoclass('org.kivy.android.PythonActivity')
         Intent = autoclass('android.content.Intent')
@@ -281,37 +287,16 @@ class MyWallpaperReceiver:
         context.sendBroadcast(intent)
         print('got here')
 
-    def worked_changed_widget_from_service(self):
-        # This worked for Changing widget text
-        AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
-        ComponentName = autoclass('android.content.ComponentName')
-        RemoteViews = autoclass('android.widget.RemoteViews')
+    def changed_widget_text(self):
+        appWidgetManager = AppWidgetManager("Image1")
 
-        context = get_python_activity_context()  # PythonActivity.mActivity.getApplicationContext()
-        resources = context.getResources()
-        package_name = context.getPackageName()
+        text_layout = Layout("image_test_widget")
+        views = RemoteViews(layout=text_layout)
+        views.setTextViewText(text_id="widget_text", text=f"Count: {self.changes}")
 
-        # IMPORTANT: use CLASS NAME STRING, NOT autoclass
-        component = ComponentName(
-            context,
-            'org.wally.waller.Image1'
-        )
-
-        appWidgetManager = AppWidgetManager.getInstance(context)
-        ids = appWidgetManager.getAppWidgetIds(component)
-
-        text_layout = resources.getIdentifier("image_test_widget", "layout", package_name)
-        title_id = resources.getIdentifier("widget_text", "id", package_name)
-
-        views = RemoteViews(package_name, text_layout)
-        views.setTextViewText(title_id, AndroidString("Madness"))
-        appWidgetManager.updateAppWidget(ids, views)
-        print('got------- here')
+        appWidgetManager.updateAppWidget(java_view_object=views.main)
 
     def update_widget_image(self, wallpaper_path):
-        # --------------------------------------------------
-        # Java classes
-        # --------------------------------------------------
         Bitmap = autoclass('android.graphics.Bitmap')
         BitmapConfig = autoclass('android.graphics.Bitmap$Config')
         Canvas = autoclass('android.graphics.Canvas')
@@ -328,16 +313,10 @@ class MyWallpaperReceiver:
         ComponentName = autoclass('android.content.ComponentName')
         RemoteViews = autoclass('android.widget.RemoteViews')
 
-        # --------------------------------------------------
-        # Context
-        # --------------------------------------------------
         context = get_python_activity_context()
         resources = context.getResources()
         package_name = context.getPackageName()
 
-        # --------------------------------------------------
-        # Resolve image path
-        # --------------------------------------------------
         image_file = os.path.join(
             context.getFilesDir().getAbsolutePath(),
             "app",
@@ -348,9 +327,6 @@ class MyWallpaperReceiver:
             self.__log(f"Image not found: {image_file}", "ERROR")
             return
 
-        # --------------------------------------------------
-        # Decode bitmap
-        # --------------------------------------------------
         opts = BitmapFactoryOptions()
         opts.inSampleSize = 4  # widget-safe memory usage
         src = BitmapFactory.decodeFile(image_file, opts)
@@ -359,26 +335,20 @@ class MyWallpaperReceiver:
             self.__log("Bitmap decode failed", "ERROR")
             return
 
-        # --------------------------------------------------
         # Crop bitmap to square
-        # --------------------------------------------------
         size = min(src.getWidth(), src.getHeight())
         x = (src.getWidth() - size) // 2
         y = (src.getHeight() - size) // 2
         square = Bitmap.createBitmap(src, x, y, size, size)
 
-        # --------------------------------------------------
         # Scale bitmap to widget size
-        # --------------------------------------------------
         widget_dp = 120  # widget layout width/height in dp
         density = context.getResources().getDisplayMetrics().density
         widget_px = int(widget_dp * density)  # convert dp to pixels
 
         scaled_bitmap = Bitmap.createScaledBitmap(square, widget_px, widget_px, True)
 
-        # --------------------------------------------------
         # Create rounded bitmap using Canvas
-        # --------------------------------------------------
         output = Bitmap.createBitmap(widget_px, widget_px, BitmapConfig.ARGB_8888)
         canvas = Canvas(output)
 
@@ -395,9 +365,7 @@ class MyWallpaperReceiver:
         paint.setXfermode(PorterDuffXfermode(PorterDuffMode.SRC_IN))
         canvas.drawBitmap(scaled_bitmap, rect, rect, paint)
 
-        # --------------------------------------------------
         # Update widget
-        # --------------------------------------------------
         layout_id = resources.getIdentifier("image_test_widget", "layout", package_name)
         image_id = resources.getIdentifier("test_image", "id", package_name)
 
