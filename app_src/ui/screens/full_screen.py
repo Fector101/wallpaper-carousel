@@ -2,7 +2,7 @@ import os
 import traceback
 from pathlib import Path
 
-from kivy.uix.image import AsyncImage,Image
+from kivy.uix.image import AsyncImage, Image
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.metrics import dp
@@ -17,8 +17,7 @@ try:
     from kivymd.toast import toast
 except TypeError:
     def toast(*args):
-        print('Fallback toast:',args)
-
+        print('Fallback toast:', args)
 
 from utils.helper import Service, makeDownloadFolder, start_logging, smart_convert_minutes
 from utils.config_manager import ConfigManager
@@ -28,10 +27,10 @@ class FullscreenScreen(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.app_dir = Path(makeDownloadFolder())
-        self.myconfig = ConfigManager(self.app_dir)
+        self.myconfig = ConfigManager()
         self.wallpapers_dir = self.app_dir / ".wallpapers"
 
-        self.name="fullscreen"
+        self.name = "fullscreen"
         self.md_bg_color = [0, 0, 0, 1]
         self.bottom_height = 0.15
         self.is_fullscreen = False
@@ -42,8 +41,8 @@ class FullscreenScreen(MDScreen):
 
         # === SWIPE CAROUSEL ===
         self.carousel = Carousel(direction="right", loop=True,
-                                size_hint=(1, 1 - self.bottom_height),
-                                pos_hint={'x': 0, 'y': self.bottom_height})
+                                 size_hint=(1, 1 - self.bottom_height),
+                                 pos_hint={'x': 0, 'y': self.bottom_height})
         self.layout.add_widget(self.carousel)
 
         # === BOTTOM BUTTONS ===
@@ -110,7 +109,7 @@ class FullscreenScreen(MDScreen):
 
             self.btn_toggle.text = "Back"
             self.is_fullscreen = False
-            
+
             for img in self.carousel.slides:
                 img.fit_mode = "contain"
 
@@ -141,18 +140,17 @@ class FullscreenScreen(MDScreen):
                 pass
 
         app_dir = Path(makeDownloadFolder())
-        ConfigManager(app_dir).remove_wallpaper(path)
+        ConfigManager().remove_wallpaper(path)
 
         if not wallpapers:
             gallery_screen.update_thumbnails_method(wallpapers)
             self.manager.current = "thumbs"
             return
 
-
         gallery_screen.update_thumbnails_method(wallpapers)
         self.update_images()
         self.carousel.index = max(0, min(idx, len(wallpapers) - 1))
-        
+
     # ====================================================================
     #               IMAGE INFO POPUP
     # ====================================================================

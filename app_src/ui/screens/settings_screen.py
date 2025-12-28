@@ -33,7 +33,7 @@ class SettingsScreen(MDScreen):
         self.md_bg_color = [0.1, 0.1, 0.1, 1]
         print('manager',self.manager)
         self.app_dir = Path(makeDownloadFolder())
-        self.myconfig = ConfigManager(self.app_dir)
+        self.myconfig = ConfigManager()
         self.wallpapers_dir = self.app_dir / ".wallpapers"
         self.interval = self.myconfig.get_interval()
         self.i = 1

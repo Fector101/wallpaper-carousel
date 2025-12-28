@@ -11,6 +11,7 @@ from kivy.uix.behaviors import ButtonBehavior
 from kivymd.uix.screenmanager import MDScreenManager
 from kivymd.uix.screen import MDScreen
 from android_notify import NotificationHandler
+from utils.helper import makeDownloadFolder
 
 try:
     from kivymd.toast import toast
@@ -18,7 +19,7 @@ except TypeError:
     def toast(*args):
         print('Fallback toast:', args)
 
-from utils.helper import Service, start_logging, get_free_port
+from utils.helper import Service, start_logging, get_free_port, save_existing_file_to_public_pictures
 from ui.screens.gallery_screen import GalleryScreen
 from ui.screens.settings_screen import SettingsScreen
 from ui.screens.full_screen import FullscreenScreen
@@ -26,50 +27,70 @@ from ui.screens.welcome_screen import WelcomeScreen
 from kivy.core.window import Window
 from kivy.utils import platform
 
-try:
-    from utils.permissions import PermissionHandler
-    PermissionHandler().requestStorageAccess()
-except Exception as e:
-    traceback.print_exc()
 
 
 if platform == 'android':
     try:
+        from android.permissions import request_permissions, Permission  # type: ignore
+
+
+        def check_permissions():
+            # List the permissions you need to ask the user for
+            permissions = [
+                Permission.READ_EXTERNAL_STORAGE,
+                Permission.WRITE_EXTERNAL_STORAGE,
+                Permission.READ_MEDIA_IMAGES  # Kivy's latest master/buildozer handles this
+            ]
+            request_permissions(permissions)
+
+
+        check_permissions()
+    except Exception as error_call_service_on_start:
+        print('Fallback toast:', error_call_service_on_start)
+    try:
         start_logging()
-    except:
-        pass
+    except Exception as error_saving_logs:
+        print('Fallback toast:', error_saving_logs)
+
+    try:
+        my_img = os.path.join(os.path.join(os.getcwd(), "assets", "images", "test.jpg"))
+        save_existing_file_to_public_pictures(my_img)
+    except Exception as e:
+        print("Error loading images", e)
+        traceback.print_exc()
+
 else:
     Window.size = (400, 700)
 
-try:
-    from kivy.core.text import LabelBase
 
 
-    class Font:
-        def __init__(self, name, base_folder):
-            self.base_folder = base_folder
-            self.name = name
-
-        def get_type_path(self, fn_type):
-            """
-            Formats font type path
-            :param fn_type:
-            :return:
-            """
-            return os.path.join(self.base_folder, self.name + '-' + fn_type + '.ttf')
 
 
-    # This work but i like the normal, bold,italic config better title.font_name = "app_src/assets/fonts/Roboto_Mono/RobotoMono-VariableFont_wght.ttf"
-    robot_mono = Font(name='RobotoMono', base_folder="assets/fonts/Roboto_Mono/static")
-    LabelBase.register(
-        name="RobotoMono",
-        fn_regular=robot_mono.get_type_path('Regular'),
-        fn_italic=robot_mono.get_type_path('Italic'),
-        fn_bold=robot_mono.get_type_path('Bold'),
-    )
-except Exception as e:
-    print("Error loading fonts", e)
-    traceback.print_exc()
+from kivy.core.text import LabelBase
+
+
+class Font:
+    def __init__(self, name, base_folder):
+        self.base_folder = base_folder
+        self.name = name
+
+    def get_type_path(self, fn_type):
+        """
+        Formats font type path
+        :param fn_type:
+        :return:
+        """
+        return os.path.join(self.base_folder, self.name + '-' + fn_type + '.ttf')
+
+
+# This work but i like the normal, bold,italic config better title.font_name = "app_src/assets/fonts/Roboto_Mono/RobotoMono-VariableFont_wght.ttf"
+robot_mono = Font(name='RobotoMono', base_folder="assets/fonts/Roboto_Mono/static")
+LabelBase.register(
+    name="RobotoMono",
+    fn_regular=robot_mono.get_type_path('Regular'),
+    fn_italic=robot_mono.get_type_path('Italic'),
+    fn_bold=robot_mono.get_type_path('Bold'),
+)
 
 
 class MyScreenManager(MDScreenManager):

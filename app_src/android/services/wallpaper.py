@@ -91,7 +91,7 @@ def change_wallpaper(wallpaper_path):
 def get_interval():
     try:
         from utils.config_manager import ConfigManager
-        config = ConfigManager(makeDownloadFolder())
+        config = ConfigManager()
         t = int(float(config.get_interval()) * 60)
         return t
     except Exception as e:

@@ -43,9 +43,9 @@ def makeDownloadFolder():
 
     if platform == 'android':
         from android.storage import primary_external_storage_path  # type: ignore
-        folder_path = os.path.join(primary_external_storage_path(), 'Download', 'Laner')
+        folder_path = os.path.join(primary_external_storage_path(), 'Pictures', '.waller')
     else:
-        folder_path = os.path.join(os.getcwd(), 'Download', 'Laner')
+        folder_path = os.getcwd()
 
     makeFolder(folder_path)
     return folder_path
@@ -187,7 +187,7 @@ import shutil
 class FileOperation:
     def __init__(self,update_thumbnails_function):
         self.app_dir = Path(makeDownloadFolder())
-        self.myconfig = ConfigManager(self.app_dir)
+        self.myconfig = ConfigManager()
         self.wallpapers_dir = self.app_dir / ".wallpapers"
         try:
             self.wallpapers_dir.mkdir(parents=True, exist_ok=True)
@@ -198,6 +198,7 @@ class FileOperation:
         self.update_thumbnails_function = update_thumbnails_function
 
     def copy_add(self, files):
+        print("gotten files:",files)
         if not files:
             return
         new_images = []
@@ -373,3 +374,73 @@ def test_java_action():
     compatmanager = func_from(context)
     compatmanager.notify(notification_id, builder.build())
 
+import os
+
+def save_existing_file_to_public_pictures(input_file_path):
+    from jnius import autoclass
+    from android_notify.config import get_python_activity_context
+    context = get_python_activity_context()
+
+    Environment = autoclass('android.os.Environment')
+    ContentValues = autoclass('android.content.ContentValues')
+    BuildVERSION = autoclass('android.os.Build$VERSION')
+    File = autoclass('java.io.File')
+    FileInputStream = autoclass('java.io.FileInputStream')
+    # Nested Java classes
+    MediaColumns = autoclass('android.provider.MediaStore$MediaColumns')
+    ImagesMedia = autoclass('android.provider.MediaStore$Images$Media')
+
+    # Extract filename
+    file_name = os.path.basename(input_file_path)
+
+    # Detect mime type
+    if file_name.lower().endswith(".png"):
+        mime_type = "image/png"
+    else:
+        mime_type = "image/jpeg"
+
+    content_values = ContentValues()
+    content_values.put(MediaColumns.DISPLAY_NAME, file_name)
+    content_values.put(MediaColumns.MIME_TYPE, mime_type)
+
+    if BuildVERSION.SDK_INT >= 29:
+        content_values.put(
+            MediaColumns.RELATIVE_PATH,
+            Environment.DIRECTORY_PICTURES + "/.waller"
+        )
+
+    resolver = context.getContentResolver()
+    uri = resolver.insert(ImagesMedia.EXTERNAL_CONTENT_URI, content_values)
+
+    if uri:
+        input_file = File(input_file_path)
+        input_stream = FileInputStream(input_file)
+        output_stream = resolver.openOutputStream(uri)
+
+        buffer = bytearray(8192)
+        while True:
+            length = input_stream.read(buffer)
+            if length <= 0:
+                break
+            output_stream.write(buffer, 0, length)
+
+        input_stream.close()
+        output_stream.close()
+
+    print("This is Uri:", uri)
+    print("This is File:", input_file_path)
+    return uri
+
+def is_platform_android():
+    # Took this from kivy to fix my logs in P4A.hook, so no need to import things i don't need by doing `from kivy.utils import platform`
+    if os.getenv("MAIN_ACTIVITY_HOST_CLASS_NAME"):
+        return True
+    kivy_build = os.environ.get('KIVY_BUILD', '')
+    if kivy_build in {'android'}:
+        return True
+    elif 'P4A_BOOTSTRAP' in os.environ:
+        return True
+    elif 'ANDROID_ARGUMENT' in os.environ:
+        return True
+
+    return False

@@ -1,3 +1,4 @@
+import traceback
 from pathlib import Path
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
@@ -18,7 +19,7 @@ class GalleryScreen(MDScreen):
         self.name="thumbs"
         self.wallpapers=[]
         self.app_dir = Path(makeDownloadFolder())
-        self.myconfig = ConfigManager(self.app_dir)
+        self.myconfig = ConfigManager()
         self.wallpapers_dir = self.app_dir / ".wallpapers"
 
         layout = BoxLayout(orientation="vertical", spacing=10, padding=10)
@@ -44,10 +45,25 @@ class GalleryScreen(MDScreen):
 
     def open_filechooser(self, *args):
         file_operation = FileOperation(self.update_thumbnails_method)
-        filechooser.open_file(on_selection=file_operation.copy_add, multiple=True)
+        from jnius import autoclass, cast
+
+        def open_file_picker():
+            PythonActivity = autoclass('org.kivy.android.PythonActivity')
+            Intent = autoclass('android.intent.action.OPEN_DOCUMENT')  # Use OPEN_DOCUMENT for permanent files
+
+            intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+            intent.addCategory(autoclass('android.intent.category.OPENABLE'))
+            intent.setType("image/*")  # Only show images
+
+            # Start the activity and wait for a result
+            # Note: You'll need to handle the result in your App class via bind
+            PythonActivity.mActivity.startActivityForResult(intent, 1001)
+        filechooser.open_file(on_selection=file_operation.copy_add, filters=["image"], multiple=True)
 
     def update_thumbnails_method(self,new_images):
-        self.wallpapers = list({*self.wallpapers, *new_images})
+        for img in new_images:
+            if img not in self.wallpapers:
+                self.wallpapers.append(img)
         data = []
         for i, path in enumerate(self.wallpapers):
             # Use a low-res thumbnail for the preview (fallback to original if thumbnail creation/availability fails)

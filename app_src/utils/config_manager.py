@@ -1,11 +1,26 @@
-import json
-import os
+import json, os
 from pathlib import Path
+
+
 try:
     from kivymd.toast import toast
 except:
     def toast(txt):
         print("Fallback toast:", txt)
+
+def is_platform_android():
+    # Took this from kivy to fix my logs in P4A.hook, so no need to import things i don't need by doing `from kivy.utils import platform`
+    if os.getenv("MAIN_ACTIVITY_HOST_CLASS_NAME"):
+        return True
+    kivy_build = os.environ.get('KIVY_BUILD', '')
+    if kivy_build in {'android'}:
+        return True
+    elif 'P4A_BOOTSTRAP' in os.environ:
+        return True
+    elif 'ANDROID_ARGUMENT' in os.environ:
+        return True
+
+    return False
 
 class ConfigManager:
     DEFAULT_CONFIG = {
@@ -13,9 +28,21 @@ class ConfigManager:
         "wallpapers": []
     }
 
-    def __init__(self, config_dir: Path):
-        self.config_path = Path(config_dir) / "config.json"
+    def __init__(self):
+
+        self.config_path = Path(self.config_dir) / "config.json"
         self._ensure_config()
+    @property
+    def config_dir(self):
+        app_path = None
+
+        if is_platform_android():
+            from android.storage import app_storage_path  # type: ignore
+            app_path = app_storage_path()
+        else:
+            app_path = os.getcwd()
+
+        return app_path
 
     def _ensure_config(self):
         if not self.config_path.exists():
@@ -30,7 +57,7 @@ class ConfigManager:
                 self._write(self.DEFAULT_CONFIG)
                 return self.DEFAULT_CONFIG
             except PermissionError:
-                toast("Permission denied: Cannot access config file")
+                toast("PD: Cannot access config file")
             except Exception as e:
                 toast(str(e))
 
@@ -39,7 +66,7 @@ class ConfigManager:
             with open(self.config_path, "w") as f:
                 json.dump(data, f, indent=4)
         except PermissionError:
-            toast("Permission denied: Cannot access config file")
+            toast("PD: Cannot access config file")
         except Exception as e:
             toast(str(e))
 
