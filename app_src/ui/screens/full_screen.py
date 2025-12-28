@@ -132,6 +132,13 @@ class FullscreenScreen(MDScreen):
 
         if path and os.path.exists(path):
             os.remove(path)
+            # remove its low-res thumbnail (if exists)
+            try:
+                thumb = Path(path).parent / "thumbs" / f"{Path(path).stem}_thumb.jpg"
+                if thumb.exists():
+                    thumb.unlink()
+            except Exception:
+                pass
 
         app_dir = Path(makeDownloadFolder())
         ConfigManager(app_dir).remove_wallpaper(path)
@@ -174,9 +181,9 @@ class FullscreenScreen(MDScreen):
         self.carousel.clear_widgets()
 
         for p in gallery_screen.wallpapers:
-            img = Image(
+            img = AsyncImage(
                 source=p,
-                allow_stretch=True,
+                # allow_stretch=True,
                 # keep_ratio=True,
                 fit_mode="contain"
             )

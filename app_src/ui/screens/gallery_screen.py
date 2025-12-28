@@ -8,7 +8,7 @@ from kivy.metrics import dp
 from kivymd.uix.screen import MDScreen
 from plyer import filechooser
 
-from utils.helper import FileOperation
+from utils.helper import FileOperation, get_or_create_thumbnail
 from utils.config_manager import ConfigManager
 from utils.helper import makeDownloadFolder
 
@@ -50,8 +50,11 @@ class GalleryScreen(MDScreen):
         self.wallpapers = list({*self.wallpapers, *new_images})
         data = []
         for i, path in enumerate(self.wallpapers):
+            # Use a low-res thumbnail for the preview (fallback to original if thumbnail creation/availability fails)
+            thumb = get_or_create_thumbnail(path, dest_dir=self.wallpapers_dir )
+            print("Thumbnail for", path, "is", thumb)
             data.append({
-                "source": path,
+                "source": thumb if thumb else path,
                 "source_path": path,
                 "on_release": lambda p=path, idx=i: self.open_fullscreen_for_image(p, idx)
             })

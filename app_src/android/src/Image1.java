@@ -5,6 +5,12 @@ import android.appwidget.AppWidgetProvider;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.RectF;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.util.Log;
 import android.widget.RemoteViews;
 
@@ -33,7 +39,6 @@ public class Image1 extends AppWidgetProvider {
                     R.layout.image_test_widget
             );
 
-            // Path to wallpaper.txt
             File txtFile = new File(
                     context.getFilesDir().getAbsolutePath() + "/app/wallpaper.txt"
             );
@@ -46,9 +51,7 @@ public class Image1 extends AppWidgetProvider {
                 continue;
             }
 
-            // Read image path from text file
             String imagePath = null;
-
             try (BufferedReader br = new BufferedReader(new FileReader(txtFile))) {
                 imagePath = br.readLine();
             } catch (IOException e) {
@@ -74,25 +77,42 @@ public class Image1 extends AppWidgetProvider {
             // Decode bitmap safely (widgets are memory-sensitive)
             BitmapFactory.Options opts = new BitmapFactory.Options();
             opts.inSampleSize = 4; // reduce memory usage
-
-            Bitmap bitmap = BitmapFactory.decodeFile(
-                    imageFile.getAbsolutePath(),
-                    opts
-            );
+            Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath(), opts);
 
             if (bitmap != null) {
-                views.setImageViewBitmap(
-                        R.id.test_image,
-                        bitmap
-                );
+                // Crop bitmap to square
+                int size = Math.min(bitmap.getWidth(), bitmap.getHeight());
+                int x = (bitmap.getWidth() - size) / 2;
+                int y = (bitmap.getHeight() - size) / 2;
+                Bitmap squareBitmap = Bitmap.createBitmap(bitmap, x, y, size, size);
+
+                // Scale bitmap to widget size
+                int widgetPx = (int) (120 * context.getResources().getDisplayMetrics().density); // 120dp
+                Bitmap scaledBitmap = Bitmap.createScaledBitmap(squareBitmap, widgetPx, widgetPx, true);
+
+                // Create rounded bitmap
+                Bitmap output = Bitmap.createBitmap(widgetPx, widgetPx, Bitmap.Config.ARGB_8888);
+                Canvas canvas = new Canvas(output);
+
+                Paint paint = new Paint();
+                paint.setAntiAlias(true);
+
+                Rect rect = new Rect(0, 0, widgetPx, widgetPx);
+                RectF rectF = new RectF(rect);
+
+                float cornerRadius = 16 * context.getResources().getDisplayMetrics().density; // 16dp corners
+                canvas.drawARGB(0, 0, 0, 0);
+                canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, paint);
+
+                paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_IN));
+                canvas.drawBitmap(scaledBitmap, rect, rect, paint);
+
+                views.setImageViewBitmap(R.id.test_image, output);
             } else {
                 Log.e(TAG, "Bitmap decode failed");
             }
 
-            appWidgetManager.updateAppWidget(
-                    appWidgetId,
-                    views
-            );
+            appWidgetManager.updateAppWidget(appWidgetId, views);
         }
     }
 }

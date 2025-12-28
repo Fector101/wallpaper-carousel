@@ -189,6 +189,12 @@ class FileOperation:
         self.app_dir = Path(makeDownloadFolder())
         self.myconfig = ConfigManager(self.app_dir)
         self.wallpapers_dir = self.app_dir / ".wallpapers"
+        try:
+            self.wallpapers_dir.mkdir(parents=True, exist_ok=True)
+            (self.wallpapers_dir / "thumbs").mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            print(f"Error creating wallpapers directory: {e}")
+
         self.update_thumbnails_function = update_thumbnails_function
 
     def copy_add(self, files):
@@ -201,8 +207,17 @@ class FileOperation:
             dest = self.unique(os.path.basename(src))
             try:
                 shutil.copy2(src, dest)
-            except:
+            except Exception as e:
+                print(f"Error copying file '{src}' to '{dest}': {e}")
+                traceback.print_exc()
                 continue
+            # generate low-res thumbnail for preview
+            try:
+                create_thumbnail(dest, dest_dir=self.wallpapers_dir)
+            except Exception:
+                print("Error creating thumbnail for:", dest)
+                traceback.print_exc()
+
             new_images.append(str(dest))
         for img in new_images:
             self.myconfig.add_wallpaper(img)
@@ -216,6 +231,58 @@ class FileOperation:
             dest = self.wallpapers_dir / f"{base}_{i}{ext}"
             i += 1
         return dest
+
+
+# -----------------------------
+# Thumbnail helpers
+# -----------------------------
+
+def thumbnail_path_for(src, dest_dir=None):
+    """Return a consistent thumbnail Path for a source image.
+    Thumbnails are stored in a subfolder named 'thumbs' under dest_dir (or source folder by default).
+    """
+    p = Path(src)
+    if dest_dir:
+        dest_dir = Path(dest_dir)
+    else:
+        dest_dir = p.parent
+    thumb_dir = dest_dir / "thumbs"
+    thumb_dir.mkdir(parents=True, exist_ok=True)
+    return thumb_dir / f"{p.stem}_thumb.jpg"
+
+
+def create_thumbnail(src, dest_dir=None, size=(320, 320), quality=60):
+    """Create a low-resolution JPEG thumbnail for src and return its path.
+    If Pillow is not available or creation fails, returns the original path string.
+    """
+    try:
+        from PIL import Image
+    except ImportError:
+        print("Pillow not available, cannot create thumbnail.")
+        # Pillow not available → fall back to original image path
+        return str(src)
+
+    try:
+        src_path = Path(src)
+        dest = thumbnail_path_for(src_path, dest_dir)
+        # If thumbnail already exists and is newer than source, reuse it
+        if dest.exists() and dest.stat().st_mtime >= src_path.stat().st_mtime:
+            return str(dest)
+
+        with Image.open(src_path) as im:
+            im = im.convert('RGB')
+            im.thumbnail(size, Image.LANCZOS)
+            im.save(dest, format='JPEG', quality=quality)
+        return str(dest)
+    except Exception:
+        print("Error creating thumbnail for:", src)
+        traceback.print_exc()
+        return str(src)
+
+
+def get_or_create_thumbnail(src, dest_dir=None, size=(320, 320)):
+    """Convenience wrapper to obtain a thumbnail path, creating it if necessary."""
+    return create_thumbnail(src, dest_dir=dest_dir, size=size)
 
 
 def get_free_port():
