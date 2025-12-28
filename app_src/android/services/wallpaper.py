@@ -1,6 +1,6 @@
 print("Entered python Service File...")
 try:
-    from utils.helper import start_logging, makeDownloadFolder, test_java_action
+    from utils.helper import start_logging, makeDownloadFolder
 
     start_logging()
     print("Service Logging started. All console output will also be saved.")
@@ -31,12 +31,6 @@ AndroidString = autoclass("java.lang.String")
 
 # --- Folder setup ---
 download_folder_path = os.path.join(makeDownloadFolder(), ".wallpapers")
-
-try:
-    test_java_action()
-except Exception as e:
-    print("Error calling test_java_action", e)
-    traceback.print_exc()
 
 
 def get_service_port():
@@ -238,54 +232,6 @@ class MyWallpaperReceiver:
     def destroy(self, data=None):
         service.stopSelf()
 
-    def first_test(self):
-        # Can find Action1 broadcast listener but can't find Image1 listener for Home Screen Widget
-        from jnius import autoclass
-
-        PythonActivity = autoclass('org.kivy.android.PythonActivity')
-        Intent = autoclass('android.content.Intent')
-        AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
-        ComponentName = autoclass('android.content.ComponentName')
-
-        action1 = autoclass("org.wally.waller.Action1")
-        print(action1)
-        context = get_python_activity_context()  # PythonActivity.mActivity
-        action1 = autoclass("org.wally.waller.Image1")
-        intent = Intent(context, action1)
-        intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
-
-        component = ComponentName(context, action1)
-        ids = AppWidgetManager.getInstance(context).getAppWidgetIds(component)
-
-        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
-        context.sendBroadcast(intent)
-
-    def did_not_cause_error_but_no_change(self):
-        from jnius import autoclass
-
-        PythonActivity = autoclass('org.kivy.android.PythonActivity')
-        Intent = autoclass('android.content.Intent')
-        AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
-        ComponentName = autoclass('android.content.ComponentName')
-
-        context = get_python_activity_context()  # PythonActivity.mActivity.getApplicationContext()
-
-        # Create update intent
-        intent = Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
-
-        # IMPORTANT: use CLASS NAME STRING, NOT autoclass
-        component = ComponentName(
-            context,
-            'org.wally.waller.ImageTestWidget'
-        )
-
-        appWidgetManager = AppWidgetManager.getInstance(context)
-        ids = appWidgetManager.getAppWidgetIds(component)
-
-        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
-
-        context.sendBroadcast(intent)
-        print('got here')
 
     def changed_widget_text(self):
         appWidgetManager = AppWidgetManager("Image1")
@@ -379,166 +325,6 @@ class MyWallpaperReceiver:
 
         self.__log(f"Changed Home Screen Widget: {wallpaper_path}", "SUCCESS")
 
-    # def update_widget_image(self, wallpaper_path):
-    #     # Some images didn't fill layout leaving white coners on the edge
-    #     Bitmap = autoclass('android.graphics.Bitmap')
-    #     BitmapConfig = autoclass('android.graphics.Bitmap$Config')
-    #     Canvas = autoclass('android.graphics.Canvas')
-    #     Paint = autoclass('android.graphics.Paint')
-    #     Rect = autoclass('android.graphics.Rect')
-    #     RectF = autoclass('android.graphics.RectF')
-    #     PorterDuffMode = autoclass('android.graphics.PorterDuff$Mode')
-    #     PorterDuffXfermode = autoclass('android.graphics.PorterDuffXfermode')
-    #
-    #     BitmapFactory = autoclass('android.graphics.BitmapFactory')
-    #     BitmapFactoryOptions = autoclass('android.graphics.BitmapFactory$Options')
-    #
-    #     AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
-    #     ComponentName = autoclass('android.content.ComponentName')
-    #     RemoteViews = autoclass('android.widget.RemoteViews')
-    #
-    #     # --------------------------------------------------
-    #     # Context
-    #     # --------------------------------------------------
-    #     context = get_python_activity_context()
-    #     resources = context.getResources()
-    #     package_name = context.getPackageName()
-    #
-    #     # --------------------------------------------------
-    #     # Resolve image path
-    #     # --------------------------------------------------
-    #     image_file = os.path.join(
-    #         context.getFilesDir().getAbsolutePath(),
-    #         "app",
-    #         wallpaper_path
-    #     )
-    #
-    #     if not os.path.exists(image_file):
-    #         self.__log(f"Image not found: {image_file}", "ERROR")
-    #         return
-    #
-    #     # --------------------------------------------------
-    #     # Decode bitmap (downscaled for widget)
-    #     # --------------------------------------------------
-    #     opts = BitmapFactoryOptions()
-    #     opts.inSampleSize = 4  # widget-safe memory usage
-    #
-    #     src = BitmapFactory.decodeFile(image_file, opts)
-    #
-    #     if src is None:
-    #         self.__log("Bitmap decode failed", "ERROR")
-    #         return
-    #
-    #     # --------------------------------------------------
-    #     # Crop bitmap to square
-    #     # --------------------------------------------------
-    #     size = min(src.getWidth(), src.getHeight())
-    #     x = (src.getWidth() - size) // 2
-    #     y = (src.getHeight() - size) // 2
-    #
-    #     square = Bitmap.createBitmap(src, x, y, size, size)
-    #
-    #     # --------------------------------------------------
-    #     # Create rounded bitmap using Canvas
-    #     # --------------------------------------------------
-    #     output = Bitmap.createBitmap(
-    #         size,
-    #         size,
-    #         BitmapConfig.ARGB_8888
-    #     )
-    #
-    #     canvas = Canvas(output)
-    #
-    #     paint = Paint()
-    #     paint.setAntiAlias(True)
-    #
-    #     rect = Rect(0, 0, size, size)
-    #     rectF = RectF(rect)
-    #
-    #     density = context.getResources().getDisplayMetrics().density
-    #     corner_radius_px = 16 * density
-    #     radius = corner_radius_px
-    #
-    #     canvas.drawARGB(0, 0, 0, 0)
-    #     canvas.drawRoundRect(rectF, radius, radius, paint)
-    #
-    #     paint.setXfermode(
-    #         PorterDuffXfermode(PorterDuffMode.SRC_IN)
-    #     )
-    #
-    #     canvas.drawBitmap(square, rect, rect, paint)
-    #
-    #     # --------------------------------------------------
-    #     # Update widget RemoteViews
-    #     # --------------------------------------------------
-    #     layout_id = resources.getIdentifier(
-    #         "image_test_widget",
-    #         "layout",
-    #         package_name
-    #     )
-    #
-    #     image_id = resources.getIdentifier(
-    #         "test_image",
-    #         "id",
-    #         package_name
-    #     )
-    #
-    #     views = RemoteViews(package_name, layout_id)
-    #     views.setImageViewBitmap(image_id, output)
-    #
-    #     component = ComponentName(
-    #         context,
-    #         f"{package_name}.Image1"
-    #     )
-    #
-    #     appWidgetManager = AppWidgetManager.getInstance(context)
-    #     ids = appWidgetManager.getAppWidgetIds(component)
-    #
-    #     appWidgetManager.updateAppWidget(ids, views)
-    #
-    #     self.__log(f"Changed Home Screen Widget: {wallpaper_path}", "SUCCESS")
-
-    # def update_widget_image(self, wallpaper_path):
-    # Works but no rounded corners
-    #     BitmapFactory = autoclass('android.graphics.BitmapFactory')
-    #     BitmapFactoryOptions = autoclass('android.graphics.BitmapFactory$Options')
-    #     AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
-    #     ComponentName = autoclass('android.content.ComponentName')
-    #     RemoteViews = autoclass('android.widget.RemoteViews')
-    #
-    #     context = get_python_activity_context()
-    #     resources = context.getResources()
-    #     package_name = context.getPackageName()
-    #
-    #     image_file = os.path.join(context.getFilesDir().getAbsolutePath(), "app", wallpaper_path)
-    #
-    #     if not os.path.exists(image_file):
-    #         self.__log(f"Image -{image_file} file not found, Can't Change Home Screen Widget:", "ERROR")
-    #         return
-    #
-    #     opts = BitmapFactoryOptions()
-    #     opts.inSampleSize = 4  # reduce memory usage for widget
-    #
-    #     bitmap = BitmapFactory.decodeFile(image_file, opts)
-    #
-    #     if bitmap is None:
-    #         self.__log(f"Failed getting bitmap -{image_file}, Can't Change Home Screen Widget:", "ERROR")
-    #         return
-    #
-    #     layout_id = resources.getIdentifier("image_test_widget", "layout", package_name)
-    #     image_id = resources.getIdentifier("test_image", "id", package_name)
-    #
-    #     views = RemoteViews(package_name, layout_id)
-    #     views.setImageViewBitmap(image_id, bitmap)
-    #
-    #     component = ComponentName(context, f"{package_name}.Image1")
-    #
-    #     appWidgetManager = AppWidgetManager.getInstance(context)
-    #     ids = appWidgetManager.getAppWidgetIds(component)
-    #
-    #     appWidgetManager.updateAppWidget(ids, views)
-    #
-    #     self.__log(f"Changed Home Screen Widget: {wallpaper_path}", "SUCCESS")
 
 
 myWallpaperReceiver = MyWallpaperReceiver()

@@ -29,6 +29,8 @@ class ConfigManager:
             try:
                 self._write(self.DEFAULT_CONFIG)
                 return self.DEFAULT_CONFIG
+            except PermissionError:
+                toast("Permission denied: Cannot access config file")
             except Exception as e:
                 toast(str(e))
 
@@ -36,6 +38,8 @@ class ConfigManager:
         try:
             with open(self.config_path, "w") as f:
                 json.dump(data, f, indent=4)
+        except PermissionError:
+            toast("Permission denied: Cannot access config file")
         except Exception as e:
             toast(str(e))
 
