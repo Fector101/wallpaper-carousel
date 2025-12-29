@@ -206,7 +206,7 @@ android.add_resources = app_src/android/res
 #, icons
 
 # (list) Gradle dependencies to add
-#android.gradle_dependencies = androidx.core:core-ktx:1.15.0, androidx.core:core:1.6.0
+android.gradle_dependencies = androidx.core:core-ktx:1.15.0, androidx.core:core:1.6.0
 #, androidx.work:work-runtime:2.2.0
 
 # (bool) Enable AndroidX support. Enable when 'android.gradle_dependencies'
