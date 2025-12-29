@@ -63,6 +63,10 @@ class SettingsScreen(MDScreen):
             size_hint_x=0.55,
             mode="outlined"
             )
+        self.interval_input.text_color_focus=[1,1,1,1]
+        self.interval_input.text_color_normal=[.8,.8,.8, 1]
+        self.interval_input.hint_text_color_normal=[.8,.8,.8, 1]
+        self.interval_input.hint_text_color_focus=[1,1,1,1]
         self.interval_input.input_filter="float"
 
         save_btn = Button(text="Save", size_hint_x=0.35)
