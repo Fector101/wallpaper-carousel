@@ -118,7 +118,7 @@ class MyScreenManager(ScreenManager):
     def on_current(self,*args):
         print('screen',args)
         screen_name = args[1]
-        is_fullscreen = screen_name == "fullscreen"
+        is_fullscreen = screen_name == "fullscreen" or screen_name == "welcome"
         if is_fullscreen and self.app.bottom_bar:
             self.app.bottom_bar.hide()
         elif self.app.bottom_bar:
