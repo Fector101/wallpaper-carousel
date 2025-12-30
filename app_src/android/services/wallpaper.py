@@ -234,7 +234,7 @@ class MyWallpaperReceiver:
 
 
     def changed_widget_text(self):
-        appWidgetManager = AppWidgetManager("Image1")
+        appWidgetManager = AppWidgetManager("CarouselProvider")
 
         text_layout = Layout("image_test_widget")
         views = RemoteViews(layout=text_layout)
@@ -318,7 +318,7 @@ class MyWallpaperReceiver:
         views = RemoteViews(package_name, layout_id)
         views.setImageViewBitmap(image_id, output)
 
-        component = ComponentName(context, f"{package_name}.Image1")
+        component = ComponentName(context, f"{package_name}.CarouselProvider")
         appWidgetManager = AppWidgetManager.getInstance(context)
         ids = appWidgetManager.getAppWidgetIds(component)
         appWidgetManager.updateAppWidget(ids, views)
