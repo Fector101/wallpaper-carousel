@@ -21,9 +21,9 @@ import java.io.IOException;
 
 import org.wally.waller.R;
 
-public class Image1 extends AppWidgetProvider {
+public class CarouselProvider extends AppWidgetProvider {
 
-    private static final String TAG = "Image1";
+    private static final String TAG = "CarouselProvider";
 
     @Override
     public void onUpdate(
@@ -36,7 +36,7 @@ public class Image1 extends AppWidgetProvider {
 
             RemoteViews views = new RemoteViews(
                     context.getPackageName(),
-                    R.layout.image_test_widget
+                    R.layout.carousel_widget
             );
 
             File txtFile = new File(
