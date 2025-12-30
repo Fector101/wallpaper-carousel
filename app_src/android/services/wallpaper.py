@@ -236,7 +236,7 @@ class MyWallpaperReceiver:
     def changed_widget_text(self):
         appWidgetManager = AppWidgetManager("CarouselProvider")
 
-        text_layout = Layout("image_test_widget")
+        text_layout = Layout("carousel_widget")
         views = RemoteViews(layout=text_layout)
         views.setTextViewText(text_id="widget_text", text=f"Count: {self.changes}")
 
@@ -312,7 +312,7 @@ class MyWallpaperReceiver:
         canvas.drawBitmap(scaled_bitmap, rect, rect, paint)
 
         # Update widget
-        layout_id = resources.getIdentifier("image_test_widget", "layout", package_name)
+        layout_id = resources.getIdentifier("carousel_widget", "layout", package_name)
         image_id = resources.getIdentifier("test_image", "id", package_name)
 
         views = RemoteViews(package_name, layout_id)
