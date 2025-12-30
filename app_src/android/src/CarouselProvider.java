@@ -36,7 +36,7 @@ public class CarouselProvider extends AppWidgetProvider {
 
             RemoteViews views = new RemoteViews(
                     context.getPackageName(),
-                    R.layout.image_test_widget
+                    R.layout.carousel_widget
             );
 
             File txtFile = new File(
