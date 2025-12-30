@@ -18,6 +18,15 @@ from kivy.uix.behaviors import ButtonBehavior
 
 
 
+
+class MyMDRecycleGridLayout(RecycleGridLayout):
+    icon_active = StringProperty()
+    icon_inactive_color = StringProperty()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+
 class Thumb(ButtonBehavior, AsyncImage):
     source_path = StringProperty()
 
@@ -36,7 +45,7 @@ class GalleryScreen(MDScreen):
         layout.add_widget(Label(text="Wallpapers", size_hint_y=0.1, font_size="22sp"))
 
         self.rv = RecycleView(size_hint_y=0.8)
-        grid = RecycleGridLayout(cols=3,
+        grid = MyMDRecycleGridLayout(cols=3,
                                  spacing=5,
                                  default_size=(None, dp(120)),
                                  default_size_hint=(1, None),

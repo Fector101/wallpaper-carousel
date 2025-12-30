@@ -12,10 +12,12 @@ from kivymd.uix.textfield import MDTextField
 
 from android_notify.core import asks_permission_if_needed
 from android_notify import NotificationHandler
-from ui.widgets.android import toast     # type: ignore
+from ui.widgets.android import toast  # type: ignore
 
-from utils.helper import Service, makeDownloadFolder, start_logging, smart_convert_minutes
-from utils.config_manager import ConfigManager
+DEV = 0
+
+from utils.helper import Service, makeDownloadFolder, start_logging, smart_convert_minutes  # type: ignore
+from utils.config_manager import ConfigManager  # type: ignore
 
 
 class SettingsScreen(MDScreen):
@@ -29,7 +31,7 @@ class SettingsScreen(MDScreen):
         self.interval = self.myconfig.get_interval()
         self.i = 1
 
-        root = MDBoxLayout(orientation="vertical", padding=[dp(20),dp(20),dp(20),dp(100)], spacing=dp(15))
+        root = MDBoxLayout(orientation="vertical", padding=[dp(20), dp(20), dp(20), dp(100)], spacing=dp(15))
 
         # ---------- HEADER ----------
         root.add_widget(Label(
@@ -58,7 +60,7 @@ class SettingsScreen(MDScreen):
         self.interval_input.text_color_normal = [.8, .8, .8, 1]
         self.interval_input.hint_text_color_normal = [.8, .8, .8, 1]
         self.interval_input.hint_text_color_focus = [1, 1, 1, 1]
-        self.interval_input.input_filter="float"
+        self.interval_input.input_filter = "float"
 
         save_btn = Button(text="Save", size_hint_x=0.35)
         save_btn.bind(on_release=self.save_interval)
@@ -100,29 +102,43 @@ class SettingsScreen(MDScreen):
         root.add_widget(stop_btn)
 
         # ---------- TEST BUTTON ----------
-        ai_btn = Button(
-            text="Test Notify",
-            size_hint_y=None,
-            height=dp(50),
-            on_release=lambda widget: self.open_notify_settings()
-        )
-        root.add_widget(ai_btn)
+        if DEV:
+            ai_btn = Button(
+                text="Test Notify",
+                size_hint_y=None,
+                height=dp(50),
+                on_release=lambda widget: self.open_notify_settings()
+            )
+            root.add_widget(ai_btn)
 
-        # Add final layout to screen
+            root.add_widget(Button(text="test android_notify",
+                                   size_hint_y=None,
+                                   height=dp(50),
+                                   on_release=lambda widget: self.android_notify_tests())
+                            )
         self.add_widget(root)
 
-    # ----------------------------
-    # Logic functions
-    # ----------------------------
+    def android_notify_tests(self):
+        try:
+            from tests.android_notify_test import TestAndroidNotifyFull
+            import unittest
+
+            suite = unittest.TestLoader().loadTestsFromTestCase(TestAndroidNotifyFull)
+            unittest.TextTestRunner(verbosity=2).run(suite)
+
+        except Exception as e:
+            print("Error testing android_notify:", e)
+            traceback.print_exc()
+
+    def basic_side(self):
+        try:
+            asks_permission_if_needed()
+        except Exception as e:
+            print('Permission error:', e)
+            traceback.print_exc()
+
     def open_notify_settings(self):
-        # if self.i == 1:
-        #     try:
-        #         asks_permission_if_needed()
-        #     except Exception as e:
-        #         print('Permission error:', e)
-        #         traceback.print_exc()
-        #     self.i = 0
-        #     return
+
         try:
             NotificationHandler.asks_permission()
         except Exception as e:
