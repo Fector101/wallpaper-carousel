@@ -10,6 +10,8 @@ from pythonosc import dispatcher, osc_server, udp_client
 from android_notify import Notification
 from android_notify.config import get_python_service, get_python_activity_context
 
+BuildVersion = autoclass("android.os.Build$VERSION")
+ServiceInfo = autoclass("android.content.pm.ServiceInfo")
 
 def get_service_port():
     service_port = None
