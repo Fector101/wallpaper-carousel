@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_carousel_description"
-    android:initialKeyguardLayout="@layout/image_test_widget"
-    android:initialLayout="@layout/image_test_widget"
+    android:initialKeyguardLayout="@layout/carousel_widget"
+    android:initialLayout="@layout/carousel_widget"
     android:minWidth="80dp"
     android:minHeight="80dp"
     android:minResizeWidth="40dp"
