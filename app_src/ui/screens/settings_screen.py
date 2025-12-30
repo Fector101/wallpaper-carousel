@@ -1,4 +1,3 @@
-import time
 import traceback
 from pathlib import Path
 
@@ -13,14 +12,7 @@ from kivymd.uix.textfield import MDTextField
 
 from android_notify.core import asks_permission_if_needed
 from android_notify import NotificationHandler
-
-try:
-    from kivymd.toast import toast
-    from jnius import autoclass
-except TypeError:
-    def toast(*args):
-        print('Fallback toast:',args)
-
+from ui.widgets.android import toast     # type: ignore
 
 from utils.helper import Service, makeDownloadFolder, start_logging, smart_convert_minutes
 from utils.config_manager import ConfigManager
@@ -29,15 +21,15 @@ from utils.config_manager import ConfigManager
 class SettingsScreen(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.name="settings"
+        self.name = "settings"
         self.md_bg_color = [0.1, 0.1, 0.1, 1]
-        print('manager',self.manager)
         self.app_dir = Path(makeDownloadFolder())
         self.myconfig = ConfigManager()
         self.wallpapers_dir = self.app_dir / ".wallpapers"
         self.interval = self.myconfig.get_interval()
         self.i = 1
-        root = MDBoxLayout(orientation="vertical", padding=dp(20), spacing=dp(15))
+
+        root = MDBoxLayout(orientation="vertical", padding=[dp(20),dp(20),dp(20),dp(100)], spacing=dp(15))
 
         # ---------- HEADER ----------
         root.add_widget(Label(
@@ -61,12 +53,11 @@ class SettingsScreen(MDScreen):
             text=str(self.interval),
             hint_text="mins",
             size_hint_x=0.55,
-            mode="outlined"
-            )
-        self.interval_input.text_color_focus=[1,1,1,1]
-        self.interval_input.text_color_normal=[.8,.8,.8, 1]
-        self.interval_input.hint_text_color_normal=[.8,.8,.8, 1]
-        self.interval_input.hint_text_color_focus=[1,1,1,1]
+        )
+        self.interval_input.text_color_focus = [1, 1, 1, 1]
+        self.interval_input.text_color_normal = [.8, .8, .8, 1]
+        self.interval_input.hint_text_color_normal = [.8, .8, .8, 1]
+        self.interval_input.hint_text_color_focus = [1, 1, 1, 1]
         self.interval_input.input_filter="float"
 
         save_btn = Button(text="Save", size_hint_x=0.35)
@@ -86,7 +77,6 @@ class SettingsScreen(MDScreen):
         # ---------- FLEXIBLE SPACER ----------
         root.add_widget(Widget(size_hint_y=1))
 
-        # ---------- SERVICE BOOSTER (BOTTOM SITS HERE) ----------
         root.add_widget(Label(
             text="Carousel Tools",
             size_hint_y=None,
@@ -101,7 +91,6 @@ class SettingsScreen(MDScreen):
         restart_btn.bind(on_release=self.restart_service)
         root.add_widget(restart_btn)
 
-        #------STOP SERVICE -------
         stop_btn = Button(
             text="Stop Carousel Worker",
             size_hint_y=None,
@@ -110,51 +99,43 @@ class SettingsScreen(MDScreen):
         stop_btn.bind(on_release=self.terminate_carousel)
         root.add_widget(stop_btn)
 
-        # ---------- BACK ----------
-        back_btn = Button(
-            text="Back",
-            size_hint_y=None,
-            height=dp(50),
-            on_release=lambda *_: setattr(self.manager, 'current', 'thumbs')
-        )
-        root.add_widget(back_btn)
-
-        # Tests
-
+        # ---------- TEST BUTTON ----------
         ai_btn = Button(
-            text="test",
+            text="Test Notify",
             size_hint_y=None,
             height=dp(50),
             on_release=lambda widget: self.open_notify_settings()
         )
         root.add_widget(ai_btn)
+
+        # Add final layout to screen
         self.add_widget(root)
+
+    # ----------------------------
+    # Logic functions
+    # ----------------------------
     def open_notify_settings(self):
-        print('Hello world')
-        if self.i == 1:
-            try:
-                asks_permission_if_needed()
-            except Exception as e:
-                print('1error', e)
-                traceback.print_exc()
-            self.i = 0
-            return
+        # if self.i == 1:
+        #     try:
+        #         asks_permission_if_needed()
+        #     except Exception as e:
+        #         print('Permission error:', e)
+        #         traceback.print_exc()
+        #     self.i = 0
+        #     return
         try:
             NotificationHandler.asks_permission()
         except Exception as e:
-            print('1error',e)
-
+            print('Notify error:', e)
         self.i = 1
 
-
-    def terminate_carousel(self,*args):
+    def terminate_carousel(self, *args):
         try:
             Service(name="Wallpapercarousel").stop()
             toast("Successfully Terminated")
         except Exception as e:
-            toast("Stop failed",e)
+            toast("Stop failed", e)
 
-    # SAVE ONLY
     def save_interval(self, *args):
         try:
             new_val = float(self.interval_input.text)
@@ -166,12 +147,10 @@ class SettingsScreen(MDScreen):
             toast("Min allowed is 0.17 mins")
             return
 
-        # app.interval = new_val
         self.myconfig.set_interval(new_val)
         self.interval_label.text = f"Saved: {smart_convert_minutes(new_val)}"
         toast("Saved")
 
-    # RESTART SERVICE ONLY
     def restart_service(self, *args):
 
         def after_stop(*_):

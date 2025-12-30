@@ -4,23 +4,33 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.recycleview import RecycleView
 from kivy.uix.recyclegridlayout import RecycleGridLayout
-from kivy.uix.button import Button
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivymd.uix.screen import MDScreen
 from plyer import filechooser
+from kivy.uix.image import AsyncImage
+from utils.helper import FileOperation, get_or_create_thumbnail  # type: ignore
+from utils.config_manager import ConfigManager   # type: ignore
+from utils.helper import makeDownloadFolder  # type: ignore
+from ui.widgets.buttons import BottomButtonBar   # type: ignore
+from kivymd.uix.button import MDFabButton
+from kivy.properties import StringProperty
+from kivy.uix.behaviors import ButtonBehavior
 
-from utils.helper import FileOperation, get_or_create_thumbnail
-from utils.config_manager import ConfigManager
-from utils.helper import makeDownloadFolder
+
+
+class Thumb(ButtonBehavior, AsyncImage):
+    source_path = StringProperty()
+
 
 class GalleryScreen(MDScreen):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs):  #
         super().__init__(**kwargs)
-        self.name="thumbs"
-        self.wallpapers=[]
+        self.name = "thumbs"
+        self.wallpapers = []
         self.app_dir = Path(makeDownloadFolder())
         self.myconfig = ConfigManager()
         self.wallpapers_dir = self.app_dir / ".wallpapers"
+        self.md_bg_color = [0.1, 0.1, 0.1, 1]
 
         layout = BoxLayout(orientation="vertical", spacing=10, padding=10)
         layout.add_widget(Label(text="Wallpapers", size_hint_y=0.1, font_size="22sp"))
@@ -37,13 +47,31 @@ class GalleryScreen(MDScreen):
         self.rv.viewclass = "Thumb"
         layout.add_widget(self.rv)
 
-        btns = BoxLayout(size_hint_y=0.1, spacing=10)
-        btns.add_widget(Button(text="Add Images", on_release=self.open_filechooser))
-        btns.add_widget(Button(text="Settings", on_release=lambda *_: setattr(self.manager, 'current', 'settings')))
-        layout.add_widget(btns)
+        add_btn = MDFabButton(
+            icon="plus", on_release=self.open_filechooser
+        )
+        add_btn.pos_hint={"right": .9, "center_y": 0.25}
+        add_btn.theme_font_size = "Custom"
+        add_btn.font_size = sp(30)
+        self.add_widget(add_btn)
+        # self.bottom_bar = BottomButtonBar(
+        #     on_camera=None,
+        #     on_settings=None,
+        #     width=dp(120),
+        #     height=dp(500)
+        #
+        # )
+        # self.add_widget(self.bottom_bar)
+
+
         self.add_widget(layout)
 
+
+    # ----------------------------
+    # File chooser & thumbnail logic
+    # ----------------------------
     def open_filechooser(self, *args):
+        print('called filechoser')
         file_operation = FileOperation(self.update_thumbnails_method)
         from jnius import autoclass, cast
 
@@ -65,6 +93,7 @@ class GalleryScreen(MDScreen):
             if img not in self.wallpapers:
                 self.wallpapers.append(img)
         data = []
+        self.rv.data = []
         for i, path in enumerate(self.wallpapers):
             # Use a low-res thumbnail for the preview (fallback to original if thumbnail creation/availability fails)
             thumb = get_or_create_thumbnail(path, dest_dir=self.wallpapers_dir )
@@ -89,3 +118,23 @@ class GalleryScreen(MDScreen):
         print("Loaded wallpapers:", self.wallpapers)
         self.myconfig.set_wallpapers(self.wallpapers)
         self.update_thumbnails_method(self.wallpapers)
+
+
+if __name__ == "__main__":
+    from kivymd.app import MDApp
+
+
+    class WallpaperCarouselApp(MDApp):
+        interval = 2  # default rotation interval
+
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+
+        def build(self):
+            self.sm = GalleryScreen()
+            # self.sm.load_saved()  # uncomment to load saved images
+            return self.sm
+
+
+
+    WallpaperCarouselApp().run()

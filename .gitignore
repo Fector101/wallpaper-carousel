@@ -1,2 +1,4 @@
 .idea
 *.pyc
+.wallpapers
+config.json

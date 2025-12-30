@@ -1,23 +1,16 @@
 import time, os
 import traceback
 
+
 from kivy.uix.screenmanager import NoTransition
 from kivymd.app import MDApp
-from kivy.uix.image import AsyncImage
 from kivy.clock import Clock
-from kivy.properties import StringProperty, ListProperty
-from kivy.uix.behaviors import ButtonBehavior
+from kivy.properties import ObjectProperty
+from kivy.core.text import LabelBase
+from kivy.uix.screenmanager import ScreenManager, SlideTransition
 
-from kivymd.uix.screenmanager import MDScreenManager
-from kivymd.uix.screen import MDScreen
 from android_notify import NotificationHandler
-from utils.helper import makeDownloadFolder
 
-try:
-    from kivymd.toast import toast
-except TypeError:
-    def toast(*args):
-        print('Fallback toast:', args)
 
 from utils.helper import Service, start_logging, get_free_port, save_existing_file_to_public_pictures
 from ui.screens.gallery_screen import GalleryScreen
@@ -26,11 +19,24 @@ from ui.screens.full_screen import FullscreenScreen
 from ui.screens.welcome_screen import WelcomeScreen
 from kivy.core.window import Window
 from kivy.utils import platform
+from ui.widgets.buttons import BottomButtonBar
+from ui.widgets.android import toast
+
+from kivymd.uix.relativelayout import MDRelativeLayout
+from kivy.metrics import dp
 
 
+if platform == 'linux':
+    from kivy import Config
+    #Linux has some weirdness with the touchpad by default... remove it
+    options = Config.options('input')
+    for option in options:
+        if Config.get('input', option) == 'probesysfs':
+            Config.remove_option('input', option)
 
-if platform == 'android':
+elif platform == 'android':
     try:
+        # start_logging()
         from android.permissions import request_permissions, Permission  # type: ignore
 
 
@@ -64,11 +70,6 @@ else:
 
 
 
-
-
-from kivy.core.text import LabelBase
-
-
 class Font:
     def __init__(self, name, base_folder):
         self.base_folder = base_folder
@@ -93,41 +94,50 @@ LabelBase.register(
 )
 
 
-class MyScreenManager(MDScreenManager):
+
+class MyScreenManager(ScreenManager):
+    go_to_settings = go_to_thumbs = ObjectProperty()
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.md_bg_color = [0.05, 0.05, 0.05, 1]  # Manager background
+        self.app = MDApp.get_running_app()
+        # Screens
         self.gallery_screen = GalleryScreen()
         self.full_screen = FullscreenScreen()
-        screen = SettingsScreen()
+        self.settings_screen = SettingsScreen()
         self.welcome_screen = WelcomeScreen()
+
         self.add_widget(self.gallery_screen)
         self.add_widget(self.full_screen)
-        self.add_widget(screen)
+        self.add_widget(self.settings_screen)
         self.add_widget(self.welcome_screen)
-        # print(self.current_screen)
+
         if not NotificationHandler.has_permission():
-            self.transition = NoTransition()
             self.current = "welcome"
 
+    def on_current(self,*args):
+        print('screen',args)
+        screen_name = args[1]
+        is_fullscreen = screen_name == "fullscreen"
+        if is_fullscreen and self.app.bottom_bar:
+            self.app.bottom_bar.hide()
+        elif self.app.bottom_bar:
+            self.app.bottom_bar.show()
+        super().on_current(instance=args[0],value=args[1])
+    def go_to_settings(self, wigdet=None):
+        self.transition = SlideTransition(direction="left")
+        self.current = "settings"
 
+    def go_to_thumbs(self, wigdet=None):
+        self.transition = SlideTransition(direction="right")
+        self.current = "thumbs"
 
     def open_image_in_full_screen(self, index):
         self.full_screen.update_images()
         self.full_screen.carousel.index = index
+        self.transition = NoTransition()  # -left
         self.current = "fullscreen"
 
-
-class Thumb(ButtonBehavior, AsyncImage):
-    source_path = StringProperty()
-
-
-class ThumbListScreen(MDScreen):  # Changed to MDScreen
-    wallpapers = ListProperty([])
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.md_bg_color = [0.1, 0.1, 0.1, 1]  # Now you can set md_bg_color!
 
 
 class WallpaperCarouselApp(MDApp):
@@ -136,13 +146,38 @@ class WallpaperCarouselApp(MDApp):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         print('init... app')
+        self.root_layout = None
         self.sm = None
+        self.bottom_bar = None
+
+    def build(self):
+        print('building app..')
+
+        # Create a root layout to hold ScreenManager + BottomButtonBar
+        self.root_layout = MDRelativeLayout()
+
+        # ScreenManager
+        self.sm = MyScreenManager()
+        self.sm.gallery_screen.load_saved()
+        self.root_layout.add_widget(self.sm)
+
+        # Add global BottomButtonBar
+        self.bottom_bar = BottomButtonBar(
+            on_camera=self.sm.go_to_thumbs,
+            on_settings=self.sm.go_to_settings,
+            width=dp(120),
+            height=dp(500)
+        )
+        self.root_layout.add_widget(self.bottom_bar)
+
+        return self.root_layout
 
     def on_start(self):
         print('starting app...')
+
         def android_service():
             try:
-                Service(name='Wallpapercarousel',args_str=get_free_port()).start()
+                Service(name='Wallpapercarousel', args_str=get_free_port()).start()
             except Exception as error_call_service_on_start:
                 toast(error_call_service_on_start)
                 traceback.print_exc()
@@ -155,13 +190,6 @@ class WallpaperCarouselApp(MDApp):
             self.sm.gallery_screen.load_saved()
         except:
             toast("Error loading saved")
-
-    def build(self):
-        print('building app..')
-        # Change to MDScreenManager
-        self.sm = MyScreenManager()
-        self.sm.gallery_screen.load_saved()
-        return self.sm
 
 
 if __name__ == '__main__':
