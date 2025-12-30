@@ -25,7 +25,7 @@ def generate_receivers(package: str) -> str:
             meta_resource="@xml/button_widget_provider",
         ),
         Receiver(
-            name="Image1",
+            name="CarouselProvider",
             actions=[
                 "android.intent.action.BOOT_COMPLETED",
                 "android.appwidget.action.APPWIDGET_UPDATE",
