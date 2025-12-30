@@ -10,7 +10,7 @@
     android:maxResizeWidth="120dp"
     android:maxResizeHeight="120dp"
     android:previewImage="@drawable/ic_launcher_foreground"
-    android:previewLayout="@layout/image_test_widget"
+    android:previewLayout="@layout/carousel_widget"
     android:resizeMode="horizontal|vertical"
     android:targetCellWidth="2"
     android:targetCellHeight="2"
