@@ -21,9 +21,9 @@ import java.io.IOException;
 
 import org.wally.waller.R;
 
-public class Image1 extends AppWidgetProvider {
+public class CarouselProvider extends AppWidgetProvider {
 
-    private static final String TAG = "Image1";
+    private static final String TAG = "CarouselProvider";
 
     @Override
     public void onUpdate(
