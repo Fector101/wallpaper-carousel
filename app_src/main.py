@@ -17,6 +17,7 @@ from ui.screens.gallery_screen import GalleryScreen
 from ui.screens.settings_screen import SettingsScreen
 from ui.screens.full_screen import FullscreenScreen
 from ui.screens.welcome_screen import WelcomeScreen
+from ui.screens.logs_screen import LogsScreen
 from kivy.core.window import Window
 from kivy.utils import platform
 from ui.widgets.buttons import BottomButtonBar
@@ -106,11 +107,13 @@ class MyScreenManager(ScreenManager):
         self.full_screen = FullscreenScreen()
         self.settings_screen = SettingsScreen()
         self.welcome_screen = WelcomeScreen()
+        self.log_screen = LogsScreen()
 
         self.add_widget(self.gallery_screen)
         self.add_widget(self.full_screen)
         self.add_widget(self.settings_screen)
         self.add_widget(self.welcome_screen)
+        self.add_widget(self.log_screen)
 
         if not NotificationHandler.has_permission():
             self.current = "welcome"
