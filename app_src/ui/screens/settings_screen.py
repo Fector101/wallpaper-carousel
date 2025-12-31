@@ -18,7 +18,23 @@ DEV = 0
 
 from utils.helper import Service, makeDownloadFolder, start_logging, smart_convert_minutes  # type: ignore
 from utils.config_manager import ConfigManager  # type: ignore
-
+from kivy.properties import ObjectProperty
+from kivy.uix.behaviors import ButtonBehavior
+class MyLabel(ButtonBehavior, Label):
+    screen_manger=ObjectProperty()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.times_tapped=0
+        self.on_release=self.tapped
+        self.size_hint=[1,None]
+        self.height=100
+    def tapped(self,*args):
+    	self.times_tapped+=1
+    	if self.times_tapped==4:
+    		print(self.parent.parent,"self.parent.parent")
+    		self.parent.parent.parent.current="logs"
+    		self.times_tapped=0
+    		
 
 class SettingsScreen(MDScreen):
     def __init__(self, **kwargs):
@@ -109,6 +125,16 @@ class SettingsScreen(MDScreen):
             on_release=lambda widget: self.export_waller_folder()
         )
         root.add_widget(ai_btn)
+        text = MyLabel(
+            text="--- v1.0.1 ---",
+            size_hint_y=None,
+            height=dp(50),
+            #screen_manger=self.manager
+        )
+        
+        #text.color=
+        root.add_widget(text)
+        
         if DEV:
             root.add_widget(Button(text="test android_notify",
                                    size_hint_y=None,
