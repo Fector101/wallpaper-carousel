@@ -14,27 +14,30 @@ from android_notify.core import asks_permission_if_needed
 from android_notify import NotificationHandler
 from ui.widgets.android import toast  # type: ignore
 
-DEV = 0
+DEV = 1
 
 from utils.helper import Service, makeDownloadFolder, start_logging, smart_convert_minutes  # type: ignore
 from utils.config_manager import ConfigManager  # type: ignore
 from kivy.properties import ObjectProperty
 from kivy.uix.behaviors import ButtonBehavior
+
+from kivy.uix.scrollview import ScrollView
 class MyLabel(ButtonBehavior, Label):
-    screen_manger=ObjectProperty()
+    # on_release = ObjectProperty()
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.times_tapped=0
-        self.on_release=self.tapped
-        self.size_hint=[1,None]
-        self.height=100
-    def tapped(self,*args):
-    	self.times_tapped+=1
-    	if self.times_tapped==4:
-    		print(self.parent.parent,"self.parent.parent")
-    		self.parent.parent.parent.current="logs"
-    		self.times_tapped=0
-    		
+        # self.on_release = self.tapped
+        self.size_hint = [1, None]
+        self.height = 100
+
+    # def tapped(self, *args):
+    #     self.times_tapped += 1
+    #     if self.times_tapped == 4:
+    #         print(self.parent.parent.parent.parent.parent, "self.parent.parent")
+    #         self.parent.parent.parent.parent.current = "logs"
+    #         self.times_tapped = 0
+
 
 class SettingsScreen(MDScreen):
     def __init__(self, **kwargs):
@@ -45,9 +48,18 @@ class SettingsScreen(MDScreen):
         self.myconfig = ConfigManager()
         self.wallpapers_dir = self.app_dir / "wallpapers"
         self.interval = self.myconfig.get_interval()
-        self.i = 1
+        self.times_tapped = 0
 
-        root = MDBoxLayout(orientation="vertical", padding=[dp(20), dp(20), dp(20), dp(100)], spacing=dp(15))
+        # ---------- SCROLLVIEW ----------
+        scroll = ScrollView(size_hint=(1, 1))
+
+        root = MDBoxLayout(
+            orientation="vertical",
+            padding=[dp(20), dp(20), dp(20), dp(100)],
+            spacing=dp(15),
+            size_hint_y=None
+        )
+        root.bind(minimum_height=root.setter("height"))  # makes height dynamic based on content
 
         # ---------- HEADER ----------
         root.add_widget(Label(
@@ -125,23 +137,30 @@ class SettingsScreen(MDScreen):
             on_release=lambda widget: self.export_waller_folder()
         )
         root.add_widget(ai_btn)
+
+
+
+        if DEV:
+            root.add_widget(Button(
+                text="test android_notify",
+                size_hint_y=None,
+                height=dp(50),
+                on_release=lambda widget: self.android_notify_tests()
+            ))
         text = MyLabel(
             text="--- v1.0.1 ---",
             size_hint_y=None,
             height=dp(50),
-            #screen_manger=self.manager
+            on_release=self.open_logs_screen
         )
-        
-        #text.color=
         root.add_widget(text)
-        
-        if DEV:
-            root.add_widget(Button(text="test android_notify",
-                                   size_hint_y=None,
-                                   height=dp(50),
-                                   on_release=lambda widget: self.android_notify_tests())
-                            )
-        self.add_widget(root)
+        scroll.add_widget(root)  # wrap root in scrollview
+        self.add_widget(scroll)
+    def open_logs_screen(self,widget=None):
+        self.times_tapped += 1
+        if self.times_tapped == 4:
+            self.manager.current = "logs"
+            self.times_tapped = 0
 
     def android_notify_tests(self):
         try:
@@ -168,7 +187,6 @@ class SettingsScreen(MDScreen):
             NotificationHandler.asks_permission()
         except Exception as e:
             print('Notify error:', e)
-        self.i = 1
 
     def terminate_carousel(self, *args):
         try:
@@ -206,7 +224,6 @@ class SettingsScreen(MDScreen):
             Clock.schedule_once(after_stop, 1.2)
         except:
             toast("Stop failed")
-
 
     def export_waller_folder(self, instance=None):
         """
@@ -337,4 +354,3 @@ class SettingsScreen(MDScreen):
 
         print("exported_uris:", exported_uris)
         return exported_uris
-

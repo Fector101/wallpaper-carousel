@@ -75,7 +75,7 @@ class GalleryScreen(MDScreen):
 
 
     def open_filechooser(self, *args):
-        print('called filechoser')
+        # print('called filechoser')
         file_operation = FileOperation(self.update_thumbnails_method)
         from jnius import autoclass, cast
 
@@ -103,13 +103,13 @@ class GalleryScreen(MDScreen):
             for  i, path in enumerate(self.wallpapers):
                 # Use a low-res thumbnail for the preview (fallback to original if thumbnail creation/availability fails)
                 thumb = get_or_create_thumbnail(path, dest_dir=self.wallpapers_dir )
-                print("Thumbnail for", path, "is", thumb)
+                # print("Thumbnail for", path, "is", thumb)
                 data.append({
                     "source": str(thumb) if thumb else str(path),
                     "source_path": path,
                     "on_release": lambda p=path, idx=i: self.open_fullscreen_for_image(p, idx)
                 })
-            print("Thumbnail data length:", len(data))
+            # print("Thumbnail data length:", len(data))
 
             self.rv.data = data
 
@@ -202,7 +202,7 @@ class GalleryScreen(MDScreen):
             str(p) for p in self.wallpapers_dir.glob("*")
             if p.suffix.lower() in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"]
         ]
-        print("Loaded wallpapers:", self.wallpapers)
+        # print("Loaded wallpapers:", len(self.wallpapers))
         self.myconfig.set_wallpapers(self.wallpapers)
         self.update_thumbnails_method(self.wallpapers)
 

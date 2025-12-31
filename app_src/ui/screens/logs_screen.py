@@ -10,11 +10,10 @@ from kivy.uix.button import Button
 from kivy.metrics import dp, sp
 from kivy.utils import get_color_from_hex
 from kivy.core.clipboard import Clipboard
+from kivy.uix.screenmanager import NoTransition
 
 from kivymd.uix.screen import MDScreen
-from kivymd.app import MDApp
 
-from utils.helper import makeDownloadFolder
 
 # ---------- CONFIG ----------
 LOG_HORIZONTAL_PADDING = dp(10)
@@ -40,10 +39,9 @@ class LogsScreen(MDScreen):
         self._auto_update_started = False
 
         # ---------- LOG FILE SETUP ----------
-        base_dir = makeDownloadFolder()
-        self.logs_dir = os.path.join(base_dir, "logs")
+
         os.makedirs(self.logs_dir, exist_ok=True)
-        self.log_file_path = os.path.join(self.logs_dir, "all_output.txt")
+        self.log_file_path = os.path.join(self.logs_dir, "all_output1.txt")
 
         # ---------- UI ----------
         main = BoxLayout(orientation="vertical", padding=dp(10), spacing=dp(10))
@@ -53,9 +51,14 @@ class LogsScreen(MDScreen):
         title = Label(text="Application Logs", color=(1,1,1,1))
         top_bar.add_widget(title)
 
-        start_btn = Button(text="Start Loading", size_hint_x=None, width=dp(120))
+        start_btn = Button(text="Start Loading", size_hint_x=None, width=dp(90),font_size=sp(13))
         start_btn.bind(on_release=self.start_loading)
+
+        back_btn = Button(text="Go Back", size_hint_x=None, width=dp(70),font_size=sp(13))
+        back_btn.bind(on_release=self.back_to_settings_screen)
+
         top_bar.add_widget(start_btn)
+        top_bar.add_widget(back_btn )
         main.add_widget(top_bar)
 
         # Scroll area
@@ -81,8 +84,19 @@ class LogsScreen(MDScreen):
 
         # Pending lines buffer
         self._pending_lines = []
-
-    # ---------- HELPERS ----------
+    @property
+    def logs_dir(self):
+        try:
+            from utils.helper import makeDownloadFolder
+            base_dir = makeDownloadFolder()
+            return  os.path.join(base_dir, "logs")
+        except ModuleNotFoundError:
+            from kivy.core.window import Window
+            Window.size = (370, 700)
+            return os.getcwd()
+    def back_to_settings_screen(self,*args):
+        self.manager.transition = NoTransition()
+        self.manager.current = "settings"
     def _detect_level(self, text):
         t = text.upper()
         if "ERROR" in t or "EXCEPTION" in t or "TRACEBACK" in t:

@@ -1,4 +1,6 @@
 .idea
 *.pyc
 .wallpapers
+wallpapers
+logs/*
 config.json

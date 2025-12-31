@@ -2,7 +2,7 @@ print("Entered python Service File...")
 try:
     from utils.helper import start_logging, makeDownloadFolder
 
-    # start_logging()
+    start_logging()
     print("Service Logging started. All console output will also be saved.")
 except Exception as e:
     print("File Logger Failed", e)

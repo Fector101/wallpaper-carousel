@@ -26,7 +26,10 @@ from ui.widgets.android import toast
 from kivymd.uix.relativelayout import MDRelativeLayout
 from kivy.metrics import dp
 
-
+try:
+    start_logging()
+except Exception as error_saving_logs:
+    print('Error directing logs:', error_saving_logs)
 if platform == 'linux':
     from kivy import Config
     #Linux has some weirdness with the touchpad by default... remove it
@@ -34,10 +37,10 @@ if platform == 'linux':
     for option in options:
         if Config.get('input', option) == 'probesysfs':
             Config.remove_option('input', option)
+    Window.size = (370, 700)
 
 elif platform == 'android':
     try:
-        # start_logging()
         from android.permissions import request_permissions, Permission  # type: ignore
 
 
@@ -54,10 +57,7 @@ elif platform == 'android':
         check_permissions()
     except Exception as error_call_service_on_start:
         print('Fallback toast:', error_call_service_on_start)
-    # try:
-    #     # start_logging()
-    # except Exception as error_saving_logs:
-    #     print('Fallback toast:', error_saving_logs)
+
 
     try:
         my_img = os.path.join(os.path.join(os.getcwd(), "assets", "images", "test.jpg"))
@@ -66,8 +66,6 @@ elif platform == 'android':
         print("Error loading images", e)
         traceback.print_exc()
 
-else:
-    Window.size = (400, 700)
 
 
 
@@ -115,17 +113,16 @@ class MyScreenManager(ScreenManager):
         self.add_widget(self.welcome_screen)
         self.add_widget(self.log_screen)
 
-        if not NotificationHandler.has_permission():
-            self.current = "welcome"
 
     def on_current(self,*args):
         screen_name = args[1]
-        is_fullscreen = screen_name == "fullscreen" or screen_name == "welcome"
+        is_fullscreen = screen_name == "fullscreen" or screen_name == "welcome" or screen_name == "logs"
         if is_fullscreen and self.app.bottom_bar:
             self.app.bottom_bar.hide()
         elif self.app.bottom_bar:
             self.app.bottom_bar.show()
         super().on_current(instance=args[0],value=args[1])
+
     def go_to_settings(self, wigdet=None):
         self.transition = SlideTransition(direction="left")
         self.current = "settings"
@@ -137,7 +134,7 @@ class MyScreenManager(ScreenManager):
     def open_image_in_full_screen(self, index):
         self.full_screen.update_images()
         self.full_screen.carousel.index = index
-        self.transition = NoTransition()  # -left
+        self.transition = NoTransition()
         self.current = "fullscreen"
 
 
@@ -171,6 +168,9 @@ class WallpaperCarouselApp(MDApp):
             height=dp(500)
         )
         self.root_layout.add_widget(self.bottom_bar)
+
+        if not NotificationHandler.has_permission():
+            self.sm.current = "welcome"
 
         return self.root_layout
 
