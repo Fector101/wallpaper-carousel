@@ -21,9 +21,9 @@ import java.io.IOException;
 
 import org.wally.waller.R;
 
-public class CarouselProvider extends AppWidgetProvider {
+public class CarouselWidgetProvider extends AppWidgetProvider {
 
-    private static final String TAG = "CarouselProvider";
+    private static final String TAG = "CarouselWidgetProvider";
 
     @Override
     public void onUpdate(

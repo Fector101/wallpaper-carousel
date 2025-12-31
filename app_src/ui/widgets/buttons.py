@@ -86,12 +86,10 @@ class MyRoundButton(Button):    # (RoundedButton):
 
 
 
-# Give btns better colour
 from kivymd.uix.relativelayout import MDRelativeLayout
 from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.button import MDIconButton, MDFabButton
-from kivymd.uix.label import MDIcon
-from kivy.metrics import dp, sp
+from kivymd.uix.button import MDIconButton
+from kivy.metrics import dp
 from kivy.graphics import Color, RoundedRectangle
 
 class BottomButtonBar(MDRelativeLayout):

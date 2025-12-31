@@ -25,7 +25,7 @@ source.include_exts = py,png,jpg,kv,atlas,ttf,json,xml,wav
 #source.exclude_exts = spec, __pycache__
 
 # (list) List of directory to exclude (let empty to not exclude anything)
-source.exclude_dirs = tests, bin, venv,lab, worked, __pycache__, .idea, dist, for-download,laner-linux, .filereader
+source.exclude_dirs = bin, venv,lab, worked, __pycache__, .idea, dist, for-download,laner-linux, .filereader, wallpapers
 
 # (list) List of exclusions using pattern matching
 # Do not prefix with './'
@@ -40,7 +40,7 @@ version = 1.0.1
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,kivy,https://github.com/kivymd/KivyMD/archive/master.zip,python-osc,https://github.com/kivy/plyer/archive/master.zip,materialyoucolor,asynckivy,asyncgui,pyjnius, docutils,netifaces,filetype,requests_toolbelt,websockets,pillow, https://github.com/Fector101/android_notify/archive/main.zip, android-widgets
+requirements = python3,kivy,https://github.com/kivymd/KivyMD/archive/master.zip,python-osc,https://github.com/kivy/plyer/archive/master.zip,materialyoucolor,asynckivy,asyncgui,pyjnius, docutils,netifaces,filetype,requests_toolbelt,websockets,pillow, android-widgets, https://github.com/Fector101/android_notify/archive/feature/pass-action-to-btns.zip
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
 # requirements.source.kivy = ../../kivy

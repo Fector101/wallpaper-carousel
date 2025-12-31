@@ -2,7 +2,7 @@ print("Entered python Service File...")
 try:
     from utils.helper import start_logging, makeDownloadFolder
 
-    start_logging()
+    # start_logging()
     print("Service Logging started. All console output will also be saved.")
 except Exception as e:
     print("File Logger Failed", e)
@@ -30,7 +30,7 @@ PythonActivity = autoclass('org.kivy.android.PythonActivity')
 AndroidString = autoclass("java.lang.String")
 
 # --- Folder setup ---
-download_folder_path = os.path.join(makeDownloadFolder(), ".wallpapers")
+download_folder_path = os.path.join(makeDownloadFolder(), "wallpapers")
 
 
 def get_service_port():
@@ -39,6 +39,13 @@ def get_service_port():
         service_port = int(environ.get('PYTHON_SERVICE_ARGUMENT', '5006'))
     except (TypeError, ValueError):
         service_port = 5006
+    try:
+        current_wallpaper_store_path = os.path.join(get_app_root_path(), 'port.txt')
+        with open(current_wallpaper_store_path, "w") as f:
+            f.write(str(service_port))
+    except Exception as error_write_port:
+        print("Error writing wallpaper port:", error_write_port)
+        traceback.print_exc()
     return service_port
 
 
@@ -53,6 +60,7 @@ def get_next_wallpaper():
             for f in os.listdir(download_folder_path)
             if f.lower().endswith((".jpg", ".jpeg", ".png"))
         ]
+        # print("service found:",images)
         if not images:
             print(f"Warning: No images found in {download_folder_path}")
             return '', ''
@@ -125,6 +133,8 @@ context = get_python_activity_context()
 wm = WallpaperManager.getInstance(context)
 
 notification = Notification(title="Next in 02:00", message="service lifespan: 6hrs")
+notification.addButton(text="Stop", receiver_name="CarouselReceiver", action="ACTION_STOP")
+notification.addButton(text="Skip", receiver_name="CarouselReceiver", action="ACTION_SKIP")
 builder = notification.start_building()
 service.startForeground(notification.id, builder.build(), foreground_type)
 service.setAutoRestartService(True)  # auto-restart if killed
@@ -132,6 +142,7 @@ service.setAutoRestartService(True)  # auto-restart if killed
 
 class MyWallpaperReceiver:
     def __init__(self):
+        self.skip_now = False
         self.live = True
         self.next_wallpaper_path = ''
         self.current_sleep = 1
@@ -144,11 +155,13 @@ class MyWallpaperReceiver:
 
     def __count_down(self):
         self.current_wait_seconds = get_interval()
-        print(self.current_wait_seconds,'here it is')
-        while self.current_wait_seconds:
+        while self.current_wait_seconds > 0:
 
             time.sleep(self.current_sleep)
             self.current_wait_seconds -= 1
+            if self.current_wait_seconds <= 0:
+                notification.updateTitle(f"Next in {format_time_remaining(get_interval())}")
+                break
             notification.updateTitle(f"Next in {format_time_remaining(self.current_wait_seconds)}")
 
             current_time = time.time()
@@ -170,9 +183,11 @@ class MyWallpaperReceiver:
             # time.sleep(get_interval())
             self.__count_down()
 
-            # Then change wallpaper
-            change_wallpaper(self.next_wallpaper_path)
-            self.__write_wallpaper_path_to_file(self.next_wallpaper_path)
+            if not self.skip_now:
+                # Then change wallpaper
+                change_wallpaper(self.next_wallpaper_path)
+                self.__write_wallpaper_path_to_file(self.next_wallpaper_path)
+            self.skip_now = False
 
     def __write_wallpaper_path_to_file(self, wallpaper_path):
         # Writing for Java to see for home screen widget
@@ -211,9 +226,12 @@ class MyWallpaperReceiver:
         # self.__start_main_loop()
         pass
 
-    def stop(self, data=None):
+    def stop(self, *args):
+        print("stop args:",args)
+        self.current_wait_seconds = 0
         self.live = False
-        notification.cancel()
+        # notification.cancel() android auto removes it
+        service.stopSelf()
 
     def pause(self, data=None):
         notification.updateTitle("Carousel Pause")
@@ -223,18 +241,18 @@ class MyWallpaperReceiver:
     def resume(self, data=None):
         self.current_sleep = 1
 
-    def next(self, data=None):
+    def set_next_data(self, *args):
+        print("next args:",args)
+        self.skip_now = True
         self.current_wait_seconds = 0
 
     def set_wallpaper(self, wallpaper_path):
         change_wallpaper(wallpaper_path)
 
-    def destroy(self, data=None):
-        service.stopSelf()
 
 
     def changed_widget_text(self):
-        appWidgetManager = AppWidgetManager("CarouselProvider")
+        appWidgetManager = AppWidgetManager("CarouselWidgetProvider")
 
         text_layout = Layout("carousel_widget")
         views = RemoteViews(layout=text_layout)
@@ -318,7 +336,7 @@ class MyWallpaperReceiver:
         views = RemoteViews(package_name, layout_id)
         views.setImageViewBitmap(image_id, output)
 
-        component = ComponentName(context, f"{package_name}.CarouselProvider")
+        component = ComponentName(context, f"{package_name}.CarouselWidgetProvider")
         appWidgetManager = AppWidgetManager.getInstance(context)
         ids = appWidgetManager.getAppWidgetIds(component)
         appWidgetManager.updateAppWidget(ids, views)
@@ -333,9 +351,8 @@ myDispatcher = dispatcher.Dispatcher()
 myDispatcher.map("/start", myWallpaperReceiver.start)
 myDispatcher.map("/pause", myWallpaperReceiver.pause)
 myDispatcher.map("/resume", myWallpaperReceiver.resume)
-myDispatcher.map("/next", myWallpaperReceiver.next)
+myDispatcher.map("/next", myWallpaperReceiver.set_next_data)
 myDispatcher.map("/stop", myWallpaperReceiver.stop)
-myDispatcher.map("/destroy", myWallpaperReceiver.destroy)
 myDispatcher.map("/set", myWallpaperReceiver.set_wallpaper)
 
 server = osc_server.ThreadingOSCUDPServer(("0.0.0.0", get_service_port()), myDispatcher)

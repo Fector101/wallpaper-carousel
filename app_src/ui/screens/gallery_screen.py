@@ -17,8 +17,6 @@ from kivy.properties import StringProperty
 from kivy.uix.behaviors import ButtonBehavior
 
 
-
-
 class MyMDRecycleGridLayout(RecycleGridLayout):
     icon_active = StringProperty()
     icon_inactive_color = StringProperty()
@@ -26,19 +24,18 @@ class MyMDRecycleGridLayout(RecycleGridLayout):
         super().__init__(**kwargs)
 
 
-
 class Thumb(ButtonBehavior, AsyncImage):
     source_path = StringProperty()
 
 
 class GalleryScreen(MDScreen):
-    def __init__(self, **kwargs):  #
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.name = "thumbs"
         self.wallpapers = []
         self.app_dir = Path(makeDownloadFolder())
         self.myconfig = ConfigManager()
-        self.wallpapers_dir = self.app_dir / ".wallpapers"
+        self.wallpapers_dir = self.app_dir / "wallpapers"
         self.md_bg_color = [0.1, 0.1, 0.1, 1]
 
         layout = BoxLayout(orientation="vertical", spacing=10, padding=10)
@@ -57,11 +54,14 @@ class GalleryScreen(MDScreen):
         layout.add_widget(self.rv)
 
         add_btn = MDFabButton(
-            icon="plus", on_release=self.open_filechooser
+            icon="plus",
+            on_release=self.open_filechooser
         )
+
         add_btn.pos_hint={"right": .9, "center_y": 0.25}
         add_btn.theme_font_size = "Custom"
         add_btn.font_size = sp(30)
+        self.add_widget(layout)
         self.add_widget(add_btn)
         # self.bottom_bar = BottomButtonBar(
         #     on_camera=None,
@@ -73,12 +73,7 @@ class GalleryScreen(MDScreen):
         # self.add_widget(self.bottom_bar)
 
 
-        self.add_widget(layout)
 
-
-    # ----------------------------
-    # File chooser & thumbnail logic
-    # ----------------------------
     def open_filechooser(self, *args):
         print('called filechoser')
         file_operation = FileOperation(self.update_thumbnails_method)
@@ -103,23 +98,106 @@ class GalleryScreen(MDScreen):
                 self.wallpapers.append(img)
         data = []
         self.rv.data = []
-        for i, path in enumerate(self.wallpapers):
-            # Use a low-res thumbnail for the preview (fallback to original if thumbnail creation/availability fails)
-            thumb = get_or_create_thumbnail(path, dest_dir=self.wallpapers_dir )
-            print("Thumbnail for", path, "is", thumb)
-            data.append({
-                "source": thumb if thumb else path,
-                "source_path": path,
-                "on_release": lambda p=path, idx=i: self.open_fullscreen_for_image(p, idx)
-            })
-        print("Thumbnail data length:", len(data))
-        self.rv.data = data
+        try:
+
+            for  i, path in enumerate(self.wallpapers):
+                # Use a low-res thumbnail for the preview (fallback to original if thumbnail creation/availability fails)
+                thumb = get_or_create_thumbnail(path, dest_dir=self.wallpapers_dir )
+                print("Thumbnail for", path, "is", thumb)
+                data.append({
+                    "source": str(thumb) if thumb else str(path),
+                    "source_path": path,
+                    "on_release": lambda p=path, idx=i: self.open_fullscreen_for_image(p, idx)
+                })
+            print("Thumbnail data length:", len(data))
+
+            self.rv.data = data
+
+        except Exception as error_updating_recycle_view:
+            print(error_updating_recycle_view)
+            traceback.print_exc()
 
     def open_fullscreen_for_image(self, path, index):
-        print(path, index)
+        # print(path, index)
         self.manager.open_image_in_full_screen(index)
 
+
+    # def fetch_recovered_images(self, dt=0):
+    #     MediaStoreImages = autoclass('android.provider.MediaStore$Images$Media')
+    #     ContentUris = autoclass('android.content.ContentUris')
+    #     BuildVersion = autoclass("android.os.Build$VERSION")
+    #
+    #     context = get_python_activity_context()
+    #     resolver = context.getContentResolver()
+    #
+    #     folder_name = "Waller/wallpapers"
+    #     image_uris = []
+    #
+    #     projection = [MediaStoreImages._ID]
+    #     query_uri = MediaStoreImages.EXTERNAL_CONTENT_URI
+    #     sort_order = MediaStoreImages.DATE_ADDED + " DESC"
+    #
+    #     sdk = BuildVersion.SDK_INT
+    #     log.warning(f"SDK VERSION = {sdk}")
+    #
+    #     # ----------------------------
+    #     # ANDROID 10+ (API 29+)
+    #     # ----------------------------
+    #     if sdk >= 29:
+    #         selection = MediaStoreImages.RELATIVE_PATH + " LIKE ?"
+    #         selection_args = [f"%Pictures/{folder_name}/%"]
+    #
+    #         cursor = resolver.query(
+    #             query_uri,
+    #             projection,
+    #             selection,
+    #             selection_args,
+    #             sort_order
+    #         )
+    #
+    #         if cursor:
+    #             try:
+    #                 id_col = cursor.getColumnIndexOrThrow(MediaStoreImages._ID)
+    #                 while cursor.moveToNext():
+    #                     image_id = cursor.getLong(id_col)
+    #                     uri = ContentUris.withAppendedId(query_uri, image_id)
+    #                     image_uris.append(str(uri))
+    #             finally:
+    #                 cursor.close()
+    #
+    #     # ----------------------------
+    #     # FALLBACK (Android 9 and below OR empty)
+    #     # ----------------------------
+    #     if not image_uris:
+    #         log.warning("Falling back to DATA path query")
+    #
+    #         selection = MediaStoreImages.DATA + " LIKE ?"
+    #         selection_args = [f"%/Pictures/{folder_name}/%"]
+    #
+    #         cursor = resolver.query(
+    #             query_uri,
+    #             projection,
+    #             selection,
+    #             selection_args,
+    #             sort_order
+    #         )
+    #
+    #         if cursor:
+    #             try:
+    #                 id_col = cursor.getColumnIndexOrThrow(MediaStoreImages._ID)
+    #                 while cursor.moveToNext():
+    #                     image_id = cursor.getLong(id_col)
+    #                     uri = ContentUris.withAppendedId(query_uri, image_id)
+    #                     image_uris.append(str(uri))
+    #             finally:
+    #                 cursor.close()
+    #
+    #     log.warning(f"FOUND {len(image_uris)} IMAGES")
+    #     return image_uris
+
     def load_saved(self):
+        # peek = [str(p) for p in self.wallpapers_dir.glob("*") if True]
+        # print("Peek:", peek)
         self.wallpapers = [
             str(p) for p in self.wallpapers_dir.glob("*")
             if p.suffix.lower() in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"]
@@ -127,6 +205,8 @@ class GalleryScreen(MDScreen):
         print("Loaded wallpapers:", self.wallpapers)
         self.myconfig.set_wallpapers(self.wallpapers)
         self.update_thumbnails_method(self.wallpapers)
+
+        # Clock.schedule_once(self.fetch_recovered_images,2)
 
 
 if __name__ == "__main__":

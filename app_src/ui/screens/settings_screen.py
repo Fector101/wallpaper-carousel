@@ -27,7 +27,7 @@ class SettingsScreen(MDScreen):
         self.md_bg_color = [0.1, 0.1, 0.1, 1]
         self.app_dir = Path(makeDownloadFolder())
         self.myconfig = ConfigManager()
-        self.wallpapers_dir = self.app_dir / ".wallpapers"
+        self.wallpapers_dir = self.app_dir / "wallpapers"
         self.interval = self.myconfig.get_interval()
         self.i = 1
 
@@ -102,15 +102,14 @@ class SettingsScreen(MDScreen):
         root.add_widget(stop_btn)
 
         # ---------- TEST BUTTON ----------
+        ai_btn = Button(
+            text="export_waller_folder",
+            size_hint_y=None,
+            height=dp(50),
+            on_release=lambda widget: self.export_waller_folder()
+        )
+        root.add_widget(ai_btn)
         if DEV:
-            ai_btn = Button(
-                text="Test Notify",
-                size_hint_y=None,
-                height=dp(50),
-                on_release=lambda widget: self.open_notify_settings()
-            )
-            root.add_widget(ai_btn)
-
             root.add_widget(Button(text="test android_notify",
                                    size_hint_y=None,
                                    height=dp(50),
@@ -181,3 +180,135 @@ class SettingsScreen(MDScreen):
             Clock.schedule_once(after_stop, 1.2)
         except:
             toast("Stop failed")
+
+
+    def export_waller_folder(self, instance=None):
+        """
+        Export all images from app-private 'wallpapers' folder
+        to public Pictures/Waller/ folder.
+
+        API 29+  : MediaStore + IS_PENDING
+        API < 29 : Direct filesystem write + MediaScanner
+
+        Returns:
+            list[str]: content:// URIs (29+) or file paths (<29)
+        """
+
+        from jnius import autoclass
+        import os
+        from android_notify.config import get_python_activity_context
+
+        # Android core
+        MediaStoreImages = autoclass("android.provider.MediaStore$Images$Media")
+        ContentValues = autoclass("android.content.ContentValues")
+        Environment = autoclass("android.os.Environment")
+        BuildVersion = autoclass("android.os.Build$VERSION")
+        Integer = autoclass("java.lang.Integer")
+
+        # Fast native copy (safe)
+        Files = autoclass("java.nio.file.Files")
+        Paths = autoclass("java.nio.file.Paths")
+
+        # Media scanner (pre-29)
+        MediaScannerConnection = autoclass(
+            "android.media.MediaScannerConnection"
+        )
+
+        context = get_python_activity_context()
+        resolver = context.getContentResolver()
+        exported_uris = []
+
+        # Internal app folder
+        folder_path = os.path.join(makeDownloadFolder(), 'wallpapers')
+        if not os.path.isdir(folder_path):
+            return exported_uris
+
+        for filename in os.listdir(folder_path):
+            if not filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                continue
+
+            source_path = os.path.join(folder_path, filename)
+
+            # MIME type
+            if filename.lower().endswith(".png"):
+                mime = "image/png"
+            elif filename.lower().endswith(".webp"):
+                mime = "image/webp"
+            else:
+                mime = "image/jpeg"
+
+            # ─────────────────────────────────────────────
+            # API < 29 → Direct filesystem + MediaScanner
+            # ─────────────────────────────────────────────
+            if BuildVersion.SDK_INT < 29:
+                pictures = Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_PICTURES
+                ).getAbsolutePath()
+
+                dest_dir = os.path.join(pictures, "Waller")
+                os.makedirs(dest_dir, exist_ok=True)
+                dest_path = os.path.join(dest_dir, filename)
+
+                try:
+                    with open(source_path, "rb") as src, open(dest_path, "wb") as dst:
+                        dst.write(src.read())
+
+                    MediaScannerConnection.scanFile(
+                        context,
+                        [dest_path],
+                        [mime],
+                        None
+                    )
+
+                    exported_uris.append(dest_path)
+
+                except Exception as e:
+                    print("Pre-29 export error:", e)
+
+                continue
+
+            # ─────────────────────────────────────────────
+            # API 29+ → MediaStore (scoped storage)
+            # ─────────────────────────────────────────────
+            values = ContentValues()
+            values.put(MediaStoreImages.DISPLAY_NAME, filename)
+            values.put(MediaStoreImages.MIME_TYPE, mime)
+            values.put(
+                MediaStoreImages.RELATIVE_PATH,
+                Environment.DIRECTORY_PICTURES + "/Waller"
+            )
+            values.put(MediaStoreImages.IS_PENDING, Integer(1))
+
+            uri = resolver.insert(
+                MediaStoreImages.EXTERNAL_CONTENT_URI,
+                values
+            )
+
+            if not uri:
+                continue
+
+            try:
+                out = resolver.openOutputStream(uri)
+
+                # Fast, safe native copy
+                Files.copy(
+                    Paths.get(source_path),
+                    out
+                )
+
+                out.flush()
+                out.close()
+
+                values.clear()
+                values.put(MediaStoreImages.IS_PENDING, Integer(0))
+                resolver.update(uri, values, None, None)
+
+                exported_uris.append(str(uri))
+
+            except Exception as e:
+                print("MediaStore export error:", e)
+                resolver.delete(uri, None, None)
+
+        print("exported_uris:", exported_uris)
+        return exported_uris
+

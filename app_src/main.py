@@ -1,4 +1,4 @@
-import time, os
+import os
 import traceback
 
 
@@ -53,10 +53,10 @@ elif platform == 'android':
         check_permissions()
     except Exception as error_call_service_on_start:
         print('Fallback toast:', error_call_service_on_start)
-    try:
-        start_logging()
-    except Exception as error_saving_logs:
-        print('Fallback toast:', error_saving_logs)
+    # try:
+    #     # start_logging()
+    # except Exception as error_saving_logs:
+    #     print('Fallback toast:', error_saving_logs)
 
     try:
         my_img = os.path.join(os.path.join(os.getcwd(), "assets", "images", "test.jpg"))
@@ -116,7 +116,6 @@ class MyScreenManager(ScreenManager):
             self.current = "welcome"
 
     def on_current(self,*args):
-        print('screen',args)
         screen_name = args[1]
         is_fullscreen = screen_name == "fullscreen" or screen_name == "welcome"
         if is_fullscreen and self.app.bottom_bar:
@@ -186,10 +185,17 @@ class WallpaperCarouselApp(MDApp):
 
     def on_resume(self):
         try:
+            name=NotificationHandler.get_name()
+            print("name:",name)
+        except Exception as error_getting_notify_name:
+            print("Error getting notify name:",error_getting_notify_name)
+        try:
             print('resuming app..')
             self.sm.gallery_screen.load_saved()
-        except:
-            toast("Error loading saved")
+        except Exception as error_loading_saved:
+            traceback.print_exc()
+            print("Error loading saved:",error_loading_saved)
+            toast("Error loading saved: "+str(error_loading_saved))
 
 
 if __name__ == '__main__':

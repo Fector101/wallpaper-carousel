@@ -1,16 +1,14 @@
-import traceback
 from pathlib import Path
 from pythonforandroid.toolchain import ToolchainCL
 
 from android_widgets.maker import Receiver, inject_foreground_service_types
 
 
-
 def generate_receivers(package: str) -> str:
     receivers = [
         Receiver(
-            name="Action1",
-            actions=["android.intent.action.BOOT_COMPLETED"],
+            name="CarouselReceiver",
+            actions=["android.intent.action.BOOT_COMPLETED", f"{package}.ACTION_STOP","ACTION_SKIP"]
         ),
         Receiver(
             name="SimpleWidget",
@@ -25,7 +23,7 @@ def generate_receivers(package: str) -> str:
             meta_resource="@xml/button_widget_provider",
         ),
         Receiver(
-            name="CarouselProvider",
+            name="CarouselWidgetProvider",
             actions=[
                 "android.intent.action.BOOT_COMPLETED",
                 "android.appwidget.action.APPWIDGET_UPDATE",
@@ -44,7 +42,7 @@ def after_apk_build(toolchain: ToolchainCL):
     package = "org.wally.waller"
 
     # Add foregroundServiceType to multiple services
-    services = { "Wallpapercarousel": "dataSync", "Mytester": "dataSync" }
+    services = {"Wallpapercarousel": "dataSync", "Mytester": "dataSync"}
 
     text = inject_foreground_service_types(
         manifest_text=text,
@@ -58,13 +56,10 @@ def after_apk_build(toolchain: ToolchainCL):
         if "</application>" in text:
             text = text.replace("</application>", f"{receiver_xml}\n</application>")
             print("Receiver added")
-        else: 
+        else:
             print("Could not find </application> to insert receiver")
-    else: 
+    else:
         print("Receiver already exists in manifest")
-
-
-
 
     # ====================================================
     # Save final manifest back
@@ -72,5 +67,3 @@ def after_apk_build(toolchain: ToolchainCL):
     manifest_file.write_text(text, encoding="utf-8")
     print("Successfully_101: Manifest update completed successfully!")
     print(text)
-
-

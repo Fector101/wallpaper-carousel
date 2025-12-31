@@ -28,7 +28,7 @@ class FullscreenScreen(MDScreen):
         super().__init__(**kwargs)
         self.app_dir = Path(makeDownloadFolder())
         self.myconfig = ConfigManager()
-        self.wallpapers_dir = self.app_dir / ".wallpapers"
+        self.wallpapers_dir = self.app_dir / "wallpapers"
 
         self.name = "fullscreen"
         self.md_bg_color = [0, 0, 0, 1]

@@ -42,8 +42,9 @@ def makeDownloadFolder():
     from kivy.utils import platform
 
     if platform == 'android':
-        from android.storage import primary_external_storage_path  # type: ignore
-        folder_path = os.path.join(primary_external_storage_path(), 'Pictures', '.waller')
+        from android.storage import app_storage_path # type: ignore # , primary_external_storage_path
+        # folder_path = os.path.join(primary_external_storage_path(), 'Pictures', 'Waller')
+        folder_path = app_storage_path()
     else:
         folder_path = os.getcwd()
 
@@ -188,7 +189,7 @@ class FileOperation:
     def __init__(self,update_thumbnails_function):
         self.app_dir = Path(makeDownloadFolder())
         self.myconfig = ConfigManager()
-        self.wallpapers_dir = self.app_dir / ".wallpapers"
+        self.wallpapers_dir = self.app_dir / "wallpapers"
         try:
             self.wallpapers_dir.mkdir(parents=True, exist_ok=True)
             (self.wallpapers_dir / "thumbs").mkdir(parents=True, exist_ok=True)
@@ -215,8 +216,8 @@ class FileOperation:
             # generate low-res thumbnail for preview
             try:
                 create_thumbnail(dest, dest_dir=self.wallpapers_dir)
-            except Exception:
-                print("Error creating thumbnail for:", dest)
+            except Exception as error_creating_thumbnail:
+                print("Error creating thumbnail for:", error_creating_thumbnail,"dest: ", dest)
                 traceback.print_exc()
 
             new_images.append(str(dest))
