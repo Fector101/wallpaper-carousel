@@ -8,18 +8,16 @@ from kivy.clock import Clock
 from kivy.properties import ObjectProperty
 from kivy.core.text import LabelBase
 from kivy.uix.screenmanager import ScreenManager, SlideTransition
+from kivy.core.window import Window
+from kivy.utils import platform
 
 from android_notify import NotificationHandler
-
-
 from utils.helper import Service, start_logging, get_free_port, save_existing_file_to_public_pictures
 from ui.screens.gallery_screen import GalleryScreen
 from ui.screens.settings_screen import SettingsScreen
 from ui.screens.full_screen import FullscreenScreen
 from ui.screens.welcome_screen import WelcomeScreen
 from ui.screens.logs_screen import LogsScreen
-from kivy.core.window import Window
-from kivy.utils import platform
 from ui.widgets.buttons import BottomButtonBar
 from ui.widgets.android import toast
 
@@ -57,15 +55,6 @@ elif platform == 'android':
         check_permissions()
     except Exception as error_call_service_on_start:
         print('Fallback toast:', error_call_service_on_start)
-
-
-    try:
-        my_img = os.path.join(os.path.join(os.getcwd(), "assets", "images", "test.jpg"))
-        save_existing_file_to_public_pictures(my_img)
-    except Exception as e:
-        print("Error loading images", e)
-        traceback.print_exc()
-
 
 
 

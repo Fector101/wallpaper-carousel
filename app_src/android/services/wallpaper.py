@@ -1,9 +1,8 @@
-print("Entered python Service File...")
+# print("Entered python Service File...")
 try:
     from utils.helper import start_logging, makeDownloadFolder
-
     start_logging()
-    print("Service Logging started. All console output will also be saved.")
+    # print("Service Logging started. All console output will also be saved.")
 except Exception as e:
     print("File Logger Failed", e)
 
@@ -85,7 +84,7 @@ def change_wallpaper(wallpaper_path):
         if BuildVersion.SDK_INT >= 24:  # Android 7.0+
             FLAG_LOCK = WallpaperManager.FLAG_LOCK
             wm.setBitmap(bitmap, None, True, FLAG_LOCK)
-            print(f"Success: Lock screen wallpaper changed to: {os.path.basename(wallpaper_path)}")
+            # print(f"Success: Lock screen wallpaper changed to: {os.path.basename(wallpaper_path)}")
         else:
             print("Fail: Lock screen wallpaper not supported on this Android version.")
 
@@ -341,7 +340,7 @@ class MyWallpaperReceiver:
         ids = appWidgetManager.getAppWidgetIds(component)
         appWidgetManager.updateAppWidget(ids, views)
 
-        self.__log(f"Changed Home Screen Widget: {wallpaper_path}", "SUCCESS")
+        # self.__log(f"Changed Home Screen Widget: {wallpaper_path}", "SUCCESS")
 
 
 

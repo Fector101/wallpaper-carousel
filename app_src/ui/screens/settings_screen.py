@@ -4,7 +4,7 @@ from pathlib import Path
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.clock import Clock
-from kivy.metrics import dp
+# from kivy.metrics import dp
 from kivy.uix.widget import Widget
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -14,29 +14,21 @@ from android_notify.core import asks_permission_if_needed
 from android_notify import NotificationHandler
 from ui.widgets.android import toast  # type: ignore
 
-DEV = 1
+DEV = 0
 
 from utils.helper import Service, makeDownloadFolder, start_logging, smart_convert_minutes  # type: ignore
 from utils.config_manager import ConfigManager  # type: ignore
-from kivy.properties import ObjectProperty
 from kivy.uix.behaviors import ButtonBehavior
-
+from kivy.metrics import dp, sp
 from kivy.uix.scrollview import ScrollView
-class MyLabel(ButtonBehavior, Label):
-    # on_release = ObjectProperty()
 
+
+class MyLabel(ButtonBehavior, Label):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # self.on_release = self.tapped
         self.size_hint = [1, None]
         self.height = 100
-
-    # def tapped(self, *args):
-    #     self.times_tapped += 1
-    #     if self.times_tapped == 4:
-    #         print(self.parent.parent.parent.parent.parent, "self.parent.parent")
-    #         self.parent.parent.parent.parent.current = "logs"
-    #         self.times_tapped = 0
 
 
 class SettingsScreen(MDScreen):
@@ -55,7 +47,7 @@ class SettingsScreen(MDScreen):
 
         root = MDBoxLayout(
             orientation="vertical",
-            padding=[dp(20), dp(20), dp(20), dp(100)],
+            padding=[dp(20), dp(30), dp(20), dp(100)],
             spacing=dp(15),
             size_hint_y=None
         )
@@ -66,14 +58,14 @@ class SettingsScreen(MDScreen):
             text="Settings",
             font_size="22sp",
             size_hint_y=None,
-            height=dp(40)
+            height=dp(40),font_name="RobotoMono"
         ))
 
         # ---------- INTERVAL SECTION ----------
         root.add_widget(Label(
             text="Wallpaper Change Interval (minutes)",
             size_hint_y=None,
-            height=dp(30)
+            height=dp(30),font_name="RobotoMono",font_size=sp(13)
         ))
 
         input_row = MDBoxLayout(orientation="horizontal", spacing=dp(10),
@@ -84,13 +76,14 @@ class SettingsScreen(MDScreen):
             hint_text="mins",
             size_hint_x=0.55,
         )
+        self.interval_input.theme_text_color = "Custom"
         self.interval_input.text_color_focus = [1, 1, 1, 1]
         self.interval_input.text_color_normal = [.8, .8, .8, 1]
         self.interval_input.hint_text_color_normal = [.8, .8, .8, 1]
         self.interval_input.hint_text_color_focus = [1, 1, 1, 1]
         self.interval_input.input_filter = "float"
 
-        save_btn = Button(text="Save", size_hint_x=0.35)
+        save_btn = Button(text="Save", size_hint_x=0.35,font_name="RobotoMono")
         save_btn.bind(on_release=self.save_interval)
 
         input_row.add_widget(self.interval_input)
@@ -100,7 +93,7 @@ class SettingsScreen(MDScreen):
         self.interval_label = Label(
             text=f"Saved: {smart_convert_minutes(self.interval)}",
             size_hint_y=None,
-            height=dp(30)
+            height=dp(30),font_name="RobotoMono"
         )
         root.add_widget(self.interval_label)
 
@@ -114,7 +107,7 @@ class SettingsScreen(MDScreen):
         ))
 
         restart_btn = Button(
-            text="Restart Carousel Worker",
+            text="Restart Carousel",
             size_hint_y=None,
             height=dp(50)
         )
@@ -122,7 +115,7 @@ class SettingsScreen(MDScreen):
         root.add_widget(restart_btn)
 
         stop_btn = Button(
-            text="Stop Carousel Worker",
+            text="Stop Carousel",
             size_hint_y=None,
             height=dp(50)
         )
@@ -148,17 +141,17 @@ class SettingsScreen(MDScreen):
                 on_release=lambda widget: self.android_notify_tests()
             ))
         text = MyLabel(
-            text="--- v1.0.1 ---",
+            text="--- v1.0.2 ---",
             size_hint_y=None,
-            height=dp(50),
+            height=dp(50),font_name="RobotoMono",
             on_release=self.open_logs_screen
         )
         root.add_widget(text)
-        scroll.add_widget(root)  # wrap root in scrollview
+        scroll.add_widget(root)
         self.add_widget(scroll)
     def open_logs_screen(self,widget=None):
         self.times_tapped += 1
-        if self.times_tapped == 4:
+        if self.times_tapped == 3:
             self.manager.current = "logs"
             self.times_tapped = 0
 

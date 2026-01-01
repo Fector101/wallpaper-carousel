@@ -1,7 +1,11 @@
-from kivy.graphics import Color, RoundedRectangle
 from kivy.graphics.boxshadow import BoxShadow
-from kivy.uix.button import Button
 from kivy.metrics import dp
+from kivy.graphics import Color, Rectangle, RoundedRectangle
+from kivy.uix.button import Button
+
+from kivymd.uix.relativelayout import MDRelativeLayout
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.button import MDIconButton
 
 # import os
 # from kivy.core.text import LabelBase
@@ -84,77 +88,88 @@ class MyRoundButton(Button):    # (RoundedButton):
 
 
 
-
-
-from kivymd.uix.relativelayout import MDRelativeLayout
-from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.button import MDIconButton
-from kivy.metrics import dp
-from kivy.graphics import Color, RoundedRectangle
-
 class BottomButtonBar(MDRelativeLayout):
     """Floating bottom bar with two buttons with centered icons only."""
 
     def __init__(self, on_camera=None, on_settings=None, width=dp(65), height=dp(65), **kwargs):
         super().__init__(**kwargs)
+
         self.on_camera = on_camera
         self.on_settings = on_settings
-        # self.md_bg_color = [1,0,1,1]
+        self.size_hint = (1, None)
+        self.height = dp(140)
+
+        with self.canvas.before:
+            self._gradient_rects = []
+            steps = 30  # smoother gradient
+            self._gradient_colors = []
+
+            for i in range(steps):
+                alpha = 1 - (i / steps)
+                c = Color(0.1, 0.1, 0.1, alpha)
+                rect = Rectangle()
+                self._gradient_rects.append(rect)
+                self._gradient_colors.append(c)
+
+        self.bind(pos=self._update_gradient, size=self._update_gradient)
+
+        # Button container
+        radius = 12
         self.button_box = MDBoxLayout(
             orientation="horizontal",
             spacing=0,
             size_hint=(None, None),
-            pos_hint={"center_x": 0.5, "y": 0.05},
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
+            md_bg_color=[1,1,1,1],
+            radius=radius,
         )
-        # button_box.md_bg_color=[1,.2,0,1]
-        # button_box.size = (width * 2, height)
 
-        # Camera button
+        size = [dp(80), dp(45)]
+
         self.btn_camera = MDIconButton(
             icon="image-multiple",
             style="tonal",
             on_release=self._camera_pressed,
         )
-        size = [dp(80), dp(45)]
-        radius = 12
-        # self.btn_camera.md_bg_color=[0.2, 0, 1, 1]
-        self.btn_camera.size_hint=[None,None]
-        self.btn_camera.size=size
+        self.btn_camera.size_hint = [None, None]
+        self.btn_camera.size = size
         self.btn_camera.radius = [radius, 0, 0, radius]
-        # theme_text_color = "Custom",
-        # text_color=[1, 1, 1, 1]
 
-
-        # Settings button
         self.btn_settings = MDIconButton(
             icon="cog",
             style="tonal",
-            size_hint=(None, None),
-            size=(width, height),
             on_release=self._settings_pressed,
         )
         self.btn_settings.size_hint = [None, None]
         self.btn_settings.size = size
         self.btn_settings.radius = [0, radius, radius, 0]
 
-
-        # size = 18
-        # icon_camera.font_size = sp(size)
-        # icon_settings.font_size = sp(size)
-
         self.button_box.add_widget(self.btn_camera)
         self.button_box.add_widget(self.btn_settings)
-        #
+
         self.button_box.bind(minimum_width=self.button_box.setter("width"))
         self.button_box.bind(minimum_height=self.button_box.setter("height"))
 
         self.add_widget(self.button_box)
 
+    def _update_gradient(self, *args):
+        step_height = self.height / len(self._gradient_rects)
+
+        for i, rect in enumerate(self._gradient_rects):
+            rect.pos = (self.x, self.y + i * step_height)
+            rect.size = (self.width, step_height)
+
     def hide(self):
         self.button_box.pos_hint = {"center_x": 0.5, "y": -1}
+        for c in self._gradient_colors:
+            c.a = 0
 
     def show(self):
-        self.button_box.pos_hint = {"center_x": 0.5, "y": 0.05}
+        self.button_box.pos_hint = {"center_x": 0.5, "center_y": 0.5}
+
+        steps = len(self._gradient_colors)
+        for i, c in enumerate(self._gradient_colors):
+            c.a = 1 - (i / steps)
 
     def _camera_pressed(self, *args):
         if callable(self.on_camera):

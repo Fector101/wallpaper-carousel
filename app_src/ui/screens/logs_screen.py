@@ -11,9 +11,8 @@ from kivy.metrics import dp, sp
 from kivy.utils import get_color_from_hex
 from kivy.core.clipboard import Clipboard
 from kivy.uix.screenmanager import NoTransition
-
+from ui.widgets.android import toast
 from kivymd.uix.screen import MDScreen
-
 
 # ---------- CONFIG ----------
 LOG_HORIZONTAL_PADDING = dp(10)
@@ -50,6 +49,7 @@ class LogsScreen(MDScreen):
         top_bar = BoxLayout(size_hint_y=None, height=dp(40))
         title = Label(text="Application Logs", color=(1,1,1,1))
         top_bar.add_widget(title)
+        title.font_name = "RobotoMono"
 
         start_btn = Button(text="Start Loading", size_hint_x=None, width=dp(90),font_size=sp(13))
         start_btn.bind(on_release=self.start_loading)
@@ -130,6 +130,7 @@ class LogsScreen(MDScreen):
         def on_double_tap(inst, touch):
             if inst.collide_point(*touch.pos) and touch.is_double_tap:
                 Clipboard.copy(inst.text)
+                toast('Copied')
                 return True
         label.bind(on_touch_down=on_double_tap)
 

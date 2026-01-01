@@ -5,17 +5,45 @@ from kivy.uix.label import Label
 from kivy.uix.recycleview import RecycleView
 from kivy.uix.recyclegridlayout import RecycleGridLayout
 from kivy.metrics import dp, sp
-from kivymd.uix.screen import MDScreen
-from plyer import filechooser
-from kivy.uix.image import AsyncImage
-from utils.helper import FileOperation, get_or_create_thumbnail  # type: ignore
-from utils.config_manager import ConfigManager   # type: ignore
-from utils.helper import makeDownloadFolder  # type: ignore
-from ui.widgets.buttons import BottomButtonBar   # type: ignore
-from kivymd.uix.button import MDFabButton
 from kivy.properties import StringProperty
 from kivy.uix.behaviors import ButtonBehavior
+from kivy.uix.image import AsyncImage
+from kivy.utils import platform
+from plyer import filechooser
 
+from kivymd.uix.screen import MDScreen
+from kivymd.uix.button import MDFabButton
+
+# from ui.widgets.buttons import BottomButtonBar
+
+from utils.helper import FileOperation, get_or_create_thumbnail
+from utils.config_manager import ConfigManager
+from utils.helper import makeDownloadFolder  # type
+#
+# from kivy.core.text import LabelBase
+#
+# class Font:
+#     def __init__(self, name, base_folder):
+#         self.base_folder = base_folder
+#         self.name = name
+#
+#     def get_type_path(self, fn_type):
+#         """
+#         Formats font type path
+#         :param fn_type:
+#         :return:
+#         """
+#         return os.path.join(self.base_folder, self.name + '-' + fn_type + '.ttf')
+#
+#
+# # This work but i like the normal, bold,italic config better title.font_name = "app_src/assets/fonts/Roboto_Mono/RobotoMono-VariableFont_wght.ttf"
+# robot_mono = Font(name='RobotoMono', base_folder="app_src/assets/fonts/Roboto_Mono/static")
+# LabelBase.register(
+#     name="RobotoMono",
+#     fn_regular=robot_mono.get_type_path('Regular'),
+#     fn_italic=robot_mono.get_type_path('Italic'),
+#     fn_bold=robot_mono.get_type_path('Bold'),
+# )
 
 class MyMDRecycleGridLayout(RecycleGridLayout):
     icon_active = StringProperty()
@@ -37,16 +65,17 @@ class GalleryScreen(MDScreen):
         self.myconfig = ConfigManager()
         self.wallpapers_dir = self.app_dir / "wallpapers"
         self.md_bg_color = [0.1, 0.1, 0.1, 1]
-
         layout = BoxLayout(orientation="vertical", spacing=10, padding=10)
-        layout.add_widget(Label(text="Wallpapers", size_hint_y=0.1, font_size="22sp"))
+        layout.add_widget(Label(text="Wallpapers", size_hint_y=0.1, font_size="22sp",font_name="RobotoMono"))
 
         self.rv = RecycleView(size_hint_y=0.8)
         grid = MyMDRecycleGridLayout(cols=3,
                                  spacing=5,
                                  default_size=(None, dp(120)),
                                  default_size_hint=(1, None),
-                                 size_hint_y=None)
+                                 size_hint_y=None,
+                                 padding=[0, 0, 0, dp(120)]
+                                     )
         grid.bind(minimum_height=grid.setter("height"))
         self.rv.add_widget(grid)
         self.rv.layout_manager = grid
@@ -63,6 +92,8 @@ class GalleryScreen(MDScreen):
         add_btn.font_size = sp(30)
         self.add_widget(layout)
         self.add_widget(add_btn)
+
+
         # self.bottom_bar = BottomButtonBar(
         #     on_camera=None,
         #     on_settings=None,
@@ -72,25 +103,52 @@ class GalleryScreen(MDScreen):
         # )
         # self.add_widget(self.bottom_bar)
 
+        # self.load_saved() for hot_reload
 
 
     def open_filechooser(self, *args):
-        # print('called filechoser')
         file_operation = FileOperation(self.update_thumbnails_method)
-        from jnius import autoclass, cast
+        if platform == 'android':
+            from android import activity # type: ignore
+            def test(activity_id,some_int,intent):
+                try:
+                    file_operation.intent = intent
+                    # if intent:
+                        # print('see intent',intent)
+                        # try:
+                        #     print("intent data", intent.getData()) # crashes app when no files is picked
+                        #     print("intent data str", intent.getData().toString())
+                        # except Exception as werid_thing:
+                        #     print("werid_thing",werid_thing)
+                except Exception as error_getting_path:
+                    print("error_getting_path",error_getting_path)
 
-        def open_file_picker():
-            PythonActivity = autoclass('org.kivy.android.PythonActivity')
-            Intent = autoclass('android.intent.action.OPEN_DOCUMENT')  # Use OPEN_DOCUMENT for permanent files
+            activity.bind(on_activity_result=test) # handling image with no permission
 
-            intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
-            intent.addCategory(autoclass('android.intent.category.OPENABLE'))
-            intent.setType("image/*")  # Only show images
-
-            # Start the activity and wait for a result
-            # Note: You'll need to handle the result in your App class via bind
-            PythonActivity.mActivity.startActivityForResult(intent, 1001)
         filechooser.open_file(on_selection=file_operation.copy_add, filters=["image"], multiple=True)
+
+
+        # ----------------- This Also Works Keeping for Reference ---------------------------
+        # from jnius import autoclass, cast
+        # from android import activity
+        # def test(activity_id,some_int,data):
+        #     print("args", data)
+        # activity.bind(on_activity_result=test)
+
+        # def open_file_picker():
+        #     PythonActivity = autoclass('org.kivy.android.PythonActivity')
+        #     Intent = autoclass('android.content.Intent')# autoclass('android.intent.action.OPEN_DOCUMENT')  # Use OPEN_DOCUMENT for permanent files
+        #     intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+        #     intent.addCategory(Intent.CATEGORY_OPENABLE)
+        #     intent.setType("image/*")  # Only show images
+        #
+        #     # Start the activity and wait for a result
+        #     # Note: You'll need to handle the result in your App class via bind
+        #     PythonActivity.mActivity.startActivityForResult(intent, 1001)
+        # try:
+        #     open_file_picker()
+        # except Exception as error_testing_picker:
+        #     print("error_testing_picker", error_testing_picker)
 
     def update_thumbnails_method(self,new_images):
         for img in new_images:
@@ -202,6 +260,7 @@ class GalleryScreen(MDScreen):
             str(p) for p in self.wallpapers_dir.glob("*")
             if p.suffix.lower() in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"]
         ]
+
         # print("Loaded wallpapers:", len(self.wallpapers))
         self.myconfig.set_wallpapers(self.wallpapers)
         self.update_thumbnails_method(self.wallpapers)

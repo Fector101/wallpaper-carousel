@@ -185,10 +185,86 @@ def smart_convert_minutes(minutes: float) -> str:
 
 import shutil
 
+
+def copy_image_to_internal(dest_name,uri):
+    import os
+    from jnius import autoclass
+    print('gotten uri',uri)
+
+    PythonActivity = autoclass("org.kivy.android.PythonActivity")
+    MediaStore = autoclass("android.provider.MediaStore")
+    Environment = autoclass("android.os.Environment")
+    ContentUris = autoclass("android.content.ContentUris")
+    ImagesMedia = autoclass('android.provider.MediaStore$Images$Media')
+
+    # def path_to_image_uri(path):
+    #     cr = PythonActivity.mActivity.getContentResolver()
+    #
+    #     projection = ["_id"]
+    #     selection = "_data=?"
+    #     selection_args = [path]
+    #
+    #     cursor = cr.query(
+    #         ImagesMedia.EXTERNAL_CONTENT_URI,
+    #         projection,
+    #         selection,
+    #         selection_args,
+    #         None
+    #     )
+    #
+    #     if cursor and cursor.moveToFirst():
+    #         image_id = cursor.getLong(0)
+    #         cursor.close()
+    #         return ContentUris.withAppendedId(
+    #             ImagesMedia.EXTERNAL_CONTENT_URI,
+    #             image_id
+    #         )
+    #
+    #     if cursor:
+    #         cursor.close()
+    #
+    #     return None
+
+    FileOutputStream = autoclass("java.io.FileOutputStream")
+    BufferedInputStream = autoclass("java.io.BufferedInputStream")
+    BufferedOutputStream = autoclass("java.io.BufferedOutputStream")
+
+    activity = PythonActivity.mActivity
+    cr = activity.getContentResolver()
+
+    # uri = path_to_image_uri(image_path)
+
+    if not uri:
+        raise Exception("Image not found in MediaStore")
+
+    input_stream = BufferedInputStream(cr.openInputStream(uri))
+
+    internal_dir = activity.getFilesDir().getAbsolutePath()
+    dest_path = os.path.join(internal_dir, dest_name)
+
+    output_stream = BufferedOutputStream(
+        FileOutputStream(dest_path)
+    )
+
+    buffer = bytearray(1024 * 8)
+    while True:
+        count = input_stream.read(buffer)
+        if count == -1:
+            break
+        output_stream.write(buffer, 0, count)
+
+    output_stream.flush()
+    input_stream.close()
+    output_stream.close()
+
+    return dest_path
+
+
 class FileOperation:
     def __init__(self,update_thumbnails_function):
         self.app_dir = Path(makeDownloadFolder())
         self.myconfig = ConfigManager()
+        self.intent = None
         self.wallpapers_dir = self.app_dir / "wallpapers"
         try:
             self.wallpapers_dir.mkdir(parents=True, exist_ok=True)
@@ -199,16 +275,31 @@ class FileOperation:
         self.update_thumbnails_function = update_thumbnails_function
 
     def copy_add(self, files):
-        print("gotten files:",files)
         if not files:
             return
         new_images = []
-        for src in files:
+        try:
+            uris=self.get_selected_uris()
+        except Exception as error_getting_uris:
+            print(f"Error getting uris: {error_getting_uris}")
+            uris=[]
+
+        # print("gotten files:",files,uris)
+
+        for i, src in enumerate(files):
+            # print(i,src,'i and src')
             if not os.path.exists(src):
                 continue
             dest = self.unique(os.path.basename(src))
             try:
                 shutil.copy2(src, dest)
+            except PermissionError:
+                try:
+                    if len(uris) - 1 <= i:
+                        copy_image_to_internal(dest,uris[i])
+                except Exception as error_using_java_copy:
+                    print("error_using_java_copy: ", error_using_java_copy)
+                    traceback.print_exc()
             except Exception as e:
                 print(f"Error copying file '{src}' to '{dest}': {e}")
                 traceback.print_exc()
@@ -234,11 +325,25 @@ class FileOperation:
             i += 1
         return dest
 
+    def get_selected_uris(self):
+        uris = []
 
-# -----------------------------
+        clip = self.intent.getClipData()
+        if clip:
+            for i in range(clip.getItemCount()):
+                uri = clip.getItemAt(i).getUri()
+                if uri:
+                    uris.append(uri)
+            return uris
+
+        uri = self.intent.getData()
+        if uri:
+            uris.append(uri)
+
+        return uris
+
+
 # Thumbnail helpers
-# -----------------------------
-
 def thumbnail_path_for(src, dest_dir=None):
     """Return a consistent thumbnail Path for a source image.
     Thumbnails are stored in a subfolder named 'thumbs' under dest_dir (or source folder by default).
@@ -257,6 +362,10 @@ def create_thumbnail(src, dest_dir=None, size=(320, 320), quality=60):
     """Create a low-resolution JPEG thumbnail for src and return its path.
     If Pillow is not available or creation fails, returns the original path string.
     """
+
+    if str(src).endswith(".webp"):
+        return str(src)
+
     try:
         from PIL import Image
     except ImportError:
@@ -276,8 +385,8 @@ def create_thumbnail(src, dest_dir=None, size=(320, 320), quality=60):
             im.thumbnail(size, Image.LANCZOS)
             im.save(dest, format='JPEG', quality=quality)
         return str(dest)
-    except Exception:
-        print("Error creating thumbnail for:", src)
+    except Exception as error_making_thumbnail:
+        print(f"Error creating thumbnail for: {error_making_thumbnail}", src)
         traceback.print_exc()
         return str(src)
 
@@ -375,9 +484,9 @@ def test_java_action():
     compatmanager = func_from(context)
     compatmanager.notify(notification_id, builder.build())
 
-import os
 
 def save_existing_file_to_public_pictures(input_file_path):
+    # Working copying image from app to public path
     from jnius import autoclass
     from android_notify.config import get_python_activity_context
     context = get_python_activity_context()
@@ -432,6 +541,13 @@ def save_existing_file_to_public_pictures(input_file_path):
     print("This is File:", input_file_path)
     return uri
 
+    # try:
+    #     my_img = os.path.join(os.path.join(os.getcwd(), "assets", "images", "test.jpg"))
+    #     save_existing_file_to_public_pictures(my_img)
+    # except Exception as e:
+    #     print("Error loading images", e)
+    #     traceback.print_exc()
+
 def is_platform_android():
     # Took this from kivy to fix my logs in P4A.hook, so no need to import things i don't need by doing `from kivy.utils import platform`
     if os.getenv("MAIN_ACTIVITY_HOST_CLASS_NAME"):
@@ -445,3 +561,5 @@ def is_platform_android():
         return True
 
     return False
+
+
