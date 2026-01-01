@@ -94,7 +94,7 @@ class FullscreenScreen(MDScreen):
             icon="chevron-left",
             style="tonal",
             size=(dp(70), dp(70)),
-            pos_hint={'x': 0.04, 'y': 0.9}
+            pos_hint={'x': 0.05, 'y': 0.9}
         )
         self.layout.add_widget(self.btn_toggle)
 

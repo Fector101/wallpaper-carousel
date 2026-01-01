@@ -107,25 +107,26 @@ class GalleryScreen(MDScreen):
 
 
     def open_filechooser(self, *args):
-        file_operation = FileOperation(self.update_thumbnails_method)
-        if platform == 'android':
-            from android import activity # type: ignore
-            def test(activity_id,some_int,intent):
-                try:
-                    file_operation.intent = intent
-                    # if intent:
-                        # print('see intent',intent)
-                        # try:
-                        #     print("intent data", intent.getData()) # crashes app when no files is picked
-                        #     print("intent data str", intent.getData().toString())
-                        # except Exception as werid_thing:
-                        #     print("werid_thing",werid_thing)
-                except Exception as error_getting_path:
-                    print("error_getting_path",error_getting_path)
-
-            activity.bind(on_activity_result=test) # handling image with no permission
-
-        filechooser.open_file(on_selection=file_operation.copy_add, filters=["image"], multiple=True)
+        # file_operation = FileOperation(self.update_thumbnails_method)
+        # if platform == 'android':
+        #     from android import activity # type: ignore
+        #     def test(activity_id,some_int,intent):
+        #         try:
+        #             print('must be before chooser callback')
+        #             print('see intent', intent,bool(intent))
+        #             if intent:
+        #                 file_operation.intent = intent
+        #                 # try:
+        #                 #     print("intent data", intent.getData()) # crashes app when no files is picked
+        #                 #     print("intent data str", intent.getData().toString())
+        #                 # except Exception as werid_thing:
+        #                 #     print("werid_thing",werid_thing)
+        #         except Exception as error_getting_path:
+        #             print("error_getting_path",error_getting_path)
+        #
+        #     activity.bind(on_activity_result=test) # handling image with no permission
+        app=MDApp.get_running_app()
+        filechooser.open_file(on_selection=app.file_operation.copy_add, filters=["image"], multiple=True)
 
 
         # ----------------- This Also Works Keeping for Reference ---------------------------

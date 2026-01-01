@@ -189,13 +189,12 @@ import shutil
 def copy_image_to_internal(dest_name,uri):
     import os
     from jnius import autoclass
-    print('gotten uri',uri)
 
     PythonActivity = autoclass("org.kivy.android.PythonActivity")
-    MediaStore = autoclass("android.provider.MediaStore")
-    Environment = autoclass("android.os.Environment")
-    ContentUris = autoclass("android.content.ContentUris")
-    ImagesMedia = autoclass('android.provider.MediaStore$Images$Media')
+    # MediaStore = autoclass("android.provider.MediaStore")
+    # Environment = autoclass("android.os.Environment")
+    # ContentUris = autoclass("android.content.ContentUris")
+    # ImagesMedia = autoclass('android.provider.MediaStore$Images$Media')
 
     # def path_to_image_uri(path):
     #     cr = PythonActivity.mActivity.getContentResolver()
@@ -273,7 +272,11 @@ class FileOperation:
             print(f"Error creating wallpapers directory: {e}")
 
         self.update_thumbnails_function = update_thumbnails_function
-
+    #     self.__i = 0
+    # @property
+    # def i(self):
+    #     self.__i += 1
+    #     return self.__i
     def copy_add(self, files):
         if not files:
             return
@@ -283,8 +286,10 @@ class FileOperation:
         except Exception as error_getting_uris:
             print(f"Error getting uris: {error_getting_uris}")
             uris=[]
+        if not uris:
+            print("gotten files:",files,uris)
 
-        # print("gotten files:",files,uris)
+        self.intent = None
 
         for i, src in enumerate(files):
             # print(i,src,'i and src')
@@ -295,8 +300,10 @@ class FileOperation:
                 shutil.copy2(src, dest)
             except PermissionError:
                 try:
-                    if len(uris) - 1 <= i:
+                    if i < len(uris):
                         copy_image_to_internal(dest,uris[i])
+                    else:
+                        continue
                 except Exception as error_using_java_copy:
                     print("error_using_java_copy: ", error_using_java_copy)
                     traceback.print_exc()
@@ -327,6 +334,13 @@ class FileOperation:
 
     def get_selected_uris(self):
         uris = []
+        # print('must be after chooser callback',self.intent,'i',self.i)
+        if not self.intent:
+            print("No intent",self.intent)
+        #     time.sleep(3)
+        # print('self.intent',self.intent)
+        if not self.intent:
+            return uris
 
         clip = self.intent.getClipData()
         if clip:

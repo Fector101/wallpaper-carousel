@@ -12,7 +12,7 @@ from kivy.core.window import Window
 from kivy.utils import platform
 
 from android_notify import NotificationHandler
-from utils.helper import Service, start_logging, get_free_port, save_existing_file_to_public_pictures
+from utils.helper import Service, start_logging, get_free_port, FileOperation
 from ui.screens.gallery_screen import GalleryScreen
 from ui.screens.settings_screen import SettingsScreen
 from ui.screens.full_screen import FullscreenScreen
@@ -133,6 +133,7 @@ class WallpaperCarouselApp(MDApp):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.file_operation = None
         print('init... app')
         self.root_layout = None
         self.sm = None
@@ -161,6 +162,8 @@ class WallpaperCarouselApp(MDApp):
         if not NotificationHandler.has_permission():
             self.sm.current = "welcome"
 
+        self.file_operation = FileOperation(self.sm.gallery_screen.update_thumbnails_method)
+        self.bind_plyer_fix()
         return self.root_layout
 
     def on_start(self):
@@ -189,6 +192,18 @@ class WallpaperCarouselApp(MDApp):
             print("Error loading saved:",error_loading_saved)
             toast("Error loading saved: "+str(error_loading_saved))
 
+    def bind_plyer_fix(self):
+        if platform == 'android':
+            from android import activity # type: ignore
+            def set_intent_for_file_operation_class(activity_id,some_int,intent):
+                try:
+                    # print('must be before chooser callback',self.file_operation.i)
+                    # print('see intent', intent,bool(intent))
+                    if intent:
+                        self.file_operation.intent = intent
+                except Exception as error_getting_path:
+                    print("error_getting_path",error_getting_path)
+            activity.bind(on_activity_result=set_intent_for_file_operation_class) # handling permission error in image path
 
 if __name__ == '__main__':
     WallpaperCarouselApp().run()
