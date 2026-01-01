@@ -8,7 +8,7 @@ def generate_receivers(package: str) -> str:
     receivers = [
         Receiver(
             name="CarouselReceiver",
-            actions=["android.intent.action.BOOT_COMPLETED", f"{package}.ACTION_STOP","ACTION_SKIP"]
+            actions=["ACTION_STOP","ACTION_SKIP"]
         ),
         Receiver(
             name="SimpleWidget",

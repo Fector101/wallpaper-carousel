@@ -1,3 +1,4 @@
+from kivymd.app import MDApp
 import traceback
 from pathlib import Path
 from kivy.uix.boxlayout import BoxLayout
