@@ -236,12 +236,13 @@ class SettingsScreen(MDScreen):
 
         # Android core
         MediaStoreImages = autoclass("android.provider.MediaStore$Images$Media")
+        MediaColumns = autoclass("android.provider.MediaStore$MediaColumns")
         ContentValues = autoclass("android.content.ContentValues")
         Environment = autoclass("android.os.Environment")
         BuildVersion = autoclass("android.os.Build$VERSION")
         Integer = autoclass("java.lang.Integer")
 
-        # Fast native copy (safe)
+        # Fast native copy
         Files = autoclass("java.nio.file.Files")
         Paths = autoclass("java.nio.file.Paths")
 
@@ -255,7 +256,7 @@ class SettingsScreen(MDScreen):
         exported_uris = []
 
         # Internal app folder
-        folder_path = os.path.join(makeDownloadFolder(), 'wallpapers')
+        folder_path = os.path.join(makeDownloadFolder(), "wallpapers")
         if not os.path.isdir(folder_path):
             return exported_uris
 
@@ -307,13 +308,13 @@ class SettingsScreen(MDScreen):
             # API 29+ → MediaStore (scoped storage)
             # ─────────────────────────────────────────────
             values = ContentValues()
-            values.put(MediaStoreImages.DISPLAY_NAME, filename)
-            values.put(MediaStoreImages.MIME_TYPE, mime)
+            values.put(MediaColumns.DISPLAY_NAME, filename)
+            values.put(MediaColumns.MIME_TYPE, mime)
             values.put(
-                MediaStoreImages.RELATIVE_PATH,
+                MediaColumns.RELATIVE_PATH,
                 Environment.DIRECTORY_PICTURES + "/Waller"
             )
-            values.put(MediaStoreImages.IS_PENDING, Integer(1))
+            values.put(MediaColumns.IS_PENDING, Integer(1))
 
             uri = resolver.insert(
                 MediaStoreImages.EXTERNAL_CONTENT_URI,
@@ -326,7 +327,7 @@ class SettingsScreen(MDScreen):
             try:
                 out = resolver.openOutputStream(uri)
 
-                # Fast, safe native copy
+                # Fast, native copy
                 Files.copy(
                     Paths.get(source_path),
                     out
@@ -336,7 +337,7 @@ class SettingsScreen(MDScreen):
                 out.close()
 
                 values.clear()
-                values.put(MediaStoreImages.IS_PENDING, Integer(0))
+                values.put(MediaColumns.IS_PENDING, Integer(0))
                 resolver.update(uri, values, None, None)
 
                 exported_uris.append(str(uri))
@@ -346,4 +347,5 @@ class SettingsScreen(MDScreen):
                 resolver.delete(uri, None, None)
 
         print("exported_uris:", exported_uris)
+        toast("Exported: To Pictures/Waller")
         return exported_uris
