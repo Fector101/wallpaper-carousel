@@ -11,12 +11,5 @@
         android:layout_height="wrap_content"
         android:scaleType="centerCrop"/>
 
-    <TextView
-        android:id="@+id/widget_text"
-        android:text="Loading..."
-        android:textSize="18sp"
-        android:textColor="#000"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
 
 </LinearLayout>
