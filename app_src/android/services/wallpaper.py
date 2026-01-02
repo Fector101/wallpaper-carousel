@@ -204,12 +204,12 @@ class MyWallpaperReceiver:
             self.__log(f"Error update_widget_image  -{e} ping Java Listener", "WARNING")
             traceback.print_exc()
 
-        try:
-            self.changed_widget_text()
-        except Exception as e:
-            self.__log(f"Error changed_widget_text -{e} ping Java Listener", "WARNING")
-            traceback.print_exc()
-        self.changes += 1
+        #try:
+          #  self.changed_widget_text()
+        #except Exception as e:
+         #   self.__log(f"Error changed_widget_text -{e} ping Java Listener", "WARNING")
+         #   traceback.print_exc()
+        #self.changes += 1
 
     def __set_next_img_in_notification(self, wallpaper_path):
         if os.path.exists(wallpaper_path):  # setting next in notification
