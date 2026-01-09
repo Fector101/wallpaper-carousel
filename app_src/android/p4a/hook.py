@@ -30,6 +30,11 @@ def generate_receivers(package: str) -> str:
             ],
             meta_resource="@xml/carousel_widget_info",
         ),
+        # Receiver(
+        #     name="TheReceiver",
+        #     actions=["ALARM_ACTION"]
+        # )
+
     ]
 
     return "\n\n".join(r.to_xml(package) for r in receivers)
@@ -51,6 +56,16 @@ def after_apk_build(toolchain: ToolchainCL):
     )
 
     receiver_xml = generate_receivers(package)
+#     receiver_xml+= """
+#     <receiver
+#     android:name="org.wally.waller.MyWorker"
+#     android:exported="false" />
+#
+# <provider
+#     android:name="androidx.startup.InitializationProvider"
+#     android:authorities="${applicationId}.androidx-startup"
+#     android:exported="false" />
+# """
 
     if receiver_xml.strip() not in text:
         if "</application>" in text:

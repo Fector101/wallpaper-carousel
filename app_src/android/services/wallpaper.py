@@ -1,4 +1,3 @@
-# print("Entered python Service File...")
 try:
     from utils.helper import start_logging, makeDownloadFolder
     start_logging()
@@ -33,7 +32,6 @@ download_folder_path = os.path.join(makeDownloadFolder(), "wallpapers")
 
 
 def get_service_port():
-    service_port = None
     try:
         service_port = int(environ.get('PYTHON_SERVICE_ARGUMENT', '5006'))
     except (TypeError, ValueError):

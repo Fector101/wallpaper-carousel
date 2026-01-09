@@ -1,0 +1,38 @@
+package org.wally.waller;
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.util.Log;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.os.Build;
+import androidx.core.app.NotificationCompat;
+
+public class TheReceiver extends BroadcastReceiver {
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        String msg = intent.getStringExtra("message");
+        Log.d("TheReceiver", "Broadcast received: " + msg);
+
+        NotificationManager nm =
+            (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        String channelId = "alarm_channel";
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel =
+                new NotificationChannel(channelId, "Alarm Channel",
+                                        NotificationManager.IMPORTANCE_DEFAULT);
+            nm.createNotificationChannel(channel);
+        }
+
+        NotificationCompat.Builder builder =
+            new NotificationCompat.Builder(context, channelId)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle("Alarm Triggered")
+                .setContentText(msg)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+
+        nm.notify((int) System.currentTimeMillis(), builder.build());
+    }
+}

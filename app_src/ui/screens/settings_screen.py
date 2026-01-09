@@ -1,4 +1,4 @@
-import traceback
+import traceback, time
 from pathlib import Path
 
 from kivy.uix.button import Button
@@ -11,10 +11,12 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
 
 from android_notify.core import asks_permission_if_needed
+from android_notify.config import get_python_activity_context,autoclass
+from android_notify.internal.java_classes import PendingIntent,Intent
 from android_notify import NotificationHandler
 from ui.widgets.android import toast  # type: ignore
-
-DEV = 0
+from android_widgets import get_package_name
+DEV = 1
 
 from utils.helper import Service, makeDownloadFolder, start_logging, smart_convert_minutes  # type: ignore
 from utils.config_manager import ConfigManager  # type: ignore
@@ -140,6 +142,18 @@ class SettingsScreen(MDScreen):
                 height=dp(50),
                 on_release=lambda widget: self.android_notify_tests()
             ))
+            root.add_widget(Button(
+                text="test ALARM",
+                size_hint_y=None,
+                height=dp(50),
+                on_release=lambda widget: self.schedule_alarm()
+            ))
+            root.add_widget(Button(
+                text="test schedule_notification",
+                size_hint_y=None,
+                height=dp(50),
+                on_release=lambda widget: self.schedule_notification()
+            ))
         text = MyLabel(
             text="--- v1.0.2 ---",
             size_hint_y=None,
@@ -149,6 +163,53 @@ class SettingsScreen(MDScreen):
         root.add_widget(text)
         scroll.add_widget(root)
         self.add_widget(scroll)
+
+    def schedule_alarm(self):
+        Context = autoclass('android.content.Context')
+        AlarmManager = autoclass('android.app.AlarmManager')
+        context = get_python_activity_context()
+        alarm = context.getSystemService(Context.ALARM_SERVICE)
+
+        intent = Intent(context, autoclass(f"{get_package_name()}.TheReceiver"))
+        intent.setAction("ALARM_ACTION")
+        intent.putExtra("message", "Hello from Python!")
+
+        pending = PendingIntent.getBroadcast(
+            context, 0, intent, PendingIntent.FLAG_IMMUTABLE
+        )
+
+        trigger_time = int((time.time() + 10) * 1000)  # 10 seconds later
+        alarm.setExact(AlarmManager.RTC_WAKEUP, trigger_time, pending)
+
+
+    def schedule_notification(self,seconds=10, message="Hello from WorkManager"):
+        from jnius import autoclass
+
+        PythonActivity = autoclass('org.kivy.android.PythonActivity')
+        WorkManager = autoclass('androidx.work.WorkManager')
+        OneTimeWorkRequestBuilder = autoclass(
+            'androidx.work.OneTimeWorkRequest$Builder'
+        )
+        DataBuilder = autoclass('androidx.work.Data$Builder')
+        TimeUnit = autoclass('java.util.concurrent.TimeUnit')
+        MyWorker = autoclass('org.wally.waller.MyWorker')
+        context = PythonActivity.mActivity
+
+        data = (
+            DataBuilder()
+            .putString("message", message)
+            .build()
+        )
+
+        request = (
+            OneTimeWorkRequestBuilder(MyWorker)
+            .setInitialDelay(seconds, TimeUnit.SECONDS)
+            .setInputData(data)
+            .build()
+        )
+
+        WorkManager.getInstance(context).enqueue(request)
+
     def open_logs_screen(self,widget=None):
         self.times_tapped += 1
         if self.times_tapped == 3:

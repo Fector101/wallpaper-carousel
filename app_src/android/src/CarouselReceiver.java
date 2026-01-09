@@ -31,7 +31,7 @@ public class CarouselReceiver extends BroadcastReceiver {
         context.getFilesDir().getAbsolutePath() + "/app/port.txt"
         );
         if (!portFile.exists()) {
-            Log.e(TAG, "port.txt not found!");
+            Log.e(TAG, "port.txt not found! in python app");
             return;
         }
 
@@ -40,7 +40,7 @@ public class CarouselReceiver extends BroadcastReceiver {
             String line = br.readLine();
             if (line != null) port = Integer.parseInt(line.trim());
         } catch (Exception e) {
-            Log.e(TAG, "Error reading port.txt", e);
+            Log.e(TAG, "Error reading port.txt from python service", e);
             return;
         }
 
@@ -49,12 +49,16 @@ public class CarouselReceiver extends BroadcastReceiver {
         String oscArg = "";
         if ("ACTION_STOP".equals(action)) {
             oscAddress = "/stop";
-            oscArg = "hello1 frm java";
+            oscArg = "hello1 frm java STOP";
         } else if ("ACTION_SKIP".equals(action)) {
             oscAddress = "/next";
-            oscArg = "hello frm java";
+            oscArg = "hello frm java SKIP";
+        } else if ("ACTION_PAUSE".equals(action)) {
+            oscAddress = "/pause";
+            oscArg = "hello frm java PAUSE";
         } else {
-            Log.w(TAG, "Unknown action: " + action);
+            Toast.makeText(context, "Unknown action: " + action, Toast.LENGTH_SHORT).show();
+            Log.w(TAG, "Unknown action from python: " + action);
             return;
         }
 
@@ -65,9 +69,9 @@ public class CarouselReceiver extends BroadcastReceiver {
         new Thread(() -> {
             try {
                 sendOscMessage("127.0.0.1", finalPort, finalAddress, finalArg);
-                Log.d(TAG, "OSC message sent: " + finalAddress + " " + finalArg);
+                Log.d(TAG, "OSC message sent to python: " + finalAddress + " " + finalArg);
             } catch (Exception e) {
-                Log.e(TAG, "Failed to send OSC message", e);
+                Log.e(TAG, "Failed to send OSC message to python", e);
             }
         }).start();
     }
