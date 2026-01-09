@@ -9,7 +9,7 @@
     android:minResizeHeight="40dp"
     android:maxResizeWidth="120dp"
     android:maxResizeHeight="120dp"
-    android:previewImage="@drawable/ic_launcher_foreground"
+    android:previewImage="@drawable/mountain"
     android:previewLayout="@layout/carousel_widget"
     android:resizeMode="horizontal|vertical"
     android:targetCellWidth="2"
