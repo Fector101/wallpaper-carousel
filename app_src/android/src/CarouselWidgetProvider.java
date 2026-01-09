@@ -2,6 +2,8 @@ package org.wally.waller;
 
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
+import android.app.PendingIntent;
+import android.content.Intent;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -32,12 +34,48 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
             int[] appWidgetIds
     ) {
 
+        Log.d(TAG, "onUpdate() called, widget count=" + appWidgetIds.length);
+
         for (int appWidgetId : appWidgetIds) {
+
+            Log.d(TAG, "Updating widgetId=" + appWidgetId);
 
             RemoteViews views = new RemoteViews(
                     context.getPackageName(),
                     R.layout.carousel_widget
             );
+
+            // WIDGET CLICK → APP LAUNCH
+            Log.d(TAG, "Resolving launch intent");
+
+            Intent intent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
+
+            if (intent == null) {
+                Log.e(TAG, "Launch intent is NULL – app has no LAUNCHER activity");
+            } else {
+                Log.d(TAG, "Launch intent resolved: " + intent.getComponent());
+
+                intent.setFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK |
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP
+                );
+
+                intent.putExtra("from_widget", true);
+                Log.d(TAG, "Extra 'from_widget' added");
+
+                PendingIntent pendingIntent = PendingIntent.getActivity(
+                        context,
+                        appWidgetId,
+                        intent,
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                );
+
+                Log.d(TAG, "PendingIntent created");
+
+                views.setOnClickPendingIntent(R.id.widget_root, pendingIntent);
+                views.setOnClickPendingIntent(R.id.test_image, pendingIntent);
+                Log.d(TAG, "PendingIntent attached to R.id.test_image and widget");
+            }
 
             File txtFile = new File(
                     context.getFilesDir().getAbsolutePath() + "/app/wallpaper.txt"
@@ -79,40 +117,60 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
             opts.inSampleSize = 4; // reduce memory usage
             Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath(), opts);
 
-            if (bitmap != null) {
-                // Crop bitmap to square
-                int size = Math.min(bitmap.getWidth(), bitmap.getHeight());
-                int x = (bitmap.getWidth() - size) / 2;
-                int y = (bitmap.getHeight() - size) / 2;
-                Bitmap squareBitmap = Bitmap.createBitmap(bitmap, x, y, size, size);
-
-                // Scale bitmap to widget size
-                int widgetPx = (int) (120 * context.getResources().getDisplayMetrics().density); // 120dp
-                Bitmap scaledBitmap = Bitmap.createScaledBitmap(squareBitmap, widgetPx, widgetPx, true);
-
-                // Create rounded bitmap
-                Bitmap output = Bitmap.createBitmap(widgetPx, widgetPx, Bitmap.Config.ARGB_8888);
-                Canvas canvas = new Canvas(output);
-
-                Paint paint = new Paint();
-                paint.setAntiAlias(true);
-
-                Rect rect = new Rect(0, 0, widgetPx, widgetPx);
-                RectF rectF = new RectF(rect);
-
-                float cornerRadius = 16 * context.getResources().getDisplayMetrics().density; // 16dp corners
-                canvas.drawARGB(0, 0, 0, 0);
-                canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, paint);
-
-                paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_IN));
-                canvas.drawBitmap(scaledBitmap, rect, rect, paint);
-
-                views.setImageViewBitmap(R.id.test_image, output);
-            } else {
+            if (bitmap == null) {
                 Log.e(TAG, "Bitmap decode failed");
+                appWidgetManager.updateAppWidget(appWidgetId, views);
+                continue;
             }
 
+            Log.d(TAG, "Bitmap decoded: " + bitmap.getWidth() + "x" + bitmap.getHeight());
+
+            int size = Math.min(bitmap.getWidth(), bitmap.getHeight());
+            int x = (bitmap.getWidth() - size) / 2;
+            int y = (bitmap.getHeight() - size) / 2;
+
+            Bitmap squareBitmap = Bitmap.createBitmap(bitmap, x, y, size, size);
+
+            int widgetPx = (int) (120 * context.getResources().getDisplayMetrics().density);
+            Bitmap scaledBitmap = Bitmap.createScaledBitmap(
+                    squareBitmap,
+                    widgetPx,
+                    widgetPx,
+                    true
+            );
+
+            Bitmap output = Bitmap.createBitmap(
+                    widgetPx,
+                    widgetPx,
+                    Bitmap.Config.ARGB_8888
+            );
+
+            Canvas canvas = new Canvas(output);
+
+            Paint paint = new Paint();
+            paint.setAntiAlias(true);
+
+            Rect rect = new Rect(0, 0, widgetPx, widgetPx);
+            RectF rectF = new RectF(rect);
+
+            float cornerRadius =
+                    16 * context.getResources().getDisplayMetrics().density;
+
+            canvas.drawARGB(0, 0, 0, 0);
+            canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, paint);
+
+            paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_IN));
+            canvas.drawBitmap(scaledBitmap, rect, rect, paint);
+
+            views.setImageViewBitmap(R.id.test_image, output);
+
+            Log.d(TAG, "Bitmap rendered and set on widget");
+
+            // -----------------------------
+            // UPDATE WIDGET
+            // -----------------------------
             appWidgetManager.updateAppWidget(appWidgetId, views);
+            Log.d(TAG, "Widget update pushed");
         }
     }
 }
