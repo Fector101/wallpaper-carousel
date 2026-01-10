@@ -1,17 +1,14 @@
 import os
-import traceback
 from pathlib import Path
 
 from kivy.clock import Clock
-from kivy.uix.image import AsyncImage, Image
-from kivy.uix.button import Button
+from kivy.uix.image import AsyncImage
 from kivy.uix.label import Label
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.uix.popup import Popup
 from kivy.uix.carousel import Carousel
 from kivymd.uix.label import MDLabel
 from kivymd.uix.relativelayout import MDRelativeLayout
-
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.floatlayout import MDFloatLayout
@@ -26,7 +23,7 @@ from utils.helper import makeDownloadFolder, thumbnail_path_for
 from utils.config_manager import ConfigManager
 from kivymd.uix.button import MDIconButton
 
-from kivy.graphics import Color, Rectangle, RoundedRectangle, Line
+from kivy.graphics import Color, Line
 
 
 
@@ -62,6 +59,14 @@ class MyCarousel(Carousel):
     #         self.rect.size = self.size
     #         self.rect.pos = self.pos
 
+def format_size(bytes_size):
+    """
+    Convert bytes to human-readable size.
+    """
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if bytes_size < 1024:
+            return f"{bytes_size:.2f} {unit}"
+        bytes_size /= 1024
 
 class MyMDIconButton(MDIconButton):
     def __init__(self, **kwargs):
@@ -75,6 +80,8 @@ class MyMDIconButton(MDIconButton):
 class FullscreenScreen(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.clock_for_higher_format = None
+        self.clock_for_side_by_side = None
         self.app_dir = Path(makeDownloadFolder())
         self.myconfig = ConfigManager()
         self.wallpapers_dir = self.app_dir / "wallpapers"
@@ -87,17 +94,6 @@ class FullscreenScreen(MDScreen):
         # Main layout container
         self.layout = MDFloatLayout(md_bg_color=[0, 0, 0, 1])
         # self.layout.orientation="vertical"
-        self.add_widget(self.layout)
-
-        self.original_carousel_pos_hint = {'x': 0, 'y': 0.125}
-        self.original_carousel_size_hint = (1, 1 - .25)
-        self.carousel = MyCarousel(direction="right", loop=True,
-                                   size_hint=self.original_carousel_size_hint,
-                                   pos_hint=self.original_carousel_pos_hint)
-        self.carousel.bind(index=self.on_current_slide)
-
-        self.layout.add_widget(self.carousel)
-
 
         self.header_layout = BorderMDBoxLayout(
             orientation="horizontal", radius=[25],
@@ -117,16 +113,25 @@ class FullscreenScreen(MDScreen):
 
         self.btn_toggle.theme_bg_color = 'Custom'
         self.btn_toggle.md_bg_color = self.header_layout.md_bg_color
+        self.text_container = MDBoxLayout(orientation="vertical")
+        # self.text_container.md_bg_color=[.1, 1, 0, 1]
+        self.header_title = MDLabel(text="", pos_hint={'center_y': .48})
+        self.header_file_size = MDLabel(text=" ", pos_hint={'center_y': .46},adaptive_size=True,padding=[dp(4),dp(1)])
 
-        self.header_title = MDLabel(text="",
-                                    pos_hint={'center_y': .48})
+        self.header_file_size.font_size = sp(12)
+        self.header_file_size.radius = dp(5)
+        self.header_file_size.md_bg_color = [1,1,1,.2]
         self.header_title.shorten = True
         self.header_title.shorten_from = "right"
         self.header_title.text_color = 'white'
+        self.header_file_size.text_color = [.6,.6,.6,1]
 
-        self.header_layout.add_widget(self.btn_toggle)
-        self.header_layout.add_widget(self.header_title)
-        self.layout.add_widget(self.header_layout)
+        self.original_carousel_pos_hint = {'x': 0, 'y': 0.125}
+        self.original_carousel_size_hint = (1, 1 - .25)
+        self.carousel = MyCarousel(direction="right", loop=True,
+                                   size_hint=self.original_carousel_size_hint,
+                                   pos_hint=self.original_carousel_pos_hint)
+        self.carousel.bind(index=self.on_current_slide)
 
         bg = .2
         self.btm_btn_layout_root = MDRelativeLayout(
@@ -150,10 +155,19 @@ class FullscreenScreen(MDScreen):
         self.btn_info = MyMDIconButton(icon="information-outline", style="tonal", )  # Button(text="Info")
         self.btn_fullscreen = MyMDIconButton(icon="fullscreen", style="tonal")
 
+
+        self.add_widget(self.layout)
+        self.layout.add_widget(self.carousel)
+        self.header_layout.add_widget(self.btn_toggle)
+        self.text_container.add_widget(self.header_title)
+        self.text_container.add_widget(self.header_file_size)
+        self.header_layout.add_widget(self.text_container)
+        self.layout.add_widget(self.header_layout)
+
+
         self.btn_layout.add_widget(self.btn_delete)
         self.btn_layout.add_widget(self.btn_info)
         self.btn_layout.add_widget(self.btn_fullscreen)
-
         self.btm_btn_layout_root.add_widget(self.btn_layout)
         self.layout.add_widget(self.btm_btn_layout_root)
 
@@ -172,7 +186,9 @@ class FullscreenScreen(MDScreen):
         self.carousel.pos_hint = {'center_x': .5, 'center_y': .5}
         self.header_layout.md_bg_color = [0, 0, 0, 0]
         self.header_title.text_color = [0, 0, 0, 0]
-        self.header_layout.bg_color_instr.rgba = [0, 0, 0, 0]
+        self.header_layout.bg_color_instr.a = 0
+        self.header_file_size.text_color = [0, 0, 0, 0]
+        self.header_file_size.md_bg_color = [0, 0, 0, 0]
 
         self.btn_toggle.text_color = [1, 1, 1, .9]
         self.btn_toggle.style = "outlined"
@@ -193,7 +209,9 @@ class FullscreenScreen(MDScreen):
             self.carousel.pos_hint = self.original_carousel_pos_hint
             self.header_layout.pos_hint = {'center_x': .5, 'top': .97}
             self.header_title.text_color = [1, 1, 1, 1]
-            self.header_layout.bg_color_instr.rgba = [.5, .5, .5, .8]
+            self.header_layout.bg_color_instr.a = .8
+            self.header_file_size.md_bg_color = [1, 1, 1, .2]
+            self.header_file_size.text_color = [.6, .6, .6, 1]
 
             self.btm_btn_layout_root.pos_hint = {"y": 0}
 
@@ -285,43 +303,51 @@ class FullscreenScreen(MDScreen):
             img.higher_format = p
             self.carousel.add_widget(img)
 
+    def update_header_texts(self,image_path):
+        self.header_title.text = os.path.basename(image_path)
+        if os.path.exists(image_path):
+            self.header_file_size.text = format_size(os.path.getsize(image_path))
+
     def on_current_slide(self, carousel, index):
 
         current_slide = self.carousel.current_slide
-
+        if self.clock_for_side_by_side:
+            self.clock_for_side_by_side.cancel()
+        if self.clock_for_higher_format:
+            self.clock_for_higher_format.cancel()
         if not current_slide:
             return None
-        def change_img(dt):
+        def change_img(_):
             current_slide.source = str(current_slide.higher_format)
 
-        self.header_title.text = os.path.basename(current_slide.source)
-        Clock.schedule_once(change_img, 1)
-        Clock.schedule_once(self.set_side_by_side, 1.5)
+        self.update_header_texts(current_slide.higher_format)
+        self.clock_for_higher_format = Clock.schedule_once(change_img, 1)
+        self.clock_for_side_by_side = Clock.schedule_once(self.set_side_by_side, 1.5)
         return None
-
-    def set_side_by_side1(self, widget):
-        if os.path.basename(widget.source) != os.path.basename(self.carousel.current_slide.source):
-            return None
-        print(os.path.basename(widget.source), "on load:", os.path.basename(self.carousel.current_slide.source))
-        current_slide_index = self.carousel.index
-        first_img = self.carousel.slides[0]
-        last_img = self.carousel.slides[-1]
-
-        left_side_img = self.carousel.slides[current_slide_index - 1] if current_slide_index - 1 >= 0 else last_img
-        right_side_img = self.carousel.slides[current_slide_index + 1] if current_slide_index + 1 < len(
-            self.carousel.slides) else first_img
-
-        print("left_side_img source:", os.path.basename(left_side_img.source), "left_side_img hf:",
-              os.path.basename(left_side_img.higher_format))
-        if left_side_img:
-            if left_side_img.source != str(left_side_img.higher_format):
-                print('left...')
-                left_side_img.source = str(left_side_img.higher_format)
-        if right_side_img:
-            if right_side_img.source != str(right_side_img.higher_format):
-                print('right...')
-                right_side_img.source = str(right_side_img.higher_format)
-        return None
+    #
+    # def set_side_by_side1(self, widget):
+    #     if os.path.basename(widget.source) != os.path.basename(self.carousel.current_slide.source):
+    #         return None
+    #     print(os.path.basename(widget.source), "on load:", os.path.basename(self.carousel.current_slide.source))
+    #     current_slide_index = self.carousel.index
+    #     first_img = self.carousel.slides[0]
+    #     last_img = self.carousel.slides[-1]
+    #
+    #     left_side_img = self.carousel.slides[current_slide_index - 1] if current_slide_index - 1 >= 0 else last_img
+    #     right_side_img = self.carousel.slides[current_slide_index + 1] if current_slide_index + 1 < len(
+    #         self.carousel.slides) else first_img
+    #
+    #     print("left_side_img source:", os.path.basename(left_side_img.source), "left_side_img hf:",
+    #           os.path.basename(left_side_img.higher_format))
+    #     if left_side_img:
+    #         if left_side_img.source != str(left_side_img.higher_format):
+    #             print('left...')
+    #             left_side_img.source = str(left_side_img.higher_format)
+    #     if right_side_img:
+    #         if right_side_img.source != str(right_side_img.higher_format):
+    #             print('right...')
+    #             right_side_img.source = str(right_side_img.higher_format)
+    #     return None
 
     def set_side_by_side(self, *args):
         """
@@ -342,7 +368,8 @@ class FullscreenScreen(MDScreen):
         right_side_img = self.carousel.slides[current_slide_index + 1] if current_slide_index + 1 < len(
             self.carousel.slides) else first_img
 
-        # print("left_side_img source:",left_side_img.source,"left_side_img hf:",left_side_img.higher_format)
+        # print("left_side_img source:", os.path.basename(left_side_img.source), "left_side_img hf:",
+        #       os.path.basename(left_side_img.higher_format))
         if left_side_img:
             if left_side_img.source != str(left_side_img.higher_format):
                 # print('left...')
