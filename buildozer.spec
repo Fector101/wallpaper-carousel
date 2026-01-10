@@ -106,8 +106,8 @@ android.gradle_dependencies = androidx.core:core-ktx:1.15.0, androidx.core:core:
 
 # (list) The Android archs to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
 # In past, was `android.arch` as we weren't supporting builds for multiple archs at the same time.
-# android.archs = arm64-v8a, armeabi-v7a
-android.archs = arm64-v8a
+android.archs = arm64-v8a, armeabi-v7a
+# android.archs = arm64-v8a
 
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True
