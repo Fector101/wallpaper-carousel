@@ -5,3 +5,31 @@ Wally: A working Android wallpaper carousel with no ads.
 [APK Download](https://github.com/Fector101/wallpaper-carousel/actions/runs/20388009404/artifacts/4930882816)
 
 - Every 2mins wallpaper switches to a new image already provided by user.
+
+
+
+## More Features
+
+### Home screen widget
+- To view Lock-screen image from home screen
+- Can Tap to Enter App
+
+### Notification
+- Large Icon to Preview Next image
+- Skip Button to change upcoming Image
+- Stop Button to End carousel 
+
+### Permissions
+- Access to Only Images: asking less permission instead of access to all files
+- Now saving added images in app path only
+- added export button to get images if uninstalling app
+
+## Few Screen Samples
+
+| **View Screen Design** | **Home Screen Widget** |
+|-------------------------------------|--------------------------------------------------------|
+|![app-view-img-screen_1_360x800](https://github.com/user-attachments/assets/4fc14b6e-c056-44e8-b61e-953ae87bcaf3) | ![home-screen_1_360x800](https://github.com/user-attachments/assets/04b38b07-edde-4acf-81ac-19c3256a4709) |
+
+
+---
+
