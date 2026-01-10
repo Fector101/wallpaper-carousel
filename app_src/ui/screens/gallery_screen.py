@@ -10,6 +10,7 @@ from kivy.properties import StringProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.image import AsyncImage
 from kivy.utils import platform
+from kivymd.uix.label import MDLabel
 from plyer import filechooser
 
 from kivymd.uix.screen import MDScreen
@@ -20,31 +21,7 @@ from kivymd.uix.button import MDFabButton
 from utils.helper import FileOperation, get_or_create_thumbnail
 from utils.config_manager import ConfigManager
 from utils.helper import makeDownloadFolder  # type
-#
-# from kivy.core.text import LabelBase
-#
-# class Font:
-#     def __init__(self, name, base_folder):
-#         self.base_folder = base_folder
-#         self.name = name
-#
-#     def get_type_path(self, fn_type):
-#         """
-#         Formats font type path
-#         :param fn_type:
-#         :return:
-#         """
-#         return os.path.join(self.base_folder, self.name + '-' + fn_type + '.ttf')
-#
-#
-# # This work but i like the normal, bold,italic config better title.font_name = "app_src/assets/fonts/Roboto_Mono/RobotoMono-VariableFont_wght.ttf"
-# robot_mono = Font(name='RobotoMono', base_folder="app_src/assets/fonts/Roboto_Mono/static")
-# LabelBase.register(
-#     name="RobotoMono",
-#     fn_regular=robot_mono.get_type_path('Regular'),
-#     fn_italic=robot_mono.get_type_path('Italic'),
-#     fn_bold=robot_mono.get_type_path('Bold'),
-# )
+
 
 class MyMDRecycleGridLayout(RecycleGridLayout):
     icon_active = StringProperty()
@@ -67,7 +44,26 @@ class GalleryScreen(MDScreen):
         self.wallpapers_dir = self.app_dir / "wallpapers"
         self.md_bg_color = [0.1, 0.1, 0.1, 1]
         layout = BoxLayout(orientation="vertical", spacing=10, padding=10)
-        layout.add_widget(Label(text="Wallpapers", size_hint_y=0.1, font_size="22sp",font_name="RobotoMono"))
+        self.header_layout = BoxLayout(orientation="vertical", spacing=10, padding=[dp(20),0], size_hint_y=0.13)
+        self.header_layout.padding = [dp(20), 0, dp(20), dp(10)]
+        app_name_label=MDLabel(
+            text="Waller",theme_font_name="Custom",font_name="RobotoMono",
+            theme_text_color="Custom",text_color="white",
+            bold=True,theme_font_size="Custom",font_size="24sp"
+        )
+        app_name_label.text_color="white"
+        app_name_label.adaptive_size=True
+        # app_name_label.md_bg_color=[1,1,11,1]
+        self.header_info_label=MDLabel(
+            text="0 images found",theme_font_name="Custom",
+            font_name="RobotoMono", theme_text_color="Custom",
+            text_color="white",italic=True,theme_font_size="Custom",
+            font_size="14sp",adaptive_size=True
+        )
+        # self.header_info_label.md_bg_color=[1,1,0,1]
+        self.header_layout.add_widget(app_name_label)
+        self.header_layout.add_widget(self.header_info_label)
+        layout.add_widget(self.header_layout)
 
         self.rv = RecycleView(size_hint_y=0.8)
         grid = MyMDRecycleGridLayout(cols=3,
@@ -104,7 +100,7 @@ class GalleryScreen(MDScreen):
         # )
         # self.add_widget(self.bottom_bar)
 
-        # self.load_saved() for hot_reload
+        # self.load_saved()# for hot_reload
 
 
     def open_filechooser(self, *args):
@@ -156,6 +152,8 @@ class GalleryScreen(MDScreen):
         for img in new_images:
             if img not in self.wallpapers:
                 self.wallpapers.append(img)
+
+        self.header_info_label.text = f"{len(self.wallpapers)} images found"
         data = []
         self.rv.data = []
         try:
