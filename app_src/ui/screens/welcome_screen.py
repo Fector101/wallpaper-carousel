@@ -75,10 +75,7 @@ class NotificationRequestLayout(MDGridLayout):
             ),
         )
         body.font_size = sp(14)
-        try:
-            body.font_name = "RobotoMono"
-        except:
-            pass
+        body.font_name = "RobotoMono"
         body.adaptive_height = 1
         # header_layout.md_bg_color=[1,.6,0,1]
         header_layout.add_widget(title)
