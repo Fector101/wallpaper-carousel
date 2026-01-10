@@ -228,6 +228,7 @@ class MyWallpaperReceiver:
         self.current_wait_seconds = 0
         self.live = False
         # notification.cancel() android auto removes it
+        service.setAutoRestartService(False) # On Android 12 service continued after swiping app from Recents this is best bet
         service.stopSelf()
 
     def pause(self, data=None):
