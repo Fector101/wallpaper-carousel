@@ -16,7 +16,7 @@ from android_notify.internal.java_classes import PendingIntent,Intent
 from android_notify import NotificationHandler
 from ui.widgets.android import toast  # type: ignore
 from android_widgets import get_package_name
-DEV = 1
+DEV = 0
 
 from utils.helper import Service, makeDownloadFolder, start_logging, smart_convert_minutes  # type: ignore
 from utils.config_manager import ConfigManager  # type: ignore
@@ -218,7 +218,7 @@ class SettingsScreen(MDScreen):
 
     def android_notify_tests(self):
         try:
-            from tests.android_notify_test import TestAndroidNotifyFull
+            from android_notify.tests.android_notify_test import TestAndroidNotifyFull
             import unittest
 
             suite = unittest.TestLoader().loadTestsFromTestCase(TestAndroidNotifyFull)
