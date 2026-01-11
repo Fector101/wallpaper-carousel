@@ -20,9 +20,12 @@ Wally: A working Android wallpaper carousel with no ads.
 - Stop Button to End carousel 
 
 ### Permissions
-- Access to Only Images: asking less permission instead of access to all files
-- Now saving added images in app path only
-- added export button to get images if uninstalling app
+- Access to Only Images.
+- Notifications for more user controls and preview
+
+### Help
+- Saving added images in app path only
+- Added export button to get images if uninstalling app
 
 ## Few Screen Samples
 
