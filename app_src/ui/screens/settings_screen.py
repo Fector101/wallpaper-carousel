@@ -13,18 +13,19 @@ from kivymd.uix.textfield import MDTextField
 from android_notify.core import asks_permission_if_needed
 from android_notify.config import get_python_activity_context,autoclass
 from android_notify.internal.java_classes import PendingIntent,Intent
-from android_notify import NotificationHandler
+from android_notify import NotificationHandler,Notification
 from ui.widgets.android import toast  # type: ignore
 from android_widgets import get_package_name
-DEV = 0
+from utils.constants import DEV
 
 from utils.helper import Service, makeDownloadFolder, start_logging, smart_convert_minutes  # type: ignore
 from utils.config_manager import ConfigManager  # type: ignore
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.metrics import dp, sp
 from kivy.uix.scrollview import ScrollView
-
-
+import logging
+from android_notify.internal.logger import logger
+logger.setLevel(logging.DEBUG)
 class MyLabel(ButtonBehavior, Label):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -32,6 +33,112 @@ class MyLabel(ButtonBehavior, Label):
         self.size_hint = [1, None]
         self.height = 100
 
+
+def create_channel():
+    Notification.createChannel(
+        id='vibes',
+        name="Vibes",
+        vibrate=True
+    )
+    Notification.createChannel(
+        id='no_vibes',
+        name="No Vibes",
+        vibrate=False
+    )
+
+def delete_current_channel():
+    Notification.deleteAllChannel()
+def schedule_notification(seconds=10, message="Hello from WorkManager"):
+    from jnius import autoclass
+
+    PythonActivity = autoclass('org.kivy.android.PythonActivity')
+    WorkManager = autoclass('androidx.work.WorkManager')
+    OneTimeWorkRequestBuilder = autoclass(
+        'androidx.work.OneTimeWorkRequest$Builder'
+    )
+    DataBuilder = autoclass('androidx.work.Data$Builder')
+    TimeUnit = autoclass('java.util.concurrent.TimeUnit')
+    MyWorker = autoclass('org.wally.waller.MyWorker')
+    context = PythonActivity.mActivity
+
+    data = (
+        DataBuilder()
+        .putString("message", message)
+        .build()
+    )
+
+    request = (
+        OneTimeWorkRequestBuilder(MyWorker)
+        .setInitialDelay(seconds, TimeUnit.SECONDS)
+        .setInputData(data)
+        .build()
+    )
+
+    WorkManager.getInstance(context).enqueue(request)
+
+
+def no_vibes():
+    n=Notification(title='no vibrate',channel_id='no_vibes')
+    n.send()
+
+
+def basic_side():
+    try:
+        asks_permission_if_needed()
+    except Exception as e:
+        print('Permission error:', e)
+        traceback.print_exc()
+
+
+def android_notify_tests():
+    try:
+        n=Notification(title='vibrate',channel_id='vibes')
+        n.send()
+        # from android_notify.tests.android_notify_test import TestAndroidNotifyFull
+        # import unittest
+        #
+        # suite = unittest.TestLoader().loadTestsFromTestCase(TestAndroidNotifyFull)
+        # unittest.TextTestRunner(verbosity=2).run(suite)
+
+    except Exception as e:
+        print("Error testing android_notify:", e)
+        traceback.print_exc()
+
+
+def schedule_alarm():
+    Context = autoclass('android.content.Context')
+    AlarmManager = autoclass('android.app.AlarmManager')
+    context = get_python_activity_context()
+    alarm = context.getSystemService(Context.ALARM_SERVICE)
+
+    intent = Intent(context, autoclass(f"{get_package_name()}.TheReceiver"))
+    intent.setAction("ALARM_ACTION")
+    intent.putExtra("message", "Hello from Python!")
+
+    pending = PendingIntent.getBroadcast(
+        context, 0, intent, PendingIntent.FLAG_IMMUTABLE
+    )
+
+    trigger_time = int((time.time() + 10) * 1000)  # 10 seconds later
+    alarm.setExact(AlarmManager.RTC_WAKEUP, trigger_time, pending)
+
+
+def open_notify_settings():
+
+    try:
+        NotificationHandler.asks_permission()
+    except Exception as e:
+        print('Notify error:', e)
+
+if DEV:
+    dev_object = {
+        "vibrate": lambda widget: android_notify_tests(),
+        "create_channel": lambda widget: create_channel(),
+        "no vibrate": lambda widget: no_vibes(),
+        "delete_current_channel": lambda widget: delete_current_channel(),
+        # "ALARM": lambda widget: self.android_notify_tests(),
+        # "schedule_notification": lambda widget: self.android_notify_tests(),
+    }
 
 class SettingsScreen(MDScreen):
     def __init__(self, **kwargs):
@@ -136,24 +243,9 @@ class SettingsScreen(MDScreen):
 
 
         if DEV:
-            root.add_widget(Button(
-                text="test android_notify",
-                size_hint_y=None,
-                height=dp(50),
-                on_release=lambda widget: self.android_notify_tests()
-            ))
-            root.add_widget(Button(
-                text="test ALARM",
-                size_hint_y=None,
-                height=dp(50),
-                on_release=lambda widget: self.schedule_alarm()
-            ))
-            root.add_widget(Button(
-                text="test schedule_notification",
-                size_hint_y=None,
-                height=dp(50),
-                on_release=lambda widget: self.schedule_notification()
-            ))
+            for each in dev_object:
+                root.add_widget(Button(text = f"test {each}", on_release=dev_object[each],size_hint_y=None,height=dp(50)))
+
         text = MyLabel(
             text="--- v1.0.2 ---",
             size_hint_y=None,
@@ -164,83 +256,11 @@ class SettingsScreen(MDScreen):
         scroll.add_widget(root)
         self.add_widget(scroll)
 
-    def schedule_alarm(self):
-        Context = autoclass('android.content.Context')
-        AlarmManager = autoclass('android.app.AlarmManager')
-        context = get_python_activity_context()
-        alarm = context.getSystemService(Context.ALARM_SERVICE)
-
-        intent = Intent(context, autoclass(f"{get_package_name()}.TheReceiver"))
-        intent.setAction("ALARM_ACTION")
-        intent.putExtra("message", "Hello from Python!")
-
-        pending = PendingIntent.getBroadcast(
-            context, 0, intent, PendingIntent.FLAG_IMMUTABLE
-        )
-
-        trigger_time = int((time.time() + 10) * 1000)  # 10 seconds later
-        alarm.setExact(AlarmManager.RTC_WAKEUP, trigger_time, pending)
-
-
-    def schedule_notification(self,seconds=10, message="Hello from WorkManager"):
-        from jnius import autoclass
-
-        PythonActivity = autoclass('org.kivy.android.PythonActivity')
-        WorkManager = autoclass('androidx.work.WorkManager')
-        OneTimeWorkRequestBuilder = autoclass(
-            'androidx.work.OneTimeWorkRequest$Builder'
-        )
-        DataBuilder = autoclass('androidx.work.Data$Builder')
-        TimeUnit = autoclass('java.util.concurrent.TimeUnit')
-        MyWorker = autoclass('org.wally.waller.MyWorker')
-        context = PythonActivity.mActivity
-
-        data = (
-            DataBuilder()
-            .putString("message", message)
-            .build()
-        )
-
-        request = (
-            OneTimeWorkRequestBuilder(MyWorker)
-            .setInitialDelay(seconds, TimeUnit.SECONDS)
-            .setInputData(data)
-            .build()
-        )
-
-        WorkManager.getInstance(context).enqueue(request)
-
     def open_logs_screen(self,widget=None):
         self.times_tapped += 1
         if self.times_tapped == 3:
             self.manager.current = "logs"
             self.times_tapped = 0
-
-    def android_notify_tests(self):
-        try:
-            from android_notify.tests.android_notify_test import TestAndroidNotifyFull
-            import unittest
-
-            suite = unittest.TestLoader().loadTestsFromTestCase(TestAndroidNotifyFull)
-            unittest.TextTestRunner(verbosity=2).run(suite)
-
-        except Exception as e:
-            print("Error testing android_notify:", e)
-            traceback.print_exc()
-
-    def basic_side(self):
-        try:
-            asks_permission_if_needed()
-        except Exception as e:
-            print('Permission error:', e)
-            traceback.print_exc()
-
-    def open_notify_settings(self):
-
-        try:
-            NotificationHandler.asks_permission()
-        except Exception as e:
-            print('Notify error:', e)
 
     def terminate_carousel(self, *args):
         try:

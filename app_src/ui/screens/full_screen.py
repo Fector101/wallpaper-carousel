@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 
 from kivy.clock import Clock
+from kivy.properties import ListProperty
+from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.image import AsyncImage
 from kivy.uix.label import Label
 from kivy.metrics import dp, sp
@@ -19,7 +21,7 @@ except TypeError:
     def toast(*args):
         print('Fallback toast:', args)
 
-from utils.helper import makeDownloadFolder, thumbnail_path_for
+from utils.helper import makeDownloadFolder, thumbnail_path_for, change_wallpaper
 from utils.config_manager import ConfigManager
 from kivymd.uix.button import MDIconButton
 
@@ -76,6 +78,32 @@ class MyMDIconButton(MDIconButton):
         self.theme_text_color = 'Custom'
         self.text_color = 'white'
 
+class PictureButton(ButtonBehavior,MDRelativeLayout):
+    app_src = ''#'/home/fabian/Documents/Laner/mobile/app_src/'
+    images = [app_src+"assets/icons/t.png",app_src+"assets/icons/moon.png",app_src+"assets/icons/sun.png"]#ListProperty([])
+    # images = ["/home/fabian/Documents/Laner/mobile/app_src/assets/icons/t.png","/home/fabian/Documents/Laner/mobile/app_src/assets/icons/moon.png","/home/fabian/Documents/Laner/mobile/app_src/assets/icons/sun.png"]#ListProperty([])
+    img_sizes = [100,42,42]
+    screen_color = ListProperty()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.img = AsyncImage()
+        self.img.mipmap=True
+        self.i = 0
+        self.md_bg_color=self.screen_color
+
+        # self.img
+        # self.adaptive_size=True
+        self.img.pos_hint = {'center_x': .5, 'center_y': .5}
+        self.img.size_hint=[None,None]
+        self.padding=[0]
+        self.img.source = self.images[self.i]
+        self.img.size=[dp(self.img_sizes[self.i]),dp(self.img_sizes[self.i])]
+
+        self.add_widget(self.img)
+    def on_release(self):
+        self.i = self.i + 1 if self.i < len(self.images) - 1else 0
+        self.img.source = self.images[self.i]
+        self.img.size=[dp(self.img_sizes[self.i]),dp(self.img_sizes[self.i])]
 
 class FullscreenScreen(MDScreen):
     def __init__(self, **kwargs):
@@ -87,7 +115,7 @@ class FullscreenScreen(MDScreen):
         self.wallpapers_dir = self.app_dir / "wallpapers"
 
         self.name = "fullscreen"
-        self.md_bg_color = [0, 0, 0, 1]
+        self.md_bg_color =[0, 0, 0, 1]
         self.bottom_height = 0.12
         self.is_fullscreen = False
 
@@ -150,10 +178,37 @@ class FullscreenScreen(MDScreen):
             md_bg_color=[.1, .1, .1, 1],
             # md_bg_color=[bg, bg, bg, 1]
         )
-
+        left_btm_box = BorderMDBoxLayout(
+            pos_hint={'center_x': .1, 'center_y': .549},
+            spacing=dp(20),
+            adaptive_size=True,
+            radius=[25],
+            md_bg_color=[.1, .1, .1, 1],
+        )
+        self.set_wallpaper_btn = MyMDIconButton(icon="wall", style="tonal")
+        left_btm_box.add_widget(self.set_wallpaper_btn)
         self.btn_delete = MyMDIconButton(icon="trash-can", style="tonal", )  # ext="Delete")
         self.btn_info = MyMDIconButton(icon="information-outline", style="tonal", )  # Button(text="Info")
         self.btn_fullscreen = MyMDIconButton(icon="fullscreen", style="tonal")
+        right_btm_box= MDBoxLayout(
+            # orientation='horizontal',
+            # size_hint=(1, self.bottom_height),
+            pos_hint={'center_x': .9, 'center_y': .549},
+            # spacing=dp(20),
+            adaptive_size=True,
+            radius=[25],
+            md_bg_color=[.1, .1, .1, 1],
+            # size_hint=[1,1]
+            # md_bg_color=[bg, bg, bg, 1]
+        )
+        self.time_btn=PictureButton(screen_color=self.md_bg_color)
+        self.time_btn.size_hint=[None,None]
+        s=42
+        self.time_btn.size=[dp(s),dp(s)]
+        # self.time_btn.theme_font_size='Custom'
+        # self.time_btn.font_size=sp(120)
+
+        right_btm_box.add_widget(self.time_btn)
 
 
         self.add_widget(self.layout)
@@ -165,10 +220,12 @@ class FullscreenScreen(MDScreen):
         self.layout.add_widget(self.header_layout)
 
 
+        self.btm_btn_layout_root.add_widget(left_btm_box)
         self.btn_layout.add_widget(self.btn_delete)
         self.btn_layout.add_widget(self.btn_info)
         self.btn_layout.add_widget(self.btn_fullscreen)
         self.btm_btn_layout_root.add_widget(self.btn_layout)
+        self.btm_btn_layout_root.add_widget(right_btm_box)
         self.layout.add_widget(self.btm_btn_layout_root)
 
         # Bind events
@@ -176,6 +233,7 @@ class FullscreenScreen(MDScreen):
         self.btn_info.bind(on_release=self.show_info)
         self.btn_fullscreen.bind(on_release=self.toggle_fullscreen)
         self.btn_toggle.bind(on_release=self.toggle_top_button)
+        self.set_wallpaper_btn.bind(on_release=lambda x: change_wallpaper(self.carousel.current_slide.higher_format))
         # self.update_images()  # for hot_reload
 
     def toggle_fullscreen(self, *args):

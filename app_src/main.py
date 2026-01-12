@@ -12,6 +12,7 @@ from kivy.core.window import Window
 from kivy.utils import platform
 
 from android_notify import NotificationHandler
+from utils.constants import DEV
 from utils.helper import Service, start_logging, get_free_port, FileOperation
 from ui.screens.gallery_screen import GalleryScreen
 from ui.screens.settings_screen import SettingsScreen
@@ -24,10 +25,11 @@ from ui.widgets.android import toast
 from kivymd.uix.relativelayout import MDRelativeLayout
 from kivy.metrics import dp
 
-try:
-    start_logging()
-except Exception as error_saving_logs:
-    print('Error directing logs:', error_saving_logs)
+if not DEV:
+    try:
+        start_logging()
+    except Exception as error_saving_logs:
+        print('Error directing logs:', error_saving_logs)
 if platform == 'linux':
     from kivy import Config
     #Linux has some weirdness with the touchpad by default... remove it
@@ -40,8 +42,6 @@ if platform == 'linux':
 elif platform == 'android':
     try:
         from android.permissions import request_permissions, Permission  # type: ignore
-
-
         def check_permissions():
             # List the permissions you need to ask the user for
             permissions = [
@@ -50,8 +50,6 @@ elif platform == 'android':
                 Permission.READ_MEDIA_IMAGES  # Kivy's latest master/buildozer handles this
             ]
             request_permissions(permissions)
-
-
         check_permissions()
     except Exception as error_call_service_on_start:
         print('Fallback toast:', error_call_service_on_start)

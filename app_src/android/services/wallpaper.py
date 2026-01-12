@@ -17,6 +17,7 @@ from android_notify import Notification
 from android_notify.config import get_python_service, get_python_activity_context
 from android_notify.core import get_app_root_path
 from android_widgets import Layout, RemoteViews, AppWidgetManager
+from utils.helper import change_wallpaper
 
 # --- Android classes ---
 BuildVersion = autoclass("android.os.Build$VERSION")
@@ -70,27 +71,6 @@ def get_next_wallpaper():
 
 
 # --- Set wallpaper function ---
-def change_wallpaper(wallpaper_path):
-    """Actually set the wallpaper"""
-    try:
-        if not wallpaper_path or not os.path.exists(wallpaper_path):
-            print("Invalid wallpaper path")
-            return False
-
-        bitmap = BitmapFactory.decodeFile(wallpaper_path)
-
-        if BuildVersion.SDK_INT >= 24:  # Android 7.0+
-            FLAG_LOCK = WallpaperManager.FLAG_LOCK
-            wm.setBitmap(bitmap, None, True, FLAG_LOCK)
-            # print(f"Success: Lock screen wallpaper changed to: {os.path.basename(wallpaper_path)}")
-        else:
-            print("Fail: Lock screen wallpaper not supported on this Android version.")
-
-        return True
-    except Exception as e:
-        print("Failed to set wallpaper:", e)
-        return False
-
 
 # --- Main service loop with auto-restart ---
 def get_interval():
@@ -182,7 +162,7 @@ class MyWallpaperReceiver:
 
             if not self.skip_now:
                 # Then change wallpaper
-                change_wallpaper(self.next_wallpaper_path)
+                change_wallpaper(self.next_wallpaper_path,wallpaper_manager=wm)
                 self.__write_wallpaper_path_to_file(self.next_wallpaper_path)
             self.skip_now = False
 
@@ -245,7 +225,7 @@ class MyWallpaperReceiver:
         self.current_wait_seconds = 0
 
     def set_wallpaper(self, wallpaper_path):
-        change_wallpaper(wallpaper_path)
+        change_wallpaper(wallpaper_path,wallpaper_manager=wm)
 
 
 

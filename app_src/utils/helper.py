@@ -6,7 +6,7 @@ from pathlib import Path
 from jnius import autoclass, cast
 from .config_manager import ConfigManager
 
-
+from ui.widgets.android import toast
 def is_wine():
     """
 	Detect if the application is running under Wine.
@@ -576,4 +576,32 @@ def is_platform_android():
 
     return False
 
+
+def change_wallpaper(wallpaper_path,wallpaper_manager=None):
+    """Actually set the wallpaper"""
+    try:
+        if not wallpaper_path or not os.path.exists(wallpaper_path):
+            print("Invalid wallpaper path")
+            return False
+        BitmapFactory = autoclass('android.graphics.BitmapFactory')
+        BuildVersion = autoclass("android.os.Build$VERSION")
+        WallpaperManager = autoclass('android.app.WallpaperManager')
+        context = get_python_activity_context()
+        wallpaper_manager = wallpaper_manager or WallpaperManager.getInstance(context)
+        bitmap = BitmapFactory.decodeFile(wallpaper_path)
+
+        if BuildVersion.SDK_INT >= 24:  # Android 7.0+
+            FLAG_LOCK = WallpaperManager.FLAG_LOCK
+            wallpaper_manager.setBitmap(bitmap, None, True, FLAG_LOCK)
+            toast("Changed Wallpaper")
+            # print(f"Success: Lock screen wallpaper changed to: {os.path.basename(wallpaper_path)}")
+        else:
+            toast("Changed Not Supported")
+            print("Fail: Lock screen wallpaper not supported on this Android version.")
+
+        return True
+    except Exception as e:
+        toast("Failed to Change")
+        print("Failed to set wallpaper:", e)
+        return False
 
