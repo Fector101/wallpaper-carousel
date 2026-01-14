@@ -149,9 +149,10 @@ class GalleryScreen(MDScreen):
         #     print("error_testing_picker", error_testing_picker)
 
     def update_thumbnails_method(self,new_images):
-        for img in new_images:
-            if img not in self.wallpapers:
-                self.wallpapers.append(img)
+        self.wallpapers = self.wallpapers + new_images
+        #for img in new_images:
+         #   if img not in self.wallpapers:
+          #      self.wallpapers.append(img)
 
         self.header_info_label.text = f"{len(self.wallpapers)} images found"
         data = []
