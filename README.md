@@ -36,3 +36,11 @@ Wally: A working Android wallpaper carousel with no ads.
 
 ---
 
+
+| **Gallery Screen Design** | **Preview Screen Widget** |
+|-------------------------------------|--------------------------------------------------------|
+|![gallery-screen](https://github.com/Fector101/Bucket/blob/main/fullscreen.jpg) | ![preview-screen](https://github.com/Fector101/Bucket/blob/main/galleryscreen.jpg) |
+
+
+---
+
