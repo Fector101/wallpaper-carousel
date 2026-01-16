@@ -1,15 +1,9 @@
 import json, os
 from pathlib import Path
-
-
-try:
-    from kivymd.toast import toast
-except:
-    def toast(txt):
-        print("Fallback toast:", txt)
+from ui.widgets.android import toast
 
 def is_platform_android():
-    # Took this from kivy to fix my logs in P4A.hook, so no need to import things i don't need by doing `from kivy.utils import platform`
+    # Took this from kivy to fix my logs in P4A.hook, so no need to import things I don't need by doing `from kivy.utils import platform`
     if os.getenv("MAIN_ACTIVITY_HOST_CLASS_NAME"):
         return True
     kivy_build = os.environ.get('KIVY_BUILD', '')
@@ -24,7 +18,7 @@ def is_platform_android():
 
 class ConfigManager:
     DEFAULT_CONFIG = {
-        "interval_mins": 2,
+        "interval_mins": 2.0,
         "wallpapers": []
     }
 
@@ -74,7 +68,7 @@ class ConfigManager:
     def get_interval(self):
         return self._read().get("interval_mins", 2)
 
-    def set_interval(self, mins: int):
+    def set_interval(self, mins: float):
         data = self._read()
         data["interval_mins"] = mins
         self._write(data)

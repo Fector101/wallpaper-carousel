@@ -1,23 +1,25 @@
+import traceback
 try:
-    from utils.helper import start_logging, makeDownloadFolder
+    from utils.helper import start_logging
     start_logging()
-    # print("Service Logging started. All console output will also be saved.")
 except Exception as e:
     print("File Logger Failed", e)
+    traceback.print_exc()
+    # e-File Logger Failed JVM exception occurred: Attempt to invoke virtual method 'android.view.WindowManager org.kivy.android.PythonActivity.getWindowManager()' on a null object reference java.lang.NullPointerException
 
 print("Entered Wallpaper Foreground Service...")
 import os, threading
-import time
-import random, traceback
+import time, logging
+import random
 from os import environ
 from jnius import autoclass
-from pythonosc import dispatcher, osc_server, udp_client
+from pythonosc import dispatcher, osc_server
 
-from android_notify import Notification
+from android_notify import Notification, logger
 from android_notify.config import get_python_service, get_python_activity_context
 from android_notify.core import get_app_root_path
 from android_widgets import Layout, RemoteViews, AppWidgetManager
-from utils.helper import change_wallpaper
+from utils.helper import change_wallpaper, makeDownloadFolder
 
 # --- Android classes ---
 BuildVersion = autoclass("android.os.Build$VERSION")
@@ -30,6 +32,8 @@ AndroidString = autoclass("java.lang.String")
 
 # --- Folder setup ---
 download_folder_path = os.path.join(makeDownloadFolder(), "wallpapers")
+
+logger.setLevel(logging.WARNING)
 
 
 def get_service_port():
@@ -65,8 +69,8 @@ def get_next_wallpaper():
 
         wallpaper_path = random.choice(images)
         return os.path.basename(wallpaper_path), wallpaper_path
-    except Exception as e:
-        print("Failed to get next wallpaper:", e)
+    except Exception as error_getting_next_wallpaper:
+        print("Failed to get next wallpaper:", error_getting_next_wallpaper)
         return '', ''
 
 
@@ -79,8 +83,8 @@ def get_interval():
         config = ConfigManager()
         t = int(float(config.get_interval()) * 60)
         return t
-    except Exception as e:
-        print("Service Failed to get Interval:", e)
+    except Exception as error_getting_saved_interval:
+        print("Service Failed to get Interval:", error_getting_saved_interval)
         traceback.print_exc()
         return 120
 
@@ -109,7 +113,8 @@ foreground_type = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC if BuildVersion.
 context = get_python_activity_context()
 wm = WallpaperManager.getInstance(context)
 
-notification = Notification(title="Next in 02:00", message="service lifespan: 6hrs")
+notification = Notification(title="Next in 02:00", message="service lifespan: 6hrs",name="from service")
+notification.setData({"next wallpaper path": "test.jpg"})
 notification.addButton(text="Stop", receiver_name="CarouselReceiver", action="ACTION_STOP")
 notification.addButton(text="Skip", receiver_name="CarouselReceiver", action="ACTION_SKIP")
 builder = notification.start_building()
@@ -155,6 +160,7 @@ class MyWallpaperReceiver:
             wallpaper = get_next_wallpaper()
             self.next_wallpaper_path = wallpaper[1]
             self.__set_next_img_in_notification(self.next_wallpaper_path)
+            notification.setData({"next wallpaper path": self.next_wallpaper_path})
 
             # Wait for a while
             # time.sleep(get_interval())
@@ -163,6 +169,7 @@ class MyWallpaperReceiver:
             if not self.skip_now:
                 # Then change wallpaper
                 change_wallpaper(self.next_wallpaper_path,wallpaper_manager=wm)
+
                 self.__write_wallpaper_path_to_file(self.next_wallpaper_path)
             self.skip_now = False
 
@@ -178,8 +185,8 @@ class MyWallpaperReceiver:
 
         try:
             self.update_widget_image(wallpaper_path)
-        except Exception as e:
-            self.__log(f"Error update_widget_image  -{e} ping Java Listener", "WARNING")
+        except Exception as error_updating_widget:
+            self.__log(f"Error update_widget_image  -{error_updating_widget} ping Java Listener", "WARNING")
             traceback.print_exc()
 
         #try:
@@ -211,12 +218,12 @@ class MyWallpaperReceiver:
         service.setAutoRestartService(False) # On Android 12 service continued after swiping app from Recents this is best bet
         service.stopSelf()
 
-    def pause(self, data=None):
+    def pause(self, _=None):
         notification.updateTitle("Carousel Pause")
         self.current_sleep = 1000 ** 100
         pass
 
-    def resume(self, data=None):
+    def resume(self, _=None):
         self.current_sleep = 1
 
     def set_next_data(self, *args):
@@ -224,7 +231,8 @@ class MyWallpaperReceiver:
         self.skip_now = True
         self.current_wait_seconds = 0
 
-    def set_wallpaper(self, wallpaper_path):
+    @staticmethod
+    def set_wallpaper(wallpaper_path):
         change_wallpaper(wallpaper_path,wallpaper_manager=wm)
 
 
@@ -248,14 +256,12 @@ class MyWallpaperReceiver:
         PorterDuffMode = autoclass('android.graphics.PorterDuff$Mode')
         PorterDuffXfermode = autoclass('android.graphics.PorterDuffXfermode')
 
-        BitmapFactory = autoclass('android.graphics.BitmapFactory')
         BitmapFactoryOptions = autoclass('android.graphics.BitmapFactory$Options')
 
         AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
         ComponentName = autoclass('android.content.ComponentName')
         RemoteViews = autoclass('android.widget.RemoteViews')
 
-        context = get_python_activity_context()
         resources = context.getResources()
         package_name = context.getPackageName()
 

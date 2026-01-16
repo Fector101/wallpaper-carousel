@@ -52,7 +52,7 @@ elif platform == 'android':
             request_permissions(permissions)
         check_permissions()
     except Exception as error_call_service_on_start:
-        print('Fallback toast:', error_call_service_on_start)
+        print('Error asking for permission:', error_call_service_on_start)
 
 
 
@@ -170,8 +170,8 @@ class WallpaperCarouselApp(MDApp):
         def android_service():
             try:
                 Service(name='Wallpapercarousel', args_str=get_free_port()).start()
-            except Exception as error_call_service_on_start:
-                toast(error_call_service_on_start)
+            except Exception as error_call_service_on_start1:
+                toast(str(error_call_service_on_start1))
                 traceback.print_exc()
 
         Clock.schedule_once(lambda dt: android_service(), 2)

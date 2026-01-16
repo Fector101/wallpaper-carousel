@@ -4,7 +4,6 @@ from pathlib import Path
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.clock import Clock
-# from kivy.metrics import dp
 from kivy.uix.widget import Widget
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -90,7 +89,7 @@ def basic_side():
         traceback.print_exc()
 
 
-def android_notify_tests():
+def test_vibration():
     try:
         n=Notification(title='vibrate',channel_id='vibes')
         n.send()
@@ -101,7 +100,18 @@ def android_notify_tests():
         # unittest.TextTestRunner(verbosity=2).run(suite)
 
     except Exception as e:
-        print("Error testing android_notify:", e)
+        print("Error testing vibration:", e)
+        traceback.print_exc()
+
+
+
+def test_force_vibration():
+    try:
+        n=Notification(title='vibrate',channel_id='vibes')
+        n.send()
+        n.fVibrate()
+    except Exception as e:
+        print("Error test_force_vibration:", e)
         traceback.print_exc()
 
 
@@ -132,10 +142,11 @@ def open_notify_settings():
 
 if DEV:
     dev_object = {
-        "vibrate": lambda widget: android_notify_tests(),
+        "vibrate": lambda widget: test_vibration(),
         "create_channel": lambda widget: create_channel(),
         "no vibrate": lambda widget: no_vibes(),
         "delete_current_channel": lambda widget: delete_current_channel(),
+        "test_force_vibration": lambda widget: test_force_vibration(),
         # "ALARM": lambda widget: self.android_notify_tests(),
         # "schedule_notification": lambda widget: self.android_notify_tests(),
     }
@@ -151,7 +162,6 @@ class SettingsScreen(MDScreen):
         self.interval = self.myconfig.get_interval()
         self.times_tapped = 0
 
-        # ---------- SCROLLVIEW ----------
         scroll = ScrollView(size_hint=(1, 1))
 
         root = MDBoxLayout(
@@ -256,23 +266,25 @@ class SettingsScreen(MDScreen):
         scroll.add_widget(root)
         self.add_widget(scroll)
 
-    def open_logs_screen(self,widget=None):
+    def open_logs_screen(self,_=None):
         self.times_tapped += 1
         if self.times_tapped == 3:
             self.manager.current = "logs"
             self.times_tapped = 0
-
-    def terminate_carousel(self, *args):
+    @staticmethod
+    def terminate_carousel(*_):
         try:
             Service(name="Wallpapercarousel").stop()
             toast("Successfully Terminated")
         except Exception as e:
             toast("Stop failed", e)
 
-    def save_interval(self, *args):
+    def save_interval(self, *_):
         try:
             new_val = float(self.interval_input.text)
-        except:
+        except Exception as error_changing_input_to_float:
+            print(error_changing_input_to_float)
+            traceback.print_exc()
             toast("Enter a valid number")
             return
 
@@ -284,22 +296,28 @@ class SettingsScreen(MDScreen):
         self.interval_label.text = f"Saved: {smart_convert_minutes(new_val)}"
         toast("Saved")
 
-    def restart_service(self, *args):
+    @staticmethod
+    def restart_service(*_):
 
         def after_stop(*_):
             try:
                 Service(name="Wallpapercarousel").start()
                 toast("Service boosted!")
-            except:
+            except Exception as error_starting_service:
+                print(error_starting_service)
+                traceback.print_exc()
                 toast("Start failed")
 
         try:
             Service(name="Wallpapercarousel").stop()
             Clock.schedule_once(after_stop, 1.2)
-        except:
+        except Exception as error_stoping_service:
+            print(error_stoping_service)
+            traceback.print_exc()
             toast("Stop failed")
 
-    def export_waller_folder(self, instance=None):
+    @staticmethod
+    def export_waller_folder(_=None):
         """
         Export all images from app-private 'wallpapers' folder
         to public Pictures/Waller/ folder.

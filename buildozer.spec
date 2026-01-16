@@ -40,7 +40,7 @@ version = 1.0.1
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,kivy,https://github.com/kivymd/KivyMD/archive/master.zip,python-osc,https://github.com/kivy/plyer/archive/master.zip,materialyoucolor,asynckivy,asyncgui,pyjnius, docutils,netifaces,filetype,requests_toolbelt,websockets,pillow, android-widgets, https://github.com/Fector101/android_notify/archive/main.zip
+requirements = python3,kivy,https://github.com/kivymd/KivyMD/archive/master.zip,python-osc,https://github.com/kivy/plyer/archive/master.zip,materialyoucolor,asynckivy,asyncgui,pyjnius, docutils,netifaces,filetype,requests_toolbelt,websockets,pillow, android-widgets, https://github.com/Fector101/android_notify/archive/feat-add-data-to-notification.zip
 #, android-notify==1.60.6.dev0
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
@@ -83,7 +83,7 @@ fullscreen = 1
 # (See https://python-for-android.readthedocs.io/en/latest/buildoptions/#build-options-1 for all the supported syntaxes and properties)
 #android.permissions = android.permission.INTERNET, (name=android.permission.WRITE_EXTERNAL_STORAGE;maxSdkVersion=18)
 
-android.permissions = INTERNET, USE_EXACT_ALARM, SCHEDULE_EXACT_ALARM, FOREGROUND_SERVICE, FOREGROUND_SERVICE_DATA_SYNC, POST_NOTIFICATIONS, SET_WALLPAPER, READ_MEDIA_IMAGES, (name=android.permission.READ_EXTERNAL_STORAGE;maxSdkVersion=32), (name=android.permission.WRITE_EXTERNAL_STORAGE;maxSdkVersion=28)
+android.permissions = INTERNET, VIBRATE, USE_EXACT_ALARM, SCHEDULE_EXACT_ALARM, FOREGROUND_SERVICE, FOREGROUND_SERVICE_DATA_SYNC, POST_NOTIFICATIONS, SET_WALLPAPER, READ_MEDIA_IMAGES, (name=android.permission.READ_EXTERNAL_STORAGE;maxSdkVersion=32), (name=android.permission.WRITE_EXTERNAL_STORAGE;maxSdkVersion=28)
 # (int) Target Android API, should be as high as possible.
 android.api = 35
 
@@ -91,12 +91,12 @@ android.api = 35
 # (list) List of Java files to add to the android project (can be java or a
 # directory containing the files)
 
-android.add_src = app_src/android/src
+android.add_src = %(source.dir)s/android/src
 # android.add_resources = legal_icons:drawable
 # 3) A directory, here 'legal_resources' must contain one or more directories,
 # each of a resource kind:  drawable, xml, etc...
 # android.add_resources = legal_resources
-android.add_resources = app_src/android/res
+android.add_resources = %(source.dir)s/android/res
 
 
 # (list) Gradle dependencies to add
@@ -113,7 +113,7 @@ android.archs = arm64-v8a, armeabi-v7a
 android.allow_backup = True
 
 # (str) Filename to the hook for p4a
-p4a.hook = app_src/android/p4a/hook.py
+p4a.hook = %(source.dir)s/android/p4a/hook.py
 
 # (str) Path to a custom kivy-ios folder
 #ios.kivy_ios_dir = ../kivy-ios

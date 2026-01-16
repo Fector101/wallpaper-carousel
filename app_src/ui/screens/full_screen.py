@@ -14,18 +14,12 @@ from kivymd.uix.relativelayout import MDRelativeLayout
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.floatlayout import MDFloatLayout
+from kivymd.uix.button import MDIconButton
+from kivy.graphics import Color, Line
 
-try:
-    from kivymd.toast import toast
-except TypeError:
-    def toast(*args):
-        print('Fallback toast:', args)
-
+from ui.widgets.android import toast
 from utils.helper import makeDownloadFolder, thumbnail_path_for, change_wallpaper
 from utils.config_manager import ConfigManager
-from kivymd.uix.button import MDIconButton
-
-from kivy.graphics import Color, Line
 
 
 
@@ -101,7 +95,7 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
 
         self.add_widget(self.img)
     def on_release(self):
-        self.i = self.i + 1 if self.i < len(self.images) - 1else 0
+        self.i = self.i + 1 if self.i < len(self.images) - 1 else 0
         self.img.source = self.images[self.i]
         self.img.size=[dp(self.img_sizes[self.i]),dp(self.img_sizes[self.i])]
 
