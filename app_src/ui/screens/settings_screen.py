@@ -15,7 +15,7 @@ from android_notify.internal.java_classes import PendingIntent,Intent
 from android_notify import NotificationHandler,Notification
 from ui.widgets.android import toast  # type: ignore
 from android_widgets import get_package_name
-from utils.constants import DEV
+from utils.constants import DEV, VERSION
 
 from utils.helper import Service, makeDownloadFolder, start_logging, smart_convert_minutes  # type: ignore
 from utils.config_manager import ConfigManager  # type: ignore
@@ -257,7 +257,7 @@ class SettingsScreen(MDScreen):
                 root.add_widget(Button(text = f"test {each}", on_release=dev_object[each],size_hint_y=None,height=dp(50)))
 
         text = MyLabel(
-            text="--- v1.0.2 ---",
+            text=f"--- v{VERSION} ---",
             size_hint_y=None,
             height=dp(50),font_name="RobotoMono",
             on_release=self.open_logs_screen
