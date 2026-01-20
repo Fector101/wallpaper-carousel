@@ -1,14 +1,17 @@
+import os
 from pathlib import Path
 from pythonforandroid.toolchain import ToolchainCL
-
 from android_widgets.maker import Receiver, inject_foreground_service_types
 
+spec_file_path = "/home/fabian/Documents/Laner/mobile/buildozer.spec"
+package = "org.wally.waller" if not os.path.exists(spec_file_path) else None
 
-def generate_receivers(package: str) -> str:
+
+def generate_receivers(package_: str = None) -> str:
     receivers = [
         Receiver(
             name="CarouselReceiver",
-            actions=["ACTION_STOP","ACTION_SKIP"]
+            actions=["ACTION_STOP", "ACTION_SKIP"]
         ),
         Receiver(
             name="SimpleWidget",
@@ -37,14 +40,14 @@ def generate_receivers(package: str) -> str:
 
     ]
 
-    return "\n\n".join(r.to_xml(package) for r in receivers)
+    return "\n\n".join(r.to_xml(package = package_,spec_file_path=spec_file_path) for r in receivers)
 
 
 def after_apk_build(toolchain: ToolchainCL):
     manifest_file = Path(toolchain._dist.dist_dir) / "src" / "main" / "AndroidManifest.xml"
     text = manifest_file.read_text(encoding="utf-8")
 
-    package = "org.wally.waller"
+    # package = "vercel.app.androidNotify"
 
     # Add foregroundServiceType to multiple services
     services = {"Wallpapercarousel": "dataSync", "Mytester": "dataSync"}
@@ -52,15 +55,15 @@ def after_apk_build(toolchain: ToolchainCL):
     text = inject_foreground_service_types(
         manifest_text=text,
         package=package,
+        spec_file_path=spec_file_path,
         services=services,
     )
 
-    receiver_xml = generate_receivers(package)
-#     receiver_xml+= """
+    receiver_xml = generate_receivers()
+#     receiver_xml += f"""
 #     <receiver
-#     android:name="org.wally.waller.MyWorker"
-#     android:exported="false" />
-#
+#     android:name="{package}.MyWorker"
+#     android:exported="false" />""" + """
 # <provider
 #     android:name="androidx.startup.InitializationProvider"
 #     android:authorities="${applicationId}.androidx-startup"
@@ -76,9 +79,6 @@ def after_apk_build(toolchain: ToolchainCL):
     else:
         print("Receiver already exists in manifest")
 
-    # ====================================================
-    # Save final manifest back
-    # ====================================================
     manifest_file.write_text(text, encoding="utf-8")
     print("Successfully_101: Manifest update completed successfully!")
     print(text)
