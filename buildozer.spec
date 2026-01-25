@@ -40,7 +40,7 @@ version = 1.0.1
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,kivy,https://github.com/kivymd/KivyMD/archive/master.zip,python-osc,https://github.com/kivy/plyer/archive/master.zip,materialyoucolor,asynckivy,asyncgui,pyjnius, docutils,netifaces,filetype,requests_toolbelt,websockets,pillow, android-widgets, https://github.com/Fector101/android_notify/archive/feat-add-data-to-notification.zip
+requirements = python3,kivy,https://github.com/kivymd/KivyMD/archive/master.zip,python-osc,https://github.com/kivy/plyer/archive/master.zip,materialyoucolor,asynckivy,asyncgui,pyjnius, docutils,netifaces,filetype,requests_toolbelt,websockets,pillow, android-widgets, android-notify==1.60.7.dev0
 #, android-notify==1.60.6.dev0
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
