@@ -89,7 +89,7 @@ def get_interval():
         return 120
 
 
-SERVICE_LIFESPAN_HOURS = 6  # Service will run for 6 hours
+SERVICE_LIFESPAN_HOURS = 12
 SERVICE_LIFESPAN_SECONDS = SERVICE_LIFESPAN_HOURS * 3600
 
 
