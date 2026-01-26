@@ -100,7 +100,7 @@ android.add_resources = %(source.dir)s/android/res
 
 
 # (list) Gradle dependencies to add
-android.gradle_dependencies = androidx.core:core-ktx:1.15.0, androidx.core:core:1.6.0, androidx.work:work-runtime:2.9.0
+android.gradle_dependencies = com.google.android.material:material:1.6.0, androidx.core:core-ktx:1.15.0, androidx.core:core:1.6.0, androidx.work:work-runtime:2.9.0
 #, androidx.work:work-runtime:2.2.0
 
 

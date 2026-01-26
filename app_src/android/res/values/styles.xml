@@ -1,0 +1,4 @@
+<resources>
+    <style name="MyWidgetTheme" parent="Theme.Material3.DayNight">
+    </style>
+</resources>

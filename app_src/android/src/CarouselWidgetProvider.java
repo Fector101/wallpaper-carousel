@@ -15,6 +15,9 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.util.Log;
 import android.widget.RemoteViews;
+import android.view.View;
+import android.util.TypedValue;
+import android.graphics.Color;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -85,6 +88,9 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
 
             if (!txtFile.exists()) {
                 Log.e(TAG, "wallpaper.txt does not exist");
+                // Show placeholder text, hide image
+                views.setViewVisibility(R.id.test_image, View.GONE);
+                views.setViewVisibility(R.id.placeholder_text, View.VISIBLE);
                 appWidgetManager.updateAppWidget(appWidgetId, views);
                 continue;
             }
@@ -98,6 +104,8 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
 
             if (imagePath == null || imagePath.trim().isEmpty()) {
                 Log.e(TAG, "Image path is empty");
+                views.setViewVisibility(R.id.test_image, View.GONE);
+                views.setViewVisibility(R.id.placeholder_text, View.VISIBLE);
                 appWidgetManager.updateAppWidget(appWidgetId, views);
                 continue;
             }
@@ -163,12 +171,12 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
             canvas.drawBitmap(scaledBitmap, rect, rect, paint);
 
             views.setImageViewBitmap(R.id.test_image, output);
-
             Log.d(TAG, "Bitmap rendered and set on widget");
+            // Show image, hide placeholder
+            views.setViewVisibility(R.id.test_image, View.VISIBLE);
+            views.setViewVisibility(R.id.placeholder_text, View.GONE);
 
-            // -----------------------------
             // UPDATE WIDGET
-            // -----------------------------
             appWidgetManager.updateAppWidget(appWidgetId, views);
             Log.d(TAG, "Widget update pushed");
         }

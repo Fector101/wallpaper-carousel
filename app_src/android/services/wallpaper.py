@@ -261,7 +261,7 @@ class MyWallpaperReceiver:
         AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
         ComponentName = autoclass('android.content.ComponentName')
         RemoteViews = autoclass('android.widget.RemoteViews')
-
+        View = autoclass('android.view.View')
         resources = context.getResources()
         package_name = context.getPackageName()
 
@@ -316,9 +316,13 @@ class MyWallpaperReceiver:
         # Update widget
         layout_id = resources.getIdentifier("carousel_widget", "layout", package_name)
         image_id = resources.getIdentifier("test_image", "id", package_name)
+        placeholder_id = resources.getIdentifier("placeholder_text", "id", package_name)
 
         views = RemoteViews(package_name, layout_id)
         views.setImageViewBitmap(image_id, output)
+
+        views.setViewVisibility(image_id, View.VISIBLE)
+        views.setViewVisibility(placeholder_id, View.GONE)
 
         component = ComponentName(context, f"{package_name}.CarouselWidgetProvider")
         appWidgetManager = AppWidgetManager.getInstance(context)
