@@ -14,6 +14,14 @@ def generate_receivers(package_: str = None) -> str:
             actions=["ACTION_STOP", "ACTION_SKIP"]
         ),
         Receiver(
+            name="CarouselWidgetProvider",
+            actions=[
+                "android.intent.action.BOOT_COMPLETED",
+                "android.appwidget.action.APPWIDGET_UPDATE",
+            ],
+            meta_resource="@xml/carousel_widget_info",
+        ),
+        Receiver(
             name="SimpleWidget",
             label="Simple Text",
             actions=["android.appwidget.action.APPWIDGET_UPDATE"],
@@ -25,14 +33,7 @@ def generate_receivers(package_: str = None) -> str:
             actions=["android.appwidget.action.APPWIDGET_UPDATE"],
             meta_resource="@xml/button_widget_provider",
         ),
-        Receiver(
-            name="CarouselWidgetProvider",
-            actions=[
-                "android.intent.action.BOOT_COMPLETED",
-                "android.appwidget.action.APPWIDGET_UPDATE",
-            ],
-            meta_resource="@xml/carousel_widget_info",
-        ),
+
         # Receiver(
         #     name="TheReceiver",
         #     actions=["ALARM_ACTION"]
