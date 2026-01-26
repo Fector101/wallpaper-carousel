@@ -94,6 +94,7 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
                 appWidgetManager.updateAppWidget(appWidgetId, views);
                 continue;
             }
+            Log.e(TAG, "wallpaper.txt exist");
 
             String imagePath = null;
             try (BufferedReader br = new BufferedReader(new FileReader(txtFile))) {
