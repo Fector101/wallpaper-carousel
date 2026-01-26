@@ -113,7 +113,7 @@ foreground_type = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC if BuildVersion.
 context = get_python_activity_context()
 wm = WallpaperManager.getInstance(context)
 
-notification = Notification(title="Next in 02:00", message="service lifespan: 6hrs",name="from service")
+notification = Notification(title="Next in 02:00", message=f"service lifespan: {SERVICE_LIFESPAN_HOURS}hrs",name="from service")
 notification.setData({"next wallpaper path": "test.jpg"})
 notification.addButton(text="Stop", receiver_name="CarouselReceiver", action="ACTION_STOP")
 notification.addButton(text="Skip", receiver_name="CarouselReceiver", action="ACTION_SKIP")
