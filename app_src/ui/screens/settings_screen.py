@@ -45,8 +45,11 @@ def create_channel():
         vibrate=False
     )
 
+
 def delete_current_channel():
     Notification.deleteAllChannel()
+
+
 def schedule_notification(seconds=10, message="Hello from WorkManager"):
     from jnius import autoclass
 
@@ -104,7 +107,6 @@ def test_vibration():
         traceback.print_exc()
 
 
-
 def test_force_vibration():
     try:
         n=Notification(title='vibrate',channel_id='vibes')
@@ -140,13 +142,113 @@ def open_notify_settings():
     except Exception as e:
         print('Notify error:', e)
 
+
+def show_home_screen_widget_popup():
+    try:
+        from jnius import autoclass
+        from android_widgets import get_package_name
+
+        # Android classes
+        AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
+        ComponentName = autoclass('android.content.ComponentName')
+        Intent = autoclass('android.content.Intent')
+        PendingIntent = autoclass('android.app.PendingIntent')
+
+        # Your widget provider class (Java side)
+        CarouselWidgetProvider = autoclass(
+            f'{get_package_name()}.CarouselWidgetProvider'
+        )
+
+        # Get current Android activity context
+        PythonActivity = autoclass('org.kivy.android.PythonActivity')
+        context = PythonActivity.mActivity
+
+        # AppWidgetManager instance
+        appWidgetManager = AppWidgetManager.getInstance(context)
+
+        # ComponentName for your widget provider
+        myProvider = ComponentName(context, CarouselWidgetProvider)
+
+        # Check if pinning is supported
+        if appWidgetManager.isRequestPinAppWidgetSupported():
+            # Optional: callback when widget is pinned
+            intent = Intent(context, CarouselWidgetProvider)
+
+            successCallback = PendingIntent.getBroadcast(
+                context,
+                0,
+                intent,
+            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+
+            )
+
+            # Request widget pin
+            appWidgetManager.requestPinAppWidget(
+                myProvider,
+                None,
+                successCallback
+            )
+    except Exception as error_from_gpt_way:
+        print("error_from_gpt_way",error_from_gpt_way)
+        traceback.print_exc()
+
+def show_home_screen_widget_popup1():
+    from jnius import autoclass
+    from android_widgets import get_package_name
+    try:
+        # Android classes
+        AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
+        ComponentName = autoclass('android.content.ComponentName')
+        Intent = autoclass('android.content.Intent')
+        PendingIntent = autoclass('android.app.PendingIntent')
+
+        # Your widget provider class (Java side)
+        package_name = get_package_name()
+        CarouselWidgetProvider = autoclass(
+            f'{package_name}.CarouselWidgetProvider'
+        )
+
+        # Get current Android activity context
+        PythonActivity = autoclass('org.kivy.android.PythonActivity')
+        context = PythonActivity.mActivity
+
+        # AppWidgetManager instance
+        appWidgetManager = AppWidgetManager.getInstance(context)
+
+        # ComponentName for your widget provider
+        myProvider = ComponentName(context, autoclass(f'{package_name}.CarouselWidgetProvider'))
+
+        # Check if pinning is supported
+        if appWidgetManager.isRequestPinAppWidgetSupported():
+            # Optional: callback when widget is pinned
+            intent = Intent(context, CarouselWidgetProvider)
+
+            successCallback = PendingIntent.getBroadcast(
+                context,
+                0,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+            )
+
+            # Request widget pin
+            appWidgetManager.requestPinAppWidget(
+                myProvider,
+                None,
+                successCallback
+            )
+    except Exception as error_from_my_way:
+        print("error_from_my_way",error_from_my_way)
+        traceback.print_exc()
+
 if DEV:
     dev_object = {
-        "vibrate": lambda widget: test_vibration(),
-        "create_channel": lambda widget: create_channel(),
-        "no vibrate": lambda widget: no_vibes(),
-        "delete_current_channel": lambda widget: delete_current_channel(),
-        "test_force_vibration": lambda widget: test_force_vibration(),
+        "gpt pop up": lambda widget: show_home_screen_widget_popup(),
+        "my pop up": lambda widget: show_home_screen_widget_popup1(),
+        # "vibrate": lambda widget: test_vibration(),
+        # "create vibes test channel": lambda widget: create_channel(),
+        # "no vibrate": lambda widget: no_vibes(),
+        # "delete_all_channels": lambda widget: delete_current_channel(),
+        # "test_force_vibration": lambda widget: test_force_vibration(),
         # "ALARM": lambda widget: self.android_notify_tests(),
         # "schedule_notification": lambda widget: self.android_notify_tests(),
     }
