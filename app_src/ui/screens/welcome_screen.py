@@ -143,7 +143,8 @@ class NotificationRequestLayout(MDGridLayout):
                 toast("Notifications disabled")
         try:
             NotificationHandler.asks_permission(callback_func)
-        except:
+        except Exception as error_asking_permission:
+            print("error_asking_permission",error_asking_permission)
             traceback.print_exc()
 
     def skip_feature(self, *args):

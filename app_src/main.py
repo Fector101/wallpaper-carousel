@@ -177,6 +177,8 @@ class WallpaperCarouselApp(MDApp):
         Clock.schedule_once(lambda dt: android_service(), 2)
 
     def on_resume(self):
+        if NotificationHandler.has_permission() and self.sm and self.sm.current == "welcome":
+            self.sm.current = "thumbs"
         try:
             name=NotificationHandler.get_name()
             print("name:",name)
