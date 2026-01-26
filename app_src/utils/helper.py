@@ -403,7 +403,7 @@ def create_thumbnail(src, dest_dir=None, size=(320, 320), quality=60):
                 im.save(destination, format='JPEG', quality=quality)
         elif kv_platform == 'android':
             try:
-                use_android_classes_to_create_thumbnail(src, dest_dir, size, quality)
+                use_android_classes_to_create_thumbnail(str(src), str(dest_dir), size, quality)
             except Exception as error_using_android_classes_to_create_thumbnail:
                 print("error_using_android_classes_to_create_thumbnail",error_using_android_classes_to_create_thumbnail)
                 traceback.print_exc()
