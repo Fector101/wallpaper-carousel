@@ -1,16 +1,19 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
     android:gravity="center"
     android:background="@drawable/widget_bg"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content">
+    android:theme="@style/MyWidgetTheme">
 
     <TextView
         android:id="@+id/widget_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:text="Loading..."
         android:textSize="18sp"
-        android:textColor="#000"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+        android:padding="8dp"
+        android:textColor="?attr/colorPrimary"
+        android:textStyle="bold"/>
 
 </LinearLayout>
