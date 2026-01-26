@@ -8,6 +8,7 @@ package = "org.wally.waller" if not os.path.exists(spec_file_path) else None
 
 
 def generate_receivers(package_: str = None) -> str:
+    print("spec_file_path,package_----------------------------------------",spec_file_path,package_)
     receivers = [
         Receiver(
             name="CarouselReceiver",
@@ -60,7 +61,7 @@ def after_apk_build(toolchain: ToolchainCL):
         services=services,
     )
 
-    receiver_xml = generate_receivers()
+    receiver_xml = generate_receivers(package)
 #     receiver_xml += f"""
 #     <receiver
 #     android:name="{package}.MyWorker"
