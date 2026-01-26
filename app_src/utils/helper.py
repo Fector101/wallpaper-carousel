@@ -5,6 +5,7 @@ from pathlib import Path
 
 from jnius import autoclass, cast
 from .config_manager import ConfigManager
+from kivy.utils import platform as kv_platform
 
 from ui.widgets.android import toast
 def is_wine():
@@ -39,9 +40,8 @@ def makeFolder(my_folder: str):
 
 def makeDownloadFolder():
     """Creates (if needed) and returns the Laner download folder path."""
-    from kivy.utils import platform
 
-    if platform == 'android':
+    if kv_platform == 'android':
         from android.storage import app_storage_path # type: ignore # , primary_external_storage_path
         # folder_path = os.path.join(primary_external_storage_path(), 'Pictures', 'Waller')
         folder_path = app_storage_path()
@@ -376,6 +376,7 @@ def create_thumbnail(src, dest_dir=None, size=(320, 320), quality=60):
     """Create a low-resolution JPEG thumbnail for src and return its path.
     If Pillow is not available or creation fails, returns the original path string.
     """
+    Image = None
 
     if str(src).endswith(".webp"):
         return str(src)
@@ -384,25 +385,81 @@ def create_thumbnail(src, dest_dir=None, size=(320, 320), quality=60):
         from PIL import Image
     except ImportError:
         print("Pillow not available, cannot create thumbnail.")
-        # Pillow not available → fall back to original image path
-        return str(src)
+        if kv_platform != 'android':
+            # Pillow not available and not on android -> fall back to original image path
+            return str(src)
 
     try:
         src_path = Path(src)
-        dest = thumbnail_path_for(src_path, dest_dir)
+        destination = thumbnail_path_for(src_path, dest_dir)
         # If thumbnail already exists and is newer than source, reuse it
-        if dest.exists() and dest.stat().st_mtime >= src_path.stat().st_mtime:
-            return str(dest)
+        if destination.exists() and destination.stat().st_mtime >= src_path.stat().st_mtime:
+            return str(destination)
 
-        with Image.open(src_path) as im:
-            im = im.convert('RGB')
-            im.thumbnail(size, Image.LANCZOS)
-            im.save(dest, format='JPEG', quality=quality)
-        return str(dest)
+        if Image:
+            with Image.open(src_path) as im:
+                im = im.convert('RGB')
+                im.thumbnail(size, Image.LANCZOS)
+                im.save(destination, format='JPEG', quality=quality)
+        elif kv_platform == 'android':
+            try:
+                use_android_classes_to_create_thumbnail(src, dest_dir, size, quality)
+            except Exception as error_using_android_classes_to_create_thumbnail:
+                print("error_using_android_classes_to_create_thumbnail",error_using_android_classes_to_create_thumbnail)
+                traceback.print_exc()
+        return str(destination)
+
     except Exception as error_making_thumbnail:
         print(f"Error creating thumbnail for: {error_making_thumbnail}", src)
         traceback.print_exc()
         return str(src)
+
+def use_android_classes_to_create_thumbnail(src, dest_dir=None, size=(320, 320), quality=60):
+    from jnius import autoclass
+
+    BitmapFactory = autoclass('android.graphics.BitmapFactory')
+    Bitmap = autoclass('android.graphics.Bitmap')
+    BitmapConfig = autoclass('android.graphics.Bitmap$Config')
+    CompressFormat = autoclass('android.graphics.Bitmap$CompressFormat')
+    FileOutputStream = autoclass('java.io.FileOutputStream')
+    Math = autoclass('java.lang.Math')
+
+    src_path = src
+    dest_path = dest_dir
+    max_width = size[0]
+    max_height = size[1]
+
+    # 1. Load image
+    bitmap = BitmapFactory.decodeFile(src_path)
+    if bitmap is None:
+        raise Exception("Failed to decode image")
+
+    # 2. Convert to RGB (ARGB_8888 ≈ RGB)
+    bitmap = bitmap.copy(BitmapConfig.ARGB_8888, False)
+
+    # 3. Compute thumbnail size (keep aspect ratio)
+    width = bitmap.getWidth()
+    height = bitmap.getHeight()
+
+    scale = min(
+        max_width / float(width),
+        max_height / float(height)
+    )
+
+    new_w = Math.round(width * scale)
+    new_h = Math.round(height * scale)
+
+    # High-quality resize (Android internal filter)
+    resized = Bitmap.createScaledBitmap(bitmap, new_w, new_h, True)
+
+    # 4. Save as JPEG
+    out = FileOutputStream(dest_path)
+    resized.compress(CompressFormat.JPEG, quality, out)
+    out.close()
+
+    # Cleanup
+    bitmap.recycle()
+    resized.recycle()
 
 
 def get_or_create_thumbnail(src, dest_dir=None, size=(320, 320)):
