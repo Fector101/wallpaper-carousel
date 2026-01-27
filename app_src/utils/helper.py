@@ -1,13 +1,16 @@
 import os, platform
+import shutil
 import sys, traceback, socket
 from datetime import datetime
 from pathlib import Path
 
 from jnius import autoclass, cast
-from .config_manager import ConfigManager
 from kivy.utils import platform as kv_platform
+from android_notify.config import get_python_activity_context
 
 from ui.widgets.android import toast
+from .config_manager import ConfigManager
+
 def is_wine():
     """
 	Detect if the application is running under Wine.
@@ -183,7 +186,6 @@ def smart_convert_minutes(minutes: float) -> str:
 
     return " ".join(result_parts) if result_parts else "0secs"
 
-import shutil
 
 
 def copy_image_to_internal(dest_name,uri):
@@ -384,8 +386,8 @@ def create_thumbnail(src, dest_dir=None, size=(320, 320), quality=60):
     try:
         from PIL import Image
     except ImportError:
-        print("Pillow not available, cannot create thumbnail.")
         if kv_platform != 'android':
+            print("Pillow not available, cannot create thumbnail.")
             # Pillow not available and not on android -> fall back to original image path
             return str(src)
 
@@ -474,8 +476,6 @@ def get_free_port():
     s.close()
     return port
 
-
-from android_notify.config import get_python_activity_context
 
 def test_java_action():
     from jnius import autoclass, cast

@@ -52,7 +52,10 @@ def after_apk_build(toolchain: ToolchainCL):
     # package = "vercel.app.androidNotify"
 
     # Add foregroundServiceType to multiple services
-    services = {"Wallpapercarousel": "dataSync", "Mytester": "dataSync"}
+    services = {
+        "Wallpapercarousel": "dataSync",
+        # "Mytester": "dataSync"
+        }
 
     text = inject_foreground_service_types(
         manifest_text=text,
