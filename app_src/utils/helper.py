@@ -5,8 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from jnius import autoclass, cast
-from kivy.utils import platform as kv_platform
-from android_notify.config import get_python_activity_context
+from android_notify.config import get_python_activity_context, from_service_file, on_android_platform
 
 from ui.widgets.android import toast
 from .config_manager import ConfigManager
@@ -44,7 +43,7 @@ def makeFolder(my_folder: str):
 def makeDownloadFolder():
     """Creates (if needed) and returns the Laner download folder path."""
 
-    if kv_platform == 'android':
+    if on_android_platform():
         from android.storage import app_storage_path # type: ignore # , primary_external_storage_path
         # folder_path = os.path.join(primary_external_storage_path(), 'Pictures', 'Waller')
         folder_path = app_storage_path()
@@ -165,6 +164,7 @@ class Service:
             print("Error starting service:",e)
             traceback.print_exc()
 
+
 def smart_convert_minutes(minutes: float) -> str:
     total_seconds = int(minutes * 60)
 
@@ -185,7 +185,6 @@ def smart_convert_minutes(minutes: float) -> str:
         result_parts.append(f"{secs}sec" if secs == 1 else f"{secs}secs")
 
     return " ".join(result_parts) if result_parts else "0secs"
-
 
 
 def copy_image_to_internal(dest_name,uri):
@@ -386,7 +385,7 @@ def create_thumbnail(src, dest_dir=None, size=(320, 320), quality=60):
     try:
         from PIL import Image
     except ImportError:
-        if kv_platform != 'android':
+        if on_android_platform():
             print("Pillow not available, cannot create thumbnail.")
             # Pillow not available and not on android -> fall back to original image path
             return str(src)
@@ -403,7 +402,7 @@ def create_thumbnail(src, dest_dir=None, size=(320, 320), quality=60):
                 im = im.convert('RGB')
                 im.thumbnail(size, Image.LANCZOS)
                 im.save(destination, format='JPEG', quality=quality)
-        elif kv_platform == 'android':
+        elif on_android_platform():
             try:
                 use_android_classes_to_create_thumbnail(str(src_path), str(destination), size, quality)
             except Exception as error_using_android_classes_to_create_thumbnail:
@@ -415,6 +414,7 @@ def create_thumbnail(src, dest_dir=None, size=(320, 320), quality=60):
         print(f"Error creating thumbnail for: {error_making_thumbnail}", src)
         traceback.print_exc()
         return str(src)
+
 
 def use_android_classes_to_create_thumbnail(src, dest_dir=None, size=(320, 320), quality=60):
     from jnius import autoclass
@@ -619,6 +619,7 @@ def save_existing_file_to_public_pictures(input_file_path):
     #     print("Error loading images", e)
     #     traceback.print_exc()
 
+
 def is_platform_android():
     # Took this from kivy to fix my logs in P4A.hook, so no need to import things i don't need by doing `from kivy.utils import platform`
     if os.getenv("MAIN_ACTIVITY_HOST_CLASS_NAME"):
@@ -637,7 +638,9 @@ def is_platform_android():
 def change_wallpaper(wallpaper_path,wallpaper_manager=None):
     """Actually set the wallpaper"""
     try:
-        if not wallpaper_path or not os.path.exists(wallpaper_path):
+        if not wallpaper_path:
+            return False
+        elif not os.path.exists(wallpaper_path):
             print("Invalid wallpaper path")
             return False
         BitmapFactory = autoclass('android.graphics.BitmapFactory')
@@ -650,7 +653,8 @@ def change_wallpaper(wallpaper_path,wallpaper_manager=None):
         if BuildVersion.SDK_INT >= 24:  # Android 7.0+
             FLAG_LOCK = WallpaperManager.FLAG_LOCK
             wallpaper_manager.setBitmap(bitmap, None, True, FLAG_LOCK)
-            toast("Changed Wallpaper")
+            if not from_service_file():
+                toast("Changed Wallpaper")
             # print(f"Success: Lock screen wallpaper changed to: {os.path.basename(wallpaper_path)}")
         else:
             toast("Changed Not Supported")

@@ -175,6 +175,8 @@ class MyWallpaperReceiver:
 
     def __write_wallpaper_path_to_file(self, wallpaper_path):
         # Writing for Java to see for home screen widget
+        if not wallpaper_path:
+            return
         if not os.path.exists(wallpaper_path):
             self.__log(f"Image - {wallpaper_path} does not exist, can't store path", "ERROR")
             return
@@ -197,7 +199,9 @@ class MyWallpaperReceiver:
         #self.changes += 1
 
     def __set_next_img_in_notification(self, wallpaper_path):
-        if os.path.exists(wallpaper_path):  # setting next in notification
+        if not wallpaper_path:
+            return
+        if os.path.exists(wallpaper_path):
             notification.setLargeIcon(wallpaper_path)
         else:
             self.__log(f"Image - {wallpaper_path} does not exist, can't set notification preview", "ERROR")
