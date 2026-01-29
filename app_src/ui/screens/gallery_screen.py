@@ -2,14 +2,12 @@ from kivymd.app import MDApp
 import traceback
 from pathlib import Path
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
 from kivy.uix.recycleview import RecycleView
 from kivy.uix.recyclegridlayout import RecycleGridLayout
 from kivy.metrics import dp, sp
 from kivy.properties import StringProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.image import AsyncImage
-from kivy.utils import platform
 from kivymd.uix.label import MDLabel
 from plyer import filechooser
 
@@ -20,7 +18,7 @@ from kivymd.uix.button import MDFabButton
 
 from utils.helper import FileOperation, get_or_create_thumbnail
 from utils.config_manager import ConfigManager
-from utils.helper import makeDownloadFolder  # type
+from utils.helper import appFolder  # type
 
 
 class MyMDRecycleGridLayout(RecycleGridLayout):
@@ -39,7 +37,7 @@ class GalleryScreen(MDScreen):
         super().__init__(**kwargs)
         self.name = "thumbs"
         self.wallpapers = []
-        self.app_dir = Path(makeDownloadFolder())
+        self.app_dir = Path(appFolder())
         self.myconfig = ConfigManager()
         self.wallpapers_dir = self.app_dir / "wallpapers"
         self.md_bg_color = [0.1, 0.1, 0.1, 1]
@@ -270,9 +268,6 @@ class GalleryScreen(MDScreen):
 
 
 if __name__ == "__main__":
-    from kivymd.app import MDApp
-
-
     class WallpaperCarouselApp(MDApp):
         interval = 2  # default rotation interval
 

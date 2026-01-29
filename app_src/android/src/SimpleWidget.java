@@ -1,3 +1,4 @@
+// package app.vercel.androidnotify;
 package org.wally.waller;
 
 import android.appwidget.AppWidgetManager;
@@ -5,6 +6,7 @@ import android.appwidget.AppWidgetProvider;
 import android.content.Context;
 import android.widget.RemoteViews;
 
+// import app.vercel.androidnotify.R;
 import org.wally.waller.R;
 import android.app.PendingIntent;
 import android.content.Intent;

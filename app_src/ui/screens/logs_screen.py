@@ -24,6 +24,7 @@ COLORS = {
     "ERROR": get_color_from_hex("#FF5252"),
     "WARN":  get_color_from_hex("#FFB300"),
     "INFO":  get_color_from_hex("#E0E0E0"),
+    # "INFO":  get_color_from_hex("#A8E4A0"), # GREEN
 }
 
 
@@ -87,8 +88,8 @@ class LogsScreen(MDScreen):
     @property
     def logs_dir(self):
         try:
-            from utils.helper import makeDownloadFolder
-            base_dir = makeDownloadFolder()
+            from utils.helper import appFolder
+            base_dir = appFolder()
             return  os.path.join(base_dir, "logs")
         except ModuleNotFoundError:
             from kivy.core.window import Window

@@ -1,3 +1,4 @@
+// package app.vercel.androidnotify;
 package org.wally.waller;
 
 import android.appwidget.AppWidgetManager;
@@ -24,6 +25,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 
+// import app.vercel.androidnotify.R;
 import org.wally.waller.R;
 
 public class CarouselWidgetProvider extends AppWidgetProvider {
@@ -117,6 +119,8 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
 
             if (!imageFile.exists()) {
                 Log.e(TAG, "Image file does not exist");
+                views.setViewVisibility(R.id.test_image, View.GONE);
+                views.setViewVisibility(R.id.placeholder_text, View.VISIBLE);
                 appWidgetManager.updateAppWidget(appWidgetId, views);
                 continue;
             }

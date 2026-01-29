@@ -1,3 +1,4 @@
+// package app.vercel.androidnotify;
 package org.wally.waller;
 
 import android.content.BroadcastReceiver;
@@ -51,7 +52,7 @@ public class CarouselReceiver extends BroadcastReceiver {
             oscAddress = "/stop";
             oscArg = "hello1 frm java STOP";
         } else if ("ACTION_SKIP".equals(action)) {
-            oscAddress = "/next";
+            oscAddress = "/change-next";
             oscArg = "hello frm java SKIP";
         } else if ("ACTION_PAUSE".equals(action)) {
             oscAddress = "/pause";
@@ -69,7 +70,7 @@ public class CarouselReceiver extends BroadcastReceiver {
         new Thread(() -> {
             try {
                 sendOscMessage("127.0.0.1", finalPort, finalAddress, finalArg);
-                Log.d(TAG, "OSC message sent to python: " + finalAddress + " " + finalArg);
+                Log.d(TAG, "OSC message sent to python: " + "127.0.0.1" +":" + finalPort + finalAddress + " " + finalArg);
             } catch (Exception e) {
                 Log.e(TAG, "Failed to send OSC message to python", e);
             }

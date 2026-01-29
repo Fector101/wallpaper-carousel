@@ -1,3 +1,4 @@
+// package app.vercel.androidnotify;
 package org.wally.waller;
 
 import android.app.PendingIntent;
@@ -8,11 +9,13 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.widget.RemoteViews;
 
+// import app.vercel.androidnotify.R;
 import org.wally.waller.R;
 
 public class ButtonWidget extends AppWidgetProvider {
 
     private static final String ACTION_INCREMENT =
+//             "app.vercel.androidnotify.ACTION_INCREMENT";
             "org.wally.waller.ACTION_INCREMENT";
 
     @Override

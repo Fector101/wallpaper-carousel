@@ -1,3 +1,4 @@
+import json
 import os, platform
 import shutil
 import sys, traceback, socket
@@ -6,6 +7,7 @@ from pathlib import Path
 
 from jnius import autoclass, cast
 from android_notify.config import get_python_activity_context, from_service_file, on_android_platform
+from android_notify.internal.java_classes import BuildVersion, BitmapFactory
 
 from ui.widgets.android import toast
 from .config_manager import ConfigManager
@@ -40,7 +42,7 @@ def makeFolder(my_folder: str):
     return my_folder
 
 
-def makeDownloadFolder():
+def appFolder():
     """Creates (if needed) and returns the Laner download folder path."""
 
     if on_android_platform():
@@ -77,7 +79,7 @@ class Tee:
 
 def start_logging(log_folder_name="logs", file_name="all_output1.txt"):
     # Create folder
-    log_folder = os.path.join(makeDownloadFolder(), log_folder_name)
+    log_folder = os.path.join(appFolder(), log_folder_name)
     makeFolder(log_folder)
 
     # Log file path
@@ -104,20 +106,20 @@ class Service:
         self.mActivity = mActivity
         self.args_str = args_str
         self.name = name
-        self.service = autoclass(self.get_service_name()) if self.mActivity else None
+        self.service = autoclass(self.get_name()) if self.mActivity else None
         self.extra = extra
 
-    def get_service_name(self):
+    def get_name(self):
         if not self.mActivity:
             return None
         context = self.mActivity.getApplicationContext()
         return str(context.getPackageName()) + '.Service' + self.name
 
-    def service_is_running(self):
+    def is_running(self):
         if not self.mActivity:
             return None
 
-        service_name = self.get_service_name()
+        service_name = self.get_name()
         context = self.mActivity.getApplicationContext()
         thing = self.mActivity.getSystemService(context.ACTIVITY_SERVICE)
 
@@ -134,36 +136,56 @@ class Service:
             return None
 
         try:
-            if self.service_is_running:
-                self.service.stop(self.mActivity)
+            if not self.is_running():
+                print("Service not running")
+                return None
+
+            self.service.stop(self.mActivity)
             return True
-        except:
+
+        except Exception as error_stopping_service:
+            print("Error stopping service:",error_stopping_service)
             traceback.print_exc()
             return False
 
     def start(self):
+        if not on_android_platform():
+            self.__run_service_file()
+            print('hello')
+            return None
         if not self.mActivity:
             return None
 
-        state = self.service_is_running()
-        print(state, "||", self.name, "||", self.get_service_name())
-        # if state:
-        #     return
+        state = self.is_running()
+        print(f"service name: {self.get_name()}, state: {state}, passed in name: {self.name}")
 
-        title = self.name + ' Service'
-        msg = 'Started'
-        arg = str(self.args_str)
-        icon = 'round_music_note_white_24'
+        arg = json.dumps(self.args_str)
         try:
-            if self.extra:
-                print('Calling Start Service...')
-                self.service.start(self.mActivity, icon, title, msg, arg)
-            else:
-                self.service.start(self.mActivity, arg)
-        except Exception as e:
-            print("Error starting service:",e)
+            self.service.start(self.mActivity, arg)
+        except Exception as error_starting_service:
+            print("Error starting service:",error_starting_service)
             traceback.print_exc()
 
+    def __run_service_file(self):
+        import runpy, threading
+
+        def start_service():
+            os.environ.setdefault("PYTHON_SERVICE_ARGUMENT", json.dumps(self.args_str))
+            runpy.run_path(
+                "app_src/android/services/wallpaper.py",
+                run_name="__main__"
+            )
+
+        threading.Thread(
+            target=start_service,
+            daemon=True  # important
+        ).start()
+
+def format_time_remaining(seconds):
+    """Format seconds into minutes:seconds for countdown"""
+    minutes = int(seconds // 60)
+    secs = int(seconds % 60)
+    return f"{minutes:02d}:{secs:02d}"
 
 def smart_convert_minutes(minutes: float) -> str:
     total_seconds = int(minutes * 60)
@@ -262,7 +284,7 @@ def copy_image_to_internal(dest_name,uri):
 
 class FileOperation:
     def __init__(self,update_thumbnails_function):
-        self.app_dir = Path(makeDownloadFolder())
+        self.app_dir = Path(appFolder())
         self.myconfig = ConfigManager()
         self.intent = None
         self.wallpapers_dir = self.app_dir / "wallpapers"
@@ -635,7 +657,7 @@ def is_platform_android():
     return False
 
 
-def change_wallpaper(wallpaper_path,wallpaper_manager=None):
+def change_wallpaper(wallpaper_path):
     """Actually set the wallpaper"""
     try:
         if not wallpaper_path:
@@ -643,14 +665,17 @@ def change_wallpaper(wallpaper_path,wallpaper_manager=None):
         elif not os.path.exists(wallpaper_path):
             print("Invalid wallpaper path")
             return False
-        BitmapFactory = autoclass('android.graphics.BitmapFactory')
-        BuildVersion = autoclass("android.os.Build$VERSION")
-        WallpaperManager = autoclass('android.app.WallpaperManager')
+
+        WallpaperManager = autoclass('android.app.WallpaperManager') if on_android_platform() else None
         context = get_python_activity_context()
-        wallpaper_manager = wallpaper_manager or WallpaperManager.getInstance(context)
-        bitmap = BitmapFactory.decodeFile(wallpaper_path)
+        wallpaper_manager = WallpaperManager.getInstance(context) if WallpaperManager else None
+
+        if not wallpaper_manager:
+            print("Failed to set wallpaper: wallpaper_manager = None")
+            return None
 
         if BuildVersion.SDK_INT >= 24:  # Android 7.0+
+            bitmap = BitmapFactory.decodeFile(wallpaper_path)
             FLAG_LOCK = WallpaperManager.FLAG_LOCK
             wallpaper_manager.setBitmap(bitmap, None, True, FLAG_LOCK)
             if not from_service_file():

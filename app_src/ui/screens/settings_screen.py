@@ -1,10 +1,14 @@
 import traceback, time
 from pathlib import Path
 
+from kivy.properties import StringProperty, ListProperty
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.clock import Clock
 from kivy.uix.widget import Widget
+from kivymd.uix.button import MDButtonText,MDButton
+from kivymd.uix.fitimage import FitImage
+from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
@@ -13,18 +17,19 @@ from android_notify.core import asks_permission_if_needed
 from android_notify.config import get_python_activity_context,autoclass
 from android_notify.internal.java_classes import PendingIntent,Intent
 from android_notify import NotificationHandler,Notification
-from ui.widgets.android import toast  # type: ignore
 from android_widgets import get_package_name
-from utils.constants import DEV, VERSION
 
-from utils.helper import Service, makeDownloadFolder, start_logging, smart_convert_minutes  # type: ignore
-from utils.config_manager import ConfigManager  # type: ignore
+from ui.widgets.android import toast
+from utils.constants import DEV, VERSION
+from utils.helper import Service, appFolder, smart_convert_minutes
+from utils.config_manager import ConfigManager
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.metrics import dp, sp
 from kivy.uix.scrollview import ScrollView
-import logging
-from android_notify.internal.logger import logger
-logger.setLevel(logging.DEBUG)
+
+
+
+
 class MyLabel(ButtonBehavior, Label):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -253,15 +258,124 @@ if DEV:
         # "schedule_notification": lambda widget: self.android_notify_tests(),
     }
 
+
+class HomeScreenWidgetButton(MDButton):
+    text = StringProperty("")
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.theme_bg_color = "Custom"
+        self.md_bg_color = kwargs["md_bg_color"] if "md_bg_color" in kwargs else [.2, .2, .2, 1]
+        self.radius = [5]
+        self.txt = MDButtonText(text=self.text, theme_text_color='Custom', text_color='white')
+        self.add_widget(self.txt)
+        Clock.schedule_once(self.fix_width)
+    def fix_width(self,*args):
+        self.adjust_width()
+
+
+class HomeScreenImageDisplay(MDBoxLayout):
+    source = StringProperty()
+    title = StringProperty()
+    image_size = ListProperty()
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = "vertical"
+        self.adaptive_size=True
+        self.spacing =dp(5)
+        # self.size_hint = (None, None)
+
+        title_label = MDLabel(text=self.title,adaptive_size=True,theme_text_color = 'Custom',text_color = 'white',theme_font_name ="Custom",font_name="Roboto",bold=True)
+        self.image = FitImage(
+            source=self.source,
+            size_hint=(1, 1),
+            fit_mode="cover",
+
+        )
+        self.image.radius=[10]
+        self.image.size_hint = (None, None)
+        self.image.size = self.image_size
+
+
+        self.add_widget(title_label)
+        self.add_widget(self.image)
+
+
+class HomeScreenWidgetControllerUI(MDBoxLayout):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = "vertical"
+        self.adaptive_height=True
+        padding = [dp(10),0,dp(10),0]
+        d=.15
+        header = MDBoxLayout(
+            orientation="horizontal",
+            size_hint_y = None,
+            md_bg_color=[d,d,d,1],padding=padding,radius=[dp(10),dp(10),dp(0),0]
+        )
+        header.adaptive_width=True
+        header.height=dp(50)
+
+        header_text = MDLabel(text="Home Screen Widget")#,theme_font_name ="Custom",font_name="Roboto",bold=True)
+        header_text.theme_font_size ="Custom"
+        header_text.font_size =sp(14)
+        header_text.pos_hint = {"center_y": 0.5}
+        header_text.theme_text_color = 'Custom'
+        # header_text.theme_bg_color = 'Custom'
+        # header_text.md_bg_color = [1,1,0,1]
+        header_text.adaptive_size=True
+        header_text.text_color = 'white'
+
+        header.add_widget(header_text)
+
+
+        main_content = MDBoxLayout(adaptive_size=True,size_hint_x=1,spacing=dp(10),padding=[dp(10)],radius=[0,dp(10),dp(10),dp(10)])
+        main_content.orientation = "vertical"#height=True,size_hint_x=1,spacing=dp(10),padding=padding,md_bg_color= [.3,1,.3,1])
+        s=0
+        main_content.md_bg_color= [s,s,s,.3]
+        self.countdown_label =MDLabel(pos_hint = {"right": 1},text="0:13",adaptive_size=True,theme_text_color = 'Custom',text_color = 'white',theme_font_name ="Custom",font_name="Roboto",bold=True)
+        main_content.add_widget(self.countdown_label)#,md_bg_color=[1,0,1,1]))
+
+        images_layout = MDBoxLayout(adaptive_height=True,size_hint_x=1,spacing=dp(10))
+        # images_layout.adaptive_width=True
+        self.current_image_layout = HomeScreenImageDisplay(title="Current", source="assets/icons/icon.png", image_size=(dp(120), dp(120)))
+        self.next_image_layout = HomeScreenImageDisplay(title="Next", source="assets/icons/icon.png", image_size=(dp(60), dp(60)))
+        images_layout.add_widget(self.current_image_layout)
+        images_layout.add_widget(self.next_image_layout)
+        btns_layout = MDBoxLayout(adaptive_size=True,spacing=dp(10))
+        btns_layout.pos_hint={"center_x": 0.5}
+
+        self.change_current_wallpaper_button = HomeScreenWidgetButton(text="Change Current")
+        self.skip_upcoming_wallpaper_button = HomeScreenWidgetButton(text="Skip Next")
+        btns_layout.add_widget(self.change_current_wallpaper_button)
+        btns_layout.add_widget(self.skip_upcoming_wallpaper_button)
+
+        main_content.add_widget(images_layout)
+        main_content.add_widget(btns_layout)
+        main_content.add_widget(HomeScreenWidgetButton(text="Stop Loop",pos_hint={"center_x": 0.5},md_bg_color=[.7,.1,.1,1]))
+
+        self.add_widget(header)
+        self.add_widget(main_content)
+        #
+        # app = MDApp.get_running_app()
+        # app.ui_service_listener.on_countdown_change =self.update_label
+
+    def update_label(self,seconds):
+        self.countdown_label.text = seconds
+
+    def on_changed_homescreen_widget(self,current_wallpaper,next_wallpaper):
+        self.current_image_layout.image.source = current_wallpaper or self.current_image_layout.image.source
+        self.next_image_layout.image.source = next_wallpaper or self.next_image_layout.image.source
+
 class SettingsScreen(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.name = "settings"
         self.md_bg_color = [0.1, 0.1, 0.1, 1]
-        self.app_dir = Path(makeDownloadFolder())
-        self.myconfig = ConfigManager()
+        self.app_dir = Path(appFolder())
+        self.my_config = ConfigManager()
         self.wallpapers_dir = self.app_dir / "wallpapers"
-        self.interval = self.myconfig.get_interval()
+        self.interval = self.my_config.get_interval()
         self.times_tapped = 0
 
         scroll = ScrollView(size_hint=(1, 1))
@@ -365,8 +479,13 @@ class SettingsScreen(MDScreen):
             on_release=self.open_logs_screen
         )
         root.add_widget(text)
+
+        self.homeScreenWidgetControllerUI = HomeScreenWidgetControllerUI()
+        root.add_widget(self.homeScreenWidgetControllerUI)
+
         scroll.add_widget(root)
         self.add_widget(scroll)
+        # self.add_widget(root) for auto reload
 
     def open_logs_screen(self,_=None):
         self.times_tapped += 1
@@ -394,7 +513,7 @@ class SettingsScreen(MDScreen):
             toast("Min allowed is 0.17 mins")
             return
 
-        self.myconfig.set_interval(new_val)
+        self.my_config.set_interval(new_val)
         self.interval_label.text = f"Saved: {smart_convert_minutes(new_val)}"
         toast("Saved")
 
@@ -457,7 +576,7 @@ class SettingsScreen(MDScreen):
         exported_uris = []
 
         # Internal app folder
-        folder_path = os.path.join(makeDownloadFolder(), "wallpapers")
+        folder_path = os.path.join(appFolder(), "wallpapers")
         if not os.path.isdir(folder_path):
             return exported_uris
 

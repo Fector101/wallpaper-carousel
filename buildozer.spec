@@ -1,8 +1,11 @@
 [app]
+#title = ANTester
 title = Waller
 
+#package.name = androidnotify
 package.name = waller
 
+#package.domain = app.vercel
 package.domain = org.wally
 author = Fabian © Copyright Info
 version = 1.0.1
@@ -16,7 +19,7 @@ source.include_exts = py,png,jpg,kv,atlas,ttf,json,xml,wav
 source.exclude_dirs = bin, venv,lab, worked, __pycache__, .idea, dist, for-download,laner-linux, .filereader, wallpapers
 
 
-requirements = python3,kivy,https://github.com/kivymd/KivyMD/archive/master.zip,python-osc,https://github.com/kivy/plyer/archive/master.zip,materialyoucolor,asynckivy,asyncgui,pyjnius, docutils,netifaces,filetype,requests_toolbelt,websockets,android-widgets,android-notify
+requirements = python3,kivy,https://github.com/kivymd/KivyMD/archive/master.zip,python-osc,https://github.com/kivy/plyer/archive/master.zip,materialyoucolor,asynckivy,asyncgui,pyjnius, docutils,netifaces,filetype,requests_toolbelt,websockets,android-widgets, https://github.com/Fector101/android_notify/archive/main.zip
 services = Wallpapercarousel:./android/services/wallpaper.py:foreground
 #, Test:./android/services/test.py:foreground
 

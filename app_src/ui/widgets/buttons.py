@@ -114,7 +114,7 @@ class BottomButtonBar(MDRelativeLayout):
         self.bind(pos=self._update_gradient, size=self._update_gradient)
 
         # Button container
-        radius = 12
+        radius = dp(12)
         self.button_box = MDBoxLayout(
             orientation="horizontal",
             spacing=0,
@@ -147,8 +147,9 @@ class BottomButtonBar(MDRelativeLayout):
         self.button_box.add_widget(self.btn_camera)
         self.button_box.add_widget(self.btn_settings)
 
-        self.button_box.bind(minimum_width=self.button_box.setter("width"))
-        self.button_box.bind(minimum_height=self.button_box.setter("height"))
+        self.button_box.adaptive_size=True
+        # self.button_box.bind(minimum_width=self.button_box.setter("width"))
+        # self.button_box.bind(minimum_height=self.button_box.setter("height"))
 
         self.add_widget(self.button_box)
 

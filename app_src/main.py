@@ -1,7 +1,7 @@
 import os
-import traceback
+import traceback, logging
 
-
+from android_notify.config import on_android_platform
 from kivy.uix.screenmanager import NoTransition
 from kivymd.app import MDApp
 from kivy.clock import Clock
@@ -11,8 +11,8 @@ from kivy.uix.screenmanager import ScreenManager, SlideTransition
 from kivy.core.window import Window
 from kivy.utils import platform
 
-from android_notify import NotificationHandler
-from utils.constants import DEV
+from android_notify import NotificationHandler, logger as android_notify_logger
+from utils.constants import DEV, SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY
 from utils.helper import Service, start_logging, get_free_port, FileOperation
 from ui.screens.gallery_screen import GalleryScreen
 from ui.screens.settings_screen import SettingsScreen
@@ -21,9 +21,12 @@ from ui.screens.welcome_screen import WelcomeScreen
 from ui.screens.logs_screen import LogsScreen
 from ui.widgets.buttons import BottomButtonBar
 from ui.widgets.android import toast
+from utils.ui_service_bridge import UIServiceListener, UIServiceMessenger
 
 from kivymd.uix.relativelayout import MDRelativeLayout
 from kivy.metrics import dp
+
+android_notify_logger.setLevel(logging.WARNING if on_android_platform() else logging.ERROR)
 
 if not DEV:
     try:
@@ -132,7 +135,7 @@ class WallpaperCarouselApp(MDApp):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.file_operation = None
-        print('init... app')
+        self.ui_service_listener=None
         self.root_layout = None
         self.sm = None
         self.bottom_bar = None
@@ -169,7 +172,23 @@ class WallpaperCarouselApp(MDApp):
 
         def android_service():
             try:
-                Service(name='Wallpapercarousel', args_str=get_free_port()).start()
+                service_port = get_free_port()
+                self.ui_messenger_to_service = UIServiceMessenger(service_port)
+                self.sm.settings_screen.homeScreenWidgetControllerUI.skip_upcoming_wallpaper_button.on_release = self.ui_messenger_to_service.change_next
+
+                self.ui_service_listener=UIServiceListener()
+                self.ui_service_listener.start()
+                self.ui_service_listener.on_countdown_change=self.sm.settings_screen.homeScreenWidgetControllerUI.update_label
+                self.ui_service_listener.on_changed_homescreen_widget=self.sm.settings_screen.homeScreenWidgetControllerUI.on_changed_homescreen_widget
+
+                Service(
+                    name='Wallpapercarousel',
+                    args_str={
+                        SERVICE_PORT_ARGUMENT_KEY:service_port,
+                        SERVICE_UI_PORT_ARGUMENT_KEY:self.ui_service_listener.UI_PORT,
+                    },
+
+                ).start()
             except Exception as error_call_service_on_start1:
                 toast(str(error_call_service_on_start1))
                 traceback.print_exc()
@@ -197,6 +216,7 @@ class WallpaperCarouselApp(MDApp):
             from android import activity # type: ignore
             def set_intent_for_file_operation_class(activity_id,some_int,intent):
                 try:
+                    print("intent from main.py",activity_id,some_int,intent)
                     # print('must be before chooser callback',self.file_operation.i)
                     # print('see intent', intent,bool(intent))
                     if intent:
@@ -204,6 +224,7 @@ class WallpaperCarouselApp(MDApp):
                 except Exception as error_getting_path:
                     print("error_getting_path",error_getting_path)
             activity.bind(on_activity_result=set_intent_for_file_operation_class) # handling permission error in image path
+
 
 if __name__ == '__main__':
     WallpaperCarouselApp().run()

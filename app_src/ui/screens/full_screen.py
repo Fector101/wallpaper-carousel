@@ -18,7 +18,7 @@ from kivymd.uix.button import MDIconButton
 from kivy.graphics import Color, Line
 
 from ui.widgets.android import toast
-from utils.helper import makeDownloadFolder, thumbnail_path_for, change_wallpaper
+from utils.helper import appFolder, thumbnail_path_for, change_wallpaper
 from utils.config_manager import ConfigManager
 
 
@@ -104,7 +104,7 @@ class FullscreenScreen(MDScreen):
         super().__init__(**kwargs)
         self.clock_for_higher_format = None
         self.clock_for_side_by_side = None
-        self.app_dir = Path(makeDownloadFolder())
+        self.app_dir = Path(appFolder())
         self.myconfig = ConfigManager()
         self.wallpapers_dir = self.app_dir / "wallpapers"
 
@@ -300,7 +300,7 @@ class FullscreenScreen(MDScreen):
             except Exception:
                 pass
 
-        app_dir = Path(makeDownloadFolder())
+        app_dir = Path(appFolder())
         ConfigManager().remove_wallpaper(path)
 
         if not wallpapers:

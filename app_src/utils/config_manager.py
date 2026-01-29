@@ -46,7 +46,8 @@ class ConfigManager:
         try:
             with open(self.config_path, "r") as f:
                 return json.load(f)
-        except:
+        except Exception as error_reading_config_file:
+            print(f"error reading config file: {error_reading_config_file}")
             try:
                 self._write(self.DEFAULT_CONFIG)
                 return self.DEFAULT_CONFIG
