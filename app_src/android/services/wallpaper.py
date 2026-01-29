@@ -4,20 +4,17 @@ import os, random
 import time, logging
 from android_notify.config import on_android_platform
 
-if on_android_platform():
-    try:
-        from utils.helper import start_logging
-        start_logging()
-    except Exception as e:
-        print("File Logger Failed", e)
-        traceback.print_exc()
-        # e-File Logger Failed JVM exception occurred: Attempt to invoke virtual method 'android.view.WindowManager org.kivy.android.PythonActivity.getWindowManager()' on a null object reference java.lang.NullPointerException
-
 print("Entered Wallpaper Foreground Service...")
+
+if on_android_platform():
+    from utils.helper import write_logs_to_file
+    write_logs_to_file()
+
+
 from jnius import autoclass
 from pythonosc import dispatcher, osc_server, udp_client
 from android_notify import Notification, logger as android_notify_logger
-from android_notify.config import get_python_service, get_python_activity_context, on_android_platform
+from android_notify.config import get_python_service, get_python_activity_context, on_android_platform, __version__
 from android_notify.internal.java_classes import BuildVersion, BitmapFactory
 from android_widgets import Layout, RemoteViews, AppWidgetManager
 
@@ -27,6 +24,7 @@ from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_
 
 android_notify_logger.setLevel(logging.WARNING if on_android_platform() else logging.ERROR)
 app_logger.setLevel(logging.INFO)
+
 
 class ReceivedData:
     # Always use `json.dumps(args)` to start service.
@@ -76,23 +74,19 @@ class ReceivedData:
             traceback.print_exc()
 
 
-receivedData = ReceivedData()
-
-
-
 def get_next_wallpaper():
     """Get the next wallpaper path and name without setting it yet
     :return: [absolute_path, name]
     """
     try:
         images = [
-            os.path.join(download_folder_path, f)
-            for f in os.listdir(download_folder_path)
+            os.path.join(wallpapers_folder_path, f)
+            for f in os.listdir(wallpapers_folder_path)
             if f.lower().endswith((".jpg", ".jpeg", ".png"))
         ]
         # rint("service found:",images)
         if not images:
-            app_logger.exception(f"Warning: No images found in {download_folder_path}")
+            app_logger.exception(f"Warning: No images found in {wallpapers_folder_path}")
             return '', ''
 
         wallpaper_path = random.choice(images)
@@ -132,7 +126,11 @@ class MyWallpaperReceiver:
         self.__start_main_loop()
         self.changes = 0
     def __start_main_loop(self):
-        threading.Thread(target=self.heart, daemon=True).start()
+        try:
+            threading.Thread(target=self.heart, daemon=True).start()
+        except Exception as error_start_main_loop: # Avoiding process is bad java.lang.SecurityException
+            app_logger.exception(f" [__start_main_loop]Service Main loop Failed: {error_start_main_loop}")
+            traceback.print_exc()
 
     def __count_down(self):
         self.current_wait_seconds = get_interval()
@@ -348,25 +346,20 @@ class MyWallpaperReceiver:
         return None
         # app_logger.info(f"Changed Home Screen Widget: {wallpaper_path}")
 
-
-ServiceInfo = autoclass("android.content.pm.ServiceInfo") if on_android_platform() else None
-
-# print("appFolder()",appFolder())
-download_folder_path = os.path.join(appFolder(), "wallpapers")
-# download_folder_path = download_folder_path if os.path.exists(download_folder_path) else os.path.join(appFolder(),"..", "wallpapers")
-
+receivedData = ReceivedData()
+wallpapers_folder_path = os.path.join(appFolder(), "wallpapers")
 
 service = get_python_service()
-foreground_type = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC if BuildVersion.SDK_INT >= 30 else 0
+foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE_TYPE_DATA_SYNC if on_android_platform() and BuildVersion.SDK_INT >= 30 else 0
 
 notification = Notification(title="Next in 02:00", message=f"service lifespan: {SERVICE_LIFESPAN_HOURS}hrs",name="from service")
 notification.setData({"next wallpaper path": "test.jpg"})
 notification.addButton(text="Stop", receiver_name="CarouselReceiver", action="ACTION_STOP")
 notification.addButton(text="Skip", receiver_name="CarouselReceiver", action="ACTION_SKIP")
-builder = notification.start_building()
+builder = notification.fill_args() if __version__ == "1.60.9" else notification.start_building()
+
 service.startForeground(notification.id, builder.build(), foreground_type)
 service.setAutoRestartService(True)
-
 
 client = udp_client.SimpleUDPClient("0.0.0.0", receivedData.ui_port)
 myWallpaperReceiver = MyWallpaperReceiver()
