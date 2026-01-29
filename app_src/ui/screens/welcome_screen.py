@@ -1,17 +1,15 @@
-import os.path,traceback
+import traceback
 from kivymd.uix.screen import MDScreen
 
-# from kivy.core.text import LabelBase
 from kivymd.uix.label import MDLabel
 from kivy.uix.image import Image
 from kivy.metrics import dp, sp
-from kivy.uix.screenmanager import NoTransition
+from kivy.clock import Clock
 
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.relativelayout import MDRelativeLayout
 from android_notify import NotificationHandler
-from android_notify.config import run_on_ui_thread
 
 from ui.widgets.buttons import MyRoundButton
 
@@ -21,29 +19,7 @@ try:
 except TypeError:
     def toast(*args):
         print('Fallback toast:', args)
-#
-# class Font:
-#     def __init__(self, name, base_folder):
-#         self.base_folder = base_folder
-#         self.name = name
-#
-#     def get_type_path(self, fn_type):
-#         """
-#         Formats font type path
-#         :param fn_type:
-#         :return:
-#         """
-#         return os.path.join(self.base_folder, self.name + '-'+fn_type + '.ttf')
-#
-# # This work but i like the normal, bold,italic config better title.font_name = "app_src/assets/fonts/Roboto_Mono/RobotoMono-VariableFont_wght.ttf"
-# robot_mono = Font(name='RobotoMono',base_folder="app_src/assets/fonts/Roboto_Mono/static")
-# LabelBase.register(
-#     name="RobotoMono",
-#     fn_regular=robot_mono.get_type_path('Regular'),
-#     fn_italic=robot_mono.get_type_path('Italic'),
-#     fn_bold=robot_mono.get_type_path('Bold'),
-# )
-from kivy.clock import Clock
+
 
 
 class NotificationRequestLayout(MDGridLayout):
@@ -98,7 +74,6 @@ class NotificationRequestLayout(MDGridLayout):
         self.enable_btn = MyRoundButton(
             text="Enable notifications",
             bg_color=(55/255, 151/255, 252/255, 1),
-            inset_color=[5 / 255, 1 / 255, 1, 1],
             size_hint_y=None,
             height=dp(48),
             font_size=sp(16),
@@ -108,7 +83,6 @@ class NotificationRequestLayout(MDGridLayout):
         skip_btn = MyRoundButton(
             text="Skip Feature",
             bg_color=(243/255,170/255,170/255, 1),
-            inset_color=[255 / 255, 10 / 255, 50/255, 1],
             color=(0, 0, 0, 1),
             size_hint=[None, None],
             height=dp(44),
@@ -125,10 +99,10 @@ class NotificationRequestLayout(MDGridLayout):
         self.add_widget(bell_layout)
         self.add_widget(btns_layout)
 
-    def enable_notifications(self, *args):
+    def enable_notifications(self, *_):
         print("Enable notifications pressed")
 
-        def change_screen(dt):
+        def change_screen(_):
             try:
                 self.parent.manager.current = "thumbs"
             except Exception as e:
@@ -147,7 +121,7 @@ class NotificationRequestLayout(MDGridLayout):
             print("error_asking_permission",error_asking_permission)
             traceback.print_exc()
 
-    def skip_feature(self, *args):
+    def skip_feature(self, *_):
         self.parent.manager.current = "thumbs"
         print("Skip feature pressed")
 

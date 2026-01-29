@@ -31,7 +31,6 @@ class Font:
         return os.path.join(self.base_folder, self.name + '-' + fn_type + '.ttf')
 
 
-# This work but i like the normal, bold,italic config better title.font_name = "app_src/assets/fonts/Roboto_Mono/RobotoMono-VariableFont_wght.ttf"
 robot_mono = Font(name='RobotoMono', base_folder="assets/fonts/Roboto_Mono/static")
 LabelBase.register(
     name="RobotoMono",

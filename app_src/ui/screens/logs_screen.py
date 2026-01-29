@@ -85,6 +85,7 @@ class LogsScreen(MDScreen):
 
         # Pending lines buffer
         self._pending_lines = []
+
     @property
     def logs_dir(self):
         try:
@@ -95,10 +96,13 @@ class LogsScreen(MDScreen):
             from kivy.core.window import Window
             Window.size = (370, 700)
             return os.getcwd()
-    def back_to_settings_screen(self,*args):
+
+    def back_to_settings_screen(self,*_):
         self.manager.transition = NoTransition()
         self.manager.current = "settings"
-    def _detect_level(self, text):
+
+    @staticmethod
+    def _detect_level(text):
         t = text.upper()
         if "ERROR" in t or "EXCEPTION" in t or "TRACEBACK" in t:
             return "ERROR"
@@ -133,6 +137,8 @@ class LogsScreen(MDScreen):
                 Clipboard.copy(inst.text)
                 toast('Copied')
                 return True
+            return None
+
         label.bind(on_touch_down=on_double_tap)
 
         return label
@@ -182,7 +188,7 @@ class LogsScreen(MDScreen):
         Clock.schedule_once(self._load_next_chunk, 0)
 
     # ---------- AUTO UPDATE ----------
-    def _update_logs(self, dt):
+    def _update_logs(self, _):
         if not os.path.exists(self.log_file_path): return
         with open(self.log_file_path, "r", encoding="utf-8", errors="ignore") as f:
             f.seek(self._file_pos)

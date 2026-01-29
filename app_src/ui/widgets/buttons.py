@@ -7,32 +7,6 @@ from kivymd.uix.relativelayout import MDRelativeLayout
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDIconButton
 
-# import os
-# from kivy.core.text import LabelBase
-
-# class Font:
-#     def __init__(self, name, base_folder):
-#         self.base_folder = base_folder
-#         self.name = name
-#
-#     def get_type_path(self, fn_type):
-#         """
-#         Formats font type path
-#         :param fn_type:
-#         :return:
-#         """
-#         return os.path.join(self.base_folder, self.name + '-'+fn_type + '.ttf')
-#
-# # This work but i like the normal, bold,italic config better title.font_name = "app_src/assets/fonts/Roboto_Mono/RobotoMono-VariableFont_wght.ttf"
-# robot_mono = Font(name='RobotoMono',base_folder="app_src/assets/fonts/Roboto_Mono/static")
-# LabelBase.register(
-#     name="RobotoMono",
-#     fn_regular=robot_mono.get_type_path('Regular'),
-#     fn_italic=robot_mono.get_type_path('Italic'),
-#     fn_bold=robot_mono.get_type_path('Bold'),
-# )
-
-#
 # class RoundedButton(Button):
 #     def __init__(self, bg_color, **kwargs):
 #         super().__init__(**kwargs)
@@ -54,7 +28,7 @@ from kivymd.uix.button import MDIconButton
 
 
 class MyRoundButton(Button):    # (RoundedButton):
-    def __init__(self,bg_color,inset_color, **kwargs):
+    def __init__(self,bg_color, **kwargs):
         super().__init__(**kwargs)
 
         self.background_normal = ""
@@ -68,7 +42,7 @@ class MyRoundButton(Button):    # (RoundedButton):
             self.bg_color_instr = Color(*bg_color)
             self.rect = RoundedRectangle(radius=[r,r,r,r])
 
-            Color(0,0,0,0.6)#*inset_color)
+            Color(0,0,0,0.6)
             # Color(5 / 255, 1 / 255, 1, 1)
             self.bg = BoxShadow(
                 offset=[-10, -10],
@@ -79,7 +53,7 @@ class MyRoundButton(Button):    # (RoundedButton):
             )
         self.bind(size=self.update_rect, pos=self.update_rect,state=self.update_rect)
 
-    def update_rect(self, *args):
+    def update_rect(self, *_):
         self.bg.pos = self.pos
         self.bg.size = self.size
         self.bg.blur_radius = 20 if self.state == "normal" else 50
@@ -91,7 +65,7 @@ class MyRoundButton(Button):    # (RoundedButton):
 class BottomButtonBar(MDRelativeLayout):
     """Floating bottom bar with two buttons with centered icons only."""
 
-    def __init__(self, on_camera=None, on_settings=None, width=dp(65), height=dp(65), **kwargs):
+    def __init__(self, on_camera=None, on_settings=None, **kwargs):
         super().__init__(**kwargs)
 
         self.on_camera = on_camera
@@ -153,7 +127,7 @@ class BottomButtonBar(MDRelativeLayout):
 
         self.add_widget(self.button_box)
 
-    def _update_gradient(self, *args):
+    def _update_gradient(self, *_):
         step_height = self.height / len(self._gradient_rects)
 
         for i, rect in enumerate(self._gradient_rects):

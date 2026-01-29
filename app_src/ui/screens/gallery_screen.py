@@ -16,7 +16,7 @@ from kivymd.uix.button import MDFabButton
 
 # from ui.widgets.buttons import BottomButtonBar
 
-from utils.helper import FileOperation, get_or_create_thumbnail
+from utils.image_operations import get_or_create_thumbnail
 from utils.config_manager import ConfigManager
 from utils.helper import appFolder  # type
 
@@ -101,7 +101,8 @@ class GalleryScreen(MDScreen):
         # self.load_saved()# for hot_reload
 
 
-    def open_filechooser(self, *args):
+    @staticmethod
+    def open_filechooser(*_):
         # file_operation = FileOperation(self.update_thumbnails_method)
         # if platform == 'android':
         #     from android import activity # type: ignore
@@ -112,10 +113,10 @@ class GalleryScreen(MDScreen):
         #             if intent:
         #                 file_operation.intent = intent
         #                 # try:
-        #                 #     print("intent data", intent.getData()) # crashes app when no files is picked
+        #                 #     print("intent data", intent.getData()) # crashes app when no files are picked
         #                 #     print("intent data str", intent.getData().toString())
-        #                 # except Exception as werid_thing:
-        #                 #     print("werid_thing",werid_thing)
+        #                 # except Exception as weird_thing:
+        #                 #     print("weird_thing",weird_thing)
         #         except Exception as error_getting_path:
         #             print("error_getting_path",error_getting_path)
         #
@@ -174,7 +175,7 @@ class GalleryScreen(MDScreen):
             print(error_updating_recycle_view)
             traceback.print_exc()
 
-    def open_fullscreen_for_image(self, path, index):
+    def open_fullscreen_for_image(self, path, index): # type: ignore
         # print(path, index)
         self.manager.open_image_in_full_screen(index)
 
@@ -273,6 +274,7 @@ if __name__ == "__main__":
 
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
+            self.sm = None
 
         def build(self):
             self.sm = GalleryScreen()

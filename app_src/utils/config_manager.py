@@ -28,7 +28,6 @@ class ConfigManager:
         self._ensure_config()
     @property
     def config_dir(self):
-        app_path = None
 
         if is_platform_android():
             from android.storage import app_storage_path  # type: ignore

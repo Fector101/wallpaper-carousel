@@ -156,8 +156,7 @@ def show_home_screen_widget_popup():
         # Android classes
         AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
         ComponentName = autoclass('android.content.ComponentName')
-        Intent = autoclass('android.content.Intent')
-        PendingIntent = autoclass('android.app.PendingIntent')
+
 
         # Your widget provider class (Java side)
         CarouselWidgetProvider = autoclass(
@@ -183,7 +182,7 @@ def show_home_screen_widget_popup():
                 context,
                 0,
                 intent,
-            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT # type: ignore
 
             )
 
@@ -204,8 +203,6 @@ def show_home_screen_widget_popup1():
         # Android classes
         AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
         ComponentName = autoclass('android.content.ComponentName')
-        Intent = autoclass('android.content.Intent')
-        PendingIntent = autoclass('android.app.PendingIntent')
 
         # Your widget provider class (Java side)
         package_name = get_package_name()
@@ -232,7 +229,7 @@ def show_home_screen_widget_popup1():
                 context,
                 0,
                 intent,
-                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT # type: ignore
             )
 
             # Request widget pin
@@ -269,7 +266,7 @@ class HomeScreenWidgetButton(MDButton):
         self.txt = MDButtonText(text=self.text, theme_text_color='Custom', text_color='white')
         self.add_widget(self.txt)
         Clock.schedule_once(self.fix_width)
-    def fix_width(self,*args):
+    def fix_width(self,*_):
         self.adjust_width()
 
 
@@ -366,6 +363,7 @@ class HomeScreenWidgetControllerUI(MDBoxLayout):
     def on_changed_homescreen_widget(self,current_wallpaper,next_wallpaper):
         self.current_image_layout.image.source = current_wallpaper or self.current_image_layout.image.source
         self.next_image_layout.image.source = next_wallpaper or self.next_image_layout.image.source
+
 
 class SettingsScreen(MDScreen):
     def __init__(self, **kwargs):
@@ -472,6 +470,9 @@ class SettingsScreen(MDScreen):
             for each in dev_object:
                 root.add_widget(Button(text = f"test {each}", on_release=dev_object[each],size_hint_y=None,height=dp(50)))
 
+        self.homeScreenWidgetControllerUI = HomeScreenWidgetControllerUI()
+        root.add_widget(self.homeScreenWidgetControllerUI)
+
         text = MyLabel(
             text=f"--- v{VERSION} ---",
             size_hint_y=None,
@@ -480,8 +481,6 @@ class SettingsScreen(MDScreen):
         )
         root.add_widget(text)
 
-        self.homeScreenWidgetControllerUI = HomeScreenWidgetControllerUI()
-        root.add_widget(self.homeScreenWidgetControllerUI)
 
         scroll.add_widget(root)
         self.add_widget(scroll)

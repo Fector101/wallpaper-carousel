@@ -38,7 +38,7 @@ app_logger._configured = True
 
 
 if __name__ == "__main__":
-    from kivymd.app import MDApp
+    # from kivymd.app import MDApp
     app_logger.debug("Debug message - should not appear with INFO level")
     app_logger.info("Info message")
     app_logger.warning("Warning message")

@@ -17,8 +17,8 @@ from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.button import MDIconButton
 from kivy.graphics import Color, Line
 
-from ui.widgets.android import toast
-from utils.helper import appFolder, thumbnail_path_for, change_wallpaper
+from utils.image_operations import thumbnail_path_for
+from utils.helper import appFolder, change_wallpaper
 from utils.config_manager import ConfigManager
 
 
@@ -37,7 +37,7 @@ class BorderMDBoxLayout(MDBoxLayout):
     def round_rect_args(self):
         return self.x, self.y, self.width, self.height, self.radius[0]
 
-    def update_border(self, *args):
+    def update_border(self, *_):
         self.border.rounded_rectangle = self.round_rect_args  # (self.x,self.y,self.width,self.height,16)
 
 
@@ -155,7 +155,6 @@ class FullscreenScreen(MDScreen):
                                    pos_hint=self.original_carousel_pos_hint)
         self.carousel.bind(index=self.on_current_slide)
 
-        bg = .2
         self.btm_btn_layout_root = MDRelativeLayout(
             size_hint=(1, self.bottom_height),
             # md_bg_color=[.1, .1, .12, 1],
@@ -230,7 +229,7 @@ class FullscreenScreen(MDScreen):
         self.set_wallpaper_btn.bind(on_release=lambda x: change_wallpaper(self.carousel.current_slide.higher_format))
         # self.update_images()  # for hot_reload
 
-    def toggle_fullscreen(self, *args):
+    def toggle_fullscreen(self, *_):
         # print(self.carousel.children[0].children)
         self.is_fullscreen = True
 
@@ -254,7 +253,7 @@ class FullscreenScreen(MDScreen):
 
         self.layout.do_layout()
 
-    def toggle_top_button(self, *args):
+    def toggle_top_button(self, *_):
         # If in fullscreen mode → restore controls
         if self.btn_toggle.icon == "close":
             self.carousel.size_hint = self.original_carousel_size_hint
@@ -281,7 +280,7 @@ class FullscreenScreen(MDScreen):
         else:
             self.manager.current = "thumbs"
 
-    def delete_current(self, *args):
+    def delete_current(self, *_):
         gallery_screen = self.manager.gallery_screen
         wallpapers = gallery_screen.wallpapers
         if not wallpapers:
@@ -297,10 +296,11 @@ class FullscreenScreen(MDScreen):
                 thumb = Path(path).parent / "thumbs" / f"{Path(path).stem}_thumb.jpg"
                 if thumb.exists():
                     thumb.unlink()
-            except Exception:
+            except Exception as error_deleting_image:
+                print(f"Error deleting image: {error_deleting_image}")
                 pass
 
-        app_dir = Path(appFolder())
+        # app_dir = Path(appFolder())
         ConfigManager().remove_wallpaper(path)
 
         if not wallpapers:
@@ -315,7 +315,7 @@ class FullscreenScreen(MDScreen):
     # ====================================================================
     #               IMAGE INFO POPUP
     # ====================================================================
-    def show_info(self, *args):
+    def show_info(self, *_):
         gallery_screen = self.manager.gallery_screen
 
         if not gallery_screen.wallpapers:
@@ -338,7 +338,7 @@ class FullscreenScreen(MDScreen):
 
         # for hot_reload
         # self.data = ["/home/fabian/Downloads/home screen.png",
-        #              "/home/fabian/Downloads/stroage screen modal - Delete.png",
+        #              "/home/fabian/Downloads/storage screen modal - Delete.png",
         #              "/home/fabian/Documents/Laner/mobile/wallpapers/Anime Art Night Sky Scenery Wallpaper iPhone Phone 4k 1400f.jpg",
         #              "/home/fabian/Documents/Laner/mobile/wallpapers/content.png",
         #              "/home/fabian/Documents/Laner/mobile/wallpapers/Anime Girl Wallpaper.jpeg"]
@@ -360,7 +360,7 @@ class FullscreenScreen(MDScreen):
         if os.path.exists(image_path):
             self.header_file_size.text = format_size(os.path.getsize(image_path))
 
-    def on_current_slide(self, carousel, index):
+    def on_current_slide(self, carousel, index): # type: ignore
 
         current_slide = self.carousel.current_slide
         if self.clock_for_side_by_side:
@@ -401,7 +401,7 @@ class FullscreenScreen(MDScreen):
     #             right_side_img.source = str(right_side_img.higher_format)
     #     return None
 
-    def set_side_by_side(self, *args):
+    def set_side_by_side(self, *_):
         """
         Set High res img for left and right side.
         """

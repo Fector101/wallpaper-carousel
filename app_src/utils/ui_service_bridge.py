@@ -59,7 +59,7 @@ class UIServiceListener:
         return self
 
     def countdown_change(self, _, data):
-        TAG = "countdown_change"
+        # TAG = "countdown_change"
         # app_logger.debug(f"[{TAG}] data: {data}")
         if not data:
             return None
@@ -127,7 +127,7 @@ class UIServiceListener:
         # if not data:
         #     return None
         # # try:
-        #     json_data = json.loads(data)
+        #     JSON_data = json.loads(data)
         # except json.decoder.JSONDecodeError as error_parsing_json:
         #     app_logger.exception(error_parsing_json)
         #     return None

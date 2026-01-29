@@ -235,7 +235,7 @@ class MyWallpaperReceiver:
     def resume(self, _=None):
         self.current_sleep = 1
 
-    def set_next_data(self, *args):
+    def set_next_data(self, *_):
         # app_logger.info(f"next args: {args}")
         self.skip_now = True
         self.current_wait_seconds = 0
