@@ -31,7 +31,7 @@ Wally: A working Android wallpaper carousel with no ads.
 
 | **View Screen Design** | **Home Screen Widget** |
 |-------------------------------------|--------------------------------------------------------|
-|![app-view-img-screen_1_360x800](https://github.com/user-attachments/assets/4fc14b6e-c056-44e8-b61e-953ae87bcaf3) | ![home-screen_1_360x800](https://github.com/user-attachments/assets/04b38b07-edde-4acf-81ac-19c3256a4709) |
+|![app-view-img-screen_1_360x800](.github/docs-imgs/full-screen-design.jpg) | ![home-screen_1_360x800](.github/docs-imgs/home-screen-widget.jpg) |
 
 
 ---
@@ -39,7 +39,7 @@ Wally: A working Android wallpaper carousel with no ads.
 
 | **Gallery Screen Design** | **Preview Screen Design** |
 |-------------------------------------|--------------------------------------------------------|
-|![gallery-screen](https://github.com/Fector101/wallpaper-carousel/blob/main/docs-imgs/galleryscreen.jpg) | ![preview-screen](https://github.com/Fector101/wallpaper-carousel/blob/main/docs-imgs/fullscreen.jpg) |
+|![gallery-screen](.github/docs-imgs/galleryscreen.jpg) | ![preview-screen](.github/docs-imgs/fullscreen.jpg) |
 
 
 ---
