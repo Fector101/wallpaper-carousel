@@ -44,3 +44,10 @@ Wally: A working Android wallpaper carousel with no ads.
 
 ---
 
+
+
+| **Request Screen Design** |
+|-------------------------------------|
+|![gallery-screen](.github/docs-imgs/request-screen.jpg) | 
+
+---
