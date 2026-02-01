@@ -19,6 +19,7 @@ from android_notify.internal.java_classes import PendingIntent,Intent
 from android_notify import NotificationHandler,Notification
 from android_widgets import get_package_name
 
+from android_notify.internal.permissions import can_show_permission_request_popup
 from ui.widgets.android import toast
 from utils.constants import DEV, VERSION
 from utils.helper import Service, appFolder, smart_convert_minutes
@@ -148,6 +149,26 @@ def open_notify_settings():
         print('Notify error:', e)
 
 
+def my_with_callback():
+    def android_print(text):
+        print(text)
+    try:
+
+        def the_caller(*args):
+            android_print("Wisdom")
+            for each in args:
+                android_print(str(each))
+
+        print("got here")
+        from android_notify.internal.permissions import my_ask_with_callback
+        print("got here1")
+        my_ask_with_callback(the_caller)
+        print("got here2")
+
+    except Exception as e:
+        print('Notify error:', e)
+
+
 def show_home_screen_widget_popup():
     try:
         from jnius import autoclass
@@ -242,8 +263,22 @@ def show_home_screen_widget_popup1():
         print("error_from_my_way",error_from_my_way)
         traceback.print_exc()
 
+
+def regular_ask():
+    NotificationHandler.asks_permission()
+def regular_has():
+    print(f"Permission State: {NotificationHandler.has_permission()}")
+
+
+
+
+from android_notify.internal.permissions import open_notification_settings_screen
 if DEV:
     dev_object = {
+        "regular_has": lambda widget: regular_has(),
+        "regular_ask": lambda widget: regular_ask(),
+        "open_notification_settings_screen": lambda widget: open_notification_settings_screen(),
+        "my_with_callback": lambda widget: my_with_callback(),
         "gpt pop up": lambda widget: show_home_screen_widget_popup(),
         "my pop up": lambda widget: show_home_screen_widget_popup1(),
         # "vibrate": lambda widget: test_vibration(),

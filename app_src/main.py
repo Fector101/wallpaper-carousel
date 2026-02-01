@@ -28,7 +28,7 @@ from ui.widgets.buttons import BottomButtonBar
 from ui.widgets.android import toast
 
 
-android_notify_logger.setLevel(logging.WARNING if on_android_platform() else logging.ERROR)
+android_notify_logger.setLevel(logging.DEBUG if on_android_platform() else logging.ERROR)
 
 write_logs_to_file()
 if platform == 'linux':
@@ -38,7 +38,7 @@ if platform == 'linux':
     for option in options:
         if Config.get('input', option) == 'probesysfs':
             Config.remove_option('input', option)
-    Window.size = (370, 700)
+    Window.size = (390, 740)
 
 elif platform == 'android':
     ask_permission_to_images()

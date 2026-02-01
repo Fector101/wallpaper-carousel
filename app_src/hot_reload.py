@@ -13,7 +13,7 @@ options = Config.options('input')
 for option in options:
     if Config.get('input', option) == 'probesysfs':
         Config.remove_option('input', option)
-Window.size = (370, 700)
+Window.size = (390, 720)
 
 
 
@@ -49,7 +49,7 @@ class MDLive(App,MDApp):
         # "FullscreenScreen":"ui.screens.full_screen",
         # "GalleryScreen":"ui.screens.gallery_screen",
         # "NotificationScreen": "important",
-        # "NotificationScreen": "ui.screens.welcome_screen",
+        "WelcomeScreen": "ui.screens.welcome_screen",
         # "MyRoundButton": "ui.widgets.buttons",
         # "BottomButtonBar": "ui.widgets.buttons",
     }
@@ -59,6 +59,6 @@ class MDLive(App,MDApp):
 
     def build_app(self, *args):
         print("Inside Build App Auto Reload")
-        return Factory.SettingsScreen()
+        return Factory.WelcomeScreen()
 
 MDLive().run()

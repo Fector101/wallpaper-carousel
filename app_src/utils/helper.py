@@ -47,7 +47,8 @@ def appFolder():
     if on_android_platform():
         from android.storage import app_storage_path # type: ignore # , primary_external_storage_path
         # folder_path = os.path.join(primary_external_storage_path(), 'Pictures', 'Waller')
-        folder_path = app_storage_path()
+        folder_path = os.path.join(app_storage_path(),"app")
+
     else:
         folder_path = os.getcwd()
 
@@ -78,7 +79,7 @@ class Tee:
 
 def write_logs_to_file(log_folder_name="logs", file_name="all_output1.txt"):
     # Create folder
-    if not DEV:
+    if DEV:
         return
     try:
 

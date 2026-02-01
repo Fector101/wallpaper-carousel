@@ -22,7 +22,7 @@ from utils.logger import app_logger
 from utils.helper import change_wallpaper, appFolder, format_time_remaining
 from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY,DEFAULT_SERVICE_PORT, SERVICE_LIFESPAN_HOURS
 
-android_notify_logger.setLevel(logging.WARNING if on_android_platform() else logging.ERROR)
+android_notify_logger.setLevel(logging.DEBUG if on_android_platform() else logging.ERROR)
 app_logger.setLevel(logging.INFO)
 
 
