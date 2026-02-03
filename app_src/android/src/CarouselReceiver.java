@@ -29,7 +29,7 @@ public class CarouselReceiver extends BroadcastReceiver {
 //         Log.d(TAG, "Received action1: " + action);
         // Read port.txt from app path
         File portFile = new File(
-        context.getFilesDir().getAbsolutePath() + "/app/port.txt"
+        context.getFilesDir().getAbsolutePath() + "/port.txt"
         );
         if (!portFile.exists()) {
             Log.e(TAG, "port.txt not found! in python app");

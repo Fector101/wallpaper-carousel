@@ -147,7 +147,7 @@ class MyWallpaperReceiver:
 
             current_time = time.time()
             elapsed_since_service_start = current_time - self.service_start_time
-            if int(elapsed_since_service_start) % 3600 == 0:  # Every hour
+            if int(elapsed_since_service_start) % 3600 == 0 and foreground_type:  # Every hour
                 notification.updateMessage(get_service_lifespan_text(elapsed_since_service_start))
 
     def heart(self):
@@ -281,7 +281,6 @@ class MyWallpaperReceiver:
 
         image_file = os.path.join(
             context.getFilesDir().getAbsolutePath(),
-            "app",
             wallpaper_path
         )
 
@@ -352,11 +351,13 @@ wallpapers_folder_path = os.path.join(appFolder(), "wallpapers")
 service = get_python_service()
 foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE_TYPE_DATA_SYNC if on_android_platform() and BuildVersion.SDK_INT >= 30 else 0
 
-notification = Notification(title="Next in 02:00", message=f"service lifespan: {SERVICE_LIFESPAN_HOURS}hrs",name="from service")
+notification = Notification(title="Next in 02:00", name="from service")
+if foreground_type:
+    notification.message=f"service lifespan: {SERVICE_LIFESPAN_HOURS}hrs"
 notification.setData({"next wallpaper path": "test.jpg"})
 notification.addButton(text="Stop", receiver_name="CarouselReceiver", action="ACTION_STOP")
 notification.addButton(text="Skip", receiver_name="CarouselReceiver", action="ACTION_SKIP")
-builder = notification.fill_args() if __version__ == "1.60.9" else notification.start_building()
+builder = notification.fill_args()
 
 service.startForeground(notification.id, builder.build(), foreground_type)
 service.setAutoRestartService(True)

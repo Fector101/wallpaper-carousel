@@ -83,7 +83,7 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
             }
 
             File txtFile = new File(
-                    context.getFilesDir().getAbsolutePath() + "/app/wallpaper.txt"
+                    context.getFilesDir().getAbsolutePath() + "/wallpaper.txt"
             );
 
             Log.d(TAG, "TXT file path: " + txtFile.getAbsolutePath());
