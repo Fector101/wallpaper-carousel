@@ -1,6 +1,7 @@
 from kivy.graphics.boxshadow import BoxShadow
 from kivy.metrics import dp
 from kivy.graphics import Color, Rectangle, RoundedRectangle
+from kivy.properties import ListProperty
 from kivy.uix.button import Button
 
 from kivymd.uix.relativelayout import MDRelativeLayout
@@ -28,7 +29,11 @@ from kivymd.uix.button import MDIconButton
 
 
 class MyRoundButton(Button):    # (RoundedButton):
-    def __init__(self,bg_color, **kwargs):
+    bg_color = ListProperty()
+    bg_color_instr = None
+    bg_color_instr1 = None
+    back_layer_bg_color = ListProperty()
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         self.background_normal = ""
@@ -39,7 +44,11 @@ class MyRoundButton(Button):    # (RoundedButton):
         r = 25
 
         with self.canvas.before:
-            self.bg_color_instr = Color(*bg_color)
+            # print("self.back_layer_bg_color",self.back_layer_bg_color)
+            self.bg_color_instr1 = Color(*self.back_layer_bg_color)
+            self.rect1 = RoundedRectangle(radius=[r, r, r, r])
+
+            self.bg_color_instr = Color(*self.bg_color)
             self.rect = RoundedRectangle(radius=[r,r,r,r])
 
             Color(0,0,0,0.6)
@@ -53,12 +62,23 @@ class MyRoundButton(Button):    # (RoundedButton):
             )
         self.bind(size=self.update_rect, pos=self.update_rect,state=self.update_rect)
 
+        # Clock.schedule_interval(self.peek,2)
+    def on_back_layer_bg_color(self, widget, color_value):
+        if self.bg_color_instr1 and hasattr(self.bg_color_instr1, "rgba"):
+            self.bg_color_instr1.rgba = color_value
+    def on_bg_color(self,widget, color_value):
+        # .kv file patch
+        if self.bg_color_instr and hasattr(self.bg_color_instr, "rgba"):
+            self.bg_color_instr.rgba = color_value
     def update_rect(self, *_):
         self.bg.pos = self.pos
         self.bg.size = self.size
         self.bg.blur_radius = 20 if self.state == "normal" else 50
         self.rect.pos = self.pos
         self.rect.size = self.size
+
+        self.rect1.pos = self.pos
+        self.rect1.size = self.size
 
 
 

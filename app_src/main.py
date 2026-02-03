@@ -2,7 +2,7 @@ import traceback, logging
 
 from kivy.uix.screenmanager import NoTransition
 from kivy.clock import Clock
-from kivy.properties import ObjectProperty
+from kivy.properties import ObjectProperty, BooleanProperty
 from kivy.core.text import LabelBase
 from kivy.uix.screenmanager import ScreenManager, SlideTransition
 from kivy.core.window import Window
@@ -16,7 +16,7 @@ from android_notify import NotificationHandler, logger as android_notify_logger
 from utils.permissions import ask_permission_to_images
 from utils.image_operations import ImageOperation
 from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY
-from utils.helper import Service, write_logs_to_file, get_free_port, Font
+from utils.helper import Service, write_logs_to_file, get_free_port, Font, is_device_on_light_mode
 from utils.ui_service_bridge import UIServiceListener, UIServiceMessenger
 
 from ui.screens.gallery_screen import GalleryScreen
@@ -51,7 +51,6 @@ LabelBase.register(
     fn_italic=robot_mono.get_type_path('Italic'),
     fn_bold=robot_mono.get_type_path('Bold'),
 )
-
 
 
 class MyScreenManager(ScreenManager):
@@ -100,9 +99,10 @@ class MyScreenManager(ScreenManager):
 
 class WallpaperCarouselApp(MDApp):
     interval = 2  # default rotation interval
-
+    device_light_mode_state = BooleanProperty(None)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
         self.ui_messenger_to_service = None
         self.file_operation = None
         self.ui_service_listener=None
@@ -143,6 +143,7 @@ class WallpaperCarouselApp(MDApp):
                 traceback.print_exc()
 
         Clock.schedule_once(lambda dt: android_service(), 2)
+        Clock.schedule_interval(lambda dt: self.monitor_dark_and_light_device_change(), 1)
 
     def setup_service(self):
         service_port = get_free_port()
@@ -211,8 +212,12 @@ class WallpaperCarouselApp(MDApp):
         except Exception as e:
             print("Error getting notify namex:", e)
         print('on_start','-'*33)
+
+    def monitor_dark_and_light_device_change(self):
+        # self.device_light_mode_state = not self.device_light_mode_state
+        self.device_light_mode_state = is_device_on_light_mode()
+
     def debug1(self):
         pass
-
 if __name__ == '__main__':
     WallpaperCarouselApp().run()

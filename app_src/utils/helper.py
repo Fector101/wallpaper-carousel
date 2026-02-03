@@ -47,7 +47,7 @@ def appFolder():
     if on_android_platform():
         from android.storage import app_storage_path # type: ignore # , primary_external_storage_path
         # folder_path = os.path.join(primary_external_storage_path(), 'Pictures', 'Waller')
-        folder_path = os.path.join(app_storage_path(),"app")
+        folder_path = os.path.join(app_storage_path())
 
     else:
         folder_path = os.getcwd()
@@ -224,6 +224,31 @@ def get_free_port():
     s.close()
     return port
 
+def is_device_on_light_mode():
+    try:
+        Configuration = autoclass("android.content.res.Configuration")
+        activity = get_python_activity_context()
+        config = activity.getResources().getConfiguration()
+
+        ui_mode = config.uiMode & Configuration.UI_MODE_NIGHT_MASK
+
+        if ui_mode == Configuration.UI_MODE_NIGHT_YES:
+            theme = "dark"
+        elif ui_mode == Configuration.UI_MODE_NIGHT_NO:
+            theme = "light"
+        else:
+            theme = "unknown"
+        return theme == "light"
+    except Exception as error_getting_device_in_light_or_dark_mode:
+        if on_android_platform():
+            print("error_getting_device_in_light_or_dark_mode:", error_getting_device_in_light_or_dark_mode)
+            traceback.print_exc()
+        else:
+            pass
+            # print("error_getting_device_in_light_or_dark_mode:", error_getting_device_in_light_or_dark_mode)
+            # TODO get theme from PC
+        return False
+
 
 def test_java_action():
     from jnius import autoclass, cast
@@ -304,6 +329,24 @@ def test_java_action():
     compat_manager.notify(notification_id, builder.build())
 
 
+def load_kv_file(module_name="", py_file_absolute_path=""):
+    from kivy.lang import Builder
+
+    # Remove any .py or .pyc extension and add .kv
+    if py_file_absolute_path.endswith(".pyc"):
+        kv_file_path = py_file_absolute_path[:-4] + ".kv"
+    else:
+        # This handles both .py files and any other case
+        kv_file_path = py_file_absolute_path.rsplit(".py", 1)[0] + ".kv"
+
+    Builder.unload_file(filename=kv_file_path)
+    Builder.load_file(filename=kv_file_path)
+
+    return kv_file_path
+
+
+
+
 def change_wallpaper(wallpaper_path):
     """Actually set the wallpaper"""
     try:
@@ -351,4 +394,3 @@ class Font:
         :return:
         """
         return os.path.join(self.base_folder, self.name + '-' + fn_type + '.ttf')
-

@@ -1,4 +1,4 @@
-import traceback, time
+import traceback, time, os
 from pathlib import Path
 
 from kivy.properties import StringProperty, ListProperty
@@ -147,13 +147,13 @@ def open_notify_settings():
         NotificationHandler.asks_permission()
     except Exception as e:
         print('Notify error:', e)
-
-
+        
+        
 def my_with_callback():
     def android_print(text):
         print(text)
     try:
-
+        
         def the_caller(*args):
             android_print("Wisdom")
             for each in args:
@@ -217,6 +217,7 @@ def show_home_screen_widget_popup():
         print("error_from_gpt_way",error_from_gpt_way)
         traceback.print_exc()
 
+
 def show_home_screen_widget_popup1():
     from jnius import autoclass
     from android_widgets import get_package_name
@@ -266,6 +267,8 @@ def show_home_screen_widget_popup1():
 
 def regular_ask():
     NotificationHandler.asks_permission()
+
+
 def regular_has():
     print(f"Permission State: {NotificationHandler.has_permission()}")
 
@@ -290,7 +293,13 @@ if DEV:
         # "schedule_notification": lambda widget: self.android_notify_tests(),
     }
 
-
+def get_current_wallpaper():
+    try:
+        current_wallpaper_store_path = os.path.join(appFolder(), 'wallpaper.txt')
+        with open(current_wallpaper_store_path, "r") as f:
+            return f.read()
+    except FileNotFoundError:
+        return "assets/icons/icon.png"
 class HomeScreenWidgetButton(MDButton):
     text = StringProperty("")
     def __init__(self, **kwargs):
@@ -370,7 +379,8 @@ class HomeScreenWidgetControllerUI(MDBoxLayout):
 
         images_layout = MDBoxLayout(adaptive_height=True,size_hint_x=1,spacing=dp(10))
         # images_layout.adaptive_width=True
-        self.current_image_layout = HomeScreenImageDisplay(title="Current", source="assets/icons/icon.png", image_size=(dp(120), dp(120)))
+
+        self.current_image_layout = HomeScreenImageDisplay(title="Current", source=get_current_wallpaper(), image_size=(dp(120), dp(120)))
         self.next_image_layout = HomeScreenImageDisplay(title="Next", source="assets/icons/icon.png", image_size=(dp(60), dp(60)))
         images_layout.add_widget(self.current_image_layout)
         images_layout.add_widget(self.next_image_layout)
