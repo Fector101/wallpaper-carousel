@@ -1,0 +1,58 @@
+#:import get_color_from_hex kivy.utils.get_color_from_hex
+
+<GalleryScreen>:
+    md_bg_color:  [0.7,0.7, 0.7, 1] if app.device_theme == "light" else get_color_from_hex("#1A1B1B")
+    Column:
+        spacing:10
+        padding:10
+        Column:
+            spacing:10
+            padding: [dp(20), 0, dp(20), dp(10)]
+            size_hint_y:0.13
+            MDLabel:
+                text:"Waller"
+                theme_font_name:"Custom"
+                font_name:"RobotoMono"
+                theme_text_color:"Custom"
+                text_color:"black" if app.device_theme == "light" else "white"
+                bold:True
+                theme_font_size:"Custom"
+                font_size:"24sp"
+                adaptive_size:True
+            MDLabel:
+                id: header_info_label
+                text:"0 images found"
+                theme_font_name:"Custom"
+                font_name:"RobotoMono"
+                theme_text_color:"Custom"
+                text_color:"black" if app.device_theme == "light" else "white"
+                italic:True
+                theme_font_size:"Custom"
+                font_size:"14sp"
+                adaptive_size:True
+        RecycleView:
+            id: rv
+            size_hint_y:0.8
+            layout_manager: grid
+            viewclass: "Thumb"
+            MyMDRecycleGridLayout:
+                id: grid
+                cols:3
+                spacing:5
+                default_size:(None, dp(120))
+                default_size_hint:(1, None)
+                size_hint_y:None
+                padding:[0, 0, 0, dp(120)]
+                height: self.minimum_height
+
+    MDFabButton:
+        icon:"plus"
+        on_release: root.open_filechooser()
+        pos_hint: {"right": .9, "center_y": 0.25}
+        theme_font_size: "Custom"
+        font_size: sp(30)
+        theme_bg_color: "Custom"
+        md_bg_color: get_color_from_hex("#1A1B1B") if app.device_theme == "light" else "white"
+        text_color: [0.8,0.8, 0.8, 1] if app.device_theme == "light" else [.3,.3,.4,1]
+#        md_bg_color: [0,0,0,1] if app.device_theme == "light" else "white"
+#        color: [0,0,0,1] if app.device_theme == "light" else "white"

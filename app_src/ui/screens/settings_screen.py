@@ -1,12 +1,17 @@
 import traceback, time, os
 from pathlib import Path
 
-from kivy.properties import StringProperty, ListProperty
+from kivy.properties import StringProperty, ListProperty, ObjectProperty
 from kivy.uix.button import Button
-from kivy.uix.label import Label
+# from kivy.uix.label import Label
 from kivy.clock import Clock
+from kivy.uix.label import Label
 from kivy.uix.widget import Widget
-from kivymd.uix.button import MDButtonText,MDButton
+from kivy.uix.behaviors import ButtonBehavior
+from kivy.metrics import dp, sp
+from kivy.uix.scrollview import ScrollView
+from kivy.utils import get_color_from_hex
+from kivymd.uix.button import MDButtonText, MDButton, MDIconButton, MDButtonIcon
 from kivymd.uix.fitimage import FitImage
 from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
@@ -21,22 +26,21 @@ from android_widgets import get_package_name
 
 from android_notify.internal.permissions import can_show_permission_request_popup
 from ui.widgets.android import toast
+from ui.widgets.layouts import Row, Column
 from utils.constants import DEV, VERSION
 from utils.helper import Service, appFolder, smart_convert_minutes
 from utils.config_manager import ConfigManager
-from kivy.uix.behaviors import ButtonBehavior
-from kivy.metrics import dp, sp
-from kivy.uix.scrollview import ScrollView
+from utils.android import add_home_screen_widget
+from kivymd.app import MDApp
 
 
+from utils.helper import load_kv_file  # type
 
+load_kv_file(py_file_absolute_path=__file__)
 
 class MyLabel(ButtonBehavior, Label):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # self.on_release = self.tapped
-        self.size_hint = [1, None]
-        self.height = 100
 
 
 def create_channel():
@@ -147,13 +151,13 @@ def open_notify_settings():
         NotificationHandler.asks_permission()
     except Exception as e:
         print('Notify error:', e)
-        
-        
+
+
 def my_with_callback():
     def android_print(text):
         print(text)
     try:
-        
+
         def the_caller(*args):
             android_print("Wisdom")
             for each in args:
@@ -168,54 +172,6 @@ def my_with_callback():
     except Exception as e:
         print('Notify error:', e)
 
-
-def show_home_screen_widget_popup():
-    try:
-        from jnius import autoclass
-        from android_widgets import get_package_name
-
-        # Android classes
-        AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
-        ComponentName = autoclass('android.content.ComponentName')
-
-
-        # Your widget provider class (Java side)
-        CarouselWidgetProvider = autoclass(
-            f'{get_package_name()}.CarouselWidgetProvider'
-        )
-
-        # Get current Android activity context
-        PythonActivity = autoclass('org.kivy.android.PythonActivity')
-        context = PythonActivity.mActivity
-
-        # AppWidgetManager instance
-        appWidgetManager = AppWidgetManager.getInstance(context)
-
-        # ComponentName for your widget provider
-        myProvider = ComponentName(context, CarouselWidgetProvider)
-
-        # Check if pinning is supported
-        if appWidgetManager.isRequestPinAppWidgetSupported():
-            # Optional: callback when widget is pinned
-            intent = Intent(context, CarouselWidgetProvider)
-
-            successCallback = PendingIntent.getBroadcast(
-                context,
-                0,
-                intent,
-            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT # type: ignore
-
-            )
-
-            # Request widget pin
-            appWidgetManager.requestPinAppWidget(
-                myProvider,
-                None,
-                successCallback
-            )
-    except Exception as error_from_gpt_way:
-        print("error_from_gpt_way",error_from_gpt_way)
-        traceback.print_exc()
 
 
 def show_home_screen_widget_popup1():
@@ -274,15 +230,14 @@ def regular_has():
 
 
 
-
 from android_notify.internal.permissions import open_notification_settings_screen
+dev_object={}
 if DEV:
     dev_object = {
         "regular_has": lambda widget: regular_has(),
         "regular_ask": lambda widget: regular_ask(),
         "open_notification_settings_screen": lambda widget: open_notification_settings_screen(),
         "my_with_callback": lambda widget: my_with_callback(),
-        "gpt pop up": lambda widget: show_home_screen_widget_popup(),
         "my pop up": lambda widget: show_home_screen_widget_popup1(),
         # "vibrate": lambda widget: test_vibration(),
         # "create vibes test channel": lambda widget: create_channel(),
@@ -297,21 +252,41 @@ def get_current_wallpaper():
     try:
         current_wallpaper_store_path = os.path.join(appFolder(), 'wallpaper.txt')
         with open(current_wallpaper_store_path, "r") as f:
-            return f.read()
+            path= f.read()
     except FileNotFoundError:
-        return "assets/icons/icon.png"
-class HomeScreenWidgetButton(MDButton):
+        path= "assets/icons/icon.png"
+    return path or "assets/icons/icon.png"
+
+class TextButton(MDButton):
     text = StringProperty("")
+    text_color = StringProperty("")
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.theme_bg_color = "Custom"
-        self.md_bg_color = kwargs["md_bg_color"] if "md_bg_color" in kwargs else [.2, .2, .2, 1]
         self.radius = [5]
-        self.txt = MDButtonText(text=self.text, theme_text_color='Custom', text_color='white')
+        self.txt = MDButtonText(text=self.text,
+                                theme_text_color='Custom'
+                                )
+        self.bind(text=self.set_val,text_color=self.set_text_color)
         self.add_widget(self.txt)
         Clock.schedule_once(self.fix_width)
+
+    def set_val(self, instance, value):
+        self.txt.text = value
+    def set_text_color(self, instance, value):
+        self.txt.text_color = value
+        print("self.txt.text_color = value",self.txt.text_color)
+
     def fix_width(self,*_):
         self.adjust_width()
+
+class ToggleButton(MDIconButton):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.icon = "pause"
+
+
+    def on_release(self):
+        self.icon = "play" if self.icon == "pause" else "pause"
 
 
 class HomeScreenImageDisplay(MDBoxLayout):
@@ -326,7 +301,15 @@ class HomeScreenImageDisplay(MDBoxLayout):
         self.spacing =dp(5)
         # self.size_hint = (None, None)
 
-        title_label = MDLabel(text=self.title,adaptive_size=True,theme_text_color = 'Custom',text_color = 'white',theme_font_name ="Custom",font_name="Roboto",bold=True)
+        title_label = MDLabel(text=self.title,adaptive_size=True,theme_font_name ="Custom",font_name="Roboto",bold=True)
+        title_label.theme_font_size="Custom"
+        title_label.font_size=sp(14)
+        title_label.theme_text_color="Custom"
+        # title_label.text_color = 'white'
+        title_label.color = get_color_from_hex("#98F1DD")
+        title_label.padding = [dp(5),dp(2)]
+        title_label.radius = [dp(5)]
+        title_label.md_bg_color = get_color_from_hex("#262C3A")
         self.image = FitImage(
             source=self.source,
             size_hint=(1, 1),
@@ -341,6 +324,29 @@ class HomeScreenImageDisplay(MDBoxLayout):
         self.add_widget(title_label)
         self.add_widget(self.image)
 
+class IconTextButton(MDButton):
+    icon = StringProperty()
+    text = StringProperty()
+
+    def __init__(self,**kwargs):
+        super().__init__(**kwargs)
+        self.theme_bg_color = "Custom"
+        self.md_bg_color = kwargs["md_bg_color"] if "md_bg_color" in kwargs else [.2, .2, .2, 1]
+        self.radius = [5]
+        self.icon_object = MDButtonIcon(icon=self.icon,
+                                     # theme_text_color='Custom', text_color='white'
+                                     )
+        self.add_widget(self.icon_object)
+        self.text_object = MDButtonText(text="self.text",
+                                     theme_text_color='Custom', text_color='white'
+                                     )
+        self.add_widget(self.text_object)
+
+        Clock.schedule_once(self.fix_width)
+
+
+    def fix_width(self, *_):
+        self.adjust_width()
 
 class HomeScreenWidgetControllerUI(MDBoxLayout):
     def __init__(self, **kwargs):
@@ -348,11 +354,14 @@ class HomeScreenWidgetControllerUI(MDBoxLayout):
         self.orientation = "vertical"
         self.adaptive_height=True
         padding = [dp(10),0,dp(10),0]
-        d=.15
+        # d=.15
+        # d=.55
+        d=.75
         header = MDBoxLayout(
             orientation="horizontal",
             size_hint_y = None,
-            md_bg_color=[d,d,d,1],padding=padding,radius=[dp(10),dp(10),dp(0),0]
+            md_bg_color=[d,d,d,1],
+            padding=padding,radius=[dp(10),dp(10),dp(0),0]
         )
         header.adaptive_width=True
         header.height=dp(50)
@@ -361,20 +370,22 @@ class HomeScreenWidgetControllerUI(MDBoxLayout):
         header_text.theme_font_size ="Custom"
         header_text.font_size =sp(14)
         header_text.pos_hint = {"center_y": 0.5}
-        header_text.theme_text_color = 'Custom'
+        # header_text.theme_text_color = 'Custom'
         # header_text.theme_bg_color = 'Custom'
         # header_text.md_bg_color = [1,1,0,1]
         header_text.adaptive_size=True
-        header_text.text_color = 'white'
 
         header.add_widget(header_text)
 
 
         main_content = MDBoxLayout(adaptive_size=True,size_hint_x=1,spacing=dp(10),padding=[dp(10)],radius=[0,dp(10),dp(10),dp(10)])
         main_content.orientation = "vertical"#height=True,size_hint_x=1,spacing=dp(10),padding=padding,md_bg_color= [.3,1,.3,1])
-        s=0
+        s=.2
         main_content.md_bg_color= [s,s,s,.3]
-        self.countdown_label =MDLabel(pos_hint = {"right": 1},text="0:13",adaptive_size=True,theme_text_color = 'Custom',text_color = 'white',theme_font_name ="Custom",font_name="Roboto",bold=True)
+        self.countdown_label =MDLabel(text="0:13",pos_hint = {"right": 1},adaptive_size=True,
+                                      # theme_text_color = 'Custom',
+                                      # text_color = 'white',
+                                      theme_font_name ="Custom",font_name="Roboto",bold=True)
         main_content.add_widget(self.countdown_label)#,md_bg_color=[1,0,1,1]))
 
         images_layout = MDBoxLayout(adaptive_height=True,size_hint_x=1,spacing=dp(10))
@@ -384,17 +395,30 @@ class HomeScreenWidgetControllerUI(MDBoxLayout):
         self.next_image_layout = HomeScreenImageDisplay(title="Next", source="assets/icons/icon.png", image_size=(dp(60), dp(60)))
         images_layout.add_widget(self.current_image_layout)
         images_layout.add_widget(self.next_image_layout)
-        btns_layout = MDBoxLayout(adaptive_size=True,spacing=dp(10))
-        btns_layout.pos_hint={"center_x": 0.5}
 
-        self.change_current_wallpaper_button = HomeScreenWidgetButton(text="Change Current")
-        self.skip_upcoming_wallpaper_button = HomeScreenWidgetButton(text="Skip Next")
-        btns_layout.add_widget(self.change_current_wallpaper_button)
-        btns_layout.add_widget(self.skip_upcoming_wallpaper_button)
-
+        self.skip_upcoming_wallpaper_button = TextButton(text="Skip Next")
+        btns_layout = Row(
+            my_widgets = [
+                TextButton(text="Change Current"),
+                self.skip_upcoming_wallpaper_button
+            ],
+            adaptive_size=True,
+            spacing=dp(10),
+            pos_hint={"right": 1}
+        )
         main_content.add_widget(images_layout)
         main_content.add_widget(btns_layout)
-        main_content.add_widget(HomeScreenWidgetButton(text="Stop Loop",pos_hint={"center_x": 0.5},md_bg_color=[.7,.1,.1,1]))
+
+        last_btns_layout = Row(
+            my_widgets = [
+                ToggleButton(pos_hint={"right":1}),
+                IconTextButton(icon="plus", text="Add to Home Screen",on_release=add_home_screen_widget)
+            ],
+            adaptive_size=True,
+            spacing=dp(10),
+            pos_hint={"right": 1}
+        )
+        main_content.add_widget(last_btns_layout)
 
         self.add_widget(header)
         self.add_widget(main_content)
@@ -402,135 +426,147 @@ class HomeScreenWidgetControllerUI(MDBoxLayout):
         # app = MDApp.get_running_app()
         # app.ui_service_listener.on_countdown_change =self.update_label
 
-    def update_label(self,seconds):
-        self.countdown_label.text = seconds
 
-    def on_changed_homescreen_widget(self,current_wallpaper,next_wallpaper):
-        self.current_image_layout.image.source = current_wallpaper or self.current_image_layout.image.source
-        self.next_image_layout.image.source = next_wallpaper or self.next_image_layout.image.source
-
+    # def update_label(self,seconds):
+    #     self.countdown_label.text = seconds
+    #
+    # def on_changed_homescreen_widget(self,current_wallpaper,next_wallpaper):
+    #     self.current_image_layout.image.source = current_wallpaper or self.current_image_layout.image.source
+    #     self.next_image_layout.image.source = next_wallpaper or self.next_image_layout.image.source
+    #
 
 class SettingsScreen(MDScreen):
+    current_image_source=StringProperty()
+    next_image_source=StringProperty()
+    interval=StringProperty()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.name = "settings"
-        self.md_bg_color = [0.1, 0.1, 0.1, 1]
+
+
+        # b=.1
+        # self.md_bg_color = [b,b,b, 1]
         self.app_dir = Path(appFolder())
         self.my_config = ConfigManager()
         self.wallpapers_dir = self.app_dir / "wallpapers"
-        self.interval = self.my_config.get_interval()
+        self.interval = str(self.my_config.get_interval())
         self.times_tapped = 0
+        #
+        # scroll = ScrollView(size_hint=(1, 1))
+        #
+        # root = Column(
+        #     padding=[dp(20), dp(30), dp(20), dp(100)],
+        #     spacing=dp(15),
+        #     size_hint_y=None,
+        #     my_widgets = [
+        #         MDLabel(
+        #             text="Settings",
+        #             font_size="22sp",
+        #             size_hint_y=None,
+        #             height=dp(40), font_name="RobotoMono"
+        #         ),
+        #         MDLabel(
+        #             text="Wallpaper Change Interval (minutes)",
+        #             size_hint_y=None,
+        #             height=dp(30), font_name="RobotoMono", font_size=sp(13)
+        #         )
+        #     ]
+        #
+        # )
+        # root.bind(minimum_height=root.setter("height"))  # makes height dynamic based on content
+        #
+        # input_row = Row(
+        #     spacing=dp(10),
+        #     size_hint_y=None,
+        #     height=dp(50),
+        #     my_widgets=[
+        #         MDTextField(
+        #             text=str(self.interval),
+        #             hint_text="mins",
+        #             size_hint_x=0.55,
+        #             # theme_text_color="Custom",
+        #             text_color_focus=[1, 1, 1, 1],
+        #             text_color_normal=[.8, .8, .8, 1],
+        #             # hint_text_color_normal=[.8, .8, .8, 1],
+        #             # hint_text_color_focus=[1, 1, 1, 1],
+        #             input_filter="float"
+        #         ),
+        #         Button(text="Save", size_hint_x=0.35, font_name="RobotoMono", on_release=self.save_interval)
+        #     ]
+        # )
+        #
+        #
+        # root.add_widget(input_row)
+        #
+        # self.interval_label = MDLabel(
+        #     text=f"Saved: {smart_convert_minutes(self.interval)}",
+        #     size_hint_y=None,
+        #     height=dp(30),font_name="RobotoMono"
+        # )
+        # root.add_widget(self.interval_label)
+        #
+        # # ---------- FLEXIBLE SPACER ----------
+        # # root.add_widget(Widget(size_hint_y=1))
+        #
+        # root.add_widget(MDLabel(
+        #     text="Carousel Tools",
+        #     size_hint_y=None,
+        #     height=dp(30)
+        # ))
+        #
+        # restart_btn = TextButton(
+        #     text="Restart Carousel",
+        #     size_hint_y=None,
+        #     height=dp(50),
+        #     on_release=self.restart_service
+        # )
+        # root.add_widget(restart_btn)
+        #
+        # stop_btn = TextButton(
+        #     text="Stop Carousel",
+        #     size_hint_y=None,
+        #     height=dp(50),
+        #     on_release=self.terminate_carousel
+        # )
+        # root.add_widget(stop_btn)
+        #
+        # export_folder_btn = TextButton(
+        #     text="export wallpapers",
+        #     size_hint_y=None,
+        #     height=dp(50),
+        #     on_release=lambda widget: self.export_waller_folder()
+        # )
+        # root.add_widget(export_folder_btn)
+        #
+        # # ---------- TEST BUTTONS ----------
+        # if DEV:
+        #     for each in dev_object:
+        #         root.add_widget(Button(text = f"test {each}", on_release=dev_object[each],size_hint_y=None,height=dp(50)))
+        #
+        # self.homeScreenWidgetControllerUI = HomeScreenWidgetControllerUI()
+        # root.add_widget(self.homeScreenWidgetControllerUI)
+        #
+        # text = MyLabel(
+        #     text=f"--- v{VERSION} ---",
+        #     size_hint_y=None,
+        #     height=dp(50),font_name="RobotoMono",
+        #     on_release=self.open_logs_screen
+        # )
+        # root.add_widget(text)
+        #
+        #
+        # scroll.add_widget(root)
+        # self.add_widget(scroll)
 
-        scroll = ScrollView(size_hint=(1, 1))
 
-        root = MDBoxLayout(
-            orientation="vertical",
-            padding=[dp(20), dp(30), dp(20), dp(100)],
-            spacing=dp(15),
-            size_hint_y=None
-        )
-        root.bind(minimum_height=root.setter("height"))  # makes height dynamic based on content
-
-        # ---------- HEADER ----------
-        root.add_widget(Label(
-            text="Settings",
-            font_size="22sp",
-            size_hint_y=None,
-            height=dp(40),font_name="RobotoMono"
-        ))
-
-        # ---------- INTERVAL SECTION ----------
-        root.add_widget(Label(
-            text="Wallpaper Change Interval (minutes)",
-            size_hint_y=None,
-            height=dp(30),font_name="RobotoMono",font_size=sp(13)
-        ))
-
-        input_row = MDBoxLayout(orientation="horizontal", spacing=dp(10),
-                                size_hint_y=None, height=dp(50))
-
-        self.interval_input = MDTextField(
-            text=str(self.interval),
-            hint_text="mins",
-            size_hint_x=0.55,
-        )
-        self.interval_input.theme_text_color = "Custom"
-        self.interval_input.text_color_focus = [1, 1, 1, 1]
-        self.interval_input.text_color_normal = [.8, .8, .8, 1]
-        self.interval_input.hint_text_color_normal = [.8, .8, .8, 1]
-        self.interval_input.hint_text_color_focus = [1, 1, 1, 1]
-        self.interval_input.input_filter = "float"
-
-        save_btn = Button(text="Save", size_hint_x=0.35,font_name="RobotoMono")
-        save_btn.bind(on_release=self.save_interval)
-
-        input_row.add_widget(self.interval_input)
-        input_row.add_widget(save_btn)
-        root.add_widget(input_row)
-
-        self.interval_label = Label(
-            text=f"Saved: {smart_convert_minutes(self.interval)}",
-            size_hint_y=None,
-            height=dp(30),font_name="RobotoMono"
-        )
-        root.add_widget(self.interval_label)
-
-        # ---------- FLEXIBLE SPACER ----------
-        root.add_widget(Widget(size_hint_y=1))
-
-        root.add_widget(Label(
-            text="Carousel Tools",
-            size_hint_y=None,
-            height=dp(30)
-        ))
-
-        restart_btn = Button(
-            text="Restart Carousel",
-            size_hint_y=None,
-            height=dp(50)
-        )
-        restart_btn.bind(on_release=self.restart_service)
-        root.add_widget(restart_btn)
-
-        stop_btn = Button(
-            text="Stop Carousel",
-            size_hint_y=None,
-            height=dp(50)
-        )
-        stop_btn.bind(on_release=self.terminate_carousel)
-        root.add_widget(stop_btn)
-
-        # ---------- TEST BUTTON ----------
-        ai_btn = Button(
-            text="export_waller_folder",
-            size_hint_y=None,
-            height=dp(50),
-            on_release=lambda widget: self.export_waller_folder()
-        )
-        root.add_widget(ai_btn)
-
-
-
-        if DEV:
-            for each in dev_object:
-                root.add_widget(Button(text = f"test {each}", on_release=dev_object[each],size_hint_y=None,height=dp(50)))
-
-        self.homeScreenWidgetControllerUI = HomeScreenWidgetControllerUI()
-        root.add_widget(self.homeScreenWidgetControllerUI)
-
-        text = MyLabel(
-            text=f"--- v{VERSION} ---",
-            size_hint_y=None,
-            height=dp(50),font_name="RobotoMono",
-            on_release=self.open_logs_screen
-        )
-        root.add_widget(text)
-
-
-        scroll.add_widget(root)
-        self.add_widget(scroll)
         # self.add_widget(root) for auto reload
+        # self.save_interval()
+        self.current_image_source = get_current_wallpaper()
+        self.next_image_source =  "assets/icons/icon.png"
 
+    @staticmethod
+    def toggle_home_screen_widget_loop(widget=None):
+        widget.icon = "play" if widget.icon == "pause" else "pause"
     def open_logs_screen(self,_=None):
         self.times_tapped += 1
         if self.times_tapped == 3:
@@ -545,6 +581,12 @@ class SettingsScreen(MDScreen):
             toast("Stop failed", e)
 
     def save_interval(self, *_):
+        # print("saving interval")
+        # app = MDApp.get_running_app()
+        # # app.device_theme = "dark"
+        # app.device_theme = "light" if app.device_theme == "dark" else "dark"
+        # print(app.device_theme)
+        # return
         try:
             new_val = float(self.interval_input.text)
         except Exception as error_changing_input_to_float:
@@ -560,7 +602,9 @@ class SettingsScreen(MDScreen):
         self.my_config.set_interval(new_val)
         self.interval_label.text = f"Saved: {smart_convert_minutes(new_val)}"
         toast("Saved")
-
+    def update_label(self,seconds):
+        if self.ids.pause_home_screen_widget_loop_button.icon == "pause":
+            self.ids.countdown_label.text = seconds
     @staticmethod
     def restart_service(*_):
 
@@ -594,10 +638,7 @@ class SettingsScreen(MDScreen):
             list[str]: content:// URIs (29+) or file paths (<29)
         """
 
-        from jnius import autoclass
         import os
-        from android_notify.config import get_python_activity_context
-
         # Android core
         MediaStoreImages = autoclass("android.provider.MediaStore$Images$Media")
         MediaColumns = autoclass("android.provider.MediaStore$MediaColumns")
@@ -713,3 +754,6 @@ class SettingsScreen(MDScreen):
         print("exported_uris:", exported_uris)
         toast("Exported: To Pictures/Waller")
         return exported_uris
+    def on_changed_homescreen_widget(self,current_wallpaper,next_wallpaper):
+        self.current_image_source = current_wallpaper or self.current_image_source
+        self.next_image_source = next_wallpaper or self.next_image_source

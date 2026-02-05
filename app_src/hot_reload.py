@@ -4,12 +4,12 @@ from kivy.factory import Factory
 from kivymd.app import MDApp
 # from main import WallpaperCarouselApp
 from kivy.core.window import Window
-from kivy.properties import BooleanProperty
+from kivy.properties import BooleanProperty, StringProperty
 
 from kivy import Config
 from kivy.core.text import LabelBase
 from kivy.clock import Clock
-from utils.helper import is_device_on_light_mode
+from utils.android import is_device_on_light_mode
 
 #Linux has some weirdness with the touchpad by default... remove it
 options = Config.options('input')
@@ -44,10 +44,12 @@ LabelBase.register(
 
 
 class MDLive(App,MDApp):
-    device_light_mode_state = BooleanProperty(1)
+    device_theme = StringProperty("light")
     theme_widgets = []
     KV_FILES=[
         "ui.screens.welcome_screen".replace(".","/") + ".kv",
+        "ui.screens.gallery_screen".replace(".","/") + ".kv",
+        "ui.screens.settings_screen".replace(".","/") + ".kv",
 
     ]
     CLASSES = {
@@ -56,21 +58,24 @@ class MDLive(App,MDApp):
         "HomeScreenWidgetControllerUI":"ui.screens.settings_screen",
         # "LogsScreen":"ui.screens.logs_screen",
         # "FullscreenScreen":"ui.screens.full_screen",
-        # "GalleryScreen":"ui.screens.gallery_screen",
+        "GalleryScreen":"ui.screens.gallery_screen",
         # "NotificationScreen": "important",
         "WelcomeScreen": "ui.screens.welcome_screen",
         # "MyRoundButton": "ui.widgets.buttons",
-        # "BottomButtonBar": "ui.widgets.buttons",
+        "BottomButtonBar": "ui.widgets.buttons",
     }
     AUTORELOADER_PATHS = [
         ("./ui", {"recursive": True})
     ]
 
     def build_app(self, *args):
+
         print("Inside Build App Auto Reload")
-        return Factory.WelcomeScreen()
+        return Factory.SettingsScreen()
 
     def on_start(self):
+        # self.theme_cls.theme_style = "Light"
+        # self.theme_cls.primary_palette = "Blue"
         # Clock.schedule_interval(lambda dt: self.monitor_dark_and_light_device_change(), 1)
         pass
 

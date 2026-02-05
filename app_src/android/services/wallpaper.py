@@ -116,6 +116,7 @@ def get_service_lifespan_text(elapsed_seconds):
 
 class MyWallpaperReceiver:
     def __init__(self):
+        self.is_home_screen_widget_changes_paused=False
         self.current_wallpaper = None
         self.skip_now = False
         self.live = True
@@ -125,6 +126,7 @@ class MyWallpaperReceiver:
         self.service_start_time = time.time()
         self.__start_main_loop()
         self.changes = 0
+
     def __start_main_loop(self):
         try:
             threading.Thread(target=self.heart, daemon=True).start()
@@ -190,7 +192,10 @@ class MyWallpaperReceiver:
             f.write(wallpaper_path)
 
         try:
-            self.update_widget_image(wallpaper_path)
+            if not self.is_home_screen_widget_changes_paused:
+                self.update_widget_image(wallpaper_path)
+            else:
+                app_logger.warning("Home Screen Widget Changes Paused...")
         except Exception as error_updating_widget:
             app_logger.exception(f"Error update_widget_image  -{error_updating_widget}")
             traceback.print_exc()
@@ -237,6 +242,9 @@ class MyWallpaperReceiver:
         # app_logger.info(f"next args: {args}")
         self.skip_now = True
         self.current_wait_seconds = 0
+
+    def toggle_home_screen_widget_changes(self, *_):
+        self.is_home_screen_widget_changes_paused = not self.is_home_screen_widget_changes_paused
 
     @staticmethod
     def __send_data_to_ui(path, dict_data):
@@ -372,6 +380,7 @@ myDispatcher.map("/resume", myWallpaperReceiver.resume)
 myDispatcher.map("/change-next", myWallpaperReceiver.set_next_data)
 myDispatcher.map("/stop", myWallpaperReceiver.stop)
 myDispatcher.map("/set-wallpaper", myWallpaperReceiver.set_wallpaper)
+myDispatcher.map("/toggle_home_screen_widget_changes", myWallpaperReceiver.toggle_home_screen_widget_changes)
 
 server = osc_server.ThreadingOSCUDPServer(("0.0.0.0", receivedData.service_port), myDispatcher)
 

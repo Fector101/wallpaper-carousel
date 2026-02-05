@@ -10,6 +10,7 @@ from android_notify import NotificationHandler
 from kivy.clock import Clock
 from kivy.graphics import PushMatrix, PopMatrix, Rotate
 from kivy.properties import ListProperty, BooleanProperty
+from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.fitimage import FitImage
 from kivymd.uix.floatlayout import MDFloatLayout
@@ -18,7 +19,8 @@ from kivymd.uix.label import MDLabel, MDIcon
 from kivymd.uix.screen import MDScreen
 
 from ui.widgets.buttons import MyRoundButton
-from ui.widgets.android import toast, ThemedWidget
+from ui.widgets.android import toast
+from ui.widgets.layouts import ThemedWidget
 from utils.helper import load_kv_file, appFolder
 from kivy.graphics import Color, Line
 
@@ -114,16 +116,17 @@ class BorderMDBoxLayout(MDBoxLayout):
         self.border.rounded_rectangle = self.round_rect_args  # (self.x,self.y,self.width,self.height,16)
 
 
-class NotificationRequestLayout(MDGridLayout,ThemedWidget):
+class NotificationRequestLayout(MDGridLayout):
     text_color_primary_light = ListProperty([0, 0, 0, 1])
     text_color_primary_dark = get_color_from_hex("#FFFFFF")
     text_color_secondary_light = ListProperty([88 / 255, 85 / 255, 85 / 255, 1])
     text_color_secondary_dark = get_color_from_hex("#F2F2F2")
 
-    is_device_theme_light=BooleanProperty(1)
+    # is_device_theme_light=BooleanProperty(1)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        # self.orientation="vertical"
         # self.rows = 4
         # self.md_bg_color = [.9, .9, .9, 1]
         # p = 25
@@ -366,14 +369,8 @@ class NotificationRequestLayout(MDGridLayout,ThemedWidget):
         # self.size_hint=[None,None]
         # self.size=[Window.width-100,Window.height-10]
         # pass
-
-        # self.lightMode()
-
-    def darkMode(self):
-        self.is_device_theme_light=False
-
-    def lightMode(self):
-        self.is_device_theme_light=True
+        # app = MDApp.get_running_app()
+        # app.device_theme = "light"
 
     def enable_notifications(self, *_):
         print("Enable notifications pressed")
@@ -406,5 +403,6 @@ class NotificationRequestLayout(MDGridLayout,ThemedWidget):
 class WelcomeScreen(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
         self.name = "welcome"
         self.add_widget(NotificationRequestLayout())

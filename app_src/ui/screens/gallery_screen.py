@@ -5,7 +5,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.recycleview import RecycleView
 from kivy.uix.recyclegridlayout import RecycleGridLayout
 from kivy.metrics import dp, sp
-from kivy.properties import StringProperty
+from kivy.properties import StringProperty, NumericProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.image import AsyncImage
 from kivymd.uix.label import MDLabel
@@ -14,16 +14,19 @@ from plyer import filechooser
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.button import MDFabButton
 
-# from ui.widgets.buttons import BottomButtonBar
+from ui.widgets.buttons import BottomButtonBar
+from ui.widgets.layouts import Row,Column # used in .kv file
 
 from utils.image_operations import get_or_create_thumbnail
 from utils.config_manager import ConfigManager
-from utils.helper import appFolder  # type
+from utils.helper import appFolder, load_kv_file  # type
 
+load_kv_file(py_file_absolute_path=__file__)
 
 class MyMDRecycleGridLayout(RecycleGridLayout):
     icon_active = StringProperty()
     icon_inactive_color = StringProperty()
+    minimum_height = NumericProperty()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -40,53 +43,56 @@ class GalleryScreen(MDScreen):
         self.app_dir = Path(appFolder())
         self.myconfig = ConfigManager()
         self.wallpapers_dir = self.app_dir / "wallpapers"
-        self.md_bg_color = [0.1, 0.1, 0.1, 1]
-        layout = BoxLayout(orientation="vertical", spacing=10, padding=10)
-        self.header_layout = BoxLayout(orientation="vertical", spacing=10, padding=[dp(20),0], size_hint_y=0.13)
-        self.header_layout.padding = [dp(20), 0, dp(20), dp(10)]
-        app_name_label=MDLabel(
-            text="Waller",theme_font_name="Custom",font_name="RobotoMono",
-            theme_text_color="Custom",text_color="white",
-            bold=True,theme_font_size="Custom",font_size="24sp"
-        )
-        app_name_label.text_color="white"
-        app_name_label.adaptive_size=True
-        # app_name_label.md_bg_color=[1,1,11,1]
-        self.header_info_label=MDLabel(
-            text="0 images found",theme_font_name="Custom",
-            font_name="RobotoMono", theme_text_color="Custom",
-            text_color="white",italic=True,theme_font_size="Custom",
-            font_size="14sp",adaptive_size=True
-        )
-        # self.header_info_label.md_bg_color=[1,1,0,1]
-        self.header_layout.add_widget(app_name_label)
-        self.header_layout.add_widget(self.header_info_label)
-        layout.add_widget(self.header_layout)
+        # self.md_bg_color = [0.1, 0.1, 0.1, 1]
+        # layout = BoxLayout(orientation="vertical", spacing=10, padding=10)
+        # self.header_layout = BoxLayout(orientation="vertical", spacing=10, size_hint_y=0.13)
+        # self.header_layout.padding = [dp(20), 0, dp(20), dp(10)]
+        # app_name_label=MDLabel(
+        #     text="Waller",theme_font_name="Custom",font_name="RobotoMono",
+        #     theme_text_color="Custom",text_color="white",
+        #     bold=True,theme_font_size="Custom",font_size="24sp"
+        # )
+        # app_name_label.adaptive_size=True
+        # # app_name_label.md_bg_color=[1,1,11,1]
+        # self.header_info_label=MDLabel(
+        #     text="0 images found",theme_font_name="Custom",
+        #     font_name="RobotoMono",
+        #     theme_text_color="Custom",text_color="white",
+        #     italic=True,theme_font_size="Custom",
+        #     font_size="14sp",adaptive_size=True
+        # )
+        # # self.header_info_label.md_bg_color=[1,1,0,1]
+        # self.header_layout.add_widget(app_name_label)
+        # self.header_layout.add_widget(self.header_info_label)
+        # layout.add_widget(self.header_layout)
 
-        self.rv = RecycleView(size_hint_y=0.8)
-        grid = MyMDRecycleGridLayout(cols=3,
-                                 spacing=5,
-                                 default_size=(None, dp(120)),
-                                 default_size_hint=(1, None),
-                                 size_hint_y=None,
-                                 padding=[0, 0, 0, dp(120)]
-                                     )
-        grid.bind(minimum_height=grid.setter("height"))
-        self.rv.add_widget(grid)
-        self.rv.layout_manager = grid
-        self.rv.viewclass = "Thumb"
-        layout.add_widget(self.rv)
+        # self.rv = RecycleView(size_hint_y=0.8)
+        # grid = MyMDRecycleGridLayout(cols=3,
+        #                          spacing=5,
+        #                          default_size=(None, dp(120)),
+        #                          default_size_hint=(1, None),
+        #                          size_hint_y=None,
+        #                          padding=[0, 0, 0, dp(120)]
+        #                              )
+        # grid.bind(minimum_height=grid.setter("height"))
+        # self.rv.add_widget(grid)
+        # self.rv.layout_manager = grid
+        # self.rv.viewclass = "Thumb"
+        # layout.add_widget(self.rv)
+        #
+        # add_btn = MDFabButton(
+        #     icon="plus",
+        #     on_release=self.open_filechooser,
+        #     theme_bg_color=  "Custom",
+        #     md_bg_color=  [0.9, 0.9, 0, 1] if self.app.device_theme == "light" else [1,1,0,1]
+        # )
+        #
+        # add_btn.pos_hint={"right": .9, "center_y": 0.25}
+        # add_btn.theme_font_size = "Custom"
+        # add_btn.font_size = sp(30)
+        # self.add_widget(layout)
+        # self.add_widget(add_btn)
 
-        add_btn = MDFabButton(
-            icon="plus",
-            on_release=self.open_filechooser
-        )
-
-        add_btn.pos_hint={"right": .9, "center_y": 0.25}
-        add_btn.theme_font_size = "Custom"
-        add_btn.font_size = sp(30)
-        self.add_widget(layout)
-        self.add_widget(add_btn)
 
 
         # self.bottom_bar = BottomButtonBar(
@@ -96,8 +102,9 @@ class GalleryScreen(MDScreen):
         #     height=dp(500)
         #
         # )
+        # # w=.3
+        # # self.bottom_bar.btn_settings.text_color=[w,w,.4,1]
         # self.add_widget(self.bottom_bar)
-
         # self.load_saved()# for hot_reload
 
 
@@ -153,9 +160,11 @@ class GalleryScreen(MDScreen):
            if img not in self.wallpapers:
                self.wallpapers.append(img)
 
-        self.header_info_label.text = f"{len(self.wallpapers)} images found"
+        self.ids.header_info_label.text = f"{len(self.wallpapers)} images found"
+        # self.header_info_label.text = f"{len(self.wallpapers)} images found"
         data = []
-        self.rv.data = []
+        self.ids.rv.data = []
+        # self.rv.data = []
         try:
 
             for  i, path in enumerate(self.wallpapers):
@@ -169,7 +178,7 @@ class GalleryScreen(MDScreen):
                 })
             # print("Thumbnail data length:", len(data))
 
-            self.rv.data = data
+            self.ids.rv.data = data
 
         except Exception as error_updating_recycle_view:
             print(error_updating_recycle_view)
@@ -255,7 +264,7 @@ class GalleryScreen(MDScreen):
 
     def load_saved(self):
         # peek = [str(p) for p in self.wallpapers_dir.glob("*") if True]
-        # print("Peek:", peek)
+        # print("Peek:", peek,self.wallpapers_dir)
         self.wallpapers = [
             str(p) for p in self.wallpapers_dir.glob("*")
             if p.suffix.lower() in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"]

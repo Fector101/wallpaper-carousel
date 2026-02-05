@@ -1,0 +1,278 @@
+#:import TEXT_COLOR_PRIMARY_LIGHT utils.constants.TEXT_COLOR_PRIMARY_LIGHT
+#:import TEXT_COLOR_PRIMARY_DARK utils.constants.TEXT_COLOR_PRIMARY_DARK
+#:import BUTTON_BG_DARK utils.constants.BUTTON_BG_DARK
+#:import VERSION utils.constants.VERSION
+#:import get_color_from_hex kivy.utils.get_color_from_hex
+#:import add_home_screen_widget utils.android.add_home_screen_widget
+
+
+
+
+<MyMDButton@MDButton>:
+    theme_bg_color:"Custom"
+#    md_bg_color: TEXT_COLOR_PRIMARY_DARK if app.device_theme == "light" else  TEXT_COLOR_PRIMARY_LIGHT
+    md_bg_color: TEXT_COLOR_PRIMARY_DARK if app.device_theme == "light" else BUTTON_BG_DARK
+
+
+
+<SettingsScreen>:
+    name: "settings"
+    md_bg_color: [0.9, 0.9, 0.9, 1] if app.device_theme == "light" else get_color_from_hex("#1A1B1B")
+
+    ScrollView:
+        size_hint: 1, 1
+
+        Column:
+#            id: root
+            padding: dp(20), dp(30), dp(20), dp(100)
+            spacing: dp(15)
+            size_hint_y: None
+            height: self.minimum_height
+
+            MDLabel:
+                text: "Settings"
+                font_size: "22sp"
+                size_hint_y: None
+                height: dp(40)
+                font_name: "RobotoMono"
+                color: TEXT_COLOR_PRIMARY_LIGHT if app.device_theme == "light" else TEXT_COLOR_PRIMARY_DARK
+
+            MDLabel:
+                text: "Wallpaper Change Interval (minutes)"
+                size_hint_y: None
+                height: dp(30)
+                font_name: "RobotoMono"
+                font_size: sp(13)
+                color: TEXT_COLOR_PRIMARY_LIGHT if app.device_theme == "light" else TEXT_COLOR_PRIMARY_DARK
+
+            Row:
+                spacing: dp(10)
+                size_hint_y: None
+                height: dp(50)
+
+                MDTextField:
+                    id: interval_input
+                    text: root.interval
+                    hint_text: "mins"
+                    size_hint_x: 0.55
+                    theme_text_color:"Custom"
+                    text_color_focus: 1, 1, 1, 1
+                    text_color_normal: .8, .8, .8, 1
+                    input_filter: "float"
+                    size_hint_y: 1
+                MyMDButton:
+                    radius: [5]
+                    theme_bg_color:"Custom"
+                    size_hint_x: 0.35
+                    theme_height: "Custom"
+                    size_hint_y: .9
+                    pos_hint:{"center_y":.5}
+                    on_release: root.save_interval()
+
+                    MDButtonText:
+                        text: "Save"
+                        size_hint_y: None
+                        theme_text_color:"Custom"
+                        height: dp(50)
+                        text_color: "black" if app.device_theme == "light" else "white"
+                        font_name: "RobotoMono"
+
+
+            MDLabel:
+                id: interval_label
+#                text: "Saved: " + root.parent.parent.smart_convert_minutes(root.parent.parent.interval)
+                size_hint_y: None
+                height: dp(30)
+                font_name: "RobotoMono"
+                color: TEXT_COLOR_PRIMARY_LIGHT if app.device_theme == "light" else TEXT_COLOR_PRIMARY_DARK
+
+            MDLabel:
+                text: "Carousel Tools"
+                size_hint_y: None
+                height: dp(30)
+                color: TEXT_COLOR_PRIMARY_LIGHT if app.device_theme == "light" else TEXT_COLOR_PRIMARY_DARK
+            MDBoxLayout:
+                spacing: dp(10)
+                size_hint_x:1
+                adaptive_size:True
+                pos_hint: {"center_x": 0.5}
+#                md_bg_color:[1,1,0,1]
+                MyMDButton:
+                    radius: [5]
+                    theme_bg_color:"Custom"
+                    on_release: root.restart_service()
+
+                    MDButtonText:
+                        text: "Restart Carousel"
+                        size_hint_y: None
+                        theme_text_color:"Custom"
+                        height: dp(50)
+                        text_color: "black" if app.device_theme == "light" else "white"
+
+                MyMDButton:
+                    radius: [5]
+                    theme_bg_color:"Custom"
+                    on_release: root.terminate_carousel()
+                    MDButtonText:
+                        text: "Stop Carousel"
+                        size_hint_y: None
+                        height: dp(50)
+                        theme_text_color:"Custom"
+                        text_color: "black" if app.device_theme == "light" else "white"
+
+            MyMDButton:
+                radius: [5]
+                theme_bg_color:"Custom"
+#                md_bg_color: TEXT_COLOR_PRIMARY_DARK if app.device_theme == "light" else BUTTON_BG_DARK
+                pos_hint: {"center_x": 0.5}
+                on_release: root.export_waller_folder()
+                MDButtonText:
+                    text: "export wallpapers"
+                    size_hint_y: None
+                    height: dp(50)
+                    theme_text_color:"Custom"
+                    text_color: "black" if app.device_theme == "light" else "white"
+
+
+            Column:
+                adaptive_height: True
+                padding: [dp(10),0,dp(10),0]
+                MDBoxLayout:
+                    size_hint_y: None
+                    height: dp(50)
+#                    md_bg_color: [0.75,0.75,0.75, 1]
+                    md_bg_color: [0.45,0.45,0.45, 1] if app.device_theme == "light" else [0.23,0.23,0.23, 1]
+                    radius: [dp(10),dp(10),dp(0),0]
+                    adaptive_width:True
+                    padding: [dp(10),0,dp(10),0]
+
+                    MDLabel:
+                        text:"Home Screen Widget"
+                        theme_font_size:"Custom"
+                        font_size: sp(14)
+                        pos_hint: {"center_y": 0.5}
+                        adaptive_size:True
+                        color:"white"
+                Column:
+                    md_bg_color:[.2,.2,.2,.3]
+                    adaptive_size:True
+                    size_hint_x:1
+                    spacing:dp(10)
+                    padding:[dp(10)]
+                    radius:[0,dp(10),dp(10),dp(10)]
+                    MDLabel:
+                        id: countdown_label
+                        text:"0:13"
+                        pos_hint:{"right":1}
+                        adaptive_size: True
+                        theme_text_color: 'Custom'
+                        text_color: "black" if app.device_theme == "light" else "white"
+                        theme_font_name: "Custom"
+                        font_name:"Roboto"
+                        bold:True
+                    Row:
+                        adaptive_height:True
+                        size_hint_x:1
+                        spacing:dp(10)
+                        Column:
+                            adaptive_size: True
+                            spacing:dp(5)
+                            MDLabel:
+                                text:"Current"
+                                adaptive_size: True
+                                theme_font_name: "Custom"
+                                font_name:"Roboto"
+                                bold:True
+                                theme_font_size: 'Custom'
+                                font_size: sp(14)
+                                theme_text_color: 'Custom'
+                                text_color: get_color_from_hex("#98F1DD")
+                                padding: [dp(5),dp(2)]
+                                radius: [dp(5)]
+                                md_bg_color: get_color_from_hex("#262C3A")
+                            FitImage:
+                                source:root.current_image_source
+                                radius:[10]
+                                fit_mode:"cover"
+                                size_hint:[None,None]
+                                size:[dp(120), dp(120)]
+                        Column:
+                            adaptive_size: True
+                            spacing:dp(5)
+                            MDLabel:
+                                text:"Next"
+                                adaptive_size: True
+                                theme_font_name: "Custom"
+                                font_name:"Roboto"
+                                bold:True
+                                theme_font_size: 'Custom'
+                                font_size: sp(14)
+                                theme_text_color: 'Custom'
+                                text_color: get_color_from_hex("#98F1DD")
+                                padding: [dp(5),dp(2)]
+                                radius: [dp(5)]
+                                md_bg_color: get_color_from_hex("#262C3A")
+                            FitImage:
+                                source:root.next_image_source
+                                radius:[10]
+                                fit_mode:"cover"
+                                size_hint:[None,None]
+                                size:[dp(60), dp(60)]
+                    Row:
+                        adaptive_size:True
+                        spacing:dp(10)
+                        pos_hint: {"right":1}
+#                        MyMDButton:
+#                            radius: [5]
+#                            theme_bg_color:"Custom"
+#                            MDButtonText:
+#                                text:"Change Current"
+#                                theme_text_color:"Custom"
+#                                text_color: "black" if app.device_theme == "light" else "white"
+                        MyMDButton:
+                            id: skip_upcoming_wallpaper_button
+                            radius: [5]
+                            theme_bg_color:"Custom"
+                            MDButtonText:
+                                text:"Skip Next"
+                                theme_text_color:"Custom"
+                                text_color: "black" if app.device_theme == "light" else "white"
+                    Row:
+                        adaptive_size:True
+                        spacing:dp(10)
+                        pos_hint: {"right":1}
+                        MDIconButton:
+                            id: pause_home_screen_widget_loop_button
+                            icon: "pause"
+                            pos_hint:{"right":1}
+                            text_color: "black" if app.device_theme == "light" else "white"
+                            on_release: root.toggle_home_screen_widget_loop(self)
+                        MyMDButton:
+                            theme_bg_color:"Custom"
+                            md_bg_color: TEXT_COLOR_PRIMARY_DARK if app.device_theme == "light" else BUTTON_BG_DARK
+                            radius: [5]
+                            on_release:add_home_screen_widget()
+                            MDButtonIcon:
+                                icon:"plus"
+                                text_color: "black" if app.device_theme == "light" else "white"
+                            MDButtonText:
+                                text:"Add to Home Screen"
+                                theme_text_color:"Custom"
+                                text_color: "black" if app.device_theme == "light" else "white"
+
+            Button:
+                text: f"--- v{VERSION} ---"
+                pos_hint: {"center_x":.5}
+                background_color:[1,0,0,0]
+                size_hint: [1, None]
+                size_hint_y: None
+                height: dp(100)
+                font_name: "RobotoMono"
+                on_release: root.open_logs_screen()
+                color: "black" if app.device_theme == "light" else "white"
+#                canvas:
+#                    Color:
+#                        rgba: (1, 0, 0, 1)
+#                    Rectangle:
+#                        pos: self.pos
+#                        size: self.size

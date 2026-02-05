@@ -40,6 +40,7 @@ class UIServiceListener:
             return json.loads(data)
         except json.decoder.JSONDecodeError as error_parsing_json:
             app_logger.exception(error_parsing_json)
+            traceback.print_exc()
             return None
 
     def start(self, do_thread=True):
@@ -75,6 +76,7 @@ class UIServiceListener:
                 self.on_countdown_change(seconds)
             except Exception as error_on_countdown_change:
                 app_logger.exception(error_on_countdown_change)
+                traceback.print_exc()
 
         return None
 
@@ -96,6 +98,7 @@ class UIServiceListener:
                 self.on_changed_wallpaper(current_wallpaper, next_wallpaper)
             except Exception as error_on_changed_wallpaper:
                 app_logger.exception(error_on_changed_wallpaper)
+                traceback.print_exc()
 
         return None
 
@@ -108,6 +111,7 @@ class UIServiceListener:
             json_data = json.loads(data)
         except json.decoder.JSONDecodeError as error_parsing_json:
             app_logger.exception(error_parsing_json)
+            traceback.print_exc()
             return None
 
         current_wallpaper = json_data["current_wallpaper"] if "current_wallpaper" in json_data else None
@@ -118,6 +122,7 @@ class UIServiceListener:
                 self.on_changed_homescreen_widget(current_wallpaper, next_wallpaper)
             except Exception as error_on_changed_homescreen_widget:
                 app_logger.exception(error_on_changed_homescreen_widget)
+                traceback.print_exc()
 
         return None
 
@@ -137,6 +142,7 @@ class UIServiceListener:
                 self.on_stopped_all()
             except Exception as error_on_stopped_all:
                 app_logger.exception(error_on_stopped_all)
+                traceback.print_exc()
 
         return None
 
@@ -152,6 +158,7 @@ class UIServiceMessenger:
         except Exception as error_trying_to_connect:
             app_logger.exception(
                 f"[{self.TAG}] Could not Connected to {SERVICE_IP}:{service_port}, error: {error_trying_to_connect}")
+            traceback.print_exc()
 
     def __send_data_to_service(self, path, dict_data):
         self.__client.send_message(address=path, value=json.dumps(dict_data))
@@ -159,6 +166,10 @@ class UIServiceMessenger:
     def change_next(self):
         app_logger.debug("Changing next wallpaper")
         self.__send_data_to_service("/change-next", {})
+
+    def toggle_home_screen_widget_changes(self):
+        app_logger.debug("Toggling Home Screen Widgets Loop")
+        self.__send_data_to_service("/toggle_home_screen_widget_changes", {})
 
 
 if __name__ == "__main__":

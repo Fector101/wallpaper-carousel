@@ -3,6 +3,8 @@ from kivy.metrics import dp
 from kivy.graphics import Color, Rectangle, RoundedRectangle
 from kivy.properties import ListProperty
 from kivy.uix.button import Button
+from kivymd.app import MDApp
+from kivy.utils import get_color_from_hex
 
 from kivymd.uix.relativelayout import MDRelativeLayout
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -82,6 +84,7 @@ class MyRoundButton(Button):    # (RoundedButton):
 
 
 
+
 class BottomButtonBar(MDRelativeLayout):
     """Floating bottom bar with two buttons with centered icons only."""
 
@@ -123,6 +126,8 @@ class BottomButtonBar(MDRelativeLayout):
         self.btn_camera = MDIconButton(
             icon="image-multiple",
             style="tonal",
+            theme_text_color="Custom",
+            theme_bg_color="Custom",
             on_release=self._camera_pressed,
         )
         self.btn_camera.size_hint = [None, None]
@@ -132,6 +137,8 @@ class BottomButtonBar(MDRelativeLayout):
         self.btn_settings = MDIconButton(
             icon="cog",
             style="tonal",
+            theme_text_color="Custom",
+            theme_bg_color="Custom",
             on_release=self._settings_pressed,
         )
         self.btn_settings.size_hint = [None, None]
@@ -147,6 +154,21 @@ class BottomButtonBar(MDRelativeLayout):
 
         self.add_widget(self.button_box)
 
+        app = MDApp.get_running_app()
+        app.bind(device_theme=self.changeBottomBtnsTheme)
+        self.changeBottomBtnsTheme(None, app.device_theme)
+
+    def changeBottomBtnsTheme(self,app,theme):
+        w=.3
+        dark_icon_color  = [w,w,.4,1]
+        secondary_color  = [0.7,0.7, 0.7, 1]
+        self.btn_camera.text_color = secondary_color if theme == "light" else dark_icon_color
+        self.btn_settings.text_color = secondary_color if theme == "light" else dark_icon_color
+
+        c = [1,1,1, 1]
+        self.btn_camera.md_bg_color = get_color_from_hex("#1A1B1B") if theme == "light" else c
+        self.btn_settings.md_bg_color = get_color_from_hex("#1A1B1B") if theme == "light" else c
+        self.button_box.md_bg_color = self.btn_camera.md_bg_color
     def _update_gradient(self, *_):
         step_height = self.height / len(self._gradient_rects)
 
@@ -173,3 +195,4 @@ class BottomButtonBar(MDRelativeLayout):
     def _settings_pressed(self, *args):
         if callable(self.on_settings):
             self.on_settings(*args)
+

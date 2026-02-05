@@ -2,7 +2,7 @@ import traceback, logging
 
 from kivy.uix.screenmanager import NoTransition
 from kivy.clock import Clock
-from kivy.properties import ObjectProperty, BooleanProperty
+from kivy.properties import ObjectProperty, StringProperty
 from kivy.core.text import LabelBase
 from kivy.uix.screenmanager import ScreenManager, SlideTransition
 from kivy.core.window import Window
@@ -12,11 +12,13 @@ from kivymd.uix.relativelayout import MDRelativeLayout
 
 from android_notify.config import on_android_platform
 from android_notify import NotificationHandler, logger as android_notify_logger
+from kivymd.uix.screenmanager import MDScreenManager
 
 from utils.permissions import ask_permission_to_images
 from utils.image_operations import ImageOperation
 from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY
-from utils.helper import Service, write_logs_to_file, get_free_port, Font, is_device_on_light_mode
+from utils.helper import Service, write_logs_to_file, get_free_port, Font
+from utils.android import is_device_on_light_mode
 from utils.ui_service_bridge import UIServiceListener, UIServiceMessenger
 
 from ui.screens.gallery_screen import GalleryScreen
@@ -53,7 +55,7 @@ LabelBase.register(
 )
 
 
-class MyScreenManager(ScreenManager):
+class MyScreenManager(MDScreenManager):
     go_to_settings = go_to_thumbs = ObjectProperty()
 
     def __init__(self, **kwargs):
@@ -99,7 +101,8 @@ class MyScreenManager(ScreenManager):
 
 class WallpaperCarouselApp(MDApp):
     interval = 2  # default rotation interval
-    device_light_mode_state = BooleanProperty(None)
+
+    device_theme = StringProperty("light")
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -148,12 +151,13 @@ class WallpaperCarouselApp(MDApp):
     def setup_service(self):
         service_port = get_free_port()
         self.ui_messenger_to_service = UIServiceMessenger(service_port)
-        self.sm.settings_screen.homeScreenWidgetControllerUI.skip_upcoming_wallpaper_button.on_release = self.ui_messenger_to_service.change_next
+        self.sm.settings_screen.ids.skip_upcoming_wallpaper_button.on_release = self.ui_messenger_to_service.change_next
+        self.sm.settings_screen.ids.pause_home_screen_widget_loop_button.on_release = self.ui_messenger_to_service.toggle_home_screen_widget_changes
 
         self.ui_service_listener = UIServiceListener()
         self.ui_service_listener.start()
-        self.ui_service_listener.on_countdown_change = self.sm.settings_screen.homeScreenWidgetControllerUI.update_label
-        self.ui_service_listener.on_changed_homescreen_widget = self.sm.settings_screen.homeScreenWidgetControllerUI.on_changed_homescreen_widget
+        self.ui_service_listener.on_countdown_change = self.sm.settings_screen.update_label
+        self.ui_service_listener.on_changed_homescreen_widget = self.sm.settings_screen.on_changed_homescreen_widget
 
         Service(
             name='Wallpapercarousel',
@@ -214,9 +218,8 @@ class WallpaperCarouselApp(MDApp):
         print('on_start','-'*33)
 
     def monitor_dark_and_light_device_change(self):
-        # self.device_light_mode_state = not self.device_light_mode_state
-        self.device_light_mode_state = is_device_on_light_mode()
-
+        self.device_theme = is_device_on_light_mode()
+        # self.device_theme = "light" if self.device_theme == "dark" else "dark"
     def debug1(self):
         pass
 if __name__ == '__main__':

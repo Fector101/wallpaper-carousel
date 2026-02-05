@@ -1,4 +1,6 @@
 #:import get_color_from_hex kivy.utils.get_color_from_hex
+#:import TEXT_COLOR_PRIMARY_LIGHT utils.constants.TEXT_COLOR_PRIMARY_LIGHT
+#:import TEXT_COLOR_PRIMARY_DARK utils.constants.TEXT_COLOR_PRIMARY_DARK
 
 
 
@@ -8,16 +10,8 @@
     theme_bg_color:"Custom"
     theme_text_color:"Custom"
     font_name: "RobotoMono"
-#    md_bg_color:[1,0,0,1]
-#    bg_color:[1,0,0,1]
     size_hint: [None,None]
     size: self.texture_size
-#    canvas:
-#        Color:
-#            rgba: 1, 0, 0, .5  # red
-#        Rectangle:
-#            pos: self.pos
-#            size: self.size
 
 <Circle@MDBoxLayout>:
     size_hint: None, None
@@ -26,36 +20,32 @@
     md_bg_color: 116/255, 155/255, 215/255, 1
     pos_hint: {"top": 1}
 
-<Paint@BoxLayout>
-    canvas:
-        Color:
-            rgba: 1, 0, 0, .5  # red
-        Rectangle:
-            pos: self.pos
-            size: self.size
+#<Paint@BoxLayout>
+#    canvas:
+#        Color:
+#            rgba: (1, 0, 0, .5)
+#        Rectangle:
+#            pos: self.pos
+#            size: self.size
 <NotificationRequestLayout>:
     rows: 4
     padding: dp(25), dp(60), dp(25), dp(20)
     spacing: dp(50)
-    md_bg_color: [0.9, 0.9, 0.9, 1] if root.is_device_theme_light else get_color_from_hex("#1A1B1B")
+    md_bg_color: [0.9, 0.9, 0.9, 1] if app.device_theme == "light" else get_color_from_hex("#1A1B1B")
 
     # Header
     MDBoxLayout:
         orientation: "vertical"
         spacing: dp(10)
-#        adaptive_height: True
         size_hint: [None,None]
         size: self.minimum_size
-#        md_bg_color:[1,0,1,1]
         MyLabel:
             text: "Turn On\nNotifications?"
             bold: True
-#            color: [1,0,0,1]
-            color: root.text_color_primary_light if root.is_device_theme_light else root.text_color_primary_dark
+            color: root.text_color_primary_light if app.device_theme == "light" else root.text_color_primary_dark
             theme_font_size:"Custom"
             font_size: sp(36)
             adaptive_size: True
-            theme_bg_color:"Custom"
             halign:"left"
 
             size_hint: [None,None]
@@ -64,7 +54,7 @@
 
         MDLabel:
             text:"To keep Carousel running in the\nbackground, Android requires a\nforeground notification"
-            color: root.text_color_secondary_light if root.is_device_theme_light else root.text_color_secondary_dark
+            color: root.text_color_secondary_light if app.device_theme == "light" else root.text_color_secondary_dark
             theme_font_size:"Custom"
             font_size: sp(14)
             theme_font_name:"Custom"
@@ -78,15 +68,14 @@
         orientation: "vertical"
         size_hint: 1, None
         height: self.minimum_height
-#        adaptive_height: True
         spacing: dp(10)
         padding: dp(10)
-        md_bg_color: [183 / 255, 212 / 255, 227 / 255, 1] if root.is_device_theme_light else get_color_from_hex("#1C6B92")
+        md_bg_color: [183 / 255, 212 / 255, 227 / 255, 1] if app.device_theme == "light" else get_color_from_hex("#1C6B92")
+
         radius: dp(8)
 
         RotatedLayout:
             pos_hint: {"center_x": .9}
-#            md_bg_color: 1, 0, 1, 1
 
 
             Image:
@@ -100,8 +89,9 @@
             spacing: dp(5)
             MDIcon:
                 icon: "checkbox-blank-circle"
+#                theme_text_color: "Hint"
                 theme_text_color:"Custom"
-                text_color: root.text_color_primary_light if root.is_device_theme_light else root.text_color_primary_dark
+                text_color: root.text_color_primary_light if app.device_theme == "light" else root.text_color_primary_dark
                 adaptive_size: True
                 pos_hint:{'center_y': .5}
                 theme_font_size:"Custom"
@@ -110,7 +100,7 @@
             MyLabel:
                 text: "Additional Features"
                 bold: True
-                color: root.text_color_primary_light if root.is_device_theme_light else root.text_color_primary_dark
+                color: root.text_color_primary_light if app.device_theme == "light" else root.text_color_primary_dark
                 adaptive_size: True
                 size_hint: [None,None]
                 size: self.texture_size
@@ -118,22 +108,23 @@
             adaptive_height:True
             MDLabel:
                 text: "See what’s coming and skip images without opening app"
+#                theme_text_color: "Hint"
                 size_hint_x:1
                 adaptive_height:1
                 theme_font_size:"Custom"
                 font_size: sp(14)
                 theme_font_name:"Custom"
                 font_name: "RobotoMono"
-                color: root.text_color_secondary_light if root.is_device_theme_light else root.text_color_secondary_dark
+                text_color: root.text_color_secondary_light if app.device_theme == "light" else root.text_color_secondary_dark
 
 
-#        # Notification Card
+        # Notification Card
         MDBoxLayout:
             adaptive_height: True
             spacing: dp(10)
             padding: dp(10)
             radius: dp(20),
-            md_bg_color: [1, 1, 1, 1] if root.is_device_theme_light else get_color_from_hex("222020")
+            md_bg_color: [1, 1, 1, 1] if app.device_theme == "light" else get_color_from_hex("222020")
 
             Circle:
 
@@ -143,7 +134,6 @@
                 spacing: dp(10)
                 pos_hint:{'top': 1}
                 size_hint_x:1
-#                md_bg_color:[0,1,0,1]
 
                 MDBoxLayout:
                     adaptive_size: True
@@ -153,12 +143,13 @@
                         text: "Waller"
                         font_size: sp(14)
                         adaptive_size: True
-                        color: root.text_color_secondary_light if root.is_device_theme_light else root.text_color_secondary_dark
+                        color: root.text_color_secondary_light if app.device_theme == "light" else root.text_color_secondary_dark
 
                     MDIcon:
                         icon: "checkbox-blank-circle"
+#                        theme_text_color:"Hint"
                         theme_text_color:"Custom"
-                        color: root.text_color_secondary_light if root.is_device_theme_light else root.text_color_secondary_dark
+                        color: root.text_color_secondary_light if app.device_theme == "light" else root.text_color_secondary_dark
                         adaptive_size: True
                         pos_hint:{'center_y': .5}
                         theme_font_size:"Custom"
@@ -168,16 +159,18 @@
                         text: "20m"
                         font_size: sp(14)
                         adaptive_size: True
-                        text_color: root.text_color_secondary_light if root.is_device_theme_light else root.text_color_secondary_dark
+                        color: root.text_color_secondary_light if app.device_theme == "light" else root.text_color_secondary_dark
+#                        theme_text_color:"Hint"
 
                 MyLabel:
                     text: "Next in 1:26"
                     font_size: sp(14)
                     adaptive_size: True
-                    color: root.text_color_primary_light if root.is_device_theme_light else root.text_color_primary_dark
+#                    theme_text_color:"Primary"
+                    color: root.text_color_primary_light if app.device_theme == "light" else root.text_color_primary_dark
 
                 MDBoxLayout:
-                    md_bg_color:get_color_from_hex("#EAE9E9") if root.is_device_theme_light else get_color_from_hex("#565252")
+                    md_bg_color:get_color_from_hex("#EAE9E9") if app.device_theme == "light" else get_color_from_hex("#565252")
                     adaptive_size:1
                     padding: dp(6), dp(4)
                     radius: dp(4)
@@ -185,13 +178,8 @@
                         text: "Skip"
                         font_size: sp(14)
                         adaptive_size: True
-                        color: (46/255, 95/255, 169/255, 1) if root.is_device_theme_light else get_color_from_hex("C3DBFF")
-#                    canvas.before:
-#                        Color:
-#                            rgba:
-#                        Rectangle:
-#                            pos: self.pos
-#                            size: self.size
+#                        theme_text_color:"Secondary"
+                        color: (46/255, 95/255, 169/255, 1) if app.device_theme == "light" else get_color_from_hex("C3DBFF")
 
             MDBoxLayout:
                 adaptive_size: True
@@ -208,12 +196,12 @@
             MDBoxLayout:
                 adaptive_size: True
                 radius: dp(50)
-                md_bg_color: (226/255, 223/255, 223/255, 1) if root.is_device_theme_light else get_color_from_hex("#575656")
+                md_bg_color: (226/255, 223/255, 223/255, 1) if app.device_theme == "light" else get_color_from_hex("#575656")
                 pos_hint: {"top": 1, "right": 1}
 
                 MDIcon:
                     icon: "chevron-up"
-                    text_color: (0, 0, 0, 1) if root.is_device_theme_light else get_color_from_hex("#EFEAEA")
+                    text_color: (0, 0, 0, 1) if app.device_theme == "light" else get_color_from_hex("#EFEAEA")
 
     # Bottom Buttons
     MDBoxLayout:
@@ -222,8 +210,8 @@
 
         MyRoundButton:
             text: "Enable notifications"
-            bg_color: [55/255, 151/255, 252/255, 1] if root.is_device_theme_light else get_color_from_hex("#2A92FF")
-            back_layer_bg_color: [1,1,1,1] if root.is_device_theme_light else get_color_from_hex("#FEFEFE")
+            bg_color: [55/255, 151/255, 252/255, 1] if app.device_theme == "light" else get_color_from_hex("#2A92FF")
+            back_layer_bg_color: [1,1,1,1] if app.device_theme == "light" else get_color_from_hex("#FEFEFE")
             size_hint_y: None
             height: dp(48)
             font_size: sp(16)
@@ -231,8 +219,8 @@
 
         MyRoundButton:
             text: "Skip Feature"
-            bg_color: [243/255, 170/255, 170/255, 1] if root.is_device_theme_light else get_color_from_hex("#FF3F3F")
-            back_layer_bg_color: [1,1,1,1] if root.is_device_theme_light else get_color_from_hex("#FEFEFE")
+            bg_color: [243/255, 170/255, 170/255, 1] if app.device_theme == "light" else get_color_from_hex("#FF3F3F")
+            back_layer_bg_color: [1,1,1,1] if app.device_theme == "light" else get_color_from_hex("#FEFEFE")
             color: 0, 0, 0, 1
             size_hint: None, None
             size: sp(248), dp(44)
