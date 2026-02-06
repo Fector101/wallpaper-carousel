@@ -26,6 +26,7 @@ Wally: A working Android wallpaper carousel with no ads.
 ### Help
 - Saving added images in app path only
 - Added export button to get images if uninstalling app
+- App is set to Auto detect android Theme (Dark Theme Recommended 😅)
 
 ## Few Screen Samples
 
@@ -46,8 +47,9 @@ Wally: A working Android wallpaper carousel with no ads.
 
 
 
-| **Request Screen Design** |
-|-------------------------------------|
-|![gallery-screen](.github/docs-imgs/request-screen.jpg) | 
+| **Request Screen Design** | **Request Screen Dark Mode** |
+|-------------------------------------|--------------------------------------------------------|
+|![gallery-screen](.github/docs-imgs/request-screen.jpg) | ![gallery-screen dark](.github/docs-imgs/request-screen-dark.jpg) | 
+
 
 ---
