@@ -114,7 +114,7 @@ def create_thumbnail(src, dest_dir=None, size=(320, 320), quality=60):
         from PIL import Image
     except ImportError:
         Image=None
-        if on_android_platform():
+        if not on_android_platform():
             print("Pillow not available, cannot create thumbnail.")
             # Pillow not available and not on android -> fall back to original image path
             return str(src)
