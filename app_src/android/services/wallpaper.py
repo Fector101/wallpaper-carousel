@@ -22,7 +22,7 @@ from utils.logger import app_logger
 from utils.helper import change_wallpaper, appFolder, format_time_remaining
 from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY,DEFAULT_SERVICE_PORT, SERVICE_LIFESPAN_HOURS
 
-android_notify_logger.setLevel(logging.DEBUG if on_android_platform() else logging.ERROR)
+android_notify_logger.setLevel(logging.WARNING if on_android_platform() else logging.ERROR)
 app_logger.setLevel(logging.INFO)
 
 
@@ -116,6 +116,7 @@ def get_service_lifespan_text(elapsed_seconds):
 
 class MyWallpaperReceiver:
     def __init__(self):
+        self.__server_thread=None
         self.is_home_screen_widget_changes_paused=False
         self.current_wallpaper = None
         self.skip_now = False
@@ -126,10 +127,12 @@ class MyWallpaperReceiver:
         self.service_start_time = time.time()
         self.__start_main_loop()
         self.changes = 0
+        print("python init MyWallpaperReceiver")
 
     def __start_main_loop(self):
         try:
-            threading.Thread(target=self.heart, daemon=True).start()
+            self.__server_thread=threading.Thread(target=self.heart, daemon=True)
+            self.__server_thread.start()
         except Exception as error_start_main_loop: # Avoiding process is bad java.lang.SecurityException
             app_logger.exception(f" [__start_main_loop]Service Main loop Failed: {error_start_main_loop}")
             traceback.print_exc()
@@ -226,6 +229,8 @@ class MyWallpaperReceiver:
         time.sleep(1)
         self.current_wait_seconds = 0
         self.live = False
+        server.shutdown()  # stops serve_forever()
+        self.__server_thread.join()  # wait for thread to exit
         # notification.cancel() android auto removes it
         service.setAutoRestartService(False) # On Android 12 service continued after swiping app from Recents this is best bet
         service.stopSelf()
@@ -362,7 +367,7 @@ foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE
 notification = Notification(title="Next in 02:00", name="from service")
 if foreground_type:
     notification.message=f"service lifespan: {SERVICE_LIFESPAN_HOURS}hrs"
-notification.setData({"next wallpaper path": "test.jpg"})
+notification.setData({"next wallpaper path": "test.jpg", SERVICE_PORT_ARGUMENT_KEY: receivedData.service_port})
 notification.addButton(text="Stop", receiver_name="CarouselReceiver", action="ACTION_STOP")
 notification.addButton(text="Skip", receiver_name="CarouselReceiver", action="ACTION_SKIP")
 builder = notification.fill_args()

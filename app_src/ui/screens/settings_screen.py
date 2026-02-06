@@ -443,7 +443,7 @@ class SettingsScreen(MDScreen):
         super().__init__(**kwargs)
         self.name = "settings"
 
-
+        self.app = MDApp.get_running_app()
         # b=.1
         # self.md_bg_color = [b,b,b, 1]
         self.app_dir = Path(appFolder())
@@ -605,12 +605,13 @@ class SettingsScreen(MDScreen):
     def update_label(self,seconds):
         if self.ids.pause_home_screen_widget_loop_button.icon == "pause":
             self.ids.countdown_label.text = seconds
-    @staticmethod
-    def restart_service(*_):
+
+    def restart_service(self,*_):
 
         def after_stop(*_):
             try:
-                Service(name="Wallpapercarousel").start()
+                self.app.start_service()
+                # Service(name="Wallpapercarousel").start()
                 toast("Service boosted!")
             except Exception as error_starting_service:
                 print(error_starting_service)
@@ -618,6 +619,7 @@ class SettingsScreen(MDScreen):
                 toast("Start failed")
 
         try:
+            # TODO call service server to stop, so it an end thread and avoid SECURITY ERROR when starting service
             Service(name="Wallpapercarousel").stop()
             Clock.schedule_once(after_stop, 1.2)
         except Exception as error_stoping_service:

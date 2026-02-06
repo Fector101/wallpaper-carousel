@@ -4,6 +4,7 @@ package org.wally.waller;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -14,6 +15,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 
+
 public class CarouselReceiver extends BroadcastReceiver {
 
     private static final String TAG = "CarouselReceiver";
@@ -21,61 +23,103 @@ public class CarouselReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
-//         Toast.makeText(context, "Action received: " + action, Toast.LENGTH_SHORT).show();
-//         Log.d(TAG, "Received action: " + action);
-//         if (action == null) {
-//             action = intent.getStringExtra("button_id");
-//         }
-//         Log.d(TAG, "Received action1: " + action);
-        // Read port.txt from app path
-        File portFile = new File(
-        context.getFilesDir().getAbsolutePath() + "/port.txt"
-        );
-        if (!portFile.exists()) {
-            Log.e(TAG, "port.txt not found! in python app");
-            return;
-        }
 
-        int port = 5006; // default
-        try (BufferedReader br = new BufferedReader(new FileReader(portFile))) {
-            String line = br.readLine();
-            if (line != null) port = Integer.parseInt(line.trim());
-        } catch (Exception e) {
-            Log.e(TAG, "Error reading port.txt from python service", e);
+        // Get service port (from Intent or file)
+        Integer servicePort = getServicePort(context, intent);
+        if (servicePort == null) {
+            Log.e(TAG, "No valid service port found!");
             return;
         }
+        Log.d(TAG, "Using service port: " + servicePort);
 
         // Determine OSC message
-        String oscAddress = "";
-        String oscArg = "";
-        if ("ACTION_STOP".equals(action)) {
-            oscAddress = "/stop";
-            oscArg = "hello1 frm java STOP";
-        } else if ("ACTION_SKIP".equals(action)) {
-            oscAddress = "/change-next";
-            oscArg = "hello frm java SKIP";
-        } else if ("ACTION_PAUSE".equals(action)) {
-            oscAddress = "/pause";
-            oscArg = "hello frm java PAUSE";
-        } else {
-            Toast.makeText(context, "Unknown action: " + action, Toast.LENGTH_SHORT).show();
-            Log.w(TAG, "Unknown action from python: " + action);
-            return;
+        String oscAddress;
+        String oscArg;
+        switch (action) {
+            case "ACTION_STOP":
+                oscAddress = "/stop";
+                oscArg = "hello1 frm java STOP";
+                break;
+            case "ACTION_SKIP":
+                oscAddress = "/change-next";
+                oscArg = "hello frm java SKIP";
+                break;
+            case "ACTION_PAUSE":
+                oscAddress = "/pause";
+                oscArg = "hello frm java PAUSE";
+                break;
+            default:
+                Toast.makeText(context, "Unknown action: " + action, Toast.LENGTH_SHORT).show();
+                Log.w(TAG, "Unknown action from python: " + action);
+                return;
         }
 
-        final int finalPort = port;
+        final int finalPort = servicePort;
         final String finalAddress = oscAddress;
         final String finalArg = oscArg;
 
         new Thread(() -> {
             try {
                 sendOscMessage("127.0.0.1", finalPort, finalAddress, finalArg);
-                Log.d(TAG, "OSC message sent to python: " + "127.0.0.1" +":" + finalPort + finalAddress + " " + finalArg);
+                Log.d(TAG, "OSC message sent to python: " + "127.0.0.1:" + finalPort + finalAddress + " " + finalArg);
             } catch (Exception e) {
                 Log.e(TAG, "Failed to send OSC message to python", e);
             }
         }).start();
     }
+
+    /**
+     * Returns the service port from the Intent if available, else reads from port.txt,
+     * otherwise falls back to the default port.
+     */
+    private int getServicePort(Context context, Intent intent) {
+        final int DEFAULT_PORT = 5006;
+
+//         Toast.makeText(context, "Action received: " + action, Toast.LENGTH_SHORT).show();
+//         Log.d(TAG, "Received action: " + action);
+//         Bundle extras = intent.getExtras();
+//         if (extras != null) {
+//             for (String key : extras.keySet()) {
+//                 Log.d(TAG, key + " = " + extras.get(key));
+//             }
+//         }
+
+        // Check Intent first
+        String portStr = intent.getStringExtra("service_port");
+        if (portStr != null && !portStr.isEmpty()) {
+            try {
+                int port = Integer.parseInt(portStr.trim());
+                Log.d(TAG, "Service port obtained from Intent: " + port);
+                return port;
+            } catch (NumberFormatException e) {
+                Log.e(TAG, "Invalid service_port in Intent: " + portStr + ", using fallback", e);
+            }
+        }
+
+        // Fallback: read from port.txt
+        File portFile = new File(context.getFilesDir(), "port.txt");
+        if (portFile.exists()) {
+            try (BufferedReader br = new BufferedReader(new FileReader(portFile))) {
+                String line = br.readLine();
+                if (line != null && !line.isEmpty()) {
+                    int port = Integer.parseInt(line.trim());
+                    Log.d(TAG, "Service port obtained from port.txt: " + port);
+                    return port;
+                } else {
+                    Log.e(TAG, "port.txt is empty, using default port: " + DEFAULT_PORT);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error reading port.txt, using default port: " + DEFAULT_PORT, e);
+            }
+        } else {
+            Log.w(TAG, "port.txt not found, using default port: " + DEFAULT_PORT);
+        }
+
+        // If both fail, return default
+        Log.d(TAG, "Using default service port: " + DEFAULT_PORT);
+        return DEFAULT_PORT;
+    }
+
 
     private void sendOscMessage(String host, int port, String address, String arg) throws Exception {
         InetAddress serverAddr = InetAddress.getByName(host);
