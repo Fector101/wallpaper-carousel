@@ -16,7 +16,7 @@ from kivymd.uix.screenmanager import MDScreenManager
 
 from utils.permissions import ask_permission_to_images
 from utils.image_operations import ImageOperation
-from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY
+from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, DEV
 from utils.helper import Service, write_logs_to_file, get_free_port, Font
 from utils.android import is_device_on_light_mode
 from utils.ui_service_bridge import UIServiceListener, UIServiceMessenger
@@ -138,14 +138,14 @@ class WallpaperCarouselApp(MDApp):
         return self.root_layout
 
     def on_start(self):
-        # self.debug()
+        self.debug()
         def android_service():
             try:
                 self.setup_service()
             except Exception as error_call_service_on_start:
                 toast(str(error_call_service_on_start))
                 traceback.print_exc()
-        self.debug1()
+        # self.debug1()
         Clock.schedule_once(lambda dt: android_service(), 2)
         Clock.schedule_interval(lambda dt: self.monitor_dark_and_light_device_change(), 1)
 
@@ -162,7 +162,6 @@ class WallpaperCarouselApp(MDApp):
         self.start_service()
 
     def start_service(self):
-
         Service(
             name='Wallpapercarousel',
             args_str={
@@ -177,7 +176,8 @@ class WallpaperCarouselApp(MDApp):
             self.sm.current = "thumbs"
         try:
             n_data = NotificationHandler.data_object
-            # print("resume",n_data)
+            if DEV:
+                print("resume",n_data)
         except Exception as error_getting_data_object:
             print(error_getting_data_object)
             traceback.print_exc()
@@ -185,9 +185,18 @@ class WallpaperCarouselApp(MDApp):
         try:
             name = NotificationHandler.get_name()
             print("name:",name)
-            # toast(text=f"name: {name}", length_long=True)
+            if DEV:
+                toast(text=f"name: {name}", length_long=True)
         except Exception as error_getting_notify_name:
             print("Error getting notify name:",error_getting_notify_name)
+        try:
+            name=NotificationHandler.get_name()
+            if DEV:
+                print("name1:",name)
+        except Exception as e:
+            print("Error getting notify name:", e)
+
+        print('on_resume','-'*33)
         try:
             self.sm.gallery_screen.load_saved()
         except Exception as error_loading_saved:
@@ -209,6 +218,8 @@ class WallpaperCarouselApp(MDApp):
 
     @staticmethod
     def debug():
+        if not DEV:
+            return None
         try:
             n_data = NotificationHandler.data_object
             print("start",n_data)
@@ -221,6 +232,7 @@ class WallpaperCarouselApp(MDApp):
         except Exception as e:
             print("Error getting notify namex:", e)
         print('on_start','-'*33)
+        return None
 
     def monitor_dark_and_light_device_change(self):
         self.device_theme = is_device_on_light_mode()

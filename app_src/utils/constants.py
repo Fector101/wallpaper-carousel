@@ -23,5 +23,5 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WALLPAPER_SERVICE_PATH = os.path.join( BASE_DIR, "android", "services", "wallpaper.py" )
 
 
-DEV=1
+DEV=0
 VERSION="1.0.4"

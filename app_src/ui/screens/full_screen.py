@@ -20,6 +20,7 @@ from kivy.graphics import Color, Line
 from utils.image_operations import thumbnail_path_for
 from utils.helper import appFolder, change_wallpaper
 from utils.config_manager import ConfigManager
+from utils.constants import DEV
 
 
 
@@ -194,14 +195,15 @@ class FullscreenScreen(MDScreen):
             # size_hint=[1,1]
             # md_bg_color=[bg, bg, bg, 1]
         )
-        self.time_btn=PictureButton(screen_color=self.md_bg_color)
-        self.time_btn.size_hint=[None,None]
-        s=42
-        self.time_btn.size=[dp(s),dp(s)]
-        # self.time_btn.theme_font_size='Custom'
-        # self.time_btn.font_size=sp(120)
+        if DEV:
+            self.time_btn=PictureButton(screen_color=self.md_bg_color)
+            self.time_btn.size_hint=[None,None]
+            s=42
+            self.time_btn.size=[dp(s),dp(s)]
+            # self.time_btn.theme_font_size='Custom'
+            # self.time_btn.font_size=sp(120)
 
-        right_btm_box.add_widget(self.time_btn)
+            right_btm_box.add_widget(self.time_btn)
 
 
         self.add_widget(self.layout)
