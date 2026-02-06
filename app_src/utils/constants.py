@@ -1,3 +1,4 @@
+import os
 SERVICE_PORT_ARGUMENT_KEY = 'service_port'
 SERVICE_UI_PORT_ARGUMENT_KEY = 'ui_port'
 DEFAULT_SERVICE_PORT = 5006
@@ -15,5 +16,12 @@ TEXT_COLOR_SECONDARY_DARK = [242/255, 242/255, 242/255, 1]  # #F2F2F2
 
 BUTTON_BG_LIGHT = []
 BUTTON_BG_DARK = [.2,.2,.2,1]
+
+
+# For helper.py - constants.py should be in same folder as helper.py or this should be moved to helper.py because not really used anywhere else
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+WALLPAPER_SERVICE_PATH = os.path.join( BASE_DIR, "android", "services", "wallpaper.py" )
+
+
 DEV=1
 VERSION="1.0.4"

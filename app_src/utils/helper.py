@@ -8,7 +8,7 @@ from android_notify.config import get_python_activity_context, from_service_file
 from android_notify.internal.java_classes import BuildVersion, BitmapFactory
 
 from ui.widgets.android import toast
-from utils.constants import DEV
+from utils.constants import DEV, WALLPAPER_SERVICE_PATH
 
 
 def is_wine():
@@ -177,8 +177,9 @@ class Service:
 
         def start_service():
             os.environ.setdefault("PYTHON_SERVICE_ARGUMENT", json.dumps(self.args_str))
+
             runpy.run_path(
-                "app_src/android/services/wallpaper.py",
+                WALLPAPER_SERVICE_PATH,
                 run_name="__main__"
             )
 
