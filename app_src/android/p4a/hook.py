@@ -10,6 +10,10 @@ package = "org.wally.waller" if not os.path.exists(spec_file_path) else None
 def generate_receivers(package_: str = None) -> str:
     receivers = [
         Receiver(
+            name="DetectReceiver",
+            actions=["android.intent.action.SCREEN_ON", "android.intent.action.SCREEN_OFF","android.intent.action.USER_PRESENT"]
+        ),
+        Receiver(
             name="CarouselReceiver",
             actions=["ACTION_STOP", "ACTION_SKIP"]
         ),

@@ -10,7 +10,7 @@ from kivy.utils import platform
 from kivymd.app import MDApp
 from kivymd.uix.relativelayout import MDRelativeLayout
 
-from android_notify.config import on_android_platform
+from android_notify.config import on_android_platform, autoclass
 from android_notify import NotificationHandler, logger as android_notify_logger
 from kivymd.uix.screenmanager import MDScreenManager
 
@@ -106,6 +106,7 @@ class WallpaperCarouselApp(MDApp):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+        self.service_port = None
         self.ui_messenger_to_service = None
         self.file_operation = None
         self.ui_service_listener=None
@@ -144,13 +145,13 @@ class WallpaperCarouselApp(MDApp):
             except Exception as error_call_service_on_start:
                 toast(str(error_call_service_on_start))
                 traceback.print_exc()
-
+        self.debug1()
         Clock.schedule_once(lambda dt: android_service(), 2)
         Clock.schedule_interval(lambda dt: self.monitor_dark_and_light_device_change(), 1)
 
     def setup_service(self):
-        service_port = get_free_port()
-        self.ui_messenger_to_service = UIServiceMessenger(service_port)
+        self.service_port = get_free_port()
+        self.ui_messenger_to_service = UIServiceMessenger(self.service_port)
         self.sm.settings_screen.ids.skip_upcoming_wallpaper_button.on_release = self.ui_messenger_to_service.change_next
         self.sm.settings_screen.ids.pause_home_screen_widget_loop_button.on_release = self.ui_messenger_to_service.toggle_home_screen_widget_changes
 
@@ -158,11 +159,14 @@ class WallpaperCarouselApp(MDApp):
         self.ui_service_listener.start()
         self.ui_service_listener.on_countdown_change = self.sm.settings_screen.update_label
         self.ui_service_listener.on_changed_homescreen_widget = self.sm.settings_screen.on_changed_homescreen_widget
+        self.start_service()
+
+    def start_service(self):
 
         Service(
             name='Wallpapercarousel',
             args_str={
-                SERVICE_PORT_ARGUMENT_KEY: service_port,
+                SERVICE_PORT_ARGUMENT_KEY: self.service_port,
                 SERVICE_UI_PORT_ARGUMENT_KEY: self.ui_service_listener.UI_PORT,
             },
 
@@ -221,6 +225,48 @@ class WallpaperCarouselApp(MDApp):
         self.device_theme = is_device_on_light_mode()
         # self.device_theme = "light" if self.device_theme == "dark" else "dark"
     def debug1(self):
-        pass
+        try:
+            register_screen_receiver()
+        except Exception as error_getting_screen_receiver:
+            print("error_getting_screen_receiver",error_getting_screen_receiver)
+
+
+def register_screen_receiver():
+    # Get the current Android activity
+    PythonActivity = autoclass('org.kivy.android.PythonActivity')
+    activity = PythonActivity.mActivity
+
+    # Import your Java BroadcastReceiver
+    DetectReceiver = autoclass('org.wally.waller.DetectReceiver')
+    receiver = DetectReceiver()  # create an instance
+
+    # Create the IntentFilter
+    IntentFilter = autoclass('android.content.IntentFilter')
+    filter = IntentFilter()
+    Intent = autoclass('android.content.Intent')
+    filter.addAction(Intent.ACTION_SCREEN_ON)
+    filter.addAction(Intent.ACTION_SCREEN_OFF)
+    filter.addAction(Intent.ACTION_USER_PRESENT)
+
+    # Register the receiver
+    activity.registerReceiver(receiver, filter)
+    print("DetectReceiver registered successfully!")
+
+    return receiver  # keep a reference to avoid garbage collection
+
+
+def unregister_screen_receiver(receiver):
+    if receiver is None:
+        return  # nothing to do
+
+    PythonActivity = autoclass('org.kivy.android.PythonActivity')
+    activity = PythonActivity.mActivity
+
+    try:
+        activity.unregisterReceiver(receiver)
+        print("DetectReceiver unregistered successfully!")
+    except Exception as e:
+        print(f"Failed to unregister receiver: {e}")
+
 if __name__ == '__main__':
     WallpaperCarouselApp().run()
