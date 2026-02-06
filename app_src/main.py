@@ -185,6 +185,7 @@ class WallpaperCarouselApp(MDApp):
         try:
             name = NotificationHandler.get_name()
             print("name:",name)
+            # toast(text=f"name: {name}", length_long=True)
         except Exception as error_getting_notify_name:
             print("Error getting notify name:",error_getting_notify_name)
         try:
@@ -224,49 +225,7 @@ class WallpaperCarouselApp(MDApp):
     def monitor_dark_and_light_device_change(self):
         self.device_theme = is_device_on_light_mode()
         # self.device_theme = "light" if self.device_theme == "dark" else "dark"
-    def debug1(self):
-        try:
-            register_screen_receiver()
-        except Exception as error_getting_screen_receiver:
-            print("error_getting_screen_receiver",error_getting_screen_receiver)
 
-
-def register_screen_receiver():
-    # Get the current Android activity
-    PythonActivity = autoclass('org.kivy.android.PythonActivity')
-    activity = PythonActivity.mActivity
-
-    # Import your Java BroadcastReceiver
-    DetectReceiver = autoclass('org.wally.waller.DetectReceiver')
-    receiver = DetectReceiver()  # create an instance
-
-    # Create the IntentFilter
-    IntentFilter = autoclass('android.content.IntentFilter')
-    filter = IntentFilter()
-    Intent = autoclass('android.content.Intent')
-    filter.addAction(Intent.ACTION_SCREEN_ON)
-    filter.addAction(Intent.ACTION_SCREEN_OFF)
-    filter.addAction(Intent.ACTION_USER_PRESENT)
-
-    # Register the receiver
-    activity.registerReceiver(receiver, filter)
-    print("DetectReceiver registered successfully!")
-
-    return receiver  # keep a reference to avoid garbage collection
-
-
-def unregister_screen_receiver(receiver):
-    if receiver is None:
-        return  # nothing to do
-
-    PythonActivity = autoclass('org.kivy.android.PythonActivity')
-    activity = PythonActivity.mActivity
-
-    try:
-        activity.unregisterReceiver(receiver)
-        print("DetectReceiver unregistered successfully!")
-    except Exception as e:
-        print(f"Failed to unregister receiver: {e}")
 
 if __name__ == '__main__':
     WallpaperCarouselApp().run()

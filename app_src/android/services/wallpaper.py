@@ -11,10 +11,9 @@ if on_android_platform():
     write_logs_to_file()
 
 
-from jnius import autoclass
 from pythonosc import dispatcher, osc_server, udp_client
 from android_notify import Notification, logger as android_notify_logger
-from android_notify.config import get_python_service, get_python_activity_context, on_android_platform, __version__
+from android_notify.config import get_python_service, get_python_activity_context, on_android_platform, autoclass
 from android_notify.internal.java_classes import BuildVersion, BitmapFactory
 from android_widgets import Layout, RemoteViews, AppWidgetManager
 
@@ -114,6 +113,46 @@ def get_service_lifespan_text(elapsed_seconds):
     return f"service lifespan: {remaining_hours}hrs"
 
 
+def register_screen_receiver():
+    if not on_android_platform():
+        return
+    # Get the current Android activity
+    # PythonActivity = autoclass('org.kivy.android.PythonActivity')
+    activity = get_python_activity_context()#PythonActivity.mActivity
+
+    # Import your Java BroadcastReceiver
+    DetectReceiver = autoclass('org.wally.waller.DetectReceiver')
+    receiver = DetectReceiver()  # create an instance
+
+    # Create the IntentFilter
+    IntentFilter = autoclass('android.content.IntentFilter')
+    filter = IntentFilter()
+    Intent = autoclass('android.content.Intent')
+    filter.addAction(Intent.ACTION_SCREEN_ON)
+    filter.addAction(Intent.ACTION_SCREEN_OFF)
+    filter.addAction(Intent.ACTION_USER_PRESENT)
+
+    # Register the receiver
+    activity.registerReceiver(receiver, filter)
+    print("python DetectReceiver registered successfully!")
+
+    return receiver
+
+
+def unregister_screen_receiver(receiver):
+    if not on_android_platform() or receiver is None:
+        return
+
+    # PythonActivity = autoclass('org.kivy.android.PythonActivity')
+    activity = get_python_activity_context() #PythonActivity.mActivity
+
+    try:
+        activity.unregisterReceiver(receiver)
+        print("python DetectReceiver unregistered successfully!")
+    except Exception as e:
+        print(f"python Failed to unregister receiver: {e}")
+
+
 class MyWallpaperReceiver:
     def __init__(self):
         self.__server_thread=None
@@ -128,6 +167,18 @@ class MyWallpaperReceiver:
         self.__start_main_loop()
         self.changes = 0
         print("python init MyWallpaperReceiver")
+        try:
+            print("trying to unregister")
+            DetectReceiver = autoclass('org.wally.waller.DetectReceiver')
+            receiver = DetectReceiver()
+            unregister_screen_receiver(receiver)
+        except Exception as error_getting_screen_receiver:
+            print("python error_getting_screen_receiver", error_getting_screen_receiver)
+        try:
+            print("trying to register")
+            register_screen_receiver()
+        except Exception as error_getting_screen_receiver:
+            print("python error_getting_screen_receiver", error_getting_screen_receiver)
 
     def __start_main_loop(self):
         try:

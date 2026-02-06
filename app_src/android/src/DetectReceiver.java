@@ -7,6 +7,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 import android.widget.Toast;
+import android.os.Build;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import androidx.core.app.NotificationCompat;
 
 public class DetectReceiver extends BroadcastReceiver {
 
@@ -41,7 +45,25 @@ public class DetectReceiver extends BroadcastReceiver {
 
             if (isLocked) {
                 Log.i(TAG, "screen is on but locked");
-                // Toast.makeText(context, "screen is on and locked", Toast.LENGTH_LONG).show();
+//                 Toast.makeText(context, "screen is on and locked", Toast.LENGTH_LONG).show();
+//                 NotificationManager nm =
+//                     (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+//                 String channelId = "detect_lockscreen";
+//
+//                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//                     NotificationChannel channel =
+//                         new NotificationChannel(channelId, "detect_lockscreen Channel",
+//                                                 NotificationManager.IMPORTANCE_DEFAULT);
+//                     nm.createNotificationChannel(channel);
+//                 }
+//
+//                 NotificationCompat.Builder builder =
+//                     new NotificationCompat.Builder(context, channelId)
+//                         .setSmallIcon(android.R.drawable.ic_dialog_info)
+//                         .setContentTitle("On Lock Screen")
+//                         .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+//
+//                 nm.notify((int) System.currentTimeMillis(), builder.build());
 
             } else {
                 Log.i(TAG, "screen is on and unlocked");
