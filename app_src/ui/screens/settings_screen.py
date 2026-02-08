@@ -586,7 +586,10 @@ class SettingsScreen(MDScreen):
         # # app.device_theme = "dark"
         # app.device_theme = "light" if app.device_theme == "dark" else "dark"
         # print(app.device_theme)
-        self.interval_input = self.ids.interval_input # return
+        
+        # return
+        self.interval_input = self.ids.interval_input
+        self.interval_label = self.ids.interval_label
 
         try:
             new_val = float(self.interval_input.text)
