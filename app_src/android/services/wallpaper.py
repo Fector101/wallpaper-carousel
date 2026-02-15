@@ -282,7 +282,7 @@ class MyWallpaperReceiver:
         self.live = False
         server.shutdown()  # stops serve_forever()
         self.__server_thread.join()  # wait for thread to exit
-        # notification.cancel() android auto removes it
+        notification.cancel() # android auto removes it but I'm using time.sleep(1) to pad while cleaning up
         service.setAutoRestartService(False) # On Android 12 service continued after swiping app from Recents this is best bet
         service.stopSelf()
 
