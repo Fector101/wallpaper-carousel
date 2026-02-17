@@ -6,12 +6,7 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivy.uix.popup import Popup
 from kivymd.uix.label import MDLabel
 
-from utils.helper import load_kv_file
 from kivymd.uix.screen import MDScreen
-
-
-
-load_kv_file(py_file_absolute_path=__file__)
 
 
 class Row(MDBoxLayout):

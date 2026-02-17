@@ -275,6 +275,11 @@ class Font:
         return os.path.join(self.base_folder, self.name + '-' + fn_type + '.ttf')
 
 def load_kv_file(module_name="", py_file_absolute_path=""):
+
+    if not os.path.exists(py_file_absolute_path):
+        print("Invalid py file path")
+        return False
+
     from kivy.lang import Builder
 
     # Remove any .py or .pyc extension and add .kv
