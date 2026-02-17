@@ -10,6 +10,8 @@ from kivymd.uix.relativelayout import MDRelativeLayout
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDIconButton
 
+from ui.widgets.layouts import get_dimensions
+from utils.model import get_app
 # class RoundedButton(Button):
 #     def __init__(self, bg_color, **kwargs):
 #         super().__init__(**kwargs)
@@ -90,25 +92,18 @@ class BottomButtonBar(MDRelativeLayout):
 
     def __init__(self, on_camera=None, on_settings=None, **kwargs):
         super().__init__(**kwargs)
+        self.app = get_app()
+
+        self.old_setting_btn_color = None
+        self.old_gallery_btn_color = None
 
         self.on_camera = on_camera
         self.on_settings = on_settings
         self.size_hint = (1, None)
-        self.height = dp(140)
+        android_nav_bar_height = get_dimensions()[1]
+        self.height = dp(android_nav_bar_height * 2) or dp(140)
+        # self.md_bg_color = [1,1,0,1]
 
-        with self.canvas.before:
-            self._gradient_rects = []
-            steps = 30  # smoother gradient
-            self._gradient_colors = []
-
-            for i in range(steps):
-                alpha = 1 - (i / steps)
-                c = Color(0.1, 0.1, 0.1, alpha)
-                rect = Rectangle()
-                self._gradient_rects.append(rect)
-                self._gradient_colors.append(c)
-
-        self.bind(pos=self._update_gradient, size=self._update_gradient)
 
         # Button container
         radius = dp(12)
@@ -154,39 +149,33 @@ class BottomButtonBar(MDRelativeLayout):
 
         self.add_widget(self.button_box)
 
-        app = MDApp.get_running_app()
-        app.bind(device_theme=self.changeBottomBtnsTheme)
-        self.changeBottomBtnsTheme(None, app.device_theme)
+        self.app.bind(device_theme=self.changeBottomBtnsTheme)
+        self.changeBottomBtnsTheme(None, self.app.device_theme)
+        # self.color_tab_buttons("thumbs")
 
     def changeBottomBtnsTheme(self,app,theme):
-        w=.3
-        dark_icon_color  = [w,w,.4,1]
-        secondary_color  = [0.7,0.7, 0.7, 1]
-        self.btn_camera.text_color = secondary_color if theme == "light" else dark_icon_color
-        self.btn_settings.text_color = secondary_color if theme == "light" else dark_icon_color
+        if hasattr(self.app,"sm") and self.app.sm:
+            self.color_tab_buttons(screen=self.app.sm.current)
+        else:
+            self.color_tab_buttons(screen="thumbs")
 
-        c = [1,1,1, 1]
-        self.btn_camera.md_bg_color = get_color_from_hex("#1A1B1B") if theme == "light" else c
-        self.btn_settings.md_bg_color = get_color_from_hex("#1A1B1B") if theme == "light" else c
+        c = 55
+        a = 52
+        dark_theme_bg = [a/255, c/255, c/255, 1]# get_color_from_hex("#1A1B1B")
+        light_theme_bg = [1,1,1, 1]
+        self.btn_camera.md_bg_color = light_theme_bg if theme == "light" else dark_theme_bg
+        self.btn_settings.md_bg_color = light_theme_bg if theme == "light" else dark_theme_bg
         self.button_box.md_bg_color = self.btn_camera.md_bg_color
-    def _update_gradient(self, *_):
-        step_height = self.height / len(self._gradient_rects)
 
-        for i, rect in enumerate(self._gradient_rects):
-            rect.pos = (self.x, self.y + i * step_height)
-            rect.size = (self.width, step_height)
 
     def hide(self):
         self.button_box.pos_hint = {"center_x": 0.5, "y": -1}
-        for c in self._gradient_colors:
-            c.a = 0
+
 
     def show(self):
         self.button_box.pos_hint = {"center_x": 0.5, "center_y": 0.5}
 
-        steps = len(self._gradient_colors)
-        for i, c in enumerate(self._gradient_colors):
-            c.a = 1 - (i / steps)
+
 
     def _camera_pressed(self, *args):
         if callable(self.on_camera):
@@ -195,4 +184,17 @@ class BottomButtonBar(MDRelativeLayout):
     def _settings_pressed(self, *args):
         if callable(self.on_settings):
             self.on_settings(*args)
+    def bind_change(self):
+        self.app.sm.bind(current=self.color_tab_buttons)
+        self.color_tab_buttons(screen=self.app.sm.current)
+    def color_tab_buttons(self, screen_manager=None, screen=None):
+        theme = self.app.monitor_dark_and_light_device_change()
 
+        # print(theme,screen,'fff')
+
+        if screen == "settings":
+            self.btn_settings.text_color = [0,0,0,1] if theme == "light" else [1,1,1,1]
+            self.btn_camera.text_color = [.4,.4,.4,1]
+        elif screen == "thumbs":
+            self.btn_camera.text_color = [0,0,0,1] if theme == "light" else [1,1,1,1]
+            self.btn_settings.text_color = [.4,.4,.4,1]

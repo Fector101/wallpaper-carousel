@@ -4,7 +4,7 @@ from kivy.uix.screenmanager import NoTransition
 from kivy.clock import Clock
 from kivy.properties import ObjectProperty, StringProperty
 from kivy.core.text import LabelBase
-from kivy.uix.screenmanager import ScreenManager, SlideTransition
+from kivy.uix.screenmanager import SlideTransition
 from kivy.core.window import Window
 from kivy.utils import platform
 from kivymd.app import MDApp
@@ -14,6 +14,7 @@ from android_notify.config import on_android_platform, autoclass
 from android_notify import NotificationHandler, logger as android_notify_logger
 from kivymd.uix.screenmanager import MDScreenManager
 
+from utils.model import get_app
 from utils.permissions import ask_permission_to_images
 from utils.image_operations import ImageOperation
 from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, DEV
@@ -60,12 +61,12 @@ class MyScreenManager(MDScreenManager):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.app = MDApp.get_running_app()
+        self.app = get_app()
         # Screens
+        self.welcome_screen = WelcomeScreen()
         self.gallery_screen = GalleryScreen()
         self.full_screen = FullscreenScreen()
         self.settings_screen = SettingsScreen()
-        self.welcome_screen = WelcomeScreen()
         self.log_screen = LogsScreen()
 
         self.add_widget(self.gallery_screen)
@@ -105,7 +106,6 @@ class WallpaperCarouselApp(MDApp):
     device_theme = StringProperty("light")
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
         self.service_port = None
         self.ui_messenger_to_service = None
         self.file_operation = None
@@ -129,11 +129,12 @@ class WallpaperCarouselApp(MDApp):
             on_settings=self.sm.go_to_settings,
         )
         self.root_layout.add_widget(self.bottom_bar)
-
+        # self.monitor_dark_and_light_device_change()
+        self.bottom_bar.bind_change()# needs theme from monitor_dark_and_light_device_change
         if not NotificationHandler.has_permission():
             self.sm.current = "welcome"
 
-        self.file_operation = ImageOperation(self.sm.gallery_screen.update_thumbnails_method)
+        self.file_operation = ImageOperation(self.sm.gallery_screen.load_saved)
         self.bind_plyer_fix()
         return self.root_layout
 
@@ -236,8 +237,9 @@ class WallpaperCarouselApp(MDApp):
 
     def monitor_dark_and_light_device_change(self):
         self.device_theme = is_device_on_light_mode()
-        # self.device_theme = "light" if self.device_theme == "dark" else "dark"
-
+        # self.device_theme = "light" #if self.device_theme == "dark" else "dark"
+        # self.bottom_bar.color_tab_buttons(self.sm.current)
+        return self.device_theme
 
 if __name__ == '__main__':
     WallpaperCarouselApp().run()

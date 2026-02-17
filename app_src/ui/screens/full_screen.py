@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 from kivy.clock import Clock
-from kivy.properties import ListProperty
+from kivy.properties import ListProperty, ObjectProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.image import AsyncImage
 from kivy.uix.label import Label
@@ -11,17 +11,18 @@ from kivy.uix.popup import Popup
 from kivy.uix.carousel import Carousel
 from kivymd.uix.label import MDLabel
 from kivymd.uix.relativelayout import MDRelativeLayout
-from kivymd.uix.screen import MDScreen
+
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.button import MDIconButton
 from kivy.graphics import Color, Line
 
-from utils.image_operations import thumbnail_path_for
+from ui.widgets.layouts import MyPopUp, MyMDScreen, get_dimensions
+from utils.image_operations import thumbnail_path_for, get_image_info
 from utils.helper import appFolder, change_wallpaper
 from utils.config_manager import ConfigManager
 from utils.constants import DEV
-
+from utils.model import get_app
 
 
 class BorderMDBoxLayout(MDBoxLayout):
@@ -79,8 +80,10 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
     # images = ["/home/fabian/Documents/Laner/mobile/app_src/assets/icons/t.png","/home/fabian/Documents/Laner/mobile/app_src/assets/icons/moon.png","/home/fabian/Documents/Laner/mobile/app_src/assets/icons/sun.png"]#ListProperty([])
     img_sizes = [100,42,42]
     screen_color = ListProperty()
+    fullscreen = ObjectProperty()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.myconfig = ConfigManager()
         self.img = AsyncImage()
         self.img.mipmap=True
         self.i = 0
@@ -100,9 +103,45 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
         self.img.source = self.images[self.i]
         self.img.size=[dp(self.img_sizes[self.i]),dp(self.img_sizes[self.i])]
 
-class FullscreenScreen(MDScreen):
+        current_image = self.fullscreen.current_image
+        # Both Day and Night
+        if self.images[self.i] == self.images[0]:
+            self.myconfig.add_wallpaper(current_image)
+            self.myconfig.remove_wallpaper_to_from("noon_wallpapers", current_image)
+            self.myconfig.remove_wallpaper_to_from("day_wallpapers", current_image)
+
+        # Only Night
+        if self.images[self.i] == self.images[1]:
+            self.myconfig.add_wallpaper_to_noon_wallpapers(current_image)
+            self.myconfig.remove_wallpaper_to_from("day_wallpapers", current_image)
+            self.myconfig.remove_wallpaper(current_image)
+
+        # Only Day
+        if self.images[self.i] == self.images[2]:
+            self.myconfig.add_wallpaper_to_day_wallpapers(current_image)
+            self.myconfig.remove_wallpaper_to_from("noon_wallpapers", current_image)
+            self.myconfig.remove_wallpaper(current_image)
+
+    def set_day_image(self):
+        self.i = 2
+        self.img.source = self.images[self.i]
+        self.img.size = [dp(self.img_sizes[self.i]), dp(self.img_sizes[self.i])]
+    def set_noon_image(self):
+        self.i = 1
+        self.img.source = self.images[self.i]
+        self.img.size = [dp(self.img_sizes[self.i]), dp(self.img_sizes[self.i])]
+    def set_day_nd_noon_image(self):
+        self.i = 0
+        self.img.source = self.images[self.i]
+        self.img.size = [dp(self.img_sizes[self.i]), dp(self.img_sizes[self.i])]
+
+
+class FullscreenScreen(MyMDScreen):
+    current_image: str # used in toggle btn
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.app = get_app()
         self.clock_for_higher_format = None
         self.clock_for_side_by_side = None
         self.app_dir = Path(appFolder())
@@ -116,13 +155,15 @@ class FullscreenScreen(MDScreen):
 
         # Main layout container
         self.layout = MDFloatLayout(md_bg_color=[0, 0, 0, 1])
+        self.layout.pos_hint ={"top":1}
         # self.layout.orientation="vertical"
 
         self.header_layout = BorderMDBoxLayout(
             orientation="horizontal", radius=[25],
             size_hint=[.95, None], height=dp(60),
-            pos_hint={'center_x': .5, 'top': .97},
+            pos_hint={'center_x': .5, 'top': .98},
             padding=[dp(10), dp(10)], spacing=dp(8))
+        self.header_layout.y = get_dimensions()[0]
         # self.header_layout.y=Window.height - dp(110)
         self.header_layout.md_bg_color = [.1, .1, .1, 1]
         self.btn_toggle = MDIconButton(
@@ -196,14 +237,14 @@ class FullscreenScreen(MDScreen):
             # md_bg_color=[bg, bg, bg, 1]
         )
         if DEV:
-            self.time_btn=PictureButton(screen_color=self.md_bg_color)
-            self.time_btn.size_hint=[None,None]
+            self.day_noon_both_button=PictureButton(screen_color=self.md_bg_color,fullscreen=self)
+            self.day_noon_both_button.size_hint=[None,None]
             s=42
-            self.time_btn.size=[dp(s),dp(s)]
+            self.day_noon_both_button.size=[dp(s),dp(s)]
             # self.time_btn.theme_font_size='Custom'
             # self.time_btn.font_size=sp(120)
 
-            right_btm_box.add_widget(self.time_btn)
+            right_btm_box.add_widget(self.day_noon_both_button)
 
 
         self.add_widget(self.layout)
@@ -280,6 +321,7 @@ class FullscreenScreen(MDScreen):
 
         # If not fullscreen → go back to thumbnails screen
         else:
+            self.app.sm.gallery_screen.load_current_tab_wallpapers()
             self.manager.current = "thumbs"
 
     def delete_current(self, *_):
@@ -292,6 +334,7 @@ class FullscreenScreen(MDScreen):
         path = wallpapers.pop(idx)
 
         if path and os.path.exists(path):
+            # if self.app.sm.gallery_screen.current_tab not in ["Day", "Noon"]:
             os.remove(path)
             # remove its low-res thumbnail (if exists)
             try:
@@ -302,15 +345,25 @@ class FullscreenScreen(MDScreen):
                 print(f"Error deleting image: {error_deleting_image}")
                 pass
 
-        # app_dir = Path(appFolder())
-        ConfigManager().remove_wallpaper(path)
+        if self.app.sm.gallery_screen.current_tab == "Both":
+            ConfigManager().remove_wallpaper(path)
+            # ConfigManager().remove_wallpaper_to_from("day_wallpapers", path)
+            # ConfigManager().remove_wallpaper_to_from("noon_wallpapers", path)
+
+
+        if self.app.sm.gallery_screen.current_tab == "Day":
+            ConfigManager().remove_wallpaper_to_from("day_wallpapers",path)
+
+
+        if self.app.sm.gallery_screen.current_tab == "Noon":
+            ConfigManager().remove_wallpaper_to_from("noon_wallpapers", path)
 
         if not wallpapers:
-            gallery_screen.update_thumbnails_method(wallpapers)
+            gallery_screen.update_thumbnails_method()
             self.manager.current = "thumbs"
             return
-
-        gallery_screen.update_thumbnails_method(wallpapers)
+        gallery_screen.wallpapers=wallpapers
+        gallery_screen.update_thumbnails_method()
         self.update_images()
         self.carousel.index = max(0, min(idx, len(wallpapers) - 1))
 
@@ -326,10 +379,11 @@ class FullscreenScreen(MDScreen):
         idx = self.carousel.index
         path = gallery_screen.wallpapers[idx]
 
-        popup = Popup(
-            title="Image Info",
-            content=Label(text=f"Path:\n{path}"),
-            size_hint=(0.8, 0.4)
+        popup = MyPopUp(
+            info = get_image_info(path)
+            # title="Image Info",
+            # content=Label(text=f"Path:\n{path}"),
+            # size_hint=(0.8, 0.4)
         )
         popup.open()
 
@@ -362,8 +416,19 @@ class FullscreenScreen(MDScreen):
         if os.path.exists(image_path):
             self.header_file_size.text = format_size(os.path.getsize(image_path))
 
-    def on_current_slide(self, carousel, index): # type: ignore
+        day_images = self.myconfig.get_day_wallpapers()
+        noon_images = self.myconfig.get_noon_wallpapers()
 
+        if image_path in day_images:
+            self.day_noon_both_button.set_day_image()
+        elif image_path in noon_images:
+            self.day_noon_both_button.set_noon_image()
+        else:
+            self.day_noon_both_button.set_day_nd_noon_image()
+
+    def on_current_slide(self, carousel, index): # type: ignore
+        if hasattr(self.carousel.current_slide,"higher_format"):
+            self.current_image = self.carousel.current_slide.higher_format
         current_slide = self.carousel.current_slide
         if self.clock_for_side_by_side:
             self.clock_for_side_by_side.cancel()

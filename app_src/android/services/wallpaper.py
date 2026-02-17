@@ -3,6 +3,7 @@ import traceback, threading
 import os, random
 import time, logging
 from android_notify.config import on_android_platform
+from utils.config_manager import ConfigManager
 
 print("Entered Wallpaper Foreground Service...")
 
@@ -72,17 +73,33 @@ class ReceivedData:
             app_logger.exception(f"Error writing wallpaper port: {error_write_port}")
             traceback.print_exc()
 
+from datetime import datetime, time as dt_time
+
+def is_between_6am_6pm():
+    now = datetime.now().time()
+    start = dt_time(6, 0)   # 6:00 AM
+    end = dt_time(18, 0)    # 6:00 PM
+    return start <= now < end
+
 
 def get_next_wallpaper():
     """Get the next wallpaper path and name without setting it yet
     :return: [absolute_path, name]
     """
     try:
-        images = [
-            os.path.join(wallpapers_folder_path, f)
-            for f in os.listdir(wallpapers_folder_path)
-            if f.lower().endswith((".jpg", ".jpeg", ".png"))
-        ]
+        myconfig = ConfigManager()
+
+        images = myconfig.get_wallpapers()
+        if is_between_6am_6pm():
+            images = images + myconfig.get_day_wallpapers()
+        else:
+            images = images + myconfig.get_noon_wallpapers()
+
+        # images = [
+        #     os.path.join(wallpapers_folder_path, f)
+        #     for f in os.listdir(wallpapers_folder_path)
+        #     if f.lower().endswith((".jpg", ".jpeg", ".png"))
+        # ]
         # rint("service found:",images)
         if not images:
             app_logger.exception(f"Warning: No images found in {wallpapers_folder_path}")
@@ -275,6 +292,7 @@ class MyWallpaperReceiver:
         pass
 
     def stop(self, *args):
+
         app_logger.info(f"stop args: {args}")
         self.__send_data_to_ui("/stopped", {})
         time.sleep(1)

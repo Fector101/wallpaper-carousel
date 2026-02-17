@@ -1,10 +1,52 @@
 #:import get_color_from_hex kivy.utils.get_color_from_hex
+#:import TEXT_COLOR_PRIMARY_DARK utils.constants.TEXT_COLOR_PRIMARY_DARK
+#:import BUTTON_BG_DARK utils.constants.BUTTON_BG_DARK
+
+
+
+#
+#<TabButton@TabbedPanelHeader>:
+#    text:"hello"
+#    background_color: [0,0,0,0]
+#    canvas.before:
+#        Color:
+#            rgba: (1, 0, 0, 1)
+#        RoundedRectangle:
+#            pos: self.pos
+#            size: self.size
+#            radius: [20]
+#
+#<TabPanel@TabbedPanel>:
+#    text: "Daye"
+#    RecycleView:
+#        id: rv
+#        size_hint_y:0.8
+#        layout_manager: grid
+#        viewclass: "Thumb"
+#        MyMDRecycleGridLayout:
+#            id: grid
+#            cols:3
+#            spacing:5
+#            default_size:(None, dp(120))
+#            default_size_hint:(1, None)
+#            size_hint_y:None
+#            padding:[0, 0, 0, dp(120)]
+#            height: self.minimum_height
+
+
+
+
+<MyMDButton@MDButton>:
+    theme_bg_color:"Custom"
+    radius: [dp(18)]
+
 
 <GalleryScreen>:
     md_bg_color:  [0.7,0.7, 0.7, 1] if app.device_theme == "light" else get_color_from_hex("#1A1B1B")
     Column:
         spacing:10
         padding:10
+        pos_hint: {"top":1}
         Column:
             spacing:10
             padding: [dp(20), 0, dp(20), dp(10)]
@@ -30,9 +72,55 @@
                 theme_font_size:"Custom"
                 font_size:"14sp"
                 adaptive_size:True
+
+        Row:
+            adaptive_height: True
+            spacing: dp(10)
+            padding: [dp(10),0,0,0]
+            MDButton:
+                theme_bg_color:"Custom"
+                md_bg_color: (1, 1, 1, 1) if root.current_tab == "Both" else (0.25, 0.25, 0.25, 1)
+                on_release: root.load_saved()
+                MDButtonText:
+                    text: "Both"
+                    theme_text_color:"Custom"
+#                    text_color: "black" if app.device_theme == "light" else "white"
+                    theme_font_name:"Custom"
+                    font_name: "RobotoMono"
+#                    theme_font_size:"Custom"
+#                    font_size: sp(16)
+                    text_color: [0,0,0,1] if root.current_tab == "Both" else (0.85, 0.85, 0.85, 1)
+
+            MDButton:
+                theme_bg_color:"Custom"
+                md_bg_color: (1,1, 1, 1) if root.current_tab == "Day" else (0.25, 0.25, 0.25, 1)
+                on_release: root.load_day_wallpapers()
+                MDButtonText:
+                    text: "Day"
+                    theme_text_color:"Custom"
+#                    text_color: "black" if app.device_theme == "light" else "white"
+                    theme_font_name:"Custom"
+                    font_name: "RobotoMono"
+#                    theme_font_size:"Custom"
+#                    font_size: sp(16)
+                    text_color: [0,0,0,1] if root.current_tab == self.text else (0.85, 0.85, 0.85, 1)
+
+            MDButton:
+                theme_bg_color:"Custom"
+                md_bg_color: (1,1, 1, 1) if root.current_tab == "Noon" else (0.25, 0.25, 0.25, 1)
+                on_release: root.load_noon_wallpapers()
+                MDButtonText:
+                    text: "Noon"
+                    theme_text_color:"Custom"
+#                    text_color: "black" if app.device_theme == "light" else "white"
+                    theme_font_name:"Custom"
+                    font_name: "RobotoMono"
+#                    theme_font_size:"Custom"
+#                    font_size: sp(16)
+                    text_color: [0,0,0,1] if root.current_tab == self.text else (0.85, 0.85, 0.85, 1)
+
         RecycleView:
             id: rv
-            size_hint_y:0.8
             layout_manager: grid
             viewclass: "Thumb"
             MyMDRecycleGridLayout:
@@ -45,6 +133,87 @@
                 padding:[0, 0, 0, dp(120)]
                 height: self.minimum_height
 
+#        MyTabbedPanel:
+#            do_default_tab: False
+#            tab_height: dp(44)
+#            background_color: 0, 0, 0, 0  # remove default ugly bg
+#            spacing: 10
+#            # --- TAB 1 ---
+#            TabbedPanelItem:
+#                text: "Day"
+#                background_normal: ""
+#                background_down: ""
+#                background_color: 0, 0, 0, 0  # remove default ugly bg
+#                color: [0,0,0,1] if self.state == "down" else (0.85, 0.85, 0.85, 1)
+#                spacing: dp(50)
+#                on_release: root.load_day_wallpapers()
+#                canvas.before:
+#                    Color:
+#                        rgba: (1,1, 1, 1) if self.state == "down" else (0.25, 0.25, 0.25, 1)
+#                    RoundedRectangle:
+#                        pos: self.pos
+#                        size: self.size
+##                        pos: self.x + dp(6), self.y
+##                        size: [self.width - dp(12), self.height]
+#                        radius: [dp(18)]
+#
+#                RecycleView:
+#                    id: rv
+##                        size_hint_y:1
+#                    layout_manager: grid
+#                    viewclass: "Thumb"
+#                    MyMDRecycleGridLayout:
+#                        id: grid
+#                        cols:3
+#                        spacing:5
+#                        default_size:(None, dp(120))
+#                        default_size_hint:(1, None)
+#                        size_hint_y:None
+#                        padding:[0, 0, 0, dp(120)]
+#                        height: self.minimum_height
+
+#            # --- TAB 2
+#
+#            TabbedPanelItem:
+#                text: "Noon"
+#                background_normal: ""
+#                background_down: ""
+#                background_color: 0, 0, 0, 0  # remove default ugly bg
+#                color: [0,0,0,1] if self.state == "down" else (0.85, 0.85, 0.85, 1)
+#
+#                on_release: root.load_noon_wallpapers()
+#                canvas.before:
+#                    Color:
+#                        rgba: (1,1, 1, 1) if self.state == "down" else (0.25, 0.25, 0.25, 1)
+#                    RoundedRectangle:
+#                        pos: self.pos
+#                        size: self.size
+#                        radius: [dp(18)]
+#
+#                Label:
+#                    text: "Favorites"
+#
+#            # --- TAB 3 ---
+#            TabbedPanelItem:
+#                text: "Both"
+#                background_normal: ""
+#                background_down: ""
+#                background_color: 0, 0, 0, 0  # remove default ugly bg
+#                color: [0,0,0,1] if self.state == "down" else (0.85, 0.85, 0.85, 1)
+#                on_release: root.load_saved()
+#
+#                canvas.before:
+#                    Color:
+#                        rgba: (1,1, 1, 1) if self.state == "down" else (0.25, 0.25, 0.25, 1)
+#                    RoundedRectangle:
+#                        pos: self.pos
+#                        size: self.size
+#                        radius: [dp(18)]
+#
+#                Label:
+#                    text: "Recent"
+
+
     MDFabButton:
         icon:"plus"
         on_release: root.open_filechooser()
@@ -54,5 +223,5 @@
         theme_bg_color: "Custom"
         md_bg_color: get_color_from_hex("#1A1B1B") if app.device_theme == "light" else "white"
         text_color: [0.8,0.8, 0.8, 1] if app.device_theme == "light" else [.3,.3,.4,1]
-#        md_bg_color: [0,0,0,1] if app.device_theme == "light" else "white"
-#        color: [0,0,0,1] if app.device_theme == "light" else "white"
+        md_bg_color: get_color_from_hex("#262C3A")
+        text_color: get_color_from_hex("#98F1DD")

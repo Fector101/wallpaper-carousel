@@ -14,7 +14,9 @@ from kivy.utils import get_color_from_hex
 from kivymd.uix.button import MDButtonText, MDButton, MDIconButton, MDButtonIcon
 from kivymd.uix.fitimage import FitImage
 from kivymd.uix.label import MDLabel
-from kivymd.uix.screen import MDScreen
+
+from ui.widgets.layouts import MyMDScreen
+
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
 
@@ -43,24 +45,15 @@ class MyLabel(ButtonBehavior, Label):
         super().__init__(**kwargs)
 
 
-def create_channel():
-    Notification.createChannel(
-        id='vibes',
-        name="Vibes",
-        vibrate=True
-    )
-    Notification.createChannel(
-        id='no_vibes',
-        name="No Vibes",
-        vibrate=False
-    )
+def start_short_task_service():
+    from android import mActivity
+    from jnius import autoclass
+    context = mActivity.getApplicationContext()
+    service_name = "Shorttask"
+    service = autoclass(context.getPackageName() + '.Service' + service_name.capitalize())
+    service.start(mActivity, "")
 
-
-def delete_current_channel():
-    Notification.deleteAllChannel()
-
-
-def schedule_notification(seconds=10, message="Hello from WorkManager"):
+def schedule_workmanager(seconds=20, message="Arg from Python"):
     from jnius import autoclass
 
     PythonActivity = autoclass('org.kivy.android.PythonActivity')
@@ -88,69 +81,26 @@ def schedule_notification(seconds=10, message="Hello from WorkManager"):
 
     WorkManager.getInstance(context).enqueue(request)
 
-
-def no_vibes():
-    n=Notification(title='no vibrate',channel_id='no_vibes')
-    n.send()
-
-
-def basic_side():
-    try:
-        asks_permission_if_needed()
-    except Exception as e:
-        print('Permission error:', e)
-        traceback.print_exc()
-
-
-def test_vibration():
-    try:
-        n=Notification(title='vibrate',channel_id='vibes')
-        n.send()
-        # from android_notify.tests.android_notify_test import TestAndroidNotifyFull
-        # import unittest
-        #
-        # suite = unittest.TestLoader().loadTestsFromTestCase(TestAndroidNotifyFull)
-        # unittest.TextTestRunner(verbosity=2).run(suite)
-
-    except Exception as e:
-        print("Error testing vibration:", e)
-        traceback.print_exc()
-
-
-def test_force_vibration():
-    try:
-        n=Notification(title='vibrate',channel_id='vibes')
-        n.send()
-        n.fVibrate()
-    except Exception as e:
-        print("Error test_force_vibration:", e)
-        traceback.print_exc()
-
-
+value__=100
 def schedule_alarm():
+    time_in_secs = value__ * 60
+    print("time_in_secs",time_in_secs)
+    from android_notify.internal.java_classes import String
     Context = autoclass('android.content.Context')
     AlarmManager = autoclass('android.app.AlarmManager')
     context = get_python_activity_context()
     alarm = context.getSystemService(Context.ALARM_SERVICE)
 
     intent = Intent(context, autoclass(f"{get_package_name()}.TheReceiver"))
-    intent.setAction("ALARM_ACTION")
-    intent.putExtra("message", "Hello from Python!")
+    intent.setAction(String("ALARM_ACTION"))
+    intent.putExtra(String("message"), String("Arg from Python!"))
 
     pending = PendingIntent.getBroadcast(
-        context, 0, intent, PendingIntent.FLAG_IMMUTABLE
+        context, 12334, intent, PendingIntent.FLAG_IMMUTABLE
     )
 
-    trigger_time = int((time.time() + 10) * 1000)  # 10 seconds later
-    alarm.setExact(AlarmManager.RTC_WAKEUP, trigger_time, pending)
-
-
-def open_notify_settings():
-
-    try:
-        NotificationHandler.asks_permission()
-    except Exception as e:
-        print('Notify error:', e)
+    trigger_time = int((time.time() + time_in_secs) * 1000)  # 10 seconds later
+    alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger_time, pending)
 
 
 def my_with_callback():
@@ -171,7 +121,6 @@ def my_with_callback():
 
     except Exception as e:
         print('Notify error:', e)
-
 
 
 def show_home_screen_widget_popup1():
@@ -221,31 +170,18 @@ def show_home_screen_widget_popup1():
         traceback.print_exc()
 
 
-def regular_ask():
-    NotificationHandler.asks_permission()
-
-
-def regular_has():
-    print(f"Permission State: {NotificationHandler.has_permission()}")
 
 
 
-from android_notify.internal.permissions import open_notification_settings_screen
+# from android_notify.internal.permissions import open_notification_settings_screen
 dev_object={}
 if DEV:
     dev_object = {
-        "regular_has": lambda widget: regular_has(),
-        "regular_ask": lambda widget: regular_ask(),
-        "open_notification_settings_screen": lambda widget: open_notification_settings_screen(),
-        "my_with_callback": lambda widget: my_with_callback(),
-        "my pop up": lambda widget: show_home_screen_widget_popup1(),
-        # "vibrate": lambda widget: test_vibration(),
-        # "create vibes test channel": lambda widget: create_channel(),
-        # "no vibrate": lambda widget: no_vibes(),
-        # "delete_all_channels": lambda widget: delete_current_channel(),
-        # "test_force_vibration": lambda widget: test_force_vibration(),
-        # "ALARM": lambda widget: self.android_notify_tests(),
-        # "schedule_notification": lambda widget: self.android_notify_tests(),
+        "schedule_alarm": lambda widget: schedule_alarm(),
+        "start_short_task_service": lambda widget: start_short_task_service(),
+        "schedule_workmanager": lambda widget: schedule_workmanager(),
+        # "open_notification_settings_screen": lambda widget: open_notification_settings_screen(),
+        # "show_home_screen_widget_popup1": lambda widget: show_home_screen_widget_popup1(),
     }
 
 def get_current_wallpaper():
@@ -287,7 +223,6 @@ class ToggleButton(MDIconButton):
 
     def on_release(self):
         self.icon = "play" if self.icon == "pause" else "pause"
-
 
 class HomeScreenImageDisplay(MDBoxLayout):
     source = StringProperty()
@@ -435,12 +370,14 @@ class HomeScreenWidgetControllerUI(MDBoxLayout):
     #     self.next_image_layout.image.source = next_wallpaper or self.next_image_layout.image.source
     #
 
-class SettingsScreen(MDScreen):
+class SettingsScreen(MyMDScreen):
     current_image_source=StringProperty()
     next_image_source=StringProperty()
     interval=StringProperty()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.interval_label = None
+        self.interval_input = None
         self.name = "settings"
 
         self.app = MDApp.get_running_app()
@@ -539,9 +476,9 @@ class SettingsScreen(MDScreen):
         # root.add_widget(export_folder_btn)
         #
         # # ---------- TEST BUTTONS ----------
-        # if DEV:
-        #     for each in dev_object:
-        #         root.add_widget(Button(text = f"test {each}", on_release=dev_object[each],size_hint_y=None,height=dp(50)))
+        if DEV:
+            for each in dev_object:
+                self.ids.main_container.add_widget(Button(text = f"test {each}", on_release=dev_object[each],size_hint_y=None,height=dp(50)))
         #
         # self.homeScreenWidgetControllerUI = HomeScreenWidgetControllerUI()
         # root.add_widget(self.homeScreenWidgetControllerUI)
@@ -586,8 +523,9 @@ class SettingsScreen(MDScreen):
         # # app.device_theme = "dark"
         # app.device_theme = "light" if app.device_theme == "dark" else "dark"
         # print(app.device_theme)
-        
+
         # return
+        global value__
         self.interval_input = self.ids.interval_input
         self.interval_label = self.ids.interval_label
 
@@ -602,7 +540,7 @@ class SettingsScreen(MDScreen):
         if new_val < 0.17:
             toast("Min allowed is 0.17 mins")
             return
-
+        value__ = new_val
         self.my_config.set_interval(new_val)
         self.interval_label.text = f"Saved: {smart_convert_minutes(new_val)}"
         toast("Saved")
@@ -763,3 +701,4 @@ class SettingsScreen(MDScreen):
     def on_changed_homescreen_widget(self,current_wallpaper,next_wallpaper):
         self.current_image_source = current_wallpaper or self.current_image_source
         self.next_image_source = next_wallpaper or self.next_image_source
+

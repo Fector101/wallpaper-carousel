@@ -10,3 +10,7 @@ run-as org.wally.waller
 ls -l files
 cd files/app
 ```
+How to see WAKE INTENT
+```shell
+adb logcat | grep Intent
+```

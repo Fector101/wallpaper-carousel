@@ -12,7 +12,8 @@ from kivy.utils import get_color_from_hex
 from kivy.core.clipboard import Clipboard
 from kivy.uix.screenmanager import NoTransition
 from ui.widgets.android import toast
-from kivymd.uix.screen import MDScreen
+
+from ui.widgets.layouts import MyMDScreen
 
 # ---------- CONFIG ----------
 LOG_HORIZONTAL_PADDING = dp(10)
@@ -28,7 +29,7 @@ COLORS = {
 }
 
 
-class LogsScreen(MDScreen):
+class LogsScreen(MyMDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -45,6 +46,7 @@ class LogsScreen(MDScreen):
 
         # ---------- UI ----------
         main = BoxLayout(orientation="vertical", padding=dp(10), spacing=dp(10))
+        main.pos_hint = {"top":1}
 
         # Top bar with Start button
         top_bar = BoxLayout(size_hint_y=None, height=dp(40))

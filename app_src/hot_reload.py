@@ -50,6 +50,7 @@ class MDLive(App,MDApp):
         "ui.screens.welcome_screen".replace(".","/") + ".kv",
         "ui.screens.gallery_screen".replace(".","/") + ".kv",
         "ui.screens.settings_screen".replace(".","/") + ".kv",
+        "ui.widgets.layouts".replace(".","/") + ".kv",
 
     ]
     CLASSES = {
@@ -57,12 +58,13 @@ class MDLive(App,MDApp):
         "SettingsScreen":"ui.screens.settings_screen",
         "HomeScreenWidgetControllerUI":"ui.screens.settings_screen",
         # "LogsScreen":"ui.screens.logs_screen",
-        # "FullscreenScreen":"ui.screens.full_screen",
+        "FullscreenScreen":"ui.screens.full_screen",
         "GalleryScreen":"ui.screens.gallery_screen",
         # "NotificationScreen": "important",
         "WelcomeScreen": "ui.screens.welcome_screen",
         # "MyRoundButton": "ui.widgets.buttons",
         "BottomButtonBar": "ui.widgets.buttons",
+        "MyPopUp": "ui.widgets.layouts",
     }
     AUTORELOADER_PATHS = [
         ("./ui", {"recursive": True})
@@ -71,7 +73,8 @@ class MDLive(App,MDApp):
     def build_app(self, *args):
 
         print("Inside Build App Auto Reload")
-        return Factory.SettingsScreen()
+        # return Factory.MyPopUp()
+        return Factory.GalleryScreen()
 
     def on_start(self):
         # self.theme_cls.theme_style = "Light"

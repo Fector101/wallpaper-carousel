@@ -9,7 +9,7 @@ from utils.config_manager import ConfigManager
 
 
 class ImageOperation:
-    def __init__(self,update_thumbnails_function):
+    def __init__(self,load_saved):
         self.app_dir = Path(appFolder())
         self.myconfig = ConfigManager()
         self.intent = None
@@ -20,7 +20,7 @@ class ImageOperation:
         except Exception as e:
             print(f"Error creating wallpapers directory: {e}")
 
-        self.update_thumbnails_function = update_thumbnails_function
+        self.load_saved = load_saved
 
     def copy_add(self, files):
         if not files:
@@ -66,7 +66,7 @@ class ImageOperation:
             new_images.append(str(dest))
         for img in new_images:
             self.myconfig.add_wallpaper(img)
-        self.update_thumbnails_function(new_images)
+        self.load_saved()
 
     def unique(self, dest_name):
         dest = self.wallpapers_dir / dest_name
@@ -347,3 +347,56 @@ def save_existing_file_to_public_pictures(input_file_path):
     # except Exception as e:
     #     print("Error loading images", e)
     #     traceback.print_exc()
+
+def get_image_info(path):
+    info_dict = {
+                "Pixels": "Nil",
+                "Megapixels": "Nil",
+                "Size": "Nil",
+                "MIME": "Nil"
+            }
+
+    # Check if file exists
+    import os
+    if not os.path.exists(path):
+        return info_dict
+
+    size_bytes = os.path.getsize(path)
+    if size_bytes < 1024:
+        size_str = f"{size_bytes} B"
+    elif size_bytes < 1024 * 1024:
+        size_str = f"{size_bytes / 1024:.1f} KB"
+    else:
+        size_str = f"{size_bytes / (1024 * 1024):.2f} MB"
+    info_dict["Size"] = size_str
+
+    if not on_android_platform():
+        return info_dict
+
+    # Android BitmapFactory
+    from jnius import autoclass
+    BitmapFactory = autoclass("android.graphics.BitmapFactory")
+    Options = autoclass("android.graphics.BitmapFactory$Options")
+
+    opts = Options()
+    opts.inJustDecodeBounds = True
+    BitmapFactory.decodeFile(path, opts)
+
+
+    # Dimensions
+    width, height = opts.outWidth, opts.outHeight
+    pixels_str = f"{width}x{height}"
+
+    # Megapixels
+    mp = (width * height) / 1_000_000
+    mp_str = f"{mp:.1f} MP"
+
+    # Mime type
+    mime = opts.outMimeType
+
+    info_dict["Pixels"] = pixels_str
+    info_dict["Megapixels"] = mp_str
+    info_dict["MIME"] = mime
+
+    return info_dict
+

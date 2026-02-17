@@ -19,7 +19,9 @@ def is_platform_android():
 class ConfigManager:
     DEFAULT_CONFIG = {
         "interval_mins": 2.0,
-        "wallpapers": []
+        "wallpapers": [],
+        "noon_wallpapers":[],
+        "day_wallpapers":[]
     }
 
     def __init__(self):
@@ -92,4 +94,28 @@ class ConfigManager:
         data = self._read()
         if path in data["wallpapers"]:
             data["wallpapers"].remove(path)
+            self._write(data)
+
+    def get_noon_wallpapers(self):
+        return self._read().get("noon_wallpapers", [])
+
+    def get_day_wallpapers(self):
+        return self._read().get("day_wallpapers", [])
+
+    def add_wallpaper_to_day_wallpapers(self, path):
+        data = self._read()
+        if path not in data["day_wallpapers"]:
+            data["day_wallpapers"].append(path)
+            self._write(data)
+
+    def add_wallpaper_to_noon_wallpapers(self, path):
+        data = self._read()
+        if path not in data["noon_wallpapers"]:
+            data["noon_wallpapers"].append(path)
+            self._write(data)
+
+    def remove_wallpaper_to_from(self, wallpaper_key_name, path):
+        data = self._read()
+        if path in data[wallpaper_key_name]:
+            data[wallpaper_key_name].remove(path)
             self._write(data)

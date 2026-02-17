@@ -1,27 +1,33 @@
+import traceback, os
 from kivymd.app import MDApp
-import traceback
 from pathlib import Path
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.recycleview import RecycleView
 from kivy.uix.recyclegridlayout import RecycleGridLayout
 from kivy.metrics import dp, sp
-from kivy.properties import StringProperty, NumericProperty
+from kivy.properties import StringProperty, NumericProperty, ObjectProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.image import AsyncImage
+from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.label import MDLabel
 from plyer import filechooser
 
-from kivymd.uix.screen import MDScreen
 from kivymd.uix.button import MDFabButton
 
 from ui.widgets.buttons import BottomButtonBar
-from ui.widgets.layouts import Row,Column # used in .kv file
+from ui.widgets.layouts import Row, Column, MyMDScreen # used in .kv file
 
 from utils.image_operations import get_or_create_thumbnail
 from utils.config_manager import ConfigManager
 from utils.helper import appFolder, load_kv_file  # type
+from utils.model import get_app
 
 load_kv_file(py_file_absolute_path=__file__)
+from kivy.uix.tabbedpanel import TabbedPanel
+
+
+
+
 
 class MyMDRecycleGridLayout(RecycleGridLayout):
     icon_active = StringProperty()
@@ -31,70 +37,34 @@ class MyMDRecycleGridLayout(RecycleGridLayout):
         super().__init__(**kwargs)
 
 
+
+class MyTabbedPanel(TabbedPanel):
+    tab_height = dp(35)
+    tab_width = dp(80)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._tab_strip.spacing=20
+
 class Thumb(ButtonBehavior, AsyncImage):
     source_path = StringProperty()
 
 
-class GalleryScreen(MDScreen):
+class GalleryScreen(MyMDScreen):
+    current_tab = StringProperty("Both")
     def __init__(self, **kwargs):
+
         super().__init__(**kwargs)
+        self.app=get_app()
+        # self.app.device_theme = "light"
+        self.app.device_theme = "dark"
         self.name = "thumbs"
         self.wallpapers = []
         self.app_dir = Path(appFolder())
         self.myconfig = ConfigManager()
         self.wallpapers_dir = self.app_dir / "wallpapers"
-        # self.md_bg_color = [0.1, 0.1, 0.1, 1]
-        # layout = BoxLayout(orientation="vertical", spacing=10, padding=10)
-        # self.header_layout = BoxLayout(orientation="vertical", spacing=10, size_hint_y=0.13)
-        # self.header_layout.padding = [dp(20), 0, dp(20), dp(10)]
-        # app_name_label=MDLabel(
-        #     text="Waller",theme_font_name="Custom",font_name="RobotoMono",
-        #     theme_text_color="Custom",text_color="white",
-        #     bold=True,theme_font_size="Custom",font_size="24sp"
-        # )
-        # app_name_label.adaptive_size=True
-        # # app_name_label.md_bg_color=[1,1,11,1]
-        # self.header_info_label=MDLabel(
-        #     text="0 images found",theme_font_name="Custom",
-        #     font_name="RobotoMono",
-        #     theme_text_color="Custom",text_color="white",
-        #     italic=True,theme_font_size="Custom",
-        #     font_size="14sp",adaptive_size=True
-        # )
-        # # self.header_info_label.md_bg_color=[1,1,0,1]
-        # self.header_layout.add_widget(app_name_label)
-        # self.header_layout.add_widget(self.header_info_label)
-        # layout.add_widget(self.header_layout)
 
-        # self.rv = RecycleView(size_hint_y=0.8)
-        # grid = MyMDRecycleGridLayout(cols=3,
-        #                          spacing=5,
-        #                          default_size=(None, dp(120)),
-        #                          default_size_hint=(1, None),
-        #                          size_hint_y=None,
-        #                          padding=[0, 0, 0, dp(120)]
-        #                              )
-        # grid.bind(minimum_height=grid.setter("height"))
-        # self.rv.add_widget(grid)
-        # self.rv.layout_manager = grid
-        # self.rv.viewclass = "Thumb"
-        # layout.add_widget(self.rv)
-        #
-        # add_btn = MDFabButton(
-        #     icon="plus",
-        #     on_release=self.open_filechooser,
-        #     theme_bg_color=  "Custom",
-        #     md_bg_color=  [0.9, 0.9, 0, 1] if self.app.device_theme == "light" else [1,1,0,1]
-        # )
-        #
-        # add_btn.pos_hint={"right": .9, "center_y": 0.25}
-        # add_btn.theme_font_size = "Custom"
-        # add_btn.font_size = sp(30)
-        # self.add_widget(layout)
-        # self.add_widget(add_btn)
-
-
-
+        # print("hot reload stuff in gallery screen")
         # self.bottom_bar = BottomButtonBar(
         #     on_camera=None,
         #     on_settings=None,
@@ -105,11 +75,9 @@ class GalleryScreen(MDScreen):
         # # w=.3
         # # self.bottom_bar.btn_settings.text_color=[w,w,.4,1]
         # self.add_widget(self.bottom_bar)
-        # self.load_saved()# for hot_reload
+        self.load_saved()# for hot_reload
 
-
-    @staticmethod
-    def open_filechooser(*_):
+    def open_filechooser(self,*_):
         # file_operation = FileOperation(self.update_thumbnails_method)
         # if platform == 'android':
         #     from android import activity # type: ignore
@@ -128,8 +96,7 @@ class GalleryScreen(MDScreen):
         #             print("error_getting_path",error_getting_path)
         #
         #     activity.bind(on_activity_result=test) # handling image with no permission
-        app=MDApp.get_running_app()
-        filechooser.open_file(on_selection=app.file_operation.copy_add, filters=["image"], multiple=True)
+        filechooser.open_file(on_selection=self.app.file_operation.copy_add, filters=["image"], multiple=True)
 
 
         # ----------------- This Also Works Keeping for Reference ---------------------------
@@ -154,19 +121,16 @@ class GalleryScreen(MDScreen):
         # except Exception as error_testing_picker:
         #     print("error_testing_picker", error_testing_picker)
 
-    def update_thumbnails_method(self,new_images):
+    def update_thumbnails_method(self):
         # self.wallpapers = self.wallpapers + new_images
-        for img in new_images:
-           if img not in self.wallpapers:
-               self.wallpapers.append(img)
+        # for img in new_images:
+        #    if img not in self.wallpapers:
+        #        self.wallpapers.append(img)
 
         self.ids.header_info_label.text = f"{len(self.wallpapers)} images found"
-        # self.header_info_label.text = f"{len(self.wallpapers)} images found"
         data = []
         self.ids.rv.data = []
-        # self.rv.data = []
         try:
-
             for  i, path in enumerate(self.wallpapers):
                 # Use a low-res thumbnail for the preview (fallback to original if thumbnail creation/availability fails)
                 thumb = get_or_create_thumbnail(path, dest_dir=self.wallpapers_dir )
@@ -188,94 +152,47 @@ class GalleryScreen(MDScreen):
         # print(path, index)
         self.manager.open_image_in_full_screen(index)
 
+    def load_day_wallpapers(self):
+        self.current_tab = "Day"
+        wallpapers = self.myconfig.get_day_wallpapers()
+        self.wallpapers = self._filter_existing_paths(wallpapers)
+        self.update_thumbnails_method()
 
-    # def fetch_recovered_images(self, dt=0):
-    #     MediaStoreImages = autoclass('android.provider.MediaStore$Images$Media')
-    #     ContentUris = autoclass('android.content.ContentUris')
-    #     BuildVersion = autoclass("android.os.Build$VERSION")
-    #
-    #     context = get_python_activity_context()
-    #     resolver = context.getContentResolver()
-    #
-    #     folder_name = "Waller/wallpapers"
-    #     image_uris = []
-    #
-    #     projection = [MediaStoreImages._ID]
-    #     query_uri = MediaStoreImages.EXTERNAL_CONTENT_URI
-    #     sort_order = MediaStoreImages.DATE_ADDED + " DESC"
-    #
-    #     sdk = BuildVersion.SDK_INT
-    #     log.warning(f"SDK VERSION = {sdk}")
-    #
-    #     # ----------------------------
-    #     # ANDROID 10+ (API 29+)
-    #     # ----------------------------
-    #     if sdk >= 29:
-    #         selection = MediaStoreImages.RELATIVE_PATH + " LIKE ?"
-    #         selection_args = [f"%Pictures/{folder_name}/%"]
-    #
-    #         cursor = resolver.query(
-    #             query_uri,
-    #             projection,
-    #             selection,
-    #             selection_args,
-    #             sort_order
-    #         )
-    #
-    #         if cursor:
-    #             try:
-    #                 id_col = cursor.getColumnIndexOrThrow(MediaStoreImages._ID)
-    #                 while cursor.moveToNext():
-    #                     image_id = cursor.getLong(id_col)
-    #                     uri = ContentUris.withAppendedId(query_uri, image_id)
-    #                     image_uris.append(str(uri))
-    #             finally:
-    #                 cursor.close()
-    #
-    #     # ----------------------------
-    #     # FALLBACK (Android 9 and below OR empty)
-    #     # ----------------------------
-    #     if not image_uris:
-    #         log.warning("Falling back to DATA path query")
-    #
-    #         selection = MediaStoreImages.DATA + " LIKE ?"
-    #         selection_args = [f"%/Pictures/{folder_name}/%"]
-    #
-    #         cursor = resolver.query(
-    #             query_uri,
-    #             projection,
-    #             selection,
-    #             selection_args,
-    #             sort_order
-    #         )
-    #
-    #         if cursor:
-    #             try:
-    #                 id_col = cursor.getColumnIndexOrThrow(MediaStoreImages._ID)
-    #                 while cursor.moveToNext():
-    #                     image_id = cursor.getLong(id_col)
-    #                     uri = ContentUris.withAppendedId(query_uri, image_id)
-    #                     image_uris.append(str(uri))
-    #             finally:
-    #                 cursor.close()
-    #
-    #     log.warning(f"FOUND {len(image_uris)} IMAGES")
-    #     return image_uris
+    def load_noon_wallpapers(self):
+        self.current_tab = "Noon"
+        wallpapers = self.myconfig.get_noon_wallpapers()
+        self.wallpapers = self._filter_existing_paths(wallpapers)
+        self.update_thumbnails_method()
 
     def load_saved(self):
+        self.current_tab = "Both"
         # peek = [str(p) for p in self.wallpapers_dir.glob("*") if True]
         # print("Peek:", peek,self.wallpapers_dir)
-        self.wallpapers = [
-            str(p) for p in self.wallpapers_dir.glob("*")
-            if p.suffix.lower() in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"]
-        ]
 
+        # self.wallpapers = [
+        #     str(p) for p in self.wallpapers_dir.glob("*")
+        #     if p.suffix.lower() in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"]
+        # ]
         # print("Loaded wallpapers:", len(self.wallpapers))
-        self.myconfig.set_wallpapers(self.wallpapers)
-        self.update_thumbnails_method(self.wallpapers)
+        wallpapers = self.myconfig.get_wallpapers()
+        self.wallpapers = self._filter_existing_paths(wallpapers)
+        self.update_thumbnails_method()
 
-        # Clock.schedule_once(self.fetch_recovered_images,2)
+    @staticmethod
+    def _filter_existing_paths(paths):
+        """Return only paths that actually exist on disk."""
+        if not paths:
+            return []
 
+        return [p for p in paths if p and os.path.exists(p)]
+
+    def load_current_tab_wallpapers(self):
+        if self.current_tab == "Day":
+            self.load_day_wallpapers()
+        elif self.current_tab == "Noon":
+            self.load_noon_wallpapers()
+        else:
+            self.load_saved()
 
 if __name__ == "__main__":
     class WallpaperCarouselApp(MDApp):

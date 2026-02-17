@@ -21,9 +21,10 @@
 
     ScrollView:
         size_hint: 1, 1
+        pos_hint: {"top":1}
 
         Column:
-#            id: root
+            id: main_container
             spacing: dp(25)
             size_hint_y: None
             height: self.minimum_height
@@ -248,6 +249,8 @@
                                     fit_mode:"cover"
                                     size_hint:[None,None]
                                     size:[dp(60), dp(60)]
+
+
                         Row:
                             adaptive_size:True
                             spacing:dp(10)

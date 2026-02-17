@@ -41,6 +41,11 @@ def generate_receivers(package_: str = None) -> str:
         # Receiver(
         #     name="TheReceiver",
         #     actions=["ALARM_ACTION"]
+        # ),
+        #
+        # Receiver(
+        #     name="BootReceiver",
+        #     actions=["android.intent.action.BOOT_COMPLETED"]
         # )
 
     ]
@@ -70,7 +75,7 @@ def after_apk_build(toolchain: ToolchainCL):
     receiver_xml = generate_receivers(package)
 #     receiver_xml += f"""
 #     <receiver
-#     android:name="{package}.MyWorker"
+#     android:name="org.wally.waller.MyWorker"
 #     android:exported="false" />""" + """
 # <provider
 #     android:name="androidx.startup.InitializationProvider"

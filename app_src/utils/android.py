@@ -158,3 +158,76 @@ def test_java_action():
     compat_manager.notify(notification_id, builder.build())
 
 
+
+    # def fetch_recovered_images(self, dt=0):
+    #     MediaStoreImages = autoclass('android.provider.MediaStore$Images$Media')
+    #     ContentUris = autoclass('android.content.ContentUris')
+    #     BuildVersion = autoclass("android.os.Build$VERSION")
+    #
+    #     context = get_python_activity_context()
+    #     resolver = context.getContentResolver()
+    #
+    #     folder_name = "Waller/wallpapers"
+    #     image_uris = []
+    #
+    #     projection = [MediaStoreImages._ID]
+    #     query_uri = MediaStoreImages.EXTERNAL_CONTENT_URI
+    #     sort_order = MediaStoreImages.DATE_ADDED + " DESC"
+    #
+    #     sdk = BuildVersion.SDK_INT
+    #     log.warning(f"SDK VERSION = {sdk}")
+    #
+    #     # ----------------------------
+    #     # ANDROID 10+ (API 29+)
+    #     # ----------------------------
+    #     if sdk >= 29:
+    #         selection = MediaStoreImages.RELATIVE_PATH + " LIKE ?"
+    #         selection_args = [f"%Pictures/{folder_name}/%"]
+    #
+    #         cursor = resolver.query(
+    #             query_uri,
+    #             projection,
+    #             selection,
+    #             selection_args,
+    #             sort_order
+    #         )
+    #
+    #         if cursor:
+    #             try:
+    #                 id_col = cursor.getColumnIndexOrThrow(MediaStoreImages._ID)
+    #                 while cursor.moveToNext():
+    #                     image_id = cursor.getLong(id_col)
+    #                     uri = ContentUris.withAppendedId(query_uri, image_id)
+    #                     image_uris.append(str(uri))
+    #             finally:
+    #                 cursor.close()
+    #
+    #     # ----------------------------
+    #     # FALLBACK (Android 9 and below OR empty)
+    #     # ----------------------------
+    #     if not image_uris:
+    #         log.warning("Falling back to DATA path query")
+    #
+    #         selection = MediaStoreImages.DATA + " LIKE ?"
+    #         selection_args = [f"%/Pictures/{folder_name}/%"]
+    #
+    #         cursor = resolver.query(
+    #             query_uri,
+    #             projection,
+    #             selection,
+    #             selection_args,
+    #             sort_order
+    #         )
+    #
+    #         if cursor:
+    #             try:
+    #                 id_col = cursor.getColumnIndexOrThrow(MediaStoreImages._ID)
+    #                 while cursor.moveToNext():
+    #                     image_id = cursor.getLong(id_col)
+    #                     uri = ContentUris.withAppendedId(query_uri, image_id)
+    #                     image_uris.append(str(uri))
+    #             finally:
+    #                 cursor.close()
+    #
+    #     log.warning(f"FOUND {len(image_uris)} IMAGES")
+    #     return image_uris
