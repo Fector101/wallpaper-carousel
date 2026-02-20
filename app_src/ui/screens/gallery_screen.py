@@ -8,6 +8,7 @@ from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.image import AsyncImage
 from kivy.uix.recyclegridlayout import RecycleGridLayout
 from kivymd.app import MDApp
+from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDIconButton
 from kivymd.uix.label import MDLabel
 from kivymd.uix.relativelayout import MDRelativeLayout
@@ -15,6 +16,7 @@ from kivy.clock import Clock
 from kivymd.uix.gridlayout import MDGridLayout
 from plyer import filechooser
 
+from ui.widgets.buttons import BottomButtonBar
 from ui.widgets.layouts import MyMDScreen, Column  # used in .kv file
 from utils.config_manager import ConfigManager
 from utils.helper import appFolder, load_kv_file  # type
@@ -85,6 +87,7 @@ class MyMDGridLayout(MDGridLayout):
     icon_active = StringProperty()
     icon_inactive_color = StringProperty()
     minimum_height = NumericProperty()
+    switch_opacity_value_disabled_icon = NumericProperty()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -100,18 +103,53 @@ class DateGroupLayout(Column):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.padding = [dp(10), 0]
+        self.rect = None
+        self.spacing = dp(10)
+        self.padding = [dp(10),0,dp(20), dp(1)]
+
         self.images_container = None
         self.toggle_drop_btn = None
         self.adaptive_height = 1
+        self.size_hint_x=1
+
         Clock.schedule_once(self.build_grid)
+        self.image_elements = []
+        # self.md_bg_color=[.1,1,.3,1]
+    #
+    # def fix_images_width(self, width):
+    #     width = width - 20
+    #     if not self.images_container:
+    #         print('none')
+    #         return None
+    #     print('not none')
+    #     available_width = width - spacing
+    #
+    #     cols = max(1, int(
+    #         (available_width + spacing) // (min_box_size + spacing)
+    #     ))
+    #
+    #     total_spacing = spacing * (cols - 1)
+    #     box_size = (available_width - total_spacing) / cols
+    #
+    #     self.images_container.cols = cols
+    #     # self.images_container.width=width
+    #     for each_image in self.image_elements:
+    #         each_image.size = (box_size,box_size)
+    #     return None
+
+    # def on_width(self, instance, value):
+    #     # self.fix_images_width(value)
+    #     print("parent on_width",value)
 
     def build_grid(self, *args):
+        # print("build_grid")
+        # return
         header_layout = MDRelativeLayout(
             adaptive_height=1,
             size_hint_x=1,
         )
-        # header_layout.padding=[dp(10)]
+        header_content_color = (.65, .65, .76, 1)
+        # header_content_color = (.8, .8, 1, 1)
 
         txt = MDLabel(
             text=self.title,
@@ -119,17 +157,16 @@ class DateGroupLayout(Column):
             theme_text_color="Custom",
             theme_font_size="Custom",
             font_size=sp(14),
-            text_color=[.9, .9, .9, 1],
+            text_color=header_content_color,
             pos_hint={"center_y": .5}
-            # padding=[dp(20)]
         )
 
         self.toggle_drop_btn = MDIconButton(
             icon="triangle-down",
             theme_icon_color="Custom",
-            icon_color=[.8, .8, .8, 1],
+            icon_color=header_content_color,
             theme_font_size="Custom",
-            font_size="15sp",
+            font_size="14sp",
             pos_hint={"center_y": .5, "right": 1}
         )
         # self.toggle_drop_btn.theme_width="Custom"
@@ -144,18 +181,26 @@ class DateGroupLayout(Column):
         self.add_widget(header_layout)
 
         self.images_container = MyMDGridLayout()
+        # self.images_container.md_bg_color= [1,0,0,1]
+
         # self.images_container.size_hint_y = None
         self.images_container.size_hint = [None, None]
-        self.images_container.width = self.width
+        # self.images_container.width = self.width
+        # self.images_container.width = Window.width - 30#self.width
         self.images_container.bind(minimum_height=self.images_container.setter("height"))
 
-        if self.images_container.width != Window.width - 20:
-            app_logger.warning(
-                f"Images sizing Improper: self.width ==  Window.width - 20, {self.images_container.width} == {Window.width}"
-            )
+        window_width_minus_padding = Window.width - 50
+        self.images_container.width = dp(window_width_minus_padding)
+        print(f"self.images_container.width: {self.images_container.width} == window_width_minus_padding: {window_width_minus_padding},self.width: {self.width}")
+        # if self.images_container.width != window_width_minus_padding:
+        #     app_logger.warning(
+        #         f"Images sizing Improper: self.width ==  Window.width - 20, {self.images_container.width - 40} == {window_width_minus_padding}, Ignore if images are sized properly, if self.width very smaller than Window.width also ignore"
+        #     )
 
         self.images_container.spacing = spacing
-        available_width = (Window.width - 20) - spacing
+        available_width = window_width_minus_padding - spacing
+        # available_width = self.images_container.width - spacing
+
 
         cols = max(1, int(
             (available_width + spacing) // (min_box_size + spacing)
@@ -174,20 +219,27 @@ class DateGroupLayout(Column):
             )
             thumbnailWidget.size_hint = (None, None)
             thumbnailWidget.size = (box_size, box_size)
+            # self.image_elements.append(thumbnailWidget)
             self.images_container.add_widget(thumbnailWidget)
 
         self.add_widget(self.images_container)
+        line=MDBoxLayout(size_hint=[1,None],height=dp(0.5),md_bg_color=[.3,.3,.3,.8])
+
+        self.add_widget(line)
+
 
     # TOGGLE LOGIC ADDED
     def toggle_dropdown(self, *args):
         if self.is_collapsed:
             self.images_container.height = self.images_container.minimum_height
             self.images_container.opacity = 1
+            self.images_container.disabled = False
             self.toggle_drop_btn.icon = "triangle-down"
             self.is_collapsed = False
         else:
             self.images_container.height = 0
             self.images_container.opacity = 0
+            self.images_container.disabled = True
             self.toggle_drop_btn.icon = "triangle"
             self.is_collapsed = True
 
@@ -217,6 +269,7 @@ class GalleryScreen(MyMDScreen):
         #
         # self.add_widget(self.bottom_bar)
         # self.load_saved()
+        #
 
     def open_file_chooser(self, *_):
         # file_operation = FileOperation(self.update_thumbnails_method)
@@ -293,6 +346,8 @@ class GalleryScreen(MyMDScreen):
             key=lambda x: max(item["timestamp"] for item in x[1]),
             reverse=True
         )
+        # print("hot reload thing")
+        # sorted_groups=sorted_groups[::-1][:7]
 
         for title, batch in sorted_groups:
             batch.sort(key=lambda x: x["timestamp"], reverse=True)
@@ -305,6 +360,7 @@ class GalleryScreen(MyMDScreen):
                     title=group_title
                 )
             )
+
 
     def open_fullscreen_for_image(self, path, index):
         self.manager.open_image_in_full_screen(index)
