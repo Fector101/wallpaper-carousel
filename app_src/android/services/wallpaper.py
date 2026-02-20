@@ -186,6 +186,14 @@ class MyWallpaperReceiver:
         self.__start_main_loop()
         self.changes = 0
         print("python init MyWallpaperReceiver")
+
+        try:
+            print("trying to register")
+            register_screen_receiver()
+        except Exception as error_registering_screen_receiver:
+            print("python error_registering_screen_receiver", error_registering_screen_receiver)
+    @staticmethod
+    def __unregister_screen_state_receiver():
         try:
             print("trying to unregister")
             DetectReceiver = autoclass('org.wally.waller.DetectReceiver')
@@ -193,12 +201,6 @@ class MyWallpaperReceiver:
             unregister_screen_receiver(receiver)
         except Exception as error_getting_screen_receiver:
             print("python error_getting_screen_receiver", error_getting_screen_receiver)
-        try:
-            print("trying to register")
-            register_screen_receiver()
-        except Exception as error_registering_screen_receiver:
-            print("python error_registering_screen_receiver", error_registering_screen_receiver)
-
     def __start_main_loop(self):
         try:
             self.__server_thread=threading.Thread(target=self.heart, daemon=True)

@@ -191,7 +191,7 @@ class DateGroupLayout(Column):
 
         window_width_minus_padding = Window.width - 50
         self.images_container.width = dp(window_width_minus_padding)
-        print(f"self.images_container.width: {self.images_container.width} == window_width_minus_padding: {window_width_minus_padding},self.width: {self.width}")
+        # print(f"self.images_container.width: {self.images_container.width} == window_width_minus_padding: {window_width_minus_padding},self.width: {self.width}")
         # if self.images_container.width != window_width_minus_padding:
         #     app_logger.warning(
         #         f"Images sizing Improper: self.width ==  Window.width - 20, {self.images_container.width - 40} == {window_width_minus_padding}, Ignore if images are sized properly, if self.width very smaller than Window.width also ignore"
@@ -318,7 +318,7 @@ class GalleryScreen(MyMDScreen):
         # except Exception as error_testing_picker:
         #     print("error_testing_picker", error_testing_picker)
 
-    def update_thumbnails_method(self):
+    def update_thumbnails_method(self,dt=None):
         from collections import defaultdict
 
         self.ids.header_info_label.text = f"{len(self.wallpapers)} images found"
@@ -348,8 +348,10 @@ class GalleryScreen(MyMDScreen):
         )
         # print("hot reload thing")
         # sorted_groups=sorted_groups[::-1][:7]
-
+        # print(sorted_groups)
         for title, batch in sorted_groups:
+            # for e in batch:
+            #     print(e["thumbnail_path"])
             batch.sort(key=lambda x: x["timestamp"], reverse=True)
 
             group_title = f"{title}  |  {len(batch)} items"
@@ -389,7 +391,7 @@ class GalleryScreen(MyMDScreen):
         # print("Loaded wallpapers:", len(self.wallpapers))
         wallpapers = self.myconfig.get_wallpapers()
         self.wallpapers = self._filter_existing_paths(wallpapers)
-        self.update_thumbnails_method()
+        Clock.schedule_once(self.update_thumbnails_method)
 
     @staticmethod
     def _filter_existing_paths(paths):
