@@ -1,41 +1,38 @@
-import traceback, os
-from kivymd.app import MDApp
+import traceback
 from pathlib import Path
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.recycleview import RecycleView
-from kivy.uix.recyclegridlayout import RecycleGridLayout
+
+from kivy.core.window import Window
 from kivy.metrics import dp, sp
-from kivy.properties import StringProperty, NumericProperty, ObjectProperty
+from kivy.properties import StringProperty, NumericProperty, ListProperty, ObjectProperty, BooleanProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.image import AsyncImage
-from kivymd.uix.boxlayout import MDBoxLayout
+from kivy.uix.recyclegridlayout import RecycleGridLayout
+from kivymd.app import MDApp
+from kivymd.uix.button import MDIconButton
 from kivymd.uix.label import MDLabel
+from kivymd.uix.relativelayout import MDRelativeLayout
+from kivy.clock import Clock
+from kivymd.uix.gridlayout import MDGridLayout
 from plyer import filechooser
 
-from kivymd.uix.button import MDFabButton
-
-from ui.widgets.buttons import BottomButtonBar
-from ui.widgets.layouts import Row, Column, MyMDScreen # used in .kv file
-
-from utils.image_operations import get_or_create_thumbnail
+from ui.widgets.layouts import MyMDScreen, Column  # used in .kv file
 from utils.config_manager import ConfigManager
 from utils.helper import appFolder, load_kv_file  # type
+from utils.image_operations import get_or_create_thumbnail
+from utils.logger import app_logger
 from utils.model import get_app
 
 load_kv_file(py_file_absolute_path=__file__)
 from kivy.uix.tabbedpanel import TabbedPanel
 
 
-
-
-
 class MyMDRecycleGridLayout(RecycleGridLayout):
     icon_active = StringProperty()
     icon_inactive_color = StringProperty()
     minimum_height = NumericProperty()
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
 
 
 class MyTabbedPanel(TabbedPanel):
@@ -44,18 +41,164 @@ class MyTabbedPanel(TabbedPanel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._tab_strip.spacing=20
+        self._tab_strip.spacing = 20
+
+
+
+min_box_size = dp(80)
+spacing = dp(2)
+
+import os
+from datetime import datetime
+
+
+def format_file_date(path):
+    if not os.path.exists(path):
+        return None
+
+    timestamp = os.stat(path).st_mtime
+    file_date = datetime.fromtimestamp(timestamp).date()
+    today = datetime.now().date()
+
+    delta_days = (today - file_date).days
+
+    if delta_days == 0:
+        return "Today"
+    elif delta_days == 1:
+        return "Yesterday"
+    elif 2 <= delta_days <= 7:
+        return f"{delta_days} days ago"
+    else:
+        return file_date.strftime("%d %b")
+
 
 class Thumb(ButtonBehavior, AsyncImage):
     source_path = StringProperty()
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.fit_mode = "cover"
+        self.mipmap = True
+
+
+class MyMDGridLayout(MDGridLayout):
+    icon_active = StringProperty()
+    icon_inactive_color = StringProperty()
+    minimum_height = NumericProperty()
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.size_hint_y = None
+        self.height = 10
+
+
+class DateGroupLayout(Column):
+    batch = ListProperty()
+    title = StringProperty("None")
+    old_schedule = ObjectProperty()
+    is_collapsed = BooleanProperty(False)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.padding = [dp(10), 0]
+        self.images_container = None
+        self.toggle_drop_btn = None
+        self.adaptive_height = 1
+        Clock.schedule_once(self.build_grid)
+
+    def build_grid(self, *args):
+        header_layout = MDRelativeLayout(
+            adaptive_height=1,
+            size_hint_x=1,
+        )
+        # header_layout.padding=[dp(10)]
+
+        txt = MDLabel(
+            text=self.title,
+            adaptive_size=True,
+            theme_text_color="Custom",
+            theme_font_size="Custom",
+            font_size=sp(14),
+            text_color=[.9, .9, .9, 1],
+            pos_hint={"center_y": .5}
+            # padding=[dp(20)]
+        )
+
+        self.toggle_drop_btn = MDIconButton(
+            icon="triangle-down",
+            theme_icon_color="Custom",
+            icon_color=[.8, .8, .8, 1],
+            theme_font_size="Custom",
+            font_size="15sp",
+            pos_hint={"center_y": .5, "right": 1}
+        )
+        # self.toggle_drop_btn.theme_width="Custom"
+        # self.toggle_drop_btn.theme_height="Custom"
+        # self.toggle_drop_btn.width=20
+        # self.toggle_drop_btn.height=20
+
+        self.toggle_drop_btn.bind(on_release=self.toggle_dropdown)
+
+        header_layout.add_widget(txt)
+        header_layout.add_widget(self.toggle_drop_btn)
+        self.add_widget(header_layout)
+
+        self.images_container = MyMDGridLayout()
+        # self.images_container.size_hint_y = None
+        self.images_container.size_hint = [None, None]
+        self.images_container.width = self.width
+        self.images_container.bind(minimum_height=self.images_container.setter("height"))
+
+        if self.images_container.width != Window.width - 20:
+            app_logger.warning(
+                f"Images sizing Improper: self.width ==  Window.width - 20, {self.images_container.width} == {Window.width}"
+            )
+
+        self.images_container.spacing = spacing
+        available_width = (Window.width - 20) - spacing
+
+        cols = max(1, int(
+            (available_width + spacing) // (min_box_size + spacing)
+        ))
+
+        total_spacing = spacing * (cols - 1)
+        box_size = (available_width - total_spacing) / cols
+
+        self.images_container.cols = cols
+
+        for each_data in self.batch:
+            thumbnailWidget = Thumb(
+                on_release=each_data["release_function"],
+                source_path=each_data["high_resolution_path"],
+                source=each_data["thumbnail_path"],
+            )
+            thumbnailWidget.size_hint = (None, None)
+            thumbnailWidget.size = (box_size, box_size)
+            self.images_container.add_widget(thumbnailWidget)
+
+        self.add_widget(self.images_container)
+
+    # TOGGLE LOGIC ADDED
+    def toggle_dropdown(self, *args):
+        if self.is_collapsed:
+            self.images_container.height = self.images_container.minimum_height
+            self.images_container.opacity = 1
+            self.toggle_drop_btn.icon = "triangle-down"
+            self.is_collapsed = False
+        else:
+            self.images_container.height = 0
+            self.images_container.opacity = 0
+            self.toggle_drop_btn.icon = "triangle"
+            self.is_collapsed = True
+
 
 class GalleryScreen(MyMDScreen):
     current_tab = StringProperty("Both")
+
     def __init__(self, **kwargs):
 
         super().__init__(**kwargs)
-        self.app=get_app()
+        self.app = get_app()
         # self.app.device_theme = "light"
         self.app.device_theme = "dark"
         self.name = "thumbs"
@@ -70,14 +213,12 @@ class GalleryScreen(MyMDScreen):
         #     on_settings=None,
         #     width=dp(120),
         #     height=dp(500)
-        #
         # )
-        # # w=.3
-        # # self.bottom_bar.btn_settings.text_color=[w,w,.4,1]
+        #
         # self.add_widget(self.bottom_bar)
-        self.load_saved()# for hot_reload
+        # self.load_saved()
 
-    def open_filechooser(self,*_):
+    def open_file_chooser(self, *_):
         # file_operation = FileOperation(self.update_thumbnails_method)
         # if platform == 'android':
         #     from android import activity # type: ignore
@@ -96,8 +237,11 @@ class GalleryScreen(MyMDScreen):
         #             print("error_getting_path",error_getting_path)
         #
         #     activity.bind(on_activity_result=test) # handling image with no permission
-        filechooser.open_file(on_selection=self.app.file_operation.copy_add, filters=["image"], multiple=True)
-
+        filechooser.open_file(
+            on_selection=self.app.file_operation.copy_add,
+            filters=["image"],
+            multiple=True
+        )
 
         # ----------------- This Also Works Keeping for Reference ---------------------------
         # from jnius import autoclass, cast
@@ -122,34 +266,47 @@ class GalleryScreen(MyMDScreen):
         #     print("error_testing_picker", error_testing_picker)
 
     def update_thumbnails_method(self):
-        # self.wallpapers = self.wallpapers + new_images
-        # for img in new_images:
-        #    if img not in self.wallpapers:
-        #        self.wallpapers.append(img)
+        from collections import defaultdict
 
         self.ids.header_info_label.text = f"{len(self.wallpapers)} images found"
-        data = []
-        self.ids.rv.data = []
-        try:
-            for  i, path in enumerate(self.wallpapers):
-                # Use a low-res thumbnail for the preview (fallback to original if thumbnail creation/availability fails)
-                thumb = get_or_create_thumbnail(path, dest_dir=self.wallpapers_dir )
-                # print("Thumbnail for", path, "is", thumb)
-                data.append({
-                    "source": str(thumb) if thumb else str(path),
-                    "source_path": path,
-                    "on_release": lambda p=path, idx=i: self.open_fullscreen_for_image(p, idx)
-                })
-            # print("Thumbnail data length:", len(data))
 
-            self.ids.rv.data = data
+        grouped = defaultdict(list)
 
-        except Exception as error_updating_recycle_view:
-            print(error_updating_recycle_view)
-            traceback.print_exc()
+        for i, path in enumerate(self.wallpapers):
+            if not path or not os.path.exists(path):
+                continue
 
-    def open_fullscreen_for_image(self, path, index): # type: ignore
-        # print(path, index)
+            date_label = format_file_date(path)
+            thumb = get_or_create_thumbnail(path, dest_dir=self.wallpapers_dir)
+
+            grouped[date_label].append({
+                "timestamp": os.stat(path).st_mtime,
+                "thumbnail_path": str(thumb) if thumb else str(path),
+                "high_resolution_path": path,
+                "release_function": lambda p=path, idx=i: self.open_fullscreen_for_image(p, idx)
+            })
+
+        self.ids.wallpapers_container.clear_widgets()
+
+        sorted_groups = sorted(
+            grouped.items(),
+            key=lambda x: max(item["timestamp"] for item in x[1]),
+            reverse=True
+        )
+
+        for title, batch in sorted_groups:
+            batch.sort(key=lambda x: x["timestamp"], reverse=True)
+
+            group_title = f"{title}  |  {len(batch)} items"
+
+            self.ids.wallpapers_container.add_widget(
+                DateGroupLayout(
+                    batch=batch,
+                    title=group_title
+                )
+            )
+
+    def open_fullscreen_for_image(self, path, index):
         self.manager.open_image_in_full_screen(index)
 
     def load_day_wallpapers(self):
@@ -183,7 +340,6 @@ class GalleryScreen(MyMDScreen):
         """Return only paths that actually exist on disk."""
         if not paths:
             return []
-
         return [p for p in paths if p and os.path.exists(p)]
 
     def load_current_tab_wallpapers(self):
@@ -194,9 +350,10 @@ class GalleryScreen(MyMDScreen):
         else:
             self.load_saved()
 
+
 if __name__ == "__main__":
     class WallpaperCarouselApp(MDApp):
-        interval = 2  # default rotation interval
+        interval = 2
 
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
@@ -206,7 +363,6 @@ if __name__ == "__main__":
             self.sm = GalleryScreen()
             # self.sm.load_saved()  # uncomment to load saved images
             return self.sm
-
 
 
     WallpaperCarouselApp().run()

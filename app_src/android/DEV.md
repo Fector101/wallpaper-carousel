@@ -14,3 +14,6 @@ How to see WAKE INTENT
 ```shell
 adb logcat | grep Intent
 ```
+```shell
+adb logcat | grep -E "python|Wallpapercarousel"
+```

@@ -50,7 +50,6 @@ class MDLive(App,MDApp):
         "ui.screens.welcome_screen".replace(".","/") + ".kv",
         "ui.screens.gallery_screen".replace(".","/") + ".kv",
         "ui.screens.settings_screen".replace(".","/") + ".kv",
-        "ui.widgets.layouts".replace(".","/") + ".kv",
 
     ]
     CLASSES = {
@@ -64,7 +63,6 @@ class MDLive(App,MDApp):
         "WelcomeScreen": "ui.screens.welcome_screen",
         # "MyRoundButton": "ui.widgets.buttons",
         "BottomButtonBar": "ui.widgets.buttons",
-        "MyPopUp": "ui.widgets.layouts",
     }
     AUTORELOADER_PATHS = [
         ("./ui", {"recursive": True})
@@ -96,7 +94,7 @@ MDLive().run()
 
 
 
-from jnius import PythonJavaClass, java_method
+# from jnius import PythonJavaClass, java_method
 
 
 # from android.config import ACTIVITY_CLASS_NAME, ACTIVITY_CLASS_NAMESPACE

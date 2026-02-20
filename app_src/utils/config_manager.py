@@ -21,7 +21,8 @@ class ConfigManager:
         "interval_mins": 2.0,
         "wallpapers": [],
         "noon_wallpapers":[],
-        "day_wallpapers":[]
+        "day_wallpapers":[],
+        "use_on_wake": False
     }
 
     def __init__(self):
@@ -119,3 +120,11 @@ class ConfigManager:
         if path in data[wallpaper_key_name]:
             data[wallpaper_key_name].remove(path)
             self._write(data)
+
+    def get_on_wake_state(self):
+        return self._read().get("use_on_wake", False)
+
+    def set_on_wake_state(self, state: bool):
+        data = self._read()
+        data["use_on_wake"] = state
+        self._write(data)

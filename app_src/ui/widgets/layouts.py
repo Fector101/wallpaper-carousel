@@ -1,10 +1,11 @@
 from android_notify.config import on_android_platform, autoclass
 from kivy.metrics import dp, sp
 from kivymd.app import MDApp
-from kivy.properties import ListProperty, DictProperty
+from kivy.properties import ListProperty, DictProperty, BooleanProperty
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivy.uix.popup import Popup
 from kivymd.uix.label import MDLabel
+from kivymd.uix.relativelayout import MDRelativeLayout
 
 from kivymd.uix.screen import MDScreen
 
@@ -157,7 +158,8 @@ class MyMDScreen(MDScreen):
             super().add_widget(self.status_bar_box)
 
         if self.screen_content is None:
-            self.screen_content = MDFloatLayout(size_hint=[1, None],
+            # MDFloatLayout
+            self.screen_content = MDRelativeLayout(size_hint=[1, None],
                                                 height=Window.height - (status_bar_height + nav_bar_height),
                                                 md_bg_color=[0, 0, 0, 0])
             self.screen_content.orientation = "vertical"

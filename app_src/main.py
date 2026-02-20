@@ -197,14 +197,6 @@ class WallpaperCarouselApp(MDApp):
         except Exception as e:
             print("Error getting notify name:", e)
 
-        print('on_resume','-'*33)
-        try:
-            self.sm.gallery_screen.load_saved()
-        except Exception as error_loading_saved:
-            print("Error loading saved:",error_loading_saved)
-            toast("Error loading saved: "+str(error_loading_saved))
-            traceback.print_exc()
-
     def bind_plyer_fix(self):
         if platform == 'android':
             from android import activity # type: ignore

@@ -236,15 +236,12 @@ class FullscreenScreen(MyMDScreen):
             # size_hint=[1,1]
             # md_bg_color=[bg, bg, bg, 1]
         )
-        if DEV:
-            self.day_noon_both_button=PictureButton(screen_color=self.md_bg_color,fullscreen=self)
-            self.day_noon_both_button.size_hint=[None,None]
-            s=42
-            self.day_noon_both_button.size=[dp(s),dp(s)]
-            # self.time_btn.theme_font_size='Custom'
-            # self.time_btn.font_size=sp(120)
 
-            right_btm_box.add_widget(self.day_noon_both_button)
+        self.day_noon_both_button=PictureButton(screen_color=self.md_bg_color,fullscreen=self)
+        self.day_noon_both_button.size_hint=[None,None]
+        s=42
+        self.day_noon_both_button.size=[dp(s),dp(s)]
+        right_btm_box.add_widget(self.day_noon_both_button)
 
 
         self.add_widget(self.layout)

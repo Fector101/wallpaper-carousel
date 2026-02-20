@@ -4,6 +4,7 @@ import os, random
 import time, logging
 from android_notify.config import on_android_platform
 from utils.config_manager import ConfigManager
+from datetime import datetime, time as dt_time
 
 print("Entered Wallpaper Foreground Service...")
 
@@ -31,6 +32,7 @@ class ReceivedData:
     def __init__(self):
         self.data = self.__get_object_sent_from_ui()
         self.__store_service_port(self.service_port)
+
 
     @staticmethod
     def __get_object_sent_from_ui():
@@ -73,7 +75,10 @@ class ReceivedData:
             app_logger.exception(f"Error writing wallpaper port: {error_write_port}")
             traceback.print_exc()
 
-from datetime import datetime, time as dt_time
+
+
+myconfig = ConfigManager()
+
 
 def is_between_6am_6pm():
     now = datetime.now().time()
@@ -87,7 +92,6 @@ def get_next_wallpaper():
     :return: [absolute_path, name]
     """
     try:
-        myconfig = ConfigManager()
 
         images = myconfig.get_wallpapers()
         if is_between_6am_6pm():
@@ -102,7 +106,7 @@ def get_next_wallpaper():
         # ]
         # rint("service found:",images)
         if not images:
-            app_logger.exception(f"Warning: No images found in {wallpapers_folder_path}")
+            app_logger.warning(f"No images found in {wallpapers_folder_path}")
             return '', ''
 
         wallpaper_path = random.choice(images)
@@ -114,9 +118,7 @@ def get_next_wallpaper():
 
 def get_interval():
     try:
-        from utils.config_manager import ConfigManager
-        config = ConfigManager()
-        t = int(float(config.get_interval()) * 60)
+        t = int(float(myconfig.get_interval()) * 60)
         return t
     except Exception as error_getting_saved_interval:
         app_logger.exception(f"Service Failed to get Interval: {error_getting_saved_interval}")
@@ -132,7 +134,7 @@ def get_service_lifespan_text(elapsed_seconds):
 
 def register_screen_receiver():
     if not on_android_platform():
-        return
+        return None
     # Get the current Android activity
     # PythonActivity = autoclass('org.kivy.android.PythonActivity')
     activity = get_python_activity_context()#PythonActivity.mActivity
@@ -143,14 +145,14 @@ def register_screen_receiver():
 
     # Create the IntentFilter
     IntentFilter = autoclass('android.content.IntentFilter')
-    filter = IntentFilter()
+    filter__ = IntentFilter()
     Intent = autoclass('android.content.Intent')
-    filter.addAction(Intent.ACTION_SCREEN_ON)
-    filter.addAction(Intent.ACTION_SCREEN_OFF)
-    filter.addAction(Intent.ACTION_USER_PRESENT)
+    filter__.addAction(Intent.ACTION_SCREEN_ON)
+    filter__.addAction(Intent.ACTION_SCREEN_OFF)
+    filter__.addAction(Intent.ACTION_USER_PRESENT)
 
     # Register the receiver
-    activity.registerReceiver(receiver, filter)
+    activity.registerReceiver(receiver, filter__)
     print("python DetectReceiver registered successfully!")
 
     return receiver
@@ -166,8 +168,8 @@ def unregister_screen_receiver(receiver):
     try:
         activity.unregisterReceiver(receiver)
         print("python DetectReceiver unregistered successfully!")
-    except Exception as e:
-        print(f"python Failed to unregister receiver: {e}")
+    except Exception as error_unregistering_screen_receiver:
+        print(f"python Failed to unregister receiver: {error_unregistering_screen_receiver}")
 
 
 class MyWallpaperReceiver:
@@ -194,13 +196,16 @@ class MyWallpaperReceiver:
         try:
             print("trying to register")
             register_screen_receiver()
-        except Exception as error_getting_screen_receiver:
-            print("python error_getting_screen_receiver", error_getting_screen_receiver)
+        except Exception as error_registering_screen_receiver:
+            print("python error_registering_screen_receiver", error_registering_screen_receiver)
 
     def __start_main_loop(self):
         try:
             self.__server_thread=threading.Thread(target=self.heart, daemon=True)
             self.__server_thread.start()
+            self.pause_event = threading.Event()
+            self.pause_event.set()  # start unpaused
+
         except Exception as error_start_main_loop: # Avoiding process is bad java.lang.SecurityException
             app_logger.exception(f" [__start_main_loop]Service Main loop Failed: {error_start_main_loop}")
             traceback.print_exc()
@@ -208,6 +213,7 @@ class MyWallpaperReceiver:
     def __count_down(self):
         self.current_wait_seconds = get_interval()
         while self.current_wait_seconds > 0:
+            self.__check_and_or_do_pause_for_on_wake()
             time.sleep(self.current_sleep)
             self.current_wait_seconds -= 1
 
@@ -228,27 +234,23 @@ class MyWallpaperReceiver:
         # set
 
         while self.live:
-            # Get Upcoming
-            wallpaper = get_next_wallpaper()
-            self.next_wallpaper_path = wallpaper[1]
-            self.__set_next_img_in_notification(self.next_wallpaper_path)
-            self.__send_data_to_ui("/changed_homescreen_widget",
-                                   {"current_wallpaper": None, "next_wallpaper": self.next_wallpaper_path})
-            self.__send_data_to_ui("/changed_wallpaper",
-                                   {"current_wallpaper": None, "next_wallpaper": self.next_wallpaper_path})
-            notification.setData({"next wallpaper path": self.next_wallpaper_path})
 
+            self.apply_next_wallpaper_data() # Get Upcoming
+            self.__check_and_or_do_pause_for_on_wake()
             # Wait for a while
-            # time.sleep(get_interval())
             self.__count_down()
 
             if not self.skip_now:
-                # Then change wallpaper
-                self.current_wallpaper = self.next_wallpaper_path
-                self.set_wallpaper(self.next_wallpaper_path)
-
-                self.__write_wallpaper_path_to_file(self.next_wallpaper_path)
+                self.apply_new_wallpaper()
             self.skip_now = False
+
+    def __check_and_or_do_pause_for_on_wake(self):
+        self.pause_event.wait()
+        truth = myconfig.get_on_wake_state()
+        if truth:
+            notification.updateTitle("OnNext Wake")
+            self.pause_event.clear()
+
 
     def __write_wallpaper_path_to_file(self, wallpaper_path):
         # Writing for Java to see for home screen widget
@@ -287,12 +289,35 @@ class MyWallpaperReceiver:
         else:
             app_logger.error(f"Image - {wallpaper_path} does not exist, can't set notification preview")
 
+    def apply_next_wallpaper_data(self):
+        wallpaper = get_next_wallpaper()
+        self.next_wallpaper_path = wallpaper[1]
+        self.__set_next_img_in_notification(self.next_wallpaper_path)
+        self.__send_data_to_ui("/changed_homescreen_widget",
+                               {"current_wallpaper": None, "next_wallpaper": self.next_wallpaper_path})
+        self.__send_data_to_ui("/changed_wallpaper",
+                               {"current_wallpaper": None, "next_wallpaper": self.next_wallpaper_path})
+        notification.setData({"next wallpaper path": self.next_wallpaper_path})
+
+    def apply_new_wallpaper(self):
+        self.current_wallpaper = self.next_wallpaper_path
+        self.set_wallpaper(self.next_wallpaper_path)
+        self.__write_wallpaper_path_to_file(self.next_wallpaper_path)
+
+    def apply_next_wallpaper(self, *args):
+        """For Screen Listener to change wallpaper and change notification Next wallpaper Image"""
+        if myconfig.get_on_wake_state():
+            print("from java",args)
+            self.apply_new_wallpaper()
+            self.apply_next_wallpaper_data()
+
     def start(self, data=None):
         # self.__start_main_loop()
         pass
 
     def stop(self, *args):
-
+        self.pause_event.set()
+        notification.cancel() # android auto removes it, but I'm using time.sleep(1) to pad while cleaning up
         app_logger.info(f"stop args: {args}")
         self.__send_data_to_ui("/stopped", {})
         time.sleep(1)
@@ -300,17 +325,15 @@ class MyWallpaperReceiver:
         self.live = False
         server.shutdown()  # stops serve_forever()
         self.__server_thread.join()  # wait for thread to exit
-        notification.cancel() # android auto removes it but I'm using time.sleep(1) to pad while cleaning up
         service.setAutoRestartService(False) # On Android 12 service continued after swiping app from Recents this is best bet
         service.stopSelf()
 
     def pause(self, _=None):
         notification.updateTitle("Carousel Pause")
-        self.current_sleep = 1000 ** 100
-        pass
+        self.pause_event.clear()
 
     def resume(self, _=None):
-        self.current_sleep = 1
+        self.pause_event.set()
 
     def set_next_data(self, *_):
         # app_logger.info(f"next args: {args}")
@@ -427,6 +450,7 @@ class MyWallpaperReceiver:
         return None
         # app_logger.info(f"Changed Home Screen Widget: {wallpaper_path}")
 
+
 receivedData = ReceivedData()
 wallpapers_folder_path = os.path.join(appFolder(), "wallpapers")
 
@@ -455,6 +479,7 @@ myDispatcher.map("/change-next", myWallpaperReceiver.set_next_data)
 myDispatcher.map("/stop", myWallpaperReceiver.stop)
 myDispatcher.map("/set-wallpaper", myWallpaperReceiver.set_wallpaper)
 myDispatcher.map("/toggle_home_screen_widget_changes", myWallpaperReceiver.toggle_home_screen_widget_changes)
+myDispatcher.map("/apply_next_wallpaper", myWallpaperReceiver.apply_next_wallpaper)
 
 server = osc_server.ThreadingOSCUDPServer(("0.0.0.0", receivedData.service_port), myDispatcher)
 
@@ -469,3 +494,10 @@ except Exception as e:
     app_logger.exception(f"Service Main loop Failed: {e}")
     traceback.print_exc()
     # Avoiding process is bad java.lang.SecurityException
+
+
+# | Method    | Meaning                         |
+# | --------- | ------------------------------- |
+# | `set()`   | 🟢 Green light — go             |
+# | `clear()` | 🔴 Red light — stop             |
+# | `wait()`  | “Wait at the light until green” |
