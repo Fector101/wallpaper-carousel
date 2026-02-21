@@ -61,8 +61,9 @@ def after_apk_build(toolchain: ToolchainCL):
 
     # Add foregroundServiceType to multiple services
     services = {
-        "Wallpapercarousel": "dataSync",
-        # "Mytester": "dataSync"
+        "Wallpapercarousel": "specialUse",
+        # "Wallpapercarousel": "dataSync",
+
         }
 
     text = inject_foreground_service_types(

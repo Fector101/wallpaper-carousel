@@ -318,17 +318,18 @@ class MyWallpaperReceiver:
         pass
 
     def stop(self, *args):
-        self.pause_event.set()
-        notification.cancel() # android auto removes it, but I'm using time.sleep(1) to pad while cleaning up
+        notification.updateTitle("Stopping Service...")
         app_logger.info(f"stop args: {args}")
-        self.__send_data_to_ui("/stopped", {})
-        time.sleep(1)
+        self.live = 0
+        self.skip_now = True
         self.current_wait_seconds = 0
-        self.live = False
-        server.shutdown()  # stops serve_forever()
-        self.__server_thread.join()  # wait for thread to exit
-        service.setAutoRestartService(False) # On Android 12 service continued after swiping app from Recents this is best bet
-        service.stopSelf()
+        self.pause_event.set()
+        self.__server_thread.join()
+        self.__send_data_to_ui("/stopped", {})
+        server.shutdown()
+        service.setAutoRestartService(False)
+        # Trying to Avoid- D ProcessStarter: proc frequent died! proc = org.wally.waller:service_Wallpapercarousel callerPkg = org.wally.waller
+        # service.stopSelf()
 
     def pause(self, _=None):
         notification.updateTitle("Carousel Pause")
@@ -457,7 +458,8 @@ receivedData = ReceivedData()
 wallpapers_folder_path = os.path.join(appFolder(), "wallpapers")
 
 service = get_python_service()
-foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE_TYPE_DATA_SYNC if on_android_platform() and BuildVersion.SDK_INT >= 30 else 0
+foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE_TYPE_SPECIAL_USE if on_android_platform() and BuildVersion.SDK_INT >= 30 else 0
+# foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE_TYPE_DATA_SYNC if on_android_platform() and BuildVersion.SDK_INT >= 30 else 0
 
 notification = Notification(title="Next in 02:00", name="from service")
 if foreground_type:
@@ -496,6 +498,8 @@ except Exception as e:
     app_logger.exception(f"Service Main loop Failed: {e}")
     traceback.print_exc()
     # Avoiding process is bad java.lang.SecurityException
+finally:
+    print('service python: The end...')
 
 
 # | Method    | Meaning                         |
