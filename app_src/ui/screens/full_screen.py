@@ -23,6 +23,10 @@ from utils.helper import appFolder, change_wallpaper
 from utils.config_manager import ConfigManager
 from utils.constants import DEV
 from utils.model import get_app
+from kivy.loader import  Loader
+
+
+my_config=ConfigManager()
 
 
 class BorderMDBoxLayout(MDBoxLayout):
@@ -83,7 +87,6 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
     fullscreen = ObjectProperty()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.myconfig = ConfigManager()
         self.img = AsyncImage()
         self.img.mipmap=True
         self.i = 0
@@ -106,21 +109,21 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
         current_image = self.fullscreen.current_image
         # Both Day and Night
         if self.images[self.i] == self.images[0]:
-            self.myconfig.add_wallpaper(current_image)
-            self.myconfig.remove_wallpaper_to_from("noon_wallpapers", current_image)
-            self.myconfig.remove_wallpaper_to_from("day_wallpapers", current_image)
+            my_config.add_wallpaper(current_image)
+            my_config.remove_wallpaper_to_from("noon_wallpapers", current_image)
+            my_config.remove_wallpaper_to_from("day_wallpapers", current_image)
 
         # Only Night
         if self.images[self.i] == self.images[1]:
-            self.myconfig.add_wallpaper_to_noon_wallpapers(current_image)
-            self.myconfig.remove_wallpaper_to_from("day_wallpapers", current_image)
-            self.myconfig.remove_wallpaper(current_image)
+            my_config.add_wallpaper_to_noon_wallpapers(current_image)
+            my_config.remove_wallpaper_to_from("day_wallpapers", current_image)
+            my_config.remove_wallpaper(current_image)
 
         # Only Day
         if self.images[self.i] == self.images[2]:
-            self.myconfig.add_wallpaper_to_day_wallpapers(current_image)
-            self.myconfig.remove_wallpaper_to_from("noon_wallpapers", current_image)
-            self.myconfig.remove_wallpaper(current_image)
+            my_config.add_wallpaper_to_day_wallpapers(current_image)
+            my_config.remove_wallpaper_to_from("noon_wallpapers", current_image)
+            my_config.remove_wallpaper(current_image)
 
     def set_day_image(self):
         self.i = 2
@@ -145,7 +148,6 @@ class FullscreenScreen(MyMDScreen):
         self.clock_for_higher_format = None
         self.clock_for_side_by_side = None
         self.app_dir = Path(appFolder())
-        self.myconfig = ConfigManager()
         self.wallpapers_dir = self.app_dir / "wallpapers"
 
         self.name = "fullscreen"
@@ -172,7 +174,8 @@ class FullscreenScreen(MyMDScreen):
             size=(dp(70), dp(70)),
             pos_hint={'center_y': 0.5},
             theme_text_color='Custom',
-            text_color=[1, 1, 1, 1]
+            text_color=[1, 1, 1, 1],
+            on_release=self.toggle_top_button
         )
 
         self.btn_toggle.theme_bg_color = 'Custom'
@@ -265,7 +268,7 @@ class FullscreenScreen(MyMDScreen):
         self.btn_delete.bind(on_release=self.delete_current)
         self.btn_info.bind(on_release=self.show_info)
         self.btn_fullscreen.bind(on_release=self.toggle_fullscreen)
-        self.btn_toggle.bind(on_release=self.toggle_top_button)
+
         self.set_wallpaper_btn.bind(on_release=lambda x: change_wallpaper(self.carousel.current_slide.higher_format))
         # self.update_images()  # for hot_reload
 
@@ -318,7 +321,7 @@ class FullscreenScreen(MyMDScreen):
 
         # If not fullscreen → go back to thumbnails screen
         else:
-            self.app.sm.gallery_screen.load_current_tab_wallpapers()
+            self.app.sm.gallery_screen.refresh_gallery_screen()
             self.manager.current = "thumbs"
 
     def delete_current(self, *_):
@@ -343,17 +346,17 @@ class FullscreenScreen(MyMDScreen):
                 pass
 
         if self.app.sm.gallery_screen.current_tab == "Both":
-            ConfigManager().remove_wallpaper(path)
-            # ConfigManager().remove_wallpaper_to_from("day_wallpapers", path)
-            # ConfigManager().remove_wallpaper_to_from("noon_wallpapers", path)
+            my_config.remove_wallpaper(path)
+            # my_config.remove_wallpaper_to_from("day_wallpapers", path)
+            # my_config.remove_wallpaper_to_from("noon_wallpapers", path)
 
 
         if self.app.sm.gallery_screen.current_tab == "Day":
-            ConfigManager().remove_wallpaper_to_from("day_wallpapers",path)
+            my_config.remove_wallpaper_to_from("day_wallpapers",path)
 
 
         if self.app.sm.gallery_screen.current_tab == "Noon":
-            ConfigManager().remove_wallpaper_to_from("noon_wallpapers", path)
+            my_config.remove_wallpaper_to_from("noon_wallpapers", path)
 
         if not wallpapers:
             gallery_screen.update_thumbnails_method()
@@ -413,8 +416,8 @@ class FullscreenScreen(MyMDScreen):
         if os.path.exists(image_path):
             self.header_file_size.text = format_size(os.path.getsize(image_path))
 
-        day_images = self.myconfig.get_day_wallpapers()
-        noon_images = self.myconfig.get_noon_wallpapers()
+        day_images = my_config.get_day_wallpapers()
+        noon_images = my_config.get_noon_wallpapers()
 
         if image_path in day_images:
             self.day_noon_both_button.set_day_image()
@@ -486,12 +489,19 @@ class FullscreenScreen(MyMDScreen):
 
         # print("left_side_img source:", os.path.basename(left_side_img.source), "left_side_img hf:",
         #       os.path.basename(left_side_img.higher_format))
-        if left_side_img:
-            if left_side_img.source != str(left_side_img.higher_format):
+        if left_side_img and left_side_img.source != str(left_side_img.higher_format):
                 # print('left...')
-                left_side_img.source = str(left_side_img.higher_format)
-        if right_side_img:
-            if right_side_img.source != str(right_side_img.higher_format):
+                proxyImage = Loader.image(str(left_side_img.higher_format))
+                proxyImage.bind(on_load= lambda proxy_image, image_object=left_side_img: patch_resolution(proxy_image,image_object))
+                # left_side_img.source = str(left_side_img.higher_format)
+
+        if right_side_img and right_side_img.source != str(right_side_img.higher_format):
                 # print('right...')
-                right_side_img.source = str(right_side_img.higher_format)
+                proxyImage = Loader.image(str(right_side_img.higher_format))
+                proxyImage.bind(on_load=lambda proxy_image, image_object=right_side_img: patch_resolution(proxy_image, image_object))
+                # right_side_img.source = str(right_side_img.higher_format)
         return None
+
+
+def patch_resolution(proxy_image, image_object):
+    image_object.texture = proxy_image.image.texture

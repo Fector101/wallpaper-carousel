@@ -32,7 +32,7 @@ class ReceivedData:
     def __init__(self):
         self.data = self.__get_object_sent_from_ui()
         self.__store_service_port(self.service_port)
-
+        self.__store_port(self.ui_port)
 
     @staticmethod
     def __get_object_sent_from_ui():
@@ -76,8 +76,20 @@ class ReceivedData:
             traceback.print_exc()
 
 
+    @staticmethod
+    def __store_port(port,which="UI"):
+        try:
+            port_store_path = os.path.join(appFolder(), f'{which}_port.txt'.lower())
+            with open(port_store_path, "w") as f:
+                f.write(str(port))
+            app_logger.info(f"Stored {which} Port for Java - Port: {port}, file_path: {port_store_path}")
+        except Exception as error_write_port:
+            app_logger.exception(f"Error writing wallpaper port: {error_write_port}")
+            traceback.print_exc()
 
-myconfig = ConfigManager()
+
+
+my_config = ConfigManager()
 
 
 def is_between_6am_6pm():
@@ -93,11 +105,11 @@ def get_next_wallpaper():
     """
     try:
 
-        images = myconfig.get_wallpapers()
+        images = my_config.get_wallpapers()
         if is_between_6am_6pm():
-            images = images + myconfig.get_day_wallpapers()
+            images = images + my_config.get_day_wallpapers()
         else:
-            images = images + myconfig.get_noon_wallpapers()
+            images = images + my_config.get_noon_wallpapers()
 
         # images = [
         #     os.path.join(wallpapers_folder_path, f)
@@ -118,7 +130,7 @@ def get_next_wallpaper():
 
 def get_interval():
     try:
-        t = int(float(myconfig.get_interval()) * 60)
+        t = int(float(my_config.get_interval()) * 60)
         return t
     except Exception as error_getting_saved_interval:
         app_logger.exception(f"Service Failed to get Interval: {error_getting_saved_interval}")
@@ -182,7 +194,7 @@ class MyWallpaperReceiver:
         self.next_wallpaper_path = ''
         self.current_sleep = 1
         self.current_wait_seconds = get_interval()
-        self.service_start_time = time.time()
+        # self.service_start_time = time.time()
         self.__start_main_loop()
         self.changes = 0
         print("python init MyWallpaperReceiver")
@@ -226,10 +238,10 @@ class MyWallpaperReceiver:
             self.__send_data_to_ui("/countdown_change", {"seconds": value_})
             notification.updateTitle(f"Next in {value_}")
 
-            current_time = time.time()
-            elapsed_since_service_start = current_time - self.service_start_time
-            if int(elapsed_since_service_start) % 3600 == 0 and foreground_type:  # Every hour
-                notification.updateMessage(get_service_lifespan_text(elapsed_since_service_start))
+            # current_time = time.time()
+            # elapsed_since_service_start = current_time - self.service_start_time
+            # if int(elapsed_since_service_start) % 3600 == 0 and foreground_type:  # Every hour
+            #     notification.updateMessage(get_service_lifespan_text(elapsed_since_service_start))
 
     def heart(self):
         # wait - so it waits before first change so user can cancel if they don't want feature
@@ -244,11 +256,12 @@ class MyWallpaperReceiver:
 
             if not self.skip_now:
                 self.apply_new_wallpaper()
+            notification.updateTitle("Stopping Service....")
             self.skip_now = False
 
     def __check_and_or_do_pause_for_on_wake(self):
         self.pause_event.wait()
-        truth = myconfig.get_on_wake_state()
+        truth = my_config.get_on_wake_state()
         if truth:
             notification.updateTitle("OnNext Wake")
             self.pause_event.clear()
@@ -308,7 +321,7 @@ class MyWallpaperReceiver:
 
     def apply_next_wallpaper(self, *args):
         """For Screen Listener to change wallpaper and change notification Next wallpaper Image"""
-        if myconfig.get_on_wake_state():
+        if my_config.get_on_wake_state():
             print("from java",args)
             self.apply_new_wallpaper()
             self.apply_next_wallpaper_data()
@@ -319,6 +332,7 @@ class MyWallpaperReceiver:
 
     def stop(self, *args):
         notification.updateTitle("Stopping Service...")
+        # time.sleep(0.1)
         app_logger.info(f"stop args: {args}")
         self.live = 0
         self.skip_now = True
@@ -462,8 +476,8 @@ foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE
 # foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE_TYPE_DATA_SYNC if on_android_platform() and BuildVersion.SDK_INT >= 30 else 0
 
 notification = Notification(title="Next in 02:00", name="from service")
-if foreground_type:
-    notification.message=f"service lifespan: {SERVICE_LIFESPAN_HOURS}hrs"
+# if foreground_type:
+#     notification.message=f"service lifespan: {SERVICE_LIFESPAN_HOURS}hrs"
 notification.setData({"next wallpaper path": "test.jpg", SERVICE_PORT_ARGUMENT_KEY: receivedData.service_port})
 notification.addButton(text="Stop", receiver_name="CarouselReceiver", action="ACTION_STOP")
 notification.addButton(text="Skip", receiver_name="CarouselReceiver", action="ACTION_SKIP")
@@ -500,6 +514,13 @@ except Exception as e:
     # Avoiding process is bad java.lang.SecurityException
 finally:
     print('service python: The end...')
+    ui_port_store_path = os.path.join(appFolder(), "ui_port.txt")
+    service_port_store_path = os.path.join(appFolder(), "port.txt")
+
+    with open(ui_port_store_path, "w") as f:
+        f.write("")
+    with open(service_port_store_path, "w") as f:
+        f.write("")
 
 
 # | Method    | Meaning                         |

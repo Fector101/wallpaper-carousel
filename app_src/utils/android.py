@@ -1,9 +1,14 @@
 import traceback
 from android_notify.config import get_python_activity_context,autoclass, on_android_platform
 from android_notify.internal.java_classes import PendingIntent,Intent
+# from utils.config_manager import ConfigManager
+
 
 def add_home_screen_widget(button=None):
     try:
+        # cm = ConfigManager()
+        # cm.set_on_wake_state(not cm.get_on_wake_state())
+        # return
         from android_widgets import get_package_name
 
         # Android classes

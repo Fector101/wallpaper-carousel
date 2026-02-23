@@ -16,9 +16,9 @@ class UIServiceListener:
     on_countdown_change = None
     on_stopped_all = None
 
-    def __init__(self):
+    def __init__(self,ui_port):
         self.dispatcher = None
-        self.UI_PORT = get_free_port()
+        self.UI_PORT = ui_port or get_free_port()
 
     def setup_dispatcher(self):
         self.dispatcher = dispatcher.Dispatcher()

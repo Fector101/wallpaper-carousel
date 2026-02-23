@@ -9,29 +9,32 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import androidx.core.app.NotificationCompat;
 
-import org.wally.waller.ServiceShorttask;
+import org.wally.waller.ServiceWallpapercarousel;
 
-public class TheReceiver extends BroadcastReceiver {
+public class BootReceiver extends BroadcastReceiver {
+
     @Override
     public void onReceive(Context context, Intent intent) {
-        String msg = intent.getStringExtra("message");
-        if (msg == null) msg = "No message";
-        Log.d("TheReceiver", "Broadcast received: " + msg);
+        if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
+            Log.d("BootReceiver", "Device rebooted");
 
-        try {
-            ServiceShorttask.start(context, msg);
-            Log.d("TheReceiver", "Shorttask service start requested");
-        } catch (Exception e) {
-            Log.e("TheReceiver", "Failed to start Shorttask", e);
+            try {
+                ServiceWallpapercarousel.start(context, "reboot");
+                Log.d("BootReceiver", "ServiceWallpapercarousel restart requested");
+            } catch (Exception e) {
+                Log.e("BootReceiver", "Failed to restart", e);
+            }
         }
+
+
 
         NotificationManager nm =
             (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        String channelId = "alarm_channel";
+        String channelId = "boot_channel";
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel =
-                new NotificationChannel(channelId, "Alarm Channel",
+                new NotificationChannel(channelId, "Boot Channel",
                                         NotificationManager.IMPORTANCE_DEFAULT);
             nm.createNotificationChannel(channel);
         }
@@ -39,8 +42,8 @@ public class TheReceiver extends BroadcastReceiver {
         NotificationCompat.Builder builder =
             new NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setContentTitle("Alarm Triggered")
-                .setContentText(msg)
+                .setContentTitle("Boot Triggered")
+                .setContentText("test for on restart")
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT);
 
         nm.notify((int) System.currentTimeMillis(), builder.build());

@@ -18,6 +18,9 @@ BUTTON_BG_LIGHT = []
 BUTTON_BG_DARK = [.2,.2,.2,1]
 
 
+THEME_COLOR_BRIGHT_COLOR = "#98F1DD"
+
+
 # For helper.py - constants.py should be in same folder as helper.py or this should be moved to helper.py because not really used anywhere else
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WALLPAPER_SERVICE_PATH = os.path.join( BASE_DIR, "android", "services", "wallpaper.py" )

@@ -1,4 +1,4 @@
-import traceback, logging
+import traceback, logging, os
 
 from kivy.uix.screenmanager import NoTransition
 from kivy.clock import Clock
@@ -18,7 +18,7 @@ from utils.model import get_app
 from utils.permissions import ask_permission_to_images
 from utils.image_operations import ImageOperation
 from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, DEV
-from utils.helper import Service, write_logs_to_file, get_free_port, Font
+from utils.helper import Service, write_logs_to_file, get_free_port, Font, appFolder
 from utils.android import is_device_on_light_mode
 from utils.ui_service_bridge import UIServiceListener, UIServiceMessenger
 
@@ -151,18 +151,34 @@ class WallpaperCarouselApp(MDApp):
         Clock.schedule_interval(lambda dt: self.monitor_dark_and_light_device_change(), 1)
 
     def setup_service(self):
-        self.service_port = get_free_port()
+        service = Service(name='Wallpapercarousel')
+        service_port = ui_port = None
+        if service.is_running():
+            # read ui and service port from .txt file
+            # TODO EMPTY FILES WHEN SERVICE ENDS
+            ui_port_store_path = os.path.join(appFolder(), "ui_port.txt")
+            service_port_store_path = os.path.join(appFolder(), "port.txt")
+
+            if os.path.exists(ui_port_store_path):
+                with open(ui_port_store_path,"r") as f:
+                    ui_port = f.read()
+            if os.path.exists(service_port_store_path):
+                with open(service_port_store_path,"r") as f:
+                    service_port = f.read()
+
+        self.service_port = service_port or get_free_port()
         self.ui_messenger_to_service = UIServiceMessenger(self.service_port)
         self.sm.settings_screen.ids.skip_upcoming_wallpaper_button.on_release = self.ui_messenger_to_service.change_next
         self.sm.settings_screen.ids.pause_home_screen_widget_loop_button.on_release = self.ui_messenger_to_service.toggle_home_screen_widget_changes
 
-        self.ui_service_listener = UIServiceListener()
+        self.ui_service_listener = UIServiceListener(ui_port)
         self.ui_service_listener.start()
         self.ui_service_listener.on_countdown_change = self.sm.settings_screen.update_label
         self.ui_service_listener.on_changed_homescreen_widget = self.sm.settings_screen.on_changed_homescreen_widget
         self.start_service()
 
     def start_service(self):
+
         Service(
             name='Wallpapercarousel',
             args_str={
@@ -170,7 +186,8 @@ class WallpaperCarouselApp(MDApp):
                 SERVICE_UI_PORT_ARGUMENT_KEY: self.ui_service_listener.UI_PORT,
             },
 
-        ).start()
+        )
+        start()
 
     def on_resume(self):
         if NotificationHandler.has_permission() and self.sm and self.sm.current == "welcome":

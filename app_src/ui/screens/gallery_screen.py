@@ -95,10 +95,15 @@ class MyMDGridLayout(MDGridLayout):
         self.height = 10
 
 
+class ScrollViewMainColumn(Column):
+    pass
+    # wallpapers_on_display = ListProperty()
+    
+    
 class DateGroupLayout(Column):
     batch = ListProperty()
     title = StringProperty("None")
-    old_schedule = ObjectProperty()
+    # scroll_view_main_column = ObjectProperty()
     is_collapsed = BooleanProperty(False)
 
     def __init__(self, **kwargs):
@@ -148,7 +153,7 @@ class DateGroupLayout(Column):
             adaptive_height=1,
             size_hint_x=1,
         )
-        header_content_color = (.65, .65, .76, 1)
+        header_content_color = (.65, .65, .65, 1)
         # header_content_color = (.8, .8, 1, 1)
 
         txt = MDLabel(
@@ -162,7 +167,7 @@ class DateGroupLayout(Column):
         )
 
         self.toggle_drop_btn = MDIconButton(
-            icon="triangle-down",
+            icon="triangle",
             theme_icon_color="Custom",
             icon_color=header_content_color,
             theme_font_size="Custom",
@@ -220,6 +225,7 @@ class DateGroupLayout(Column):
             thumbnailWidget.size_hint = (None, None)
             thumbnailWidget.size = (box_size, box_size)
             # self.image_elements.append(thumbnailWidget)
+            # self.scroll_view_main_column.wallpapers_on_display.append(thumbnailWidget)
             self.images_container.add_widget(thumbnailWidget)
 
         self.add_widget(self.images_container)
@@ -234,13 +240,13 @@ class DateGroupLayout(Column):
             self.images_container.height = self.images_container.minimum_height
             self.images_container.opacity = 1
             self.images_container.disabled = False
-            self.toggle_drop_btn.icon = "triangle-down"
+            self.toggle_drop_btn.icon = "triangle"
             self.is_collapsed = False
         else:
             self.images_container.height = 0
             self.images_container.opacity = 0
             self.images_container.disabled = True
-            self.toggle_drop_btn.icon = "triangle"
+            self.toggle_drop_btn.icon = "triangle-down"
             self.is_collapsed = True
 
 
@@ -339,13 +345,14 @@ class GalleryScreen(MyMDScreen):
                 "release_function": lambda p=path, idx=i: self.open_fullscreen_for_image(p, idx)
             })
 
-        self.ids.wallpapers_container.clear_widgets()
 
         sorted_groups = sorted(
             grouped.items(),
             key=lambda x: max(item["timestamp"] for item in x[1]),
             reverse=True
         )
+        self.ids.wallpapers_container.clear_widgets()
+        # self.ids.wallpapers_container.wallpapers_on_display = self.wallpapers # Used to keep track of current displaying images
         # print("hot reload thing")
         # sorted_groups=sorted_groups[::-1][:7]
         # print(sorted_groups)
@@ -359,7 +366,8 @@ class GalleryScreen(MyMDScreen):
             self.ids.wallpapers_container.add_widget(
                 DateGroupLayout(
                     batch=batch,
-                    title=group_title
+                    title=group_title,
+                    # scroll_view_main_column=self.ids.wallpapers_container
                 )
             )
 
@@ -400,7 +408,32 @@ class GalleryScreen(MyMDScreen):
             return []
         return [p for p in paths if p and os.path.exists(p)]
 
-    def load_current_tab_wallpapers(self):
+    def refresh_gallery_screen(self):
+        """
+        Used when coming from FullScreen to refresh displayed images.
+        :return:
+        """
+        # return
+        # if self.current_tab == "Day":
+        #     wallpapers = self._filter_existing_paths(self.myconfig.get_day_wallpapers())
+        # elif self.current_tab == "Noon":
+        #     wallpapers = self._filter_existing_paths(self.myconfig.get_noon_wallpapers())
+        # else:
+        #     wallpapers = self._filter_existing_paths(self.myconfig.get_wallpapers())
+        #
+        # scroll_view_main_column = self.ids.wallpapers_container
+        # wallpapers_on_display = scroll_view_main_column.wallpapers_on_display
+        #
+        # print("wallpapers",wallpapers)
+        # for each_img in wallpapers_on_display:
+        #     print(each_img.source_path)
+        #     if each_img.source_path not in wallpapers:
+        #         print("removed:",each_img.source_path)
+        #         wallpapers_on_display.remove(each_img)
+        #         each_img.parent.remove_widget(each_img)
+        #         # scroll_view_main_column.remove_widget(each_img)
+        #
+        # return
         if self.current_tab == "Day":
             self.load_day_wallpapers()
         elif self.current_tab == "Noon":
