@@ -21,7 +21,7 @@ from android_widgets import Layout, RemoteViews, AppWidgetManager
 
 from utils.logger import app_logger
 from utils.helper import change_wallpaper, appFolder, format_time_remaining
-from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY,DEFAULT_SERVICE_PORT, SERVICE_LIFESPAN_HOURS
+from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, DEFAULT_SERVICE_PORT, SERVICE_LIFESPAN_HOURS, DEFAULT_UI_PORT
 
 android_notify_logger.setLevel(logging.WARNING if on_android_platform() else logging.ERROR)
 app_logger.setLevel(logging.INFO)
@@ -59,7 +59,7 @@ class ReceivedData:
 
     @property
     def ui_port(self):
-        port = None
+        port = DEFAULT_UI_PORT
         if SERVICE_UI_PORT_ARGUMENT_KEY in self.data:
             port = self.data[SERVICE_UI_PORT_ARGUMENT_KEY]
         return port
@@ -213,6 +213,7 @@ class MyWallpaperReceiver:
             unregister_screen_receiver(receiver)
         except Exception as error_getting_screen_receiver:
             print("python error_getting_screen_receiver", error_getting_screen_receiver)
+
     def __start_main_loop(self):
         try:
             self.__server_thread=threading.Thread(target=self.heart, daemon=True)
@@ -249,7 +250,7 @@ class MyWallpaperReceiver:
 
         while self.live:
 
-            self.apply_next_wallpaper_data() # Get Upcoming
+            self.choseAndShowPreviewForNextWallpaper() # Get Upcoming
             self.__check_and_or_do_pause_for_on_wake()
             # Wait for a while
             self.__count_down()
@@ -304,7 +305,7 @@ class MyWallpaperReceiver:
         else:
             app_logger.error(f"Image - {wallpaper_path} does not exist, can't set notification preview")
 
-    def apply_next_wallpaper_data(self):
+    def choseAndShowPreviewForNextWallpaper(self):
         wallpaper = get_next_wallpaper()
         self.next_wallpaper_path = wallpaper[1]
         self.__set_next_img_in_notification(self.next_wallpaper_path)
@@ -324,7 +325,7 @@ class MyWallpaperReceiver:
         if my_config.get_on_wake_state():
             print("from java",args)
             self.apply_new_wallpaper()
-            self.apply_next_wallpaper_data()
+            self.choseAndShowPreviewForNextWallpaper()
 
     def start(self, data=None):
         # self.__start_main_loop()
@@ -353,6 +354,7 @@ class MyWallpaperReceiver:
         self.pause_event.set()
 
     def set_next_data(self, *_):
+        self.choseAndShowPreviewForNextWallpaper()
         # app_logger.info(f"next args: {args}")
         self.skip_now = True
         self.current_wait_seconds = 0
@@ -475,7 +477,8 @@ service = get_python_service()
 foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE_TYPE_SPECIAL_USE if on_android_platform() and BuildVersion.SDK_INT >= 30 else 0
 # foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE_TYPE_DATA_SYNC if on_android_platform() and BuildVersion.SDK_INT >= 30 else 0
 
-notification = Notification(title="Next in 02:00", name="from service")
+Notification.createChannel(id="service_channel",name="Carousel Service",description="For Controlling and Preview Next Wallpaper")
+notification = Notification(title="Next in 02:00", name="from service",channel_id="service_channel")
 # if foreground_type:
 #     notification.message=f"service lifespan: {SERVICE_LIFESPAN_HOURS}hrs"
 notification.setData({"next wallpaper path": "test.jpg", SERVICE_PORT_ARGUMENT_KEY: receivedData.service_port})

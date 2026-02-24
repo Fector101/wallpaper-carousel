@@ -161,10 +161,10 @@ class WallpaperCarouselApp(MDApp):
 
             if os.path.exists(ui_port_store_path):
                 with open(ui_port_store_path,"r") as f:
-                    ui_port = f.read()
+                    ui_port = toInt(f.read())
             if os.path.exists(service_port_store_path):
                 with open(service_port_store_path,"r") as f:
-                    service_port = f.read()
+                    service_port = toInt(f.read())
 
         self.service_port = service_port or get_free_port()
         self.ui_messenger_to_service = UIServiceMessenger(self.service_port)
@@ -186,8 +186,7 @@ class WallpaperCarouselApp(MDApp):
                 SERVICE_UI_PORT_ARGUMENT_KEY: self.ui_service_listener.UI_PORT,
             },
 
-        )
-        start()
+        ).start()
 
     def on_resume(self):
         if NotificationHandler.has_permission() and self.sm and self.sm.current == "welcome":
@@ -249,6 +248,15 @@ class WallpaperCarouselApp(MDApp):
         # self.device_theme = "light" #if self.device_theme == "dark" else "dark"
         # self.bottom_bar.color_tab_buttons(self.sm.current)
         return self.device_theme
+
+def toInt(text):
+    if not text:
+        return None
+    try:
+        return int(text)
+    except ValueError as error_changing_to_int:
+        print(error_changing_to_int)
+    return None
 
 if __name__ == '__main__':
     WallpaperCarouselApp().run()
