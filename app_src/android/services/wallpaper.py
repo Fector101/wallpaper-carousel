@@ -477,7 +477,7 @@ service = get_python_service()
 foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE_TYPE_SPECIAL_USE if on_android_platform() and BuildVersion.SDK_INT >= 30 else 0
 # foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE_TYPE_DATA_SYNC if on_android_platform() and BuildVersion.SDK_INT >= 30 else 0
 
-Notification.createChannel(id="service_channel",name="Carousel Service",description="For Controlling and Preview Next Wallpaper")
+Notification.createChannel(id="service_channel",name="Carousel Service",description="For Controlling and Previewing Next Wallpaper")
 notification = Notification(title="Next in 02:00", name="from service",channel_id="service_channel")
 # if foreground_type:
 #     notification.message=f"service lifespan: {SERVICE_LIFESPAN_HOURS}hrs"

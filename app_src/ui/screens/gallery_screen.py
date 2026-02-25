@@ -325,47 +325,40 @@ class GalleryScreen(MyMDScreen):
         #     print("error_testing_picker", error_testing_picker)
 
     def update_thumbnails_method(self,dt=None):
-        from collections import defaultdict
-
         self.ids.header_info_label.text = f"{len(self.wallpapers)} images found"
 
-        grouped = defaultdict(list)
+        self.wallpapers = sorted(
+            self.wallpapers,
+            key=lambda image_path: os.stat(image_path).st_mtime,
+            reverse=True # newest first
+        )
 
-        for i, path in enumerate(self.wallpapers):
-            if not path or not os.path.exists(path):
+        data_of_batch_dict_of_lists = {}
+
+        # group batches and use index's from self.wallpaper to appoint indexes from fullscreen widget
+        for index, each_image_path in enumerate(self.wallpapers):
+            if not each_image_path or not os.path.exists(each_image_path):
                 continue
+            date_label = format_file_date(each_image_path)
 
-            date_label = format_file_date(path)
-            thumb = get_or_create_thumbnail(path, dest_dir=self.wallpapers_dir)
+            if date_label not in data_of_batch_dict_of_lists:
+                data_of_batch_dict_of_lists[date_label] = []
 
-            grouped[date_label].append({
-                "timestamp": os.stat(path).st_mtime,
-                "thumbnail_path": str(thumb) if thumb else str(path),
-                "high_resolution_path": path,
-                "release_function": lambda p=path, idx=i: self.open_fullscreen_for_image(p, idx)
+            thumb = get_or_create_thumbnail(each_image_path, dest_dir=self.wallpapers_dir)
+
+            data_of_batch_dict_of_lists[date_label].append({
+                "thumbnail_path": str(thumb) if thumb else str(each_image_path),
+                "high_resolution_path": each_image_path,
+                "release_function": lambda p=each_image_path, idx=index: self.open_fullscreen_for_image(p, idx)
             })
 
-
-        sorted_groups = sorted(
-            grouped.items(),
-            key=lambda x: max(item["timestamp"] for item in x[1]),
-            reverse=True
-        )
         self.ids.wallpapers_container.clear_widgets()
-        # self.ids.wallpapers_container.wallpapers_on_display = self.wallpapers # Used to keep track of current displaying images
-        # print("hot reload thing")
-        # sorted_groups=sorted_groups[::-1][:7]
-        # print(sorted_groups)
-        for title, batch in sorted_groups:
-            # for e in batch:
-            #     print(e["thumbnail_path"])
-            batch.sort(key=lambda x: x["timestamp"], reverse=True)
 
-            group_title = f"{title}  |  {len(batch)} items"
-
+        for batch_title, list_of_sorted_paths_by_date in data_of_batch_dict_of_lists.items():
+            group_title = f"{batch_title}  |  {len(list_of_sorted_paths_by_date)} items"
             self.ids.wallpapers_container.add_widget(
                 DateGroupLayout(
-                    batch=batch,
+                    batch=list_of_sorted_paths_by_date,
                     title=group_title,
                     # scroll_view_main_column=self.ids.wallpapers_container
                 )

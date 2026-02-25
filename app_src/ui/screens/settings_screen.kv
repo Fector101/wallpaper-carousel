@@ -11,7 +11,10 @@
 <MyMDButton@MDButton>:
     theme_bg_color:"Custom"
 #    md_bg_color: TEXT_COLOR_PRIMARY_DARK if app.device_theme == "light" else  TEXT_COLOR_PRIMARY_LIGHT
+
     md_bg_color: TEXT_COLOR_PRIMARY_DARK if app.device_theme == "light" else BUTTON_BG_DARK
+#    md_bg_color: get_color_from_hex("#262C3A")
+#    text_color: get_color_from_hex("#98F1DD")
 
 
 
@@ -79,13 +82,14 @@
                         size_hint_y: .9
                         pos_hint:{"center_y":.5}
                         on_release: root.save_interval()
+                        md_bg_color: get_color_from_hex("#262C3A")
 
                         MDButtonText:
                             text: "Save"
                             size_hint_y: None
                             theme_text_color:"Custom"
                             height: dp(50)
-                            text_color: "black" if app.device_theme == "light" else "white"
+                            text_color: get_color_from_hex("#98F1DD")#"black" if app.device_theme == "light" else "white"
                             font_name: "RobotoMono"
 
 
@@ -118,6 +122,7 @@
                             size_hint_y: None
                             theme_text_color:"Custom"
                             height: dp(50)
+#                            text_color: self.color
                             text_color: "black" if app.device_theme == "light" else "white"
                     MyMDButton:
                         theme_bg_color:"Custom"
