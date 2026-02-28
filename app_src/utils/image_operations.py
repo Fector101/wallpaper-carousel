@@ -1,4 +1,4 @@
-import os
+import os, time
 import shutil
 import traceback
 from pathlib import Path
@@ -35,6 +35,7 @@ class ImageOperation:
             print("gotten files:",files,uris)
 
         self.intent = None
+        copy_time = time.time()  # Get current timestamp once for consistency
 
         for i, src in enumerate(files):
             # print(i,src,'i and src')
@@ -43,6 +44,8 @@ class ImageOperation:
             dest = self.unique(os.path.basename(src))
             try:
                 shutil.copy2(src, dest)
+                # Set the modification time to current time
+                os.utime(dest, (copy_time, copy_time))
             except PermissionError:
                 try:
                     if i < len(uris):
@@ -53,7 +56,7 @@ class ImageOperation:
                     print("error_using_java_copy: ", error_using_java_copy)
                     traceback.print_exc()
             except Exception as e:
-                print(f"Error copying file '{src}' to '{dest}': {e}")
+                print(f"Error copying file '{src}' to '{dest}', Error: {e}")
                 traceback.print_exc()
                 continue
             # generate low-res thumbnail for preview
@@ -214,6 +217,9 @@ def copy_image_to_internal(dest_name,uri):
     output_stream.flush()
     input_stream.close()
     output_stream.close()
+
+    current_time = time.time()
+    os.utime(dest_path, (current_time, current_time))
 
     return dest_path
 

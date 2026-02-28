@@ -1,61 +1,44 @@
-import traceback
+import os, time
+from datetime import datetime
 from pathlib import Path
 
+from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.metrics import dp, sp
-from kivy.properties import StringProperty, NumericProperty, ListProperty, ObjectProperty, BooleanProperty
+from kivy.properties import StringProperty, NumericProperty, ListProperty, BooleanProperty, ObjectProperty
 from kivy.uix.behaviors import ButtonBehavior
+from kivy.uix.button import Button
 from kivy.uix.image import AsyncImage
 from kivy.uix.recyclegridlayout import RecycleGridLayout
+from kivy.uix.tabbedpanel import TabbedPanel
+
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.button import MDIconButton, MDButton, MDButtonText
+from kivymd.uix.button import MDIconButton
+from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.label import MDLabel
 from kivymd.uix.relativelayout import MDRelativeLayout
-from kivy.clock import Clock
-from kivymd.uix.gridlayout import MDGridLayout
+
 from plyer import filechooser
 
-from ui.widgets.buttons import BottomButtonBar
+from utils.logger import app_logger
 from ui.widgets.layouts import MyMDScreen, Column  # used in .kv file
+from ui.widgets.buttons import BottomButtonBar
 from utils.config_manager import ConfigManager
 from utils.helper import appFolder, load_kv_file  # type
 from utils.image_operations import get_or_create_thumbnail
-from utils.logger import app_logger
-from utils.model import get_app
+from utils.model import get_app, GalleryTabs
 
 load_kv_file(py_file_absolute_path=__file__)
-from kivy.uix.tabbedpanel import TabbedPanel
-
-
-class MyMDRecycleGridLayout(RecycleGridLayout):
-    icon_active = StringProperty()
-    icon_inactive_color = StringProperty()
-    minimum_height = NumericProperty()
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-
-class MyTabbedPanel(TabbedPanel):
-    tab_height = dp(35)
-    tab_width = dp(80)
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._tab_strip.spacing = 20
-
 
 
 min_box_size = dp(80)
 spacing = dp(2)
 
-import os
-from datetime import datetime
-
 
 def format_file_date(path):
     if not os.path.exists(path):
+        app_logger.warning(f"File does not exist to get date format: {path}")
         return None
 
     timestamp = os.stat(path).st_mtime
@@ -75,12 +58,14 @@ def format_file_date(path):
 
 
 class Thumb(ButtonBehavior, AsyncImage):
-    source_path = StringProperty()
+    high_resolution_path = StringProperty()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.fit_mode = "cover"
         self.mipmap = True
+    # def remove_from_thumbnails_display(self):
+    #     self.parent.remove_widget(self)
 
 
 class MyMDGridLayout(MDGridLayout):
@@ -92,34 +77,35 @@ class MyMDGridLayout(MDGridLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.size_hint_y = None
-        self.height = 10
 
 
 class ScrollViewMainColumn(Column):
     pass
     # wallpapers_on_display = ListProperty()
-    
-    
+
+
 class DateGroupLayout(Column):
     batch = ListProperty()
     title = StringProperty("None")
     # scroll_view_main_column = ObjectProperty()
     is_collapsed = BooleanProperty(False)
 
+    images_container = ObjectProperty()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.rect = None
         self.spacing = dp(10)
-        self.padding = [dp(10),0,dp(20), dp(1)]
+        self.padding = [dp(10), 0, dp(20), dp(1)]
 
-        self.images_container = None
         self.toggle_drop_btn = None
         self.adaptive_height = 1
-        self.size_hint_x=1
+        self.size_hint_x = 1
 
         Clock.schedule_once(self.build_grid)
         self.image_elements = []
+
         # self.md_bg_color=[.1,1,.3,1]
+
     #
     # def fix_images_width(self, width):
     #     width = width - 20
@@ -145,7 +131,6 @@ class DateGroupLayout(Column):
     # def on_width(self, instance, value):
     #     # self.fix_images_width(value)
     #     print("parent on_width",value)
-
     def build_grid(self, *args):
         # print("build_grid")
         # return
@@ -206,7 +191,6 @@ class DateGroupLayout(Column):
         available_width = window_width_minus_padding - spacing
         # available_width = self.images_container.width - spacing
 
-
         cols = max(1, int(
             (available_width + spacing) // (min_box_size + spacing)
         ))
@@ -217,11 +201,19 @@ class DateGroupLayout(Column):
         self.images_container.cols = cols
 
         for each_data in self.batch:
-            thumbnailWidget = Thumb(
-                on_release=each_data["release_function"],
-                source_path=each_data["high_resolution_path"],
-                source=each_data["thumbnail_path"],
-            )
+            if isinstance(each_data, dict):
+                thumbnailWidget = Thumb(
+                    on_release=each_data["release_function"],
+                    high_resolution_path=each_data["high_resolution_path"],
+                    source=each_data["thumbnail_path"],
+                    # id=each_data["thumbnail_path"],
+                )
+            elif isinstance(each_data, Thumb):
+                thumbnailWidget = each_data
+                app_logger.debug(f"Found: {each_data}")
+            else:
+                app_logger.error(f"Error getting Thumb Class or Init Data, got: {each_data}")
+                return None
             thumbnailWidget.size_hint = (None, None)
             thumbnailWidget.size = (box_size, box_size)
             # self.image_elements.append(thumbnailWidget)
@@ -229,12 +221,43 @@ class DateGroupLayout(Column):
             self.images_container.add_widget(thumbnailWidget)
 
         self.add_widget(self.images_container)
-        line=MDBoxLayout(size_hint=[1,None],height=dp(0.5),md_bg_color=[.3,.3,.3,.8])
+        line = MDBoxLayout(size_hint=[1, None], height=dp(0.5), md_bg_color=[.3, .3, .3, .8])
 
         self.add_widget(line)
+        return None
 
+    def remove_wallpaper_from_badge_display(self, image_absolute_path):
+        images_container_widget = self.images_container
+        image_widget=None
+        for each_image_widget in list(images_container_widget.children):
+            if not isinstance(each_image_widget, Thumb):
+                app_logger.error(f"Error Getting only Thumb Class, got: {each_image_widget}")
+                continue
 
-    # TOGGLE LOGIC ADDED
+            if image_absolute_path == each_image_widget.high_resolution_path:
+                images_container_widget.remove_widget(each_image_widget)
+                image_widget = each_image_widget
+                break
+
+        if not images_container_widget.children:
+            print("remove from parent called")
+            if self.parent:
+                self.parent.remove_widget(self)
+        else:
+            count = len(images_container_widget.children)
+            batch_title = self.title.split("|")[0].strip()
+            self.title = f"{batch_title}  |  {count} item{'s' if count != 1 else ''}"
+
+        return image_widget
+
+    def add_wallpaper_to_badge_display(self, image_widget):
+        images_container_widget = self.images_container
+        print('parent',self.parent)
+        if not isinstance(image_widget, Thumb):
+            app_logger.error(f"Error Getting only Thumb Class, got: {image_widget}")
+            return
+        images_container_widget.add_widget(image_widget,index=0)
+
     def toggle_dropdown(self, *args):
         if self.is_collapsed:
             self.images_container.height = self.images_container.minimum_height
@@ -251,7 +274,8 @@ class DateGroupLayout(Column):
 
 
 class GalleryScreen(MyMDScreen):
-    current_tab = StringProperty("Both")
+    current_tab = StringProperty(GalleryTabs.BOTH.value)
+    wallpapers = ListProperty([])
 
     def __init__(self, **kwargs):
 
@@ -260,22 +284,38 @@ class GalleryScreen(MyMDScreen):
         # self.app.device_theme = "light"
         self.app.device_theme = "dark"
         self.name = "thumbs"
-        self.wallpapers = []
         self.app_dir = Path(appFolder())
         self.myconfig = ConfigManager()
         self.wallpapers_dir = self.app_dir / "wallpapers"
 
+        self.tab_instances = {}
         # print("hot reload stuff in gallery screen")
-        # self.bottom_bar = BottomButtonBar(
-        #     on_camera=None,
-        #     on_settings=None,
-        #     width=dp(120),
-        #     height=dp(500)
+        # # self.bottom_bar = BottomButtonBar(
+        # #     on_camera=None,
+        # #     on_settings=None,
+        # #     width=dp(120),
+        # #     height=dp(500),
+        # # )
+        # self.bottom_bar = Button(
+        #     on_release=self.dev1,
+        #     text="triangle",
+        #     size_hint=[None, None],
+        #     size=[100,100],
+        #     # theme_font_size="Custom",
+        #     # font_size="14sp",
+        #     pos_hint={"center_x": .5,"center_y": .5}
         # )
         #
         # self.add_widget(self.bottom_bar)
+        self.initialize_tabs()
         # self.load_saved()
-        #
+
+    def initialize_tabs(self):
+        self.generate_tab_widgets(tab_name=GalleryTabs.BOTH.value, wallpapers=self._filter_existing_paths(self.myconfig.get_wallpapers()))
+        self.generate_tab_widgets(tab_name=GalleryTabs.DAY.value, wallpapers=self._filter_existing_paths(self.myconfig.get_day_wallpapers()))
+        self.generate_tab_widgets(tab_name=GalleryTabs.NOON.value, wallpapers=self._filter_existing_paths(self.myconfig.get_noon_wallpapers()))
+        self.current_tab = GalleryTabs.BOTH.value
+        self.on_current_tab(None, self.current_tab)
 
     def open_file_chooser(self, *_):
         # file_operation = FileOperation(self.update_thumbnails_method)
@@ -324,13 +364,14 @@ class GalleryScreen(MyMDScreen):
         # except Exception as error_testing_picker:
         #     print("error_testing_picker", error_testing_picker)
 
-    def update_thumbnails_method(self,dt=None):
-        self.ids.header_info_label.text = f"{len(self.wallpapers)} images found"
+    def generate_tab_widgets(self, tab_name, wallpapers, dt=None):
+        self.wallpapers = wallpapers
+        tab_title = f"{len(self.wallpapers)} images found"
 
         self.wallpapers = sorted(
             self.wallpapers,
             key=lambda image_path: os.stat(image_path).st_mtime,
-            reverse=True # newest first
+            reverse=True  # newest first
         )
 
         data_of_batch_dict_of_lists = {}
@@ -349,39 +390,67 @@ class GalleryScreen(MyMDScreen):
             data_of_batch_dict_of_lists[date_label].append({
                 "thumbnail_path": str(thumb) if thumb else str(each_image_path),
                 "high_resolution_path": each_image_path,
-                "release_function": lambda p=each_image_path, idx=index: self.open_fullscreen_for_image(p, idx)
+                "release_function": lambda instance, p=each_image_path, idx=index: self.open_fullscreen_for_image(p, idx)
             })
 
-        self.ids.wallpapers_container.clear_widgets()
 
+        tab_container = Column(size_hint=[1,None])
+        tab_container.bind(minimum_height=tab_container.setter("height"))
+        self.tab_instances[tab_name] = {}
         for batch_title, list_of_sorted_paths_by_date in data_of_batch_dict_of_lists.items():
             group_title = f"{batch_title}  |  {len(list_of_sorted_paths_by_date)} items"
-            self.ids.wallpapers_container.add_widget(
-                DateGroupLayout(
+            date_batch_layout = DateGroupLayout(
                     batch=list_of_sorted_paths_by_date,
                     title=group_title,
-                    # scroll_view_main_column=self.ids.wallpapers_container
-                )
             )
+            self.tab_instances[tab_name][batch_title] = date_batch_layout
+            tab_container.add_widget(date_batch_layout)
+        # self.ids.wallpapers_container.add_widget(tab_container)
+        self.tab_instances[tab_name]["title"] = tab_title
+        self.tab_instances[tab_name]["wallpapers"] = self.wallpapers
+        self.tab_instances[tab_name]["widget"] = tab_container
 
+    def open_fullscreen_for_image(self, wallpaper_path = None, wallpaper_index = -1):
+        try:
 
-    def open_fullscreen_for_image(self, path, index):
+            index = self.wallpapers.index(wallpaper_path)
+        except Exception as error_getting_index:
+            print("self.wallpapers",self.wallpapers)
+            for each in self.wallpapers:
+                print(each)
+            app_logger.error(f"error_getting_index: {error_getting_index}")
+
+            return
         self.manager.open_image_in_full_screen(index)
 
+    def on_current_tab(self,widget, tab_name):
+        scrollView_container = self.ids.wallpapers_container
+        tab_data = self.tab_instances[tab_name]
+
+        scrollView_container.clear_widgets()
+
+        self.ids.header_info_label.text = tab_data["title"]
+        scrollView_container.add_widget(tab_data["widget"])
+        self.wallpapers = tab_data["wallpapers"]
+
     def load_day_wallpapers(self):
-        self.current_tab = "Day"
-        wallpapers = self.myconfig.get_day_wallpapers()
-        self.wallpapers = self._filter_existing_paths(wallpapers)
-        self.update_thumbnails_method()
+        self.current_tab = GalleryTabs.DAY.value
+
+        # wallpapers = self.myconfig.get_day_wallpapers()
+        # self.wallpapers = self._filter_existing_paths(wallpapers)
+        # self.update_thumbnails_method()
 
     def load_noon_wallpapers(self):
-        self.current_tab = "Noon"
-        wallpapers = self.myconfig.get_noon_wallpapers()
-        self.wallpapers = self._filter_existing_paths(wallpapers)
-        self.update_thumbnails_method()
+        self.current_tab = GalleryTabs.NOON.value
+
+
+        # wallpapers = self.myconfig.get_noon_wallpapers()
+        # self.wallpapers = self._filter_existing_paths(wallpapers)
+        # self.update_thumbnails_method()
 
     def load_saved(self):
-        self.current_tab = "Both"
+        self.current_tab = GalleryTabs.BOTH.value
+        # ---------------------------------
         # peek = [str(p) for p in self.wallpapers_dir.glob("*") if True]
         # print("Peek:", peek,self.wallpapers_dir)
 
@@ -390,9 +459,10 @@ class GalleryScreen(MyMDScreen):
         #     if p.suffix.lower() in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"]
         # ]
         # print("Loaded wallpapers:", len(self.wallpapers))
-        wallpapers = self.myconfig.get_wallpapers()
-        self.wallpapers = self._filter_existing_paths(wallpapers)
-        Clock.schedule_once(self.update_thumbnails_method)
+        # -------------------------------
+        # wallpapers = self.myconfig.get_wallpapers()
+        # self.wallpapers = self._filter_existing_paths(wallpapers)
+        # Clock.schedule_once(self.update_thumbnails_method)
 
     @staticmethod
     def _filter_existing_paths(paths):
@@ -419,20 +489,90 @@ class GalleryScreen(MyMDScreen):
         #
         # print("wallpapers",wallpapers)
         # for each_img in wallpapers_on_display:
-        #     print(each_img.source_path)
-        #     if each_img.source_path not in wallpapers:
-        #         print("removed:",each_img.source_path)
+        #     print(each_img.high_resolution_path)
+        #     if each_img.high_resolution_path not in wallpapers:
+        #         print("removed:",each_img.high_resolution_path)
         #         wallpapers_on_display.remove(each_img)
         #         each_img.parent.remove_widget(each_img)
         #         # scroll_view_main_column.remove_widget(each_img)
         #
         # return
-        if self.current_tab == "Day":
+        if self.current_tab == GalleryTabs.DAY.value:
             self.load_day_wallpapers()
-        elif self.current_tab == "Noon":
+        elif self.current_tab == GalleryTabs.NOON.value:
             self.load_noon_wallpapers()
         else:
             self.load_saved()
+
+    def remove_wallpaper_from_thumbnails(self, wallpaper_path, tab=None):
+        available_tab_key = tab or self.current_tab
+        batch_title = format_file_date(wallpaper_path)
+        a_tab_data = self.tab_instances.get(available_tab_key)
+
+        if not a_tab_data or not isinstance(a_tab_data, dict):
+            app_logger.error(f"Error getting tab Dict to remove item from thumbnails: {a_tab_data}")
+            return None
+
+        # Properly remove from the tab's wallpaper list
+        if wallpaper_path in a_tab_data["wallpapers"]:
+            a_tab_data["wallpapers"].remove(wallpaper_path)
+            if available_tab_key == self.current_tab:
+                # Refresh UI element bound to self.wallpapers
+                self.on_wallpapers(self, self.wallpapers)
+
+        a_batch_in_a_tab = a_tab_data.get(batch_title)
+        widget = None
+        if isinstance(a_batch_in_a_tab, DateGroupLayout):
+            widget = a_batch_in_a_tab.remove_wallpaper_from_badge_display(wallpaper_path)
+
+            if not a_batch_in_a_tab.images_container.children:
+                app_logger.info(f"Deleted empty DateGroupLayout from: {available_tab_key}")
+                del a_tab_data[batch_title]
+
+        return widget
+
+    def add_wallpaper_to_thumbnails(self, image_widget, tab=None):
+        if not image_widget:
+            return None
+
+        wallpaper_path = image_widget.high_resolution_path
+        try:
+            current_time = time.time()
+            os.utime(wallpaper_path, (current_time, current_time))
+        except Exception as error_changing_timestamp:
+            app_logger.error(f"Error Changing Time Stamp For - {wallpaper_path}, Error: {error_changing_timestamp}")
+
+        available_tab_key = tab or self.current_tab
+        a_tab_data = self.tab_instances.get(available_tab_key)
+
+        if not a_tab_data or not isinstance(a_tab_data, dict):
+            app_logger.error(f"Error getting tab Dict to add item to thumbnails: {a_tab_data}")
+            return None
+
+        batch_title = "Today"
+        date_batch_layout = a_tab_data.get(batch_title)
+
+        if isinstance(date_batch_layout, DateGroupLayout):
+            date_batch_layout.add_wallpaper_to_badge_display(image_widget)
+        else:
+            date_batch_layout = DateGroupLayout(
+                batch=[image_widget],
+                title=f"{batch_title}  |  1 item"
+            )
+            a_tab_data[batch_title] = date_batch_layout
+            a_tab_data["widget"].add_widget(date_batch_layout, index=0)
+
+        if wallpaper_path not in a_tab_data["wallpapers"]:
+            a_tab_data["wallpapers"].insert(0, wallpaper_path)
+            if available_tab_key == self.current_tab:
+                self.on_wallpapers(self, self.wallpapers)
+
+        return None
+
+    def on_wallpapers(self, widget, value):
+        size = len(self.wallpapers)
+        txt = "image" if size == 1 else "images"
+        self.ids.header_info_label.text = f"{size} {txt} found"
 
 
 if __name__ == "__main__":

@@ -94,10 +94,11 @@ class MyScreenManager(MDScreenManager):
         self.current = "thumbs"
 
     def open_image_in_full_screen(self, index):
-        self.full_screen.update_images()
-        self.full_screen.carousel.index = index
         self.transition = NoTransition()
         self.current = "fullscreen"
+        self.full_screen.update_images(index)
+        self.full_screen.carousel.index = index
+        # print("done....")
 
 
 class WallpaperCarouselApp(MDApp):
@@ -120,7 +121,7 @@ class WallpaperCarouselApp(MDApp):
 
         # ScreenManager
         self.sm = MyScreenManager()
-        self.sm.gallery_screen.load_saved()
+        # self.sm.gallery_screen.load_saved()
         self.root_layout.add_widget(self.sm)
 
         # Add global BottomButtonBar
@@ -134,7 +135,7 @@ class WallpaperCarouselApp(MDApp):
         if not NotificationHandler.has_permission():
             self.sm.current = "welcome"
 
-        self.file_operation = ImageOperation(self.sm.gallery_screen.load_saved)
+        self.file_operation = ImageOperation(self.sm.gallery_screen.initialize_tabs)
         self.bind_plyer_fix()
         return self.root_layout
 

@@ -1,6 +1,7 @@
 from android_notify.config import on_android_platform, autoclass
+from kivy.clock import Clock
 from kivy.metrics import dp
-from kivy.properties import ListProperty, DictProperty
+from kivy.properties import ListProperty, DictProperty, NumericProperty
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivy.uix.popup import Popup
 from kivymd.uix.label import MDLabel
@@ -8,6 +9,10 @@ from kivymd.uix.relativelayout import MDRelativeLayout
 
 from kivymd.uix.screen import MDScreen
 from kivy.graphics import Color, Line
+from kivy.core.window import Window
+
+# Add this before creating your main widget or in your build method
+Window.softinput_mode = 'below_target' # or 'pan'
 
 
 class Row(MDBoxLayout):
@@ -75,15 +80,14 @@ class MyPopUp(Popup):
         ])
 
     def add_widget(self, widget, *args, **kwargs):
-        print(999,widget, *args, **kwargs)
+        # print(999,widget, *args, **kwargs)
         super().add_widget(widget, *args, **kwargs)
+
     def adjust_height(self,widget,height):
         self.height = dp(height) + dp(56)#sp(self.popup_title_label.height)
 
 
-from kivy.core.window import Window
 from kivy.properties import ObjectProperty
-from kivymd.uix.floatlayout import MDFloatLayout
 
 
 def get_dimensions():
@@ -140,36 +144,90 @@ class MyMDScreen(MDScreen):
     navigation_buttons_box = ObjectProperty()
     screen_content = ObjectProperty()
 
+    status_bar_height = NumericProperty(0)
+    nav_bar_height = NumericProperty(0)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
+        # Window.bind(width=self.thing, height=self.thing, on_resize=self.thing,on_keyboard=self.thing,on_move=self.thing)
+        # Clock.schedule_interval(self.thing, 3)
+        # self.md_bg_color = [1, 1, 0, 1]
     def add_widget(self, widget, *args, **kwargs):
-        status_bar_height = 0
-        nav_bar_height = 0
+        # self.nav_bar_height = self.status_bar_height = 50
+        # self.md_bg_color=[1,1,0,1]
 
         if on_android_platform():
             dimensions = get_dimensions()
-            status_bar_height = dimensions[0]
-            nav_bar_height = dimensions[1]
+            self.status_bar_height = dimensions[0]
+            self.nav_bar_height = dimensions[1]
 
         if self.status_bar_box is None:
-            self.status_bar_box = MDBoxLayout(size_hint=[1, None], height=status_bar_height, md_bg_color=[26/255, 27/255, 27/255, 1],
+            self.status_bar_box = MDBoxLayout(size_hint=[1, None], height=self.status_bar_height,
+                                              md_bg_color=[26/255, 27/255, 27/255, 1],
+                                              # md_bg_color=[0,0,1, 1],
                                               pos_hint={"top": 1})
             super().add_widget(self.status_bar_box)
 
         if self.screen_content is None:
             # MDFloatLayout
             self.screen_content = MDRelativeLayout(size_hint=[1, None],
-                                                height=Window.height - (status_bar_height + nav_bar_height),
-                                                md_bg_color=[0, 0, 0, 0])
+                                                   # pos_hint={"top": 1},
+                                                height=Window.height - (self.status_bar_height + self.nav_bar_height),
+                                                md_bg_color=[1, 0, 0, 0],
+                                                # md_bg_color=[1, 0, 0, 1]
+                                                   )
             self.screen_content.orientation = "vertical"
-            self.screen_content.y = nav_bar_height
+            self.screen_content.y = self.nav_bar_height
             super().add_widget(self.screen_content)
 
         if self.navigation_buttons_box is None:
-            self.navigation_buttons_box = MDBoxLayout(size_hint=[1, None], height=nav_bar_height,
-                                                      md_bg_color=[26/255, 27/255, 27/255, 1])
+            self.navigation_buttons_box = MDBoxLayout(size_hint=[1, None], height=self.nav_bar_height,
+                                                      # md_bg_color=[0,1,0, 1]
+                                                      md_bg_color=[26/255, 27/255, 27/255, 1]
+                                                      )
             super().add_widget(self.navigation_buttons_box)
 
         if self.screen_content:
             self.screen_content.add_widget(widget, *args, **kwargs)
+
+        print(self.status_bar_height, self.nav_bar_height)
+
+    def on_size(self, *args):
+        height = Window.height - (self.status_bar_height + self.nav_bar_height)
+        if self.screen_content:
+            self.screen_content.height = height
+
+
+    def thing(self, *args):
+        print("for Window bind",args)
+        print(f"""
+Window.width: {Window.width}
+Window.height: {Window.height}
+pos: {self.pos}
+size: {self.size}
+top: {Window.top}
+{self.status_bar_height}
+        """)
+        if self.status_bar_height:
+            print(self.status_bar_height.pos)
+
+# NOTE this from kivymd.uix.button import MDButton has line color feature
+# Still Useful for Element with No Button Behaviour
+
+class BorderMDRelativeLayout(MDRelativeLayout):
+    line_color = ListProperty([1, 0, 0, 1])
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        with self.canvas.after:
+            self.bg_color_instr = Color(*self.line_color)
+            self.border = Line(width=1, rounded_rectangle=self.round_rect_args)
+        self.bind(pos=self.update_border, size=self.update_border)
+
+    @property
+    def round_rect_args(self):
+        return self.x, self.y, self.width, self.height, self.radius[0]
+
+    def update_border(self, *_):
+        self.border.rounded_rectangle = self.round_rect_args  # (self.x,self.y,self.width,self.height,16)
+
+

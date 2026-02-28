@@ -194,6 +194,7 @@ class MyWallpaperReceiver:
         self.next_wallpaper_path = ''
         self.current_sleep = 1
         self.current_wait_seconds = get_interval()
+        self.pause_event = None
         # self.service_start_time = time.time()
         self.__start_main_loop()
         self.changes = 0
@@ -266,7 +267,6 @@ class MyWallpaperReceiver:
         if truth:
             notification.updateTitle("OnNext Wake")
             self.pause_event.clear()
-
 
     def __write_wallpaper_path_to_file(self, wallpaper_path):
         # Writing for Java to see for home screen widget
@@ -353,12 +353,15 @@ class MyWallpaperReceiver:
     def resume(self, _=None):
         self.pause_event.set()
 
-    def set_next_data(self, *_):
-        self.choseAndShowPreviewForNextWallpaper()
-        # app_logger.info(f"next args: {args}")
+    def receiveClientChangeNext(self, *_):
+        if my_config.get_on_wake_state():
+            # Only Change Next Wallpaper and Not Clear Loops that results to choosing new Wallpaper
+            self.choseAndShowPreviewForNextWallpaper()
+            return None
+        # app_logger.info(f"set_next_data args: {_}")
         self.skip_now = True
         self.current_wait_seconds = 0
-
+        return None
     def toggle_home_screen_widget_changes(self, *_):
         self.is_home_screen_widget_changes_paused = not self.is_home_screen_widget_changes_paused
 
@@ -496,7 +499,7 @@ myDispatcher = dispatcher.Dispatcher()
 myDispatcher.map("/start", myWallpaperReceiver.start)
 myDispatcher.map("/pause", myWallpaperReceiver.pause)
 myDispatcher.map("/resume", myWallpaperReceiver.resume)
-myDispatcher.map("/change-next", myWallpaperReceiver.set_next_data)
+myDispatcher.map("/change-next", myWallpaperReceiver.receiveClientChangeNext)
 myDispatcher.map("/stop", myWallpaperReceiver.stop)
 myDispatcher.map("/set-wallpaper", myWallpaperReceiver.set_wallpaper)
 myDispatcher.map("/toggle_home_screen_widget_changes", myWallpaperReceiver.toggle_home_screen_widget_changes)
@@ -517,13 +520,13 @@ except Exception as e:
     # Avoiding process is bad java.lang.SecurityException
 finally:
     print('service python: The end...')
-    ui_port_store_path = os.path.join(appFolder(), "ui_port.txt")
-    service_port_store_path = os.path.join(appFolder(), "port.txt")
+    ui_port_store_path_ = os.path.join(appFolder(), "ui_port.txt")
+    service_port_store_path_ = os.path.join(appFolder(), "port.txt")
 
-    with open(ui_port_store_path, "w") as f:
-        f.write("")
-    with open(service_port_store_path, "w") as f:
-        f.write("")
+    with open(ui_port_store_path_, "w") as f_:
+        f_.write("")
+    with open(service_port_store_path_, "w") as f__:
+        f__.write("")
 
 
 # | Method    | Meaning                         |

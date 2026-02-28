@@ -72,7 +72,7 @@ class MDLive(App,MDApp):
 
         print("Inside Build App Auto Reload")
         # return Factory.MyPopUp()
-        return Factory.SettingsScreen()
+        return Factory.GalleryScreen()
 
     def on_start(self):
         # self.theme_cls.theme_style = "Light"

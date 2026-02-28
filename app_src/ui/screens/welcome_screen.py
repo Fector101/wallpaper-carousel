@@ -22,7 +22,6 @@ from ui.widgets.layouts import MyMDScreen
 from ui.widgets.buttons import MyRoundButton
 from ui.widgets.android import toast
 from utils.helper import load_kv_file, appFolder
-from kivy.graphics import Color, Line
 
 from utils.model import get_app
 
@@ -89,23 +88,6 @@ class MyLabel(MDLabel):
     #     # self.adaptive_size= True
     #     self.md_bg_color= [1, 0, 0, 1]
     #     self.bg_color= [1, 0, 0, 1]
-
-class BorderMDBoxLayout(MDBoxLayout):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-        with self.canvas.after:
-            c = 1
-            self.bg_color_instr = Color(c, 0, c, .8)
-            self.border = Line(width=1, rounded_rectangle=self.round_rect_args)
-        self.bind(pos=self.update_border, size=self.update_border)
-
-    @property
-    def round_rect_args(self):
-        return self.x, self.y, self.width, self.height, self.radius[0]
-
-    def update_border(self, *_):
-        self.border.rounded_rectangle = self.round_rect_args  # (self.x,self.y,self.width,self.height,16)
 
 
 class NotificationRequestLayout(MDGridLayout):

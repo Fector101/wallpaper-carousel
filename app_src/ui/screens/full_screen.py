@@ -22,8 +22,9 @@ from utils.image_operations import thumbnail_path_for, get_image_info
 from utils.helper import appFolder, change_wallpaper
 from utils.config_manager import ConfigManager
 from utils.constants import DEV
-from utils.model import get_app
+from utils.model import get_app, GalleryTabs
 from kivy.loader import  Loader
+from utils.logger import app_logger
 
 
 my_config=ConfigManager()
@@ -50,16 +51,6 @@ class BorderMDBoxLayout(MDBoxLayout):
 class MyCarousel(Carousel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-    #     r = 25
-    #
-    #     with self.canvas.before:
-    #         self.bg_color_instr = Color([1,1,0,0.1])
-    #         self.rect = RoundedRectangle(radius=[r, r, r, r])
-    #     self.bind(size=self.update_rect, pos=self.update_rect)
-    #
-    # def update_rect(self, *args):
-    #         self.rect.size = self.size
-    #         self.rect.pos = self.pos
 
 def format_size(bytes_size):
     """
@@ -78,6 +69,7 @@ class MyMDIconButton(MDIconButton):
         self.theme_text_color = 'Custom'
         self.text_color = 'white'
 
+
 class PictureButton(ButtonBehavior,MDRelativeLayout):
     app_src = ''#'/home/fabian/Documents/Laner/mobile/app_src/'
     images = [app_src+"assets/icons/t.png",app_src+"assets/icons/moon.png",app_src+"assets/icons/sun.png"]#ListProperty([])
@@ -87,6 +79,7 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
     fullscreen = ObjectProperty()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.app = get_app()
         self.img = AsyncImage()
         self.img.mipmap=True
         self.i = 0
@@ -101,39 +94,85 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
         self.img.size=[dp(self.img_sizes[self.i]),dp(self.img_sizes[self.i])]
 
         self.add_widget(self.img)
+
+    def get_tab_from_index(self,index):
+        tab_name = None
+        if self.images[index] == self.images[0]:  # Both Day and Night
+            tab_name = GalleryTabs.BOTH.value
+        elif self.images[index] == self.images[1]:  # Only Noon
+            tab_name = GalleryTabs.NOON.value
+        elif self.images[index] == self.images[2]:  # Only Day
+            tab_name = GalleryTabs.DAY.value
+
+        return tab_name
+
     def on_release(self):
+        current_image = self.fullscreen.current_image
+        gallery_screen = self.app.sm.gallery_screen
+        old_tab = self.get_tab_from_index(self.i)
         self.i = self.i + 1 if self.i < len(self.images) - 1 else 0
+        new_tab = self.get_tab_from_index(self.i)
+
         self.img.source = self.images[self.i]
         self.img.size=[dp(self.img_sizes[self.i]),dp(self.img_sizes[self.i])]
 
-        current_image = self.fullscreen.current_image
-        # Both Day and Night
-        if self.images[self.i] == self.images[0]:
+        self.__change_tab_from_wallpaper_storage(current_image=current_image,old_tab=old_tab,new_tab=new_tab)
+
+        # try:
+        #     gallery_screen.wallpapers.remove(current_image)
+        # except ValueError as error_removing_path_from_wallpapers_list:
+        #     app_logger.error(f"error_removing_path_from_wallpapers_list: {error_removing_path_from_wallpapers_list}")
+        try:
+            image_widget = gallery_screen.remove_wallpaper_from_thumbnails(wallpaper_path=current_image,tab=old_tab)
+        except Exception as error_finding_widget:
+            app_logger.error(f"Error Finding Widget KeyError: {error_finding_widget}")
+            return None
+
+        if not image_widget:
+            app_logger.error(f"Error finding Thumb Widget to remove and reuse for another, image_widget: {image_widget}")
+            return None
+
+        gallery_screen.add_wallpaper_to_thumbnails(image_widget=image_widget,tab=new_tab)
+        
+        # Make sure that we handle carousel UI update if we just moved an image out of current tab
+        if old_tab == gallery_screen.current_tab:
+            # Reconstruct the UI list or go to next index
+            self.fullscreen.update_images()
+        
+        return None
+
+    @staticmethod
+    def __change_tab_from_wallpaper_storage(current_image,old_tab,new_tab):
+        """Moves Wallpaper Path to Right Tab in Storage"""
+        if old_tab == GalleryTabs.DAY.value:
+            my_config.remove_wallpaper_to_from("day_wallpapers", current_image)
+        elif old_tab == GalleryTabs.NOON.value:
+            my_config.remove_wallpaper_to_from("noon_wallpapers", current_image)
+        elif old_tab == GalleryTabs.BOTH.value:
+            my_config.remove_wallpaper(current_image)
+
+        if new_tab == GalleryTabs.BOTH.value:
             my_config.add_wallpaper(current_image)
-            my_config.remove_wallpaper_to_from("noon_wallpapers", current_image)
-            my_config.remove_wallpaper_to_from("day_wallpapers", current_image)
-
-        # Only Night
-        if self.images[self.i] == self.images[1]:
+        elif new_tab == GalleryTabs.NOON.value:
             my_config.add_wallpaper_to_noon_wallpapers(current_image)
-            my_config.remove_wallpaper_to_from("day_wallpapers", current_image)
-            my_config.remove_wallpaper(current_image)
-
-        # Only Day
-        if self.images[self.i] == self.images[2]:
+        elif new_tab == GalleryTabs.DAY.value:
             my_config.add_wallpaper_to_day_wallpapers(current_image)
-            my_config.remove_wallpaper_to_from("noon_wallpapers", current_image)
-            my_config.remove_wallpaper(current_image)
+
 
     def set_day_image(self):
+        print("set_day_image")
+        self.i = 0
         self.i = 2
         self.img.source = self.images[self.i]
         self.img.size = [dp(self.img_sizes[self.i]), dp(self.img_sizes[self.i])]
     def set_noon_image(self):
+        print("set_noon_image")
+        self.i = 0
         self.i = 1
         self.img.source = self.images[self.i]
         self.img.size = [dp(self.img_sizes[self.i]), dp(self.img_sizes[self.i])]
     def set_day_nd_noon_image(self):
+        print("set_day_nd_noon_image")
         self.i = 0
         self.img.source = self.images[self.i]
         self.img.size = [dp(self.img_sizes[self.i]), dp(self.img_sizes[self.i])]
@@ -144,6 +183,7 @@ class FullscreenScreen(MyMDScreen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.carousel_has_images = None
         self.app = get_app()
         self.clock_for_higher_format = None
         self.clock_for_side_by_side = None
@@ -198,7 +238,7 @@ class FullscreenScreen(MyMDScreen):
         self.carousel = MyCarousel(direction="right", loop=True,
                                    size_hint=self.original_carousel_size_hint,
                                    pos_hint=self.original_carousel_pos_hint)
-        self.carousel.bind(index=self.on_current_slide)
+        # self.carousel.bind(index=self.on_index)
 
         self.btm_btn_layout_root = MDRelativeLayout(
             size_hint=(1, self.bottom_height),
@@ -331,41 +371,35 @@ class FullscreenScreen(MyMDScreen):
             return
 
         idx = self.carousel.index
-        path = wallpapers.pop(idx)
+        # Get path without removing it from the list directly
+        path = wallpapers[idx]
+
+        # remove_wallpaper_from_thumbnails edits the underlying list for us
+        gallery_screen.remove_wallpaper_from_thumbnails(path)
 
         if path and os.path.exists(path):
-            # if self.app.sm.gallery_screen.current_tab not in ["Day", "Noon"]:
             os.remove(path)
-            # remove its low-res thumbnail (if exists)
             try:
                 thumb = Path(path).parent / "thumbs" / f"{Path(path).stem}_thumb.jpg"
                 if thumb.exists():
                     thumb.unlink()
             except Exception as error_deleting_image:
                 print(f"Error deleting image: {error_deleting_image}")
-                pass
 
-        if self.app.sm.gallery_screen.current_tab == "Both":
+        current_tab = self.app.sm.gallery_screen.current_tab
+        if current_tab == GalleryTabs.BOTH.value:
             my_config.remove_wallpaper(path)
-            # my_config.remove_wallpaper_to_from("day_wallpapers", path)
-            # my_config.remove_wallpaper_to_from("noon_wallpapers", path)
-
-
-        if self.app.sm.gallery_screen.current_tab == "Day":
+        elif current_tab == GalleryTabs.DAY.value:
             my_config.remove_wallpaper_to_from("day_wallpapers",path)
-
-
-        if self.app.sm.gallery_screen.current_tab == "Noon":
+        elif current_tab == GalleryTabs.NOON.value:
             my_config.remove_wallpaper_to_from("noon_wallpapers", path)
 
-        if not wallpapers:
-            gallery_screen.update_thumbnails_method()
+        if not gallery_screen.wallpapers:
             self.manager.current = "thumbs"
             return
-        gallery_screen.wallpapers=wallpapers
-        gallery_screen.update_thumbnails_method()
+            
         self.update_images()
-        self.carousel.index = max(0, min(idx, len(wallpapers) - 1))
+        self.carousel.index = max(0, min(idx, len(gallery_screen.wallpapers) - 1))
 
     # ====================================================================
     #               IMAGE INFO POPUP
@@ -387,10 +421,14 @@ class FullscreenScreen(MyMDScreen):
         )
         popup.open()
 
-    def update_images(self):
+    def update_images(self,index=None):
         """Rebuild carousel anytime wallpapers change."""
+        self.carousel.unbind(current_slide=self.on_index)
+        self.carousel_has_images = False
         gallery_screen = self.manager.gallery_screen
         self.carousel.clear_widgets()
+        # print("cleared widgets")
+        # return
 
         # for hot_reload
         # self.data = ["/home/fabian/Downloads/home screen.png",
@@ -409,7 +447,14 @@ class FullscreenScreen(MyMDScreen):
                 # on_load=self.set_side_by_side1
             )
             img.higher_format = p
+            self.carousel_has_images = True
             self.carousel.add_widget(img)
+        self.carousel.bind(current_slide=self.on_index)
+        # print("added widgets")
+
+        if index == 0:
+            # Setting data when entering Carousel From first slide because self.carousel.bind(current_slide=self.on_index) isn't called
+            self.on_index(self.carousel,0)
 
     def update_header_texts(self,image_path):
         self.header_title.text = os.path.basename(image_path)
@@ -419,6 +464,7 @@ class FullscreenScreen(MyMDScreen):
         day_images = my_config.get_day_wallpapers()
         noon_images = my_config.get_noon_wallpapers()
 
+        print("image_path:", image_path)
         if image_path in day_images:
             self.day_noon_both_button.set_day_image()
         elif image_path in noon_images:
@@ -426,16 +472,24 @@ class FullscreenScreen(MyMDScreen):
         else:
             self.day_noon_both_button.set_day_nd_noon_image()
 
-    def on_current_slide(self, carousel, index): # type: ignore
+    def on_index(self, carousel, index): # type: ignore
+        # print("self.carousel_has_images",self.carousel_has_images)
+        if not self.carousel_has_images or not carousel.current_slide: # From self.carousel.clear_widgets() changes current_slide Carousel.clear_widgets.remove_widget
+            return None
+
+        current_slide = carousel.current_slide
+
         if hasattr(self.carousel.current_slide,"higher_format"):
             self.current_image = self.carousel.current_slide.higher_format
-        current_slide = self.carousel.current_slide
+        # print('there',self.carousel.current_slide.higher_format, current_slide.higher_format, self.clock_for_side_by_side,self.clock_for_higher_format)
+
         if self.clock_for_side_by_side:
             self.clock_for_side_by_side.cancel()
+            self.clock_for_side_by_side = None
         if self.clock_for_higher_format:
             self.clock_for_higher_format.cancel()
-        if not current_slide:
-            return None
+            self.clock_for_higher_format = None
+
         def change_img(_):
             current_slide.source = str(current_slide.higher_format)
 
@@ -443,30 +497,6 @@ class FullscreenScreen(MyMDScreen):
         self.clock_for_higher_format = Clock.schedule_once(change_img, 1)
         self.clock_for_side_by_side = Clock.schedule_once(self.set_side_by_side, 1.5)
         return None
-    #
-    # def set_side_by_side1(self, widget):
-    #     if os.path.basename(widget.source) != os.path.basename(self.carousel.current_slide.source):
-    #         return None
-    #     print(os.path.basename(widget.source), "on load:", os.path.basename(self.carousel.current_slide.source))
-    #     current_slide_index = self.carousel.index
-    #     first_img = self.carousel.slides[0]
-    #     last_img = self.carousel.slides[-1]
-    #
-    #     left_side_img = self.carousel.slides[current_slide_index - 1] if current_slide_index - 1 >= 0 else last_img
-    #     right_side_img = self.carousel.slides[current_slide_index + 1] if current_slide_index + 1 < len(
-    #         self.carousel.slides) else first_img
-    #
-    #     print("left_side_img source:", os.path.basename(left_side_img.source), "left_side_img hf:",
-    #           os.path.basename(left_side_img.higher_format))
-    #     if left_side_img:
-    #         if left_side_img.source != str(left_side_img.higher_format):
-    #             print('left...')
-    #             left_side_img.source = str(left_side_img.higher_format)
-    #     if right_side_img:
-    #         if right_side_img.source != str(right_side_img.higher_format):
-    #             print('right...')
-    #             right_side_img.source = str(right_side_img.higher_format)
-    #     return None
 
     def set_side_by_side(self, *_):
         """

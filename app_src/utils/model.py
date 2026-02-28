@@ -67,3 +67,16 @@ class WallpaperCarouselAppModel:
 
 def get_app() -> WallpaperCarouselAppModel:
     return cast(WallpaperCarouselAppModel, MDApp.get_running_app())
+
+from enum import Enum
+
+class GalleryTabs(Enum):
+    DAY = "Day"
+    NOON = "Noon"
+    BOTH = "Both"
+
+# # Usage examples
+# print(TimeOfDay.DAY)  # TimeOfDay.DAY
+# print(TimeOfDay.DAY.value)  # "day"
+# print(TimeOfDay("day"))  # TimeOfDay.DAY
+# print(TimeOfDay.NOON.name)  # "NOON"

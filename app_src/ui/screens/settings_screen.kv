@@ -4,6 +4,7 @@
 #:import VERSION utils.constants.VERSION
 #:import get_color_from_hex kivy.utils.get_color_from_hex
 #:import add_home_screen_widget utils.android.add_home_screen_widget
+#:import toInt utils.helper.toInt
 
 
 
@@ -16,16 +17,82 @@
 #    md_bg_color: get_color_from_hex("#262C3A")
 #    text_color: get_color_from_hex("#98F1DD")
 
+<CarouselTools@Column>:
+    spacing: dp(15)
+    size_hint_y: None
+    height: self.minimum_height
+    MDLabel:
+        text: "Carousel Tools"
+        size_hint_y: None
+        height: dp(30)
+        color: TEXT_COLOR_PRIMARY_LIGHT if app.device_theme == "light" else TEXT_COLOR_PRIMARY_DARK
+    MDBoxLayout:
+        spacing: dp(10)
+        size_hint_x:1
+        adaptive_size:True
+        pos_hint: {"center_x": 0.5}
+    #                md_bg_color:[1,1,0,1]
+#        TextButton:
+#            text: "Restart Carousel"
+#            theme_bg_color:"Custom"
+#            theme_text_color:"Custom"
+#            md_bg_color: TEXT_COLOR_PRIMARY_DARK if app.device_theme == "light" else BUTTON_BG_DARK
+#            text_color: "black" if app.device_theme == "light" else "white"
+#            radius: [5]
+#            on_release: root.restart_service()
 
+        MyMDButton:
+            radius: [5]
+            theme_bg_color:"Custom"
+            on_release: app.sm.get_screen("settings").restart_service()
+
+            MDButtonText:
+                text: "Restart Carousel"
+                size_hint_y: None
+                theme_text_color:"Custom"
+                height: dp(50)
+    #                            text_color: self.color
+                text_color: "black" if app.device_theme == "light" else "white"
+        MyMDButton:
+            theme_bg_color:"Custom"
+            md_bg_color: TEXT_COLOR_PRIMARY_DARK if app.device_theme == "light" else BUTTON_BG_DARK
+            radius: [5]
+            pos_hint: {"center_x": 0.5}
+            on_release:app.sm.get_screen("settings").terminate_carousel()
+    #                    MDButtonIcon:
+    #                        id: btn_icon
+    #                        icon:"stop"
+    #                        text_color: [1,.2,.2,1] #get_color_from_hex("#FF313")
+            MDButtonText:
+                id: btn_text
+                text:  "Stop Carousel"
+                theme_text_color:"Custom"
+                text_color: "black" if app.device_theme == "light" else "white"
+
+    MyMDButton:
+        theme_bg_color:"Custom"
+        md_bg_color: TEXT_COLOR_PRIMARY_DARK if app.device_theme == "light" else BUTTON_BG_DARK
+        radius: [5]
+        pos_hint: {"center_x": 0.5}
+        on_release: app.sm.get_screen("settings").export_waller_folder()
+        MDButtonIcon:
+            id: btn_icon
+            icon:"export-variant"
+            text_color: "black" if app.device_theme == "light" else "white"
+        MDButtonText:
+            id: btn_text
+            text: "export wallpapers"
+            theme_text_color:"Custom"
+            text_color: "black" if app.device_theme == "light" else "white"
 
 <SettingsScreen>:
     name: "settings"
-    md_bg_color: [0.9, 0.9, 0.9, 1] if app.device_theme == "light" else get_color_from_hex("#1A1B1B")
+    md_bg_color: [0.9, 0.9, 0.9, 1] if app.device_theme == "light" else [.1,.1,.1,1]
+#    md_bg_color: [0.9, 0.9, 0.9, 1] if app.device_theme == "light" else get_color_from_hex("#1A1B1B")
 
     ScrollView:
         size_hint: 1, 1
         pos_hint: {"top":1}
-
         Column:
             id: main_container
             spacing: dp(25)
@@ -72,103 +139,59 @@
                         theme_text_color:"Custom"
                         text_color_focus: [0,0,0,1] if app.device_theme == "light" else [1, 1, 1, 1]
                         text_color_normal: [.3,.3,.3,1] if app.device_theme == "light" else [.8, .8, .8, 1]
+                        theme_line_color: "Custom"
+                        line_color_focus: get_color_from_hex("#98F1DD")
                         input_filter: "float"
                         size_hint_y: 1
+                        radius: dp(20)
                     MyMDButton:
                         radius: [5]
+                        radius: 20
                         theme_bg_color:"Custom"
                         size_hint_x: 0.35
                         theme_height: "Custom"
                         size_hint_y: .9
                         pos_hint:{"center_y":.5}
                         on_release: root.save_interval()
-                        md_bg_color: get_color_from_hex("#262C3A")
+                        md_bg_color:get_color_from_hex("#98F1DD")
 
                         MDButtonText:
                             text: "Save"
                             size_hint_y: None
                             theme_text_color:"Custom"
                             height: dp(50)
-                            text_color: get_color_from_hex("#98F1DD")#"black" if app.device_theme == "light" else "white"
+                            text_color: get_color_from_hex("#262C3A")
+#                            text_color: get_color_from_hex("#98F1DD")#"black" if app.device_theme == "light" else "white"
+#                            text_color: "black" if app.device_theme == "light" else "white"
                             font_name: "RobotoMono"
-
-
                 MDLabel:
                     id: interval_label
-    #                text: "Saved: " + root.parent.parent.smart_convert_minutes(root.parent.parent.interval)
+                    text: f"Using: {root.interval} mins"
                     size_hint_y: None
                     height: dp(30)
                     font_name: "RobotoMono"
                     color: TEXT_COLOR_PRIMARY_LIGHT if app.device_theme == "light" else TEXT_COLOR_PRIMARY_DARK
 
-                MDLabel:
-                    text: "Carousel Tools"
-                    size_hint_y: None
-                    height: dp(30)
-                    color: TEXT_COLOR_PRIMARY_LIGHT if app.device_theme == "light" else TEXT_COLOR_PRIMARY_DARK
-                MDBoxLayout:
-                    spacing: dp(10)
-                    size_hint_x:1
-                    adaptive_size:True
-                    pos_hint: {"center_x": 0.5}
-    #                md_bg_color:[1,1,0,1]
-                    MyMDButton:
-                        radius: [5]
-                        theme_bg_color:"Custom"
-                        on_release: root.restart_service()
+                MDGridLayout:
+                    id:QuickSetButtonsBox
+                    cols:3
+                    adaptive_size: True
+                    spacing:dp(10)
+                    pos_hint:{"center_x":.5}
 
-                        MDButtonText:
-                            text: "Restart Carousel"
-                            size_hint_y: None
-                            theme_text_color:"Custom"
-                            height: dp(50)
-#                            text_color: self.color
-                            text_color: "black" if app.device_theme == "light" else "white"
-                    MyMDButton:
-                        theme_bg_color:"Custom"
-                        md_bg_color: TEXT_COLOR_PRIMARY_DARK if app.device_theme == "light" else BUTTON_BG_DARK
-                        radius: [5]
-                        pos_hint: {"center_x": 0.5}
-                        on_release:root.terminate_carousel()
-    #                    MDButtonIcon:
-    #                        id: btn_icon
-    #                        icon:"stop"
-    #                        text_color: [1,.2,.2,1] #get_color_from_hex("#FF313")
-                        MDButtonText:
-                            id: btn_text
-                            text:  "Stop Carousel"
-                            theme_text_color:"Custom"
-                            text_color: "black" if app.device_theme == "light" else "white"
+                    QuickSetButton:
+                        text: "01:00"
+                    QuickSetButton:
+                        text: "05:00"
+                    QuickSetButton:
+                        text: "15:00"
+                    QuickSetButton:
+                        disabled:True
+                        opacity:0
+                    QuickSetButton:
+                        text: "60:00"
 
-                MyMDButton:
-                    theme_bg_color:"Custom"
-                    md_bg_color: TEXT_COLOR_PRIMARY_DARK if app.device_theme == "light" else BUTTON_BG_DARK
-                    radius: [5]
-                    pos_hint: {"center_x": 0.5}
-                    on_release:root.export_waller_folder()
-                    MDButtonIcon:
-                        id: btn_icon
-                        icon:"export-variant"
-                        text_color: "black" if app.device_theme == "light" else "white"
-                    MDButtonText:
-                        id: btn_text
-                        text: "export wallpapers"
-                        theme_text_color:"Custom"
-                        text_color: "black" if app.device_theme == "light" else "white"
-    #            MyMDButton:
-    #                radius: [5]
-    #                theme_bg_color:"Custom"
-    ##                md_bg_color: TEXT_COLOR_PRIMARY_DARK if app.device_theme == "light" else BUTTON_BG_DARK
-    #                pos_hint: {"center_x": 0.5}
-    #                on_release: root.export_waller_folder()
-    #
-    #                MDButtonText:
-    #                    text: "export wallpapers"
-    #                    size_hint_y: None
-    #                    height: dp(50)
-    #                    theme_text_color:"Custom"
-    #                    text_color: "black" if app.device_theme == "light" else "white"
-
+                CarouselTools:
 
                 Column:
                     adaptive_height: True
