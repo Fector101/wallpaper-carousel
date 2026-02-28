@@ -311,11 +311,15 @@ class GalleryScreen(MyMDScreen):
         # self.load_saved()
 
     def initialize_tabs(self):
-        self.generate_tab_widgets(tab_name=GalleryTabs.BOTH.value, wallpapers=self._filter_existing_paths(self.myconfig.get_wallpapers()))
-        self.generate_tab_widgets(tab_name=GalleryTabs.DAY.value, wallpapers=self._filter_existing_paths(self.myconfig.get_day_wallpapers()))
-        self.generate_tab_widgets(tab_name=GalleryTabs.NOON.value, wallpapers=self._filter_existing_paths(self.myconfig.get_noon_wallpapers()))
-        self.current_tab = GalleryTabs.BOTH.value
-        self.on_current_tab(None, self.current_tab)
+        def thing( *args):
+            self.generate_tab_widgets(tab_name=GalleryTabs.BOTH.value, wallpapers=self._filter_existing_paths(self.myconfig.get_wallpapers()))
+            self.generate_tab_widgets(tab_name=GalleryTabs.DAY.value, wallpapers=self._filter_existing_paths(self.myconfig.get_day_wallpapers()))
+            self.generate_tab_widgets(tab_name=GalleryTabs.NOON.value, wallpapers=self._filter_existing_paths(self.myconfig.get_noon_wallpapers()))
+            self.current_tab = GalleryTabs.BOTH.value
+            self.on_current_tab(None, self.current_tab)
+
+        Clock.schedule_once(thing)
+        # thing()
 
     def open_file_chooser(self, *_):
         # file_operation = FileOperation(self.update_thumbnails_method)
