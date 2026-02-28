@@ -18,7 +18,7 @@ from utils.model import get_app
 from utils.permissions import ask_permission_to_images
 from utils.image_operations import ImageOperation
 from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, DEV
-from utils.helper import Service, write_logs_to_file, get_free_port, Font, appFolder
+from utils.helper import Service, write_logs_to_file, get_free_port, Font, appFolder, toInt
 from utils.android import is_device_on_light_mode
 from utils.ui_service_bridge import UIServiceListener, UIServiceMessenger
 
@@ -248,15 +248,6 @@ class WallpaperCarouselApp(MDApp):
         # self.device_theme = "light" #if self.device_theme == "dark" else "dark"
         # self.bottom_bar.color_tab_buttons(self.sm.current)
         return self.device_theme
-
-def toInt(text):
-    if not text:
-        return None
-    try:
-        return int(text)
-    except ValueError as error_changing_to_int:
-        print(error_changing_to_int)
-    return None
 
 if __name__ == '__main__':
     WallpaperCarouselApp().run()

@@ -1,13 +1,13 @@
 from android_notify.config import on_android_platform, autoclass
-from kivy.metrics import dp, sp
-from kivymd.app import MDApp
-from kivy.properties import ListProperty, DictProperty, BooleanProperty
+from kivy.metrics import dp
+from kivy.properties import ListProperty, DictProperty
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivy.uix.popup import Popup
 from kivymd.uix.label import MDLabel
 from kivymd.uix.relativelayout import MDRelativeLayout
 
 from kivymd.uix.screen import MDScreen
+from kivy.graphics import Color, Line
 
 
 class Row(MDBoxLayout):

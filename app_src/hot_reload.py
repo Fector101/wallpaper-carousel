@@ -44,7 +44,7 @@ LabelBase.register(
 
 
 class MDLive(App,MDApp):
-    device_theme = StringProperty("light")
+    device_theme = StringProperty("dark")
     theme_widgets = []
     KV_FILES=[
         "ui.screens.welcome_screen".replace(".","/") + ".kv",
@@ -72,7 +72,7 @@ class MDLive(App,MDApp):
 
         print("Inside Build App Auto Reload")
         # return Factory.MyPopUp()
-        return Factory.GalleryScreen()
+        return Factory.SettingsScreen()
 
     def on_start(self):
         # self.theme_cls.theme_style = "Light"
@@ -81,7 +81,7 @@ class MDLive(App,MDApp):
         pass
 
     def monitor_dark_and_light_device_change(self):
-        on_light_mode = is_device_on_light_mode()
+        on_light_mode = False #is_device_on_light_mode()
         if on_light_mode:
             for each_widget in self.theme_widgets:
                 each_widget.lightMode()

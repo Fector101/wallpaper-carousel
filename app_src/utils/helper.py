@@ -293,3 +293,15 @@ def load_kv_file(module_name="", py_file_absolute_path=""):
     Builder.load_file(filename=kv_file_path)
 
     return kv_file_path
+
+
+def toInt(text):
+    print('git',text)
+    if not text:
+        return None
+    try:
+        return int(text)
+    except ValueError as error_changing_to_int:
+        print(error_changing_to_int)
+        traceback.print_exc()
+    return None
