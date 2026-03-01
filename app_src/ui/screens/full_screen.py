@@ -90,9 +90,7 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
         self.img.pos_hint = {'center_x': .5, 'center_y': .5}
         self.img.size_hint=[None,None]
         self.padding=[0]
-        self.img.source = self.images[self.i]
-        self.img.size=[dp(self.img_sizes[self.i]),dp(self.img_sizes[self.i])]
-
+        self._update_image()
         self.add_widget(self.img)
 
     def get_tab_from_index(self,index):
@@ -113,9 +111,7 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
         self.i = self.i + 1 if self.i < len(self.images) - 1 else 0
         new_tab = self.get_tab_from_index(self.i)
 
-        self.img.source = self.images[self.i]
-        self.img.size=[dp(self.img_sizes[self.i]),dp(self.img_sizes[self.i])]
-
+        self._update_image()
         self.__change_tab_from_wallpaper_storage(current_image=current_image,old_tab=old_tab,new_tab=new_tab)
 
         # try:
@@ -125,7 +121,7 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
         try:
             image_widget = gallery_screen.remove_wallpaper_from_thumbnails(wallpaper_path=current_image,tab=old_tab)
         except Exception as error_finding_widget:
-            app_logger.error(f"Error Finding Widget KeyError: {error_finding_widget}")
+            app_logger.error(f"Error Removing Widget: {error_finding_widget}")
             return None
 
         if not image_widget:
@@ -133,12 +129,6 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
             return None
 
         gallery_screen.add_wallpaper_to_thumbnails(image_widget=image_widget,tab=new_tab)
-        
-        # Make sure that we handle carousel UI update if we just moved an image out of current tab
-        if old_tab == gallery_screen.current_tab:
-            # Reconstruct the UI list or go to next index
-            self.fullscreen.update_images()
-        
         return None
 
     @staticmethod
@@ -160,20 +150,15 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
 
 
     def set_day_image(self):
-        print("set_day_image")
-        self.i = 0
         self.i = 2
-        self.img.source = self.images[self.i]
-        self.img.size = [dp(self.img_sizes[self.i]), dp(self.img_sizes[self.i])]
+        self._update_image()
     def set_noon_image(self):
-        print("set_noon_image")
-        self.i = 0
         self.i = 1
-        self.img.source = self.images[self.i]
-        self.img.size = [dp(self.img_sizes[self.i]), dp(self.img_sizes[self.i])]
+        self._update_image()
     def set_day_nd_noon_image(self):
-        print("set_day_nd_noon_image")
         self.i = 0
+        self._update_image()
+    def _update_image(self):
         self.img.source = self.images[self.i]
         self.img.size = [dp(self.img_sizes[self.i]), dp(self.img_sizes[self.i])]
 
@@ -384,7 +369,7 @@ class FullscreenScreen(MyMDScreen):
                 if thumb.exists():
                     thumb.unlink()
             except Exception as error_deleting_image:
-                print(f"Error deleting image: {error_deleting_image}")
+                app_logger.error(f"Error deleting image: {error_deleting_image}")
 
         current_tab = self.app.sm.gallery_screen.current_tab
         if current_tab == GalleryTabs.BOTH.value:
@@ -399,7 +384,9 @@ class FullscreenScreen(MyMDScreen):
             return
             
         self.update_images()
-        self.carousel.index = max(0, min(idx, len(gallery_screen.wallpapers) - 1))
+        new_index=max(0, min(idx, len(gallery_screen.wallpapers) - 1))
+        self.carousel.index = new_index
+        self.__patch_for_first_not_getting_called_by_on_current_slide(index=new_index)
 
     # ====================================================================
     #               IMAGE INFO POPUP
@@ -423,7 +410,7 @@ class FullscreenScreen(MyMDScreen):
 
     def update_images(self,index=None):
         """Rebuild carousel anytime wallpapers change."""
-        self.carousel.unbind(current_slide=self.on_index)
+        self.carousel.unbind(current_slide=self.on_current_slide)
         self.carousel_has_images = False
         gallery_screen = self.manager.gallery_screen
         self.carousel.clear_widgets()
@@ -449,12 +436,14 @@ class FullscreenScreen(MyMDScreen):
             img.higher_format = p
             self.carousel_has_images = True
             self.carousel.add_widget(img)
-        self.carousel.bind(current_slide=self.on_index)
-        # print("added widgets")
+        self.carousel.bind(current_slide=self.on_current_slide)
 
+        # Setting data when entering Carousel From first slide because self.carousel.bind(current_slide=self.on_current_slide) isn't called
+        self.__patch_for_first_not_getting_called_by_on_current_slide(index)
+
+    def __patch_for_first_not_getting_called_by_on_current_slide(self,index):
         if index == 0:
-            # Setting data when entering Carousel From first slide because self.carousel.bind(current_slide=self.on_index) isn't called
-            self.on_index(self.carousel,0)
+            self.on_current_slide(self.carousel,0)
 
     def update_header_texts(self,image_path):
         self.header_title.text = os.path.basename(image_path)
@@ -464,7 +453,6 @@ class FullscreenScreen(MyMDScreen):
         day_images = my_config.get_day_wallpapers()
         noon_images = my_config.get_noon_wallpapers()
 
-        print("image_path:", image_path)
         if image_path in day_images:
             self.day_noon_both_button.set_day_image()
         elif image_path in noon_images:
@@ -472,7 +460,8 @@ class FullscreenScreen(MyMDScreen):
         else:
             self.day_noon_both_button.set_day_nd_noon_image()
 
-    def on_index(self, carousel, index): # type: ignore
+    def on_current_slide(self, carousel, index): # type: ignore
+        """Using on_current_slide instead of on_index to prevent multiple Calls"""
         # print("self.carousel_has_images",self.carousel_has_images)
         if not self.carousel_has_images or not carousel.current_slide: # From self.carousel.clear_widgets() changes current_slide Carousel.clear_widgets.remove_widget
             return None
@@ -526,7 +515,6 @@ class FullscreenScreen(MyMDScreen):
                 # left_side_img.source = str(left_side_img.higher_format)
 
         if right_side_img and right_side_img.source != str(right_side_img.higher_format):
-                # print('right...')
                 proxyImage = Loader.image(str(right_side_img.higher_format))
                 proxyImage.bind(on_load=lambda proxy_image, image_object=right_side_img: patch_resolution(proxy_image, image_object))
                 # right_side_img.source = str(right_side_img.higher_format)
