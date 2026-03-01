@@ -411,7 +411,7 @@ class QuickSetButton(MDButton):
         self.set_theme_color()
         self.add_widget(self.text_widget)
 
-    def set_theme_color(self):
+    def set_theme_color(self,*args):
         # self.md_bg_color=TEXT_COLOR_PRIMARY_DARK if self.app.device_theme == "light" else BUTTON_BG_DARK
         self.text_widget.text_color = "black" if self.app.device_theme == "light" else "white"
 
