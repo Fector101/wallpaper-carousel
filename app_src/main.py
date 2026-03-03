@@ -18,7 +18,7 @@ from utils.model import get_app
 from utils.permissions import ask_permission_to_images
 from utils.image_operations import ImageOperation
 from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, DEV
-from utils.helper import Service, write_logs_to_file, get_free_port, Font, appFolder, toInt
+from utils.helper import Service, write_logs_to_file, get_free_port, Font, appFolder, toInt, fix_input_on_linux
 from utils.android import is_device_on_light_mode
 from utils.ui_service_bridge import UIServiceListener, UIServiceMessenger
 
@@ -34,15 +34,10 @@ from ui.widgets.android import toast
 android_notify_logger.setLevel(logging.DEBUG if on_android_platform() else logging.ERROR)
 
 write_logs_to_file()
-if platform == 'linux':
-    from kivy import Config
-    # Linux has some weirdness with the touchpad by default... remove it
-    options = Config.options('input')
-    for option in options:
-        if Config.get('input', option) == 'probesysfs':
-            Config.remove_option('input', option)
-    Window.size = (390, 740)
+fix_input_on_linux()
 
+if platform == 'linux':
+    Window.size = (390, 740)
 elif platform == 'android':
     ask_permission_to_images()
 

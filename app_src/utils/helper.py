@@ -1,11 +1,11 @@
+# DO NOT IMPORT ANY UI THING TOP GLOBAL LEVEL
 import json
 import os, platform
 import sys, traceback, socket
 from datetime import datetime
 
-from jnius import autoclass, cast
 from android_notify.config import get_python_activity_context, from_service_file, on_android_platform
-from android_notify.internal.java_classes import BuildVersion, BitmapFactory
+from android_notify.internal.java_classes import BuildVersion, BitmapFactory, autoclass, cast
 
 from ui.widgets.android import toast
 from utils.constants import DEV, WALLPAPER_SERVICE_PATH
@@ -304,4 +304,17 @@ def toInt(text):
     except ValueError as error_changing_to_int:
         print(error_changing_to_int)
         traceback.print_exc()
+    return None
+
+def fix_input_on_linux():
+    from kivy.utils import platform
+    if platform != 'linux':
+        return None
+    from kivy import Config
+    # Linux has some weirdness with the touchpad by default... remove it
+    options = Config.options('input')
+    for option in options:
+        if Config.get('input', option) == 'probesysfs':
+            Config.remove_option('input', option)
+
     return None

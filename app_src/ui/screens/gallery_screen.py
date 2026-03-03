@@ -93,6 +93,7 @@ class DateGroupLayout(Column):
     images_container = ObjectProperty()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.title_text_widget = None
         self.rect = None
         self.spacing = dp(10)
         self.padding = [dp(10), 0, dp(20), dp(1)]
@@ -141,7 +142,7 @@ class DateGroupLayout(Column):
         header_content_color = (.65, .65, .65, 1)
         # header_content_color = (.8, .8, 1, 1)
 
-        txt = MDLabel(
+        self.title_text_widget = MDLabel(
             text=self.title,
             adaptive_size=True,
             theme_text_color="Custom",
@@ -166,7 +167,7 @@ class DateGroupLayout(Column):
 
         self.toggle_drop_btn.bind(on_release=self.toggle_dropdown)
 
-        header_layout.add_widget(txt)
+        header_layout.add_widget(self.title_text_widget)
         header_layout.add_widget(self.toggle_drop_btn)
         self.add_widget(header_layout)
 
@@ -247,19 +248,22 @@ class DateGroupLayout(Column):
                 # app_logger.debug("No parent....")
                 pass
         else:
-            count = len(new_children)
-            batch_title = self.title.split("|")[0].strip()
-            self.title = f"{batch_title}  |  {count} item{'s' if count != 1 else ''}"
-
+            self.__update_title(len(new_children))
         return image_widget
 
     def add_wallpaper_to_badge_display(self, image_widget):
         images_container_widget = self.images_container
-        print('parent',self.parent)
+        children = images_container_widget.children
+
         if not isinstance(image_widget, Thumb):
             app_logger.error(f"Error Getting only Thumb Class, got: {image_widget}")
             return
-        images_container_widget.add_widget(image_widget,index=0)
+        images_container_widget.add_widget(image_widget,index=len(children))
+        self.__update_title(len(children))
+
+    def __update_title(self,count:int):
+        batch_title = self.title.split("|")[0].strip()
+        self.title_text_widget.text = f"{batch_title}  |  {count} item{'s' if count != 1 else ''}"
 
     def toggle_dropdown(self, *args):
         if self.is_collapsed:
@@ -535,7 +539,7 @@ class GalleryScreen(MyMDScreen):
             widget = a_batch_in_a_tab.remove_wallpaper_from_badge_display(wallpaper_path)
 
             if not a_batch_in_a_tab.images_container.children:
-                app_logger.info(f"Deleted empty DateGroupLayout from: {available_tab_key}")
+                # app_logger.info(f"Deleted empty DateGroupLayout from: {available_tab_key}")
                 del a_tab_data[batch_title]
 
         return widget
@@ -572,7 +576,8 @@ class GalleryScreen(MyMDScreen):
                 title=f"{batch_title}  |  1 item"
             )
             a_tab_data[batch_title] = date_batch_layout
-            a_tab_data["widget"].add_widget(date_batch_layout, index=0)
+            a_tab_data["widget"].add_widget(date_batch_layout, index=len(a_tab_data["widget"].children))
+
 
         if wallpaper_path in a_tab_data["wallpapers"]:
             app_logger.error(f"Broken feature wallpaper_path in a_tab_data['wallpapers']")
