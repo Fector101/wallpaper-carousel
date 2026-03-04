@@ -27,7 +27,7 @@ from ui.screens.settings_screen import SettingsScreen
 from ui.screens.full_screen import FullscreenScreen
 from ui.screens.welcome_screen import WelcomeScreen
 from ui.screens.logs_screen import LogsScreen
-from ui.widgets.buttons import BottomButtonBar
+from ui.widgets.buttons import BottomNavigationBar
 from ui.widgets.android import toast
 
 
@@ -111,7 +111,7 @@ class WallpaperCarouselApp(MDApp):
         self.bottom_bar = None
 
     def build(self):
-        # Create a root layout to hold ScreenManager + BottomButtonBar
+        # Create a root layout to hold ScreenManager + BottomNavigationBar
         self.root_layout = MDRelativeLayout()
 
         # ScreenManager
@@ -119,8 +119,8 @@ class WallpaperCarouselApp(MDApp):
         # self.sm.gallery_screen.load_saved()
         self.root_layout.add_widget(self.sm)
 
-        # Add global BottomButtonBar
-        self.bottom_bar = BottomButtonBar(
+        # Add global BottomNavigationBar
+        self.bottom_bar = BottomNavigationBar(
             on_camera=self.sm.go_to_thumbs,
             on_settings=self.sm.go_to_settings,
         )

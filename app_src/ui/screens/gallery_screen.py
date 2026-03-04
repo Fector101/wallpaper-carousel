@@ -297,7 +297,7 @@ class GalleryScreen(MyMDScreen):
 
         self.tab_instances = {}
         # print("hot reload stuff in gallery screen")
-        # # self.bottom_bar = BottomButtonBar(
+        # # self.bottom_bar = BottomNavigationBar(
         # #     on_camera=None,
         # #     on_settings=None,
         # #     width=dp(120),

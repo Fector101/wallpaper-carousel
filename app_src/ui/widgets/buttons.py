@@ -85,9 +85,7 @@ class MyRoundButton(Button):    # (RoundedButton):
         self.rect1.size = self.size
 
 
-
-
-class BottomButtonBar(MDRelativeLayout):
+class BottomNavigationBar(MDRelativeLayout):
     """Floating bottom bar with two buttons with centered icons only."""
 
     def __init__(self, on_camera=None, on_settings=None, **kwargs):

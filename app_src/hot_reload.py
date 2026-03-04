@@ -62,7 +62,7 @@ class MDLive(App,MDApp):
         # "NotificationScreen": "important",
         "WelcomeScreen": "ui.screens.welcome_screen",
         # "MyRoundButton": "ui.widgets.buttons",
-        "BottomButtonBar": "ui.widgets.buttons",
+        "BottomNavigationBar": "ui.widgets.buttons",
     }
     AUTORELOADER_PATHS = [
         ("./ui", {"recursive": True})
