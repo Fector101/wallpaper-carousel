@@ -50,6 +50,7 @@ class MDLive(App,MDApp):
         "ui.screens.welcome_screen".replace(".","/") + ".kv",
         "ui.screens.gallery_screen".replace(".","/") + ".kv",
         "ui.screens.settings_screen".replace(".","/") + ".kv",
+        "ui.widgets.modals".replace(".","/") + ".kv",
 
     ]
     CLASSES = {
