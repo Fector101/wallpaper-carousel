@@ -22,7 +22,9 @@ class ConfigManager:
         "wallpapers": [],
         "noon_wallpapers":[],
         "day_wallpapers":[],
-        "use_on_wake": False
+        "use_on_wake": False,
+        "use_group_by_date": True,
+
     }
 
     def __init__(self):
@@ -127,4 +129,16 @@ class ConfigManager:
     def set_on_wake_state(self, state: bool):
         data = self._read()
         data["use_on_wake"] = state
+        self._write(data)
+
+    @property
+    def get_use_group_by_date(self):
+        if "use_group_by_date" in self._read():
+            return self._read().get("use_group_by_date", True)
+        else:
+            self.set_use_group_by_date(True)
+            return True
+    def set_use_group_by_date(self, state: bool):
+        data = self._read()
+        data["use_group_by_date"] = state
         self._write(data)

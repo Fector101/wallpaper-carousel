@@ -23,14 +23,14 @@ from plyer import filechooser
 
 from utils.logger import app_logger
 from ui.widgets.layouts import MyMDScreen, Column  # used in .kv file
-from ui.widgets.buttons import BottomButtonBar
 from utils.config_manager import ConfigManager
 from utils.helper import appFolder, load_kv_file  # type
 from utils.image_operations import get_or_create_thumbnail
+from utils.logger import app_logger
 from utils.model import get_app, GalleryTabs
 
+my_config = ConfigManager()
 load_kv_file(py_file_absolute_path=__file__)
-
 
 min_box_size = dp(80)
 spacing = dp(2)
@@ -292,7 +292,6 @@ class GalleryScreen(MyMDScreen):
         self.app.device_theme = "dark"
         self.name = "thumbs"
         self.app_dir = Path(appFolder())
-        self.myconfig = ConfigManager()
         self.wallpapers_dir = self.app_dir / "wallpapers"
 
         self.tab_instances = {}
@@ -319,13 +318,13 @@ class GalleryScreen(MyMDScreen):
 
     def initialize_tabs(self, no_clock=False):
         def run_widgets_creation( *args):
-            self.generate_tab_widgets(tab_name=GalleryTabs.BOTH.value, wallpapers=self._filter_existing_paths(self.myconfig.get_wallpapers()))
-            self.generate_tab_widgets(tab_name=GalleryTabs.DAY.value, wallpapers=self._filter_existing_paths(self.myconfig.get_day_wallpapers()))
-            self.generate_tab_widgets(tab_name=GalleryTabs.NOON.value, wallpapers=self._filter_existing_paths(self.myconfig.get_noon_wallpapers()))
+            self.generate_tab_widgets(tab_name=GalleryTabs.BOTH.value, wallpapers=self._filter_existing_paths(my_config.get_wallpapers()))
+            self.generate_tab_widgets(tab_name=GalleryTabs.DAY.value, wallpapers=self._filter_existing_paths(my_config.get_day_wallpapers()))
+            self.generate_tab_widgets(tab_name=GalleryTabs.NOON.value, wallpapers=self._filter_existing_paths(my_config.get_noon_wallpapers()))
             self.current_tab = GalleryTabs.BOTH.value
             self.on_current_tab(None, self.current_tab)
 
-        if no_clock:# using clock in init breaks DateGroupLayout height
+        if no_clock:  # using clock in init breaks DateGroupLayout height
             run_widgets_creation()
         else:
             Clock.schedule_once(run_widgets_creation)
@@ -388,7 +387,6 @@ class GalleryScreen(MyMDScreen):
         )
 
         data_of_batch_dict_of_lists = {}
-
         # group batches and use index's from self.wallpaper to appoint indexes from fullscreen widget
         for index, each_image_path in enumerate(self.wallpapers):
             if not each_image_path or not os.path.exists(each_image_path):
@@ -428,7 +426,7 @@ class GalleryScreen(MyMDScreen):
 
             index = self.wallpapers.index(wallpaper_path)
         except Exception as error_getting_index:
-            print("self.wallpapers",self.wallpapers)
+            # print("self.wallpapers", self.wallpapers)
             for each in self.wallpapers:
                 print(each)
             app_logger.error(f"error_getting_index: {error_getting_index}")
@@ -449,15 +447,14 @@ class GalleryScreen(MyMDScreen):
     def load_day_wallpapers(self):
         self.current_tab = GalleryTabs.DAY.value
 
-        # wallpapers = self.myconfig.get_day_wallpapers()
+        # wallpapers = my_config.get_day_wallpapers()
         # self.wallpapers = self._filter_existing_paths(wallpapers)
         # self.update_thumbnails_method()
 
     def load_noon_wallpapers(self):
         self.current_tab = GalleryTabs.NOON.value
 
-
-        # wallpapers = self.myconfig.get_noon_wallpapers()
+        # wallpapers = my_config.get_noon_wallpapers()
         # self.wallpapers = self._filter_existing_paths(wallpapers)
         # self.update_thumbnails_method()
 
@@ -473,7 +470,7 @@ class GalleryScreen(MyMDScreen):
         # ]
         # print("Loaded wallpapers:", len(self.wallpapers))
         # -------------------------------
-        # wallpapers = self.myconfig.get_wallpapers()
+        # wallpapers = my_config.get_wallpapers()
         # self.wallpapers = self._filter_existing_paths(wallpapers)
         # Clock.schedule_once(self.update_thumbnails_method)
 
@@ -491,11 +488,11 @@ class GalleryScreen(MyMDScreen):
         """
         # return
         # if self.current_tab == "Day":
-        #     wallpapers = self._filter_existing_paths(self.myconfig.get_day_wallpapers())
+        #     wallpapers = self._filter_existing_paths(my_config.get_day_wallpapers())
         # elif self.current_tab == "Noon":
-        #     wallpapers = self._filter_existing_paths(self.myconfig.get_noon_wallpapers())
+        #     wallpapers = self._filter_existing_paths(my_config.get_noon_wallpapers())
         # else:
-        #     wallpapers = self._filter_existing_paths(self.myconfig.get_wallpapers())
+        #     wallpapers = self._filter_existing_paths(my_config.get_wallpapers())
         #
         # scroll_view_main_column = self.ids.wallpapers_container
         # wallpapers_on_display = scroll_view_main_column.wallpapers_on_display
