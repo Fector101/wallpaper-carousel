@@ -485,6 +485,7 @@ notification = Notification(title="Next in 02:00", name="from service",channel_i
 # if foreground_type:
 #     notification.message=f"service lifespan: {SERVICE_LIFESPAN_HOURS}hrs"
 notification.setData({"next wallpaper path": "test.jpg", SERVICE_PORT_ARGUMENT_KEY: receivedData.service_port})
+notification.setObeyUserClear(True) # don't show after users clear from Tray
 notification.addButton(text="Stop", receiver_name="CarouselReceiver", action="ACTION_STOP")
 notification.addButton(text="Skip", receiver_name="CarouselReceiver", action="ACTION_SKIP")
 builder = notification.fill_args()
