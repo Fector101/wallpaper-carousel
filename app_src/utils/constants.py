@@ -1,4 +1,7 @@
 import os
+from enum import Enum
+
+
 SERVICE_PORT_ARGUMENT_KEY = 'service_port'
 SERVICE_UI_PORT_ARGUMENT_KEY = 'ui_port'
 DEFAULT_SERVICE_PORT = 5006
@@ -26,6 +29,16 @@ THEME_COLOR_BRIGHT_COLOR = "#98F1DD"
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WALLPAPER_SERVICE_PATH = os.path.join( BASE_DIR, "android", "services", "wallpaper.py" )
 
+
+class ServiceServerAddress(Enum):
+    START = "/start"
+    PAUSE = "/pause"
+    RESUME = "/resume"
+    STOP = "/stop"
+    CHANGE_NEXT = "/change-next"
+    SET_WALLPAPER = "/set-wallpaper"
+    TOGGLE_HOME_SCREEN_WIDGET_CHANGES = "/toggle_home_screen_widget_changes"
+    APPLY_NEXT_WALLPAPER = "/apply_next_wallpaper"
 
 DEV=0
 VERSION="1.0.4"

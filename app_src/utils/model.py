@@ -3,7 +3,7 @@ from kivymd.app import MDApp
 from typing import cast, Callable, Literal, Any
 from enum import Enum
 
-from utils.ui_service_bridge import UIServiceListener, UIServiceMessenger
+from utils.ui_service_bridge import UIServiceListener, UIMessengerTOService
 from utils.image_operations import ImageOperation
 
 
@@ -54,7 +54,7 @@ class WallpaperCarouselAppModel:
     device_theme: str
 
     service_port: Optional[int]
-    ui_messenger_to_service: Optional[UIServiceMessenger]
+    ui_messenger_to_service: Optional[UIMessengerTOService]
     file_operation: Optional[ImageOperation]
     ui_service_listener: Optional[UIServiceListener]
 

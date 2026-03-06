@@ -22,7 +22,7 @@ from utils.helper import Service, write_logs_to_file, get_free_port, register_fo
 from utils.image_operations import ImageOperation
 from utils.logger import app_logger
 from utils.permissions import ask_permission_to_images
-from utils.ui_service_bridge import UIServiceListener, UIServiceMessenger
+from utils.ui_service_bridge import UIServiceListener, UIMessengerTOService
 
 android_notify_logger.setLevel(logging.DEBUG if on_android_platform() else logging.ERROR)
 
@@ -88,7 +88,7 @@ class WallpaperCarouselApp(MDApp):
 
 
         self.service_port = service_port or get_free_port()
-        self.ui_messenger_to_service = UIServiceMessenger(self.service_port)
+        self.ui_messenger_to_service = UIMessengerTOService(self.service_port)
         self.sm.settings_screen.ids.skip_upcoming_wallpaper_button.on_release = self.ui_messenger_to_service.change_next
         self.sm.settings_screen.ids.pause_home_screen_widget_loop_button.on_release = self.ui_messenger_to_service.toggle_home_screen_widget_changes
 
@@ -116,10 +116,10 @@ class WallpaperCarouselApp(MDApp):
     def bind_plyer_fix(self):
         if on_android_platform():
             from android import activity  # type: ignore
-            def set_intent_for_file_operation_class(_, __, intent):  # type: ignore
-                # def set_intent_for_file_operation_class(activity_id, some_int, intent):  # type: ignore
+            # def set_intent_for_file_operation_class(_, __, intent):
+            def set_intent_for_file_operation_class(activity_id, some_int, intent):
                 try:
-                    # print("intent must be before chooser callback",activity_id,some_int,intent)
+                    print("intent must be before chooser callback",activity_id,some_int,intent)
                     if intent:
                         self.file_operation.intent = intent
                 except Exception as error_getting_path:

@@ -5,7 +5,7 @@ from pythonosc import dispatcher, osc_server, udp_client
 
 from utils.helper import get_free_port
 from utils.logger import app_logger
-from utils.service_helper import ServiceServerAddress
+from utils.constants import ServiceServerAddress
 
 
 SERVICE_IP = "0.0.0.0"
@@ -148,11 +148,12 @@ class UIServiceListener:
         return None
 
 
-class UIServiceMessenger:
-    TAG = "UIServiceMessenger"
+class UIMessengerTOService:
+    TAG = "UIMessengerTOService"
 
     def __init__(self, service_port: int):
         self.__client = None
+        self.service_port=service_port
         try:
             self.__client = udp_client.SimpleUDPClient(SERVICE_IP, service_port)
             app_logger.info(f"[{self.TAG}] Messenger Connected to {SERVICE_IP}:{service_port}")
@@ -165,12 +166,12 @@ class UIServiceMessenger:
         self.__client.send_message(address=path, value=json.dumps(dict_data))
 
     def change_next(self):
-        app_logger.debug("Changing next wallpaper")
-        self.__send_data_to_service(ServiceServerAddress.CHANGE_NEXT.name, {})
+        app_logger.debug(f"Telling Service Server to Change next wallpaper {self.service_port}{ServiceServerAddress.CHANGE_NEXT.value}")
+        self.__send_data_to_service(ServiceServerAddress.CHANGE_NEXT.value, {})
 
     def toggle_home_screen_widget_changes(self):
         app_logger.debug("Toggling Home Screen Widgets Loop")
-        self.__send_data_to_service(ServiceServerAddress.TOGGLE_HOME_SCREEN_WIDGET_CHANGES.name, {})
+        self.__send_data_to_service(ServiceServerAddress.TOGGLE_HOME_SCREEN_WIDGET_CHANGES.value, {})
 
 
 if __name__ == "__main__":

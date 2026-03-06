@@ -58,6 +58,8 @@ def add_home_screen_widget(button=None):
 
 
 def is_device_on_light_mode():
+    if not on_android_platform():
+        return "dark"
     try:
         Configuration = autoclass("android.content.res.Configuration")
         activity = get_python_activity_context()

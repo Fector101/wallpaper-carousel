@@ -130,6 +130,7 @@ class BottomNavigationBar(MDRelativeLayout):
 
         self.app.bind(device_theme=self.changeBottomBtnsTheme)
         self.changeBottomBtnsTheme(None, self.app.device_theme)
+        self.hide()
         # self.color_tab_buttons("thumbs")
 
     def changeBottomBtnsTheme(self, _, theme):
