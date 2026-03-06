@@ -2,7 +2,6 @@ import logging
 
 from utils.helper import write_logs_to_file
 write_logs_to_file()
-from utils.service_helper import ReceivedData, start_service_server
 
 from android_notify import Notification, logger as android_notify_logger
 from android_notify.config import get_python_service, on_android_platform, autoclass
@@ -10,6 +9,7 @@ from android_notify.internal.java_classes import BuildVersion
 
 from utils.logger import app_logger
 from utils.constants import SERVICE_PORT_ARGUMENT_KEY
+from utils.service_helper import ReceivedData, start_service_server
 
 
 android_notify_logger.setLevel(logging.WARNING if on_android_platform() else logging.ERROR)
@@ -26,7 +26,6 @@ notification.setObeyUserClear(True) # don't show after users clear from Tray
 notification.addButton(text="Stop", receiver_name="CarouselReceiver", action="ACTION_STOP")
 notification.addButton(text="Skip", receiver_name="CarouselReceiver", action="ACTION_SKIP")
 builder = notification.fill_args()
-
 
 service.startForeground(notification.id, builder.build(), foreground_type)
 service.setAutoRestartService(True)
