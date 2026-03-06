@@ -16,6 +16,8 @@ android_notify_logger.setLevel(logging.WARNING if on_android_platform() else log
 app_logger.setLevel(logging.INFO)
 
 receivedData = ReceivedData()
+service = get_python_service()
+foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE_TYPE_SPECIAL_USE if on_android_platform() and BuildVersion.SDK_INT >= 30 else 0
 
 Notification.createChannel(id="service_channel",name="Carousel Service",description="For Controlling and Previewing Next Wallpaper")
 notification = Notification(title="Next in 02:00", name="from service",channel_id="service_channel",id=101)
@@ -25,8 +27,7 @@ notification.addButton(text="Stop", receiver_name="CarouselReceiver", action="AC
 notification.addButton(text="Skip", receiver_name="CarouselReceiver", action="ACTION_SKIP")
 builder = notification.fill_args()
 
-service = get_python_service()
-foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE_TYPE_SPECIAL_USE if on_android_platform() and BuildVersion.SDK_INT >= 30 else 0
+
 service.startForeground(notification.id, builder.build(), foreground_type)
 service.setAutoRestartService(True)
 
