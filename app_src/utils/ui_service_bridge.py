@@ -5,6 +5,7 @@ from pythonosc import dispatcher, osc_server, udp_client
 
 from utils.helper import get_free_port
 from utils.logger import app_logger
+from utils.service_helper import ServiceServerAddress
 
 
 SERVICE_IP = "0.0.0.0"
@@ -165,12 +166,12 @@ class UIServiceMessenger:
 
     def change_next(self):
         app_logger.debug("Changing next wallpaper")
-        self.__send_data_to_service("/change-next", {})
+        self.__send_data_to_service(ServiceServerAddress.CHANGE_NEXT.name, {})
 
     def toggle_home_screen_widget_changes(self):
         app_logger.debug("Toggling Home Screen Widgets Loop")
-        self.__send_data_to_service("/toggle_home_screen_widget_changes", {})
+        self.__send_data_to_service(ServiceServerAddress.TOGGLE_HOME_SCREEN_WIDGET_CHANGES.name, {})
 
 
 if __name__ == "__main__":
-    UIServiceListener().start(False)
+    UIServiceListener(5004).start(False)

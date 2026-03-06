@@ -5,14 +5,6 @@
 #:import GalleryTabs utils.model.GalleryTabs
 
 
-
-
-
-<MyMDButton@MDButton>:
-    theme_bg_color:"Custom"
-    radius: [dp(18)]
-
-
 <GalleryScreen>:
     md_bg_color:  [0.8,0.8, 0.8, 1] if app.device_theme == "light" else [.1,.1,.1,1]
 
@@ -26,14 +18,14 @@
             adaptive_size: True
             padding: [0,0,0,dp(15)]
 #            md_bg_color:[1,0,1,1]
-            MDIconButton:
-                icon: "view-dashboard-outline"
-                theme_icon_color:"Custom"
-                icon_color: [.8,.8,.8,1]
-            MDIconButton:
-                icon: "dots-vertical"
-                theme_icon_color:"Custom"
-                icon_color: [.8,.8,.8,1]
+#            MDIconButton:
+#                icon: "view-dashboard-outline"
+#                theme_icon_color:"Custom"
+#                icon_color: [.8,.8,.8,1]
+#            MDIconButton:
+#                icon: "dots-vertical"
+#                theme_icon_color:"Custom"
+#                icon_color: [.8,.8,.8,1]
         Column:
             spacing:10
             padding: [dp(20), 0, dp(20), dp(10)]

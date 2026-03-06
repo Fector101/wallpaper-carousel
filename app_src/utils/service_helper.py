@@ -1,0 +1,524 @@
+import json
+import os
+import random
+import threading
+import time
+import traceback
+from datetime import datetime, time as dt_time
+from pythonosc import dispatcher, osc_server, udp_client
+
+from android_notify import Notification
+from android_notify.config import get_python_activity_context, on_android_platform, autoclass, get_python_service
+from android_notify.internal.java_classes import BitmapFactory
+from android_widgets import Layout, RemoteViews, AppWidgetManager
+
+from utils.config_manager import ConfigManager
+from utils.constants import SERVICE_LIFESPAN_HOURS
+from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, DEFAULT_SERVICE_PORT, \
+    DEFAULT_UI_PORT
+from utils.helper import change_wallpaper, appFolder, format_time_remaining, SERVICE_PORT_STORE_PATH, UI_PORT_STORE_PATH
+from utils.logger import app_logger
+from enum import Enum
+
+my_config = ConfigManager()
+wallpapers_folder_path = os.path.join(appFolder(), "wallpapers")
+
+notification = Notification(name="from service",channel_id="service_channel",id=101)
+service = get_python_service()
+
+
+def is_between_6am_6pm():
+    now = datetime.now().time()
+    start = dt_time(6, 0)   # 6:00 AM
+    end = dt_time(18, 0)    # 6:00 PM
+    return start <= now < end
+
+
+def get_next_wallpaper():
+    """Get the next wallpaper path and name without setting it yet
+    :return: [absolute_path, name]
+    """
+    try:
+
+        images = my_config.get_wallpapers()
+        if is_between_6am_6pm():
+            images = images + my_config.get_day_wallpapers()
+        else:
+            images = images + my_config.get_noon_wallpapers()
+
+        # images = [
+        #     os.path.join(wallpapers_folder_path, f)
+        #     for f in os.listdir(wallpapers_folder_path)
+        #     if f.lower().endswith((".jpg", ".jpeg", ".png"))
+        # ]
+        # rint("service found:",images)
+        if not images:
+            app_logger.warning(f"No images found in {wallpapers_folder_path}")
+            return '', ''
+
+        wallpaper_path = random.choice(images)
+        return os.path.basename(wallpaper_path), wallpaper_path
+    except Exception as error_getting_next_wallpaper:
+        app_logger.exception(f"Failed to get next wallpaper: {error_getting_next_wallpaper}")
+        return '', ''
+
+
+def get_interval():
+    try:
+        t = int(float(my_config.get_interval()) * 60)
+        return t
+    except Exception as error_getting_saved_interval:
+        app_logger.exception(f"Service Failed to get Interval: {error_getting_saved_interval}")
+        traceback.print_exc()
+        return 120
+
+
+def get_service_lifespan_text(elapsed_seconds):
+    """Get service lifespan text like 'service lifespan: 6hrs'"""
+    remaining_hours = max(0, SERVICE_LIFESPAN_HOURS - int(elapsed_seconds // 3600))
+    return f"service lifespan: {remaining_hours}hrs"
+
+
+def register_screen_receiver():
+    if not on_android_platform():
+        return None
+    # Get the current Android activity
+    # PythonActivity = autoclass('org.kivy.android.PythonActivity')
+    activity = get_python_activity_context()#PythonActivity.mActivity
+
+    # Import your Java BroadcastReceiver
+    DetectReceiver = autoclass('org.wally.waller.DetectReceiver')
+    receiver = DetectReceiver()  # create an instance
+
+    # Create the IntentFilter
+    IntentFilter = autoclass('android.content.IntentFilter')
+    filter__ = IntentFilter()
+    Intent = autoclass('android.content.Intent')
+    filter__.addAction(Intent.ACTION_SCREEN_ON)
+    filter__.addAction(Intent.ACTION_SCREEN_OFF)
+    filter__.addAction(Intent.ACTION_USER_PRESENT)
+
+    # Register the receiver
+    activity.registerReceiver(receiver, filter__)
+    print("python DetectReceiver registered successfully!")
+
+    return receiver
+
+
+def unregister_screen_receiver(receiver):
+    if not on_android_platform() or receiver is None:
+        return
+
+    # PythonActivity = autoclass('org.kivy.android.PythonActivity')
+    activity = get_python_activity_context() #PythonActivity.mActivity
+
+    try:
+        activity.unregisterReceiver(receiver)
+        print("python DetectReceiver unregistered successfully!")
+    except Exception as error_unregistering_screen_receiver:
+        print(f"python Failed to unregister receiver: {error_unregistering_screen_receiver}")
+
+class ServiceServerAddress(Enum):
+    START = "/start"
+    PAUSE = "/pause"
+    RESUME = "/resume"
+    STOP = "/stop"
+    CHANGE_NEXT = "/change-next"
+    SET_WALLPAPER = "/set-wallpaper"
+    TOGGLE_HOME_SCREEN_WIDGET_CHANGES = "/toggle_home_screen_widget_changes"
+    APPLY_NEXT_WALLPAPER = "/apply_next_wallpaper"
+
+class ReceivedData:
+    # Always use `json.dumps(args)` to start service.
+    def __init__(self):
+        self.data = self.__get_object_sent_from_ui()
+        self.__store_service_port(self.service_port)
+        self.__store_port(self.ui_port)
+
+    @staticmethod
+    def __get_object_sent_from_ui():
+        data = {}
+        try:
+            service_argument = os.environ.get('PYTHON_SERVICE_ARGUMENT', json.dumps(''))
+            data = json.loads(service_argument)
+        except Exception as error_getting_ui_data:
+            app_logger.exception(f"Error getting ui data {error_getting_ui_data}")
+            traceback.print_exc()
+        return data
+
+    @property
+    def service_port(self):
+        port = DEFAULT_SERVICE_PORT
+        if SERVICE_PORT_ARGUMENT_KEY in self.data:
+            port = self.data[SERVICE_PORT_ARGUMENT_KEY]
+            try:
+                port = int(port)
+            except ValueError as error_changing_port_to_int:
+                app_logger.exception(f"Error: {error_changing_port_to_int}, received port: '{port}'")
+                port = DEFAULT_SERVICE_PORT
+        return port
+
+    @property
+    def ui_port(self):
+        port = DEFAULT_UI_PORT
+        if SERVICE_UI_PORT_ARGUMENT_KEY in self.data:
+            port = self.data[SERVICE_UI_PORT_ARGUMENT_KEY]
+        return port
+
+    @staticmethod
+    def __store_service_port(port):
+        try:
+            service_port_store_path = os.path.join(appFolder(), 'port.txt')
+            with open(service_port_store_path, "w") as f:
+                f.write(str(port))
+            # app_logger.info(f"Stored Service Port for Java - Port: {port}, file_path: {service_port_store_path}")
+        except Exception as error_write_port:
+            app_logger.exception(f"Error writing wallpaper port: {error_write_port}")
+            traceback.print_exc()
+
+
+    @staticmethod
+    def __store_port(port,which="UI"):
+        try:
+            port_store_path = os.path.join(appFolder(), f'{which}_port.txt'.lower())
+            with open(port_store_path, "w") as f:
+                f.write(str(port))
+            # app_logger.info(f"Stored {which} Port for Java - Port: {port}, file_path: {port_store_path}")
+        except Exception as error_write_port:
+            app_logger.exception(f"Error writing wallpaper port: {error_write_port}")
+            traceback.print_exc()
+
+class WallpaperServerReceiver:
+    def __init__(self):
+        self.__server_thread=None
+        self.is_home_screen_widget_changes_paused=False
+        self.current_wallpaper = None
+        self.skip_now = False
+        self.live = True
+        self.next_wallpaper_path = ''
+        self.current_sleep = 1
+        self.current_wait_seconds = get_interval()
+        self.pause_event = None
+        # self.service_start_time = time.time()
+        self.__start_main_loop()
+        self.changes = 0
+        print("python init MyWallpaperReceiver")
+
+        try:
+            print("trying to register")
+            register_screen_receiver()
+        except Exception as error_registering_screen_receiver:
+            print("python error_registering_screen_receiver", error_registering_screen_receiver)
+    @staticmethod
+    def __unregister_screen_state_receiver():
+        try:
+            print("trying to unregister")
+            DetectReceiver = autoclass('org.wally.waller.DetectReceiver')
+            receiver = DetectReceiver()
+            unregister_screen_receiver(receiver)
+        except Exception as error_getting_screen_receiver:
+            print("python error_getting_screen_receiver", error_getting_screen_receiver)
+
+    def __start_main_loop(self):
+        try:
+            self.__server_thread=threading.Thread(target=self.heart, daemon=True)
+            self.__server_thread.start()
+            self.pause_event = threading.Event()
+            self.pause_event.set()  # start unpaused
+
+        except Exception as error_start_main_loop: # Avoiding process is bad java.lang.SecurityException
+            app_logger.exception(f" [__start_main_loop]Service Main loop Failed: {error_start_main_loop}")
+            traceback.print_exc()
+
+    def __count_down(self):
+        self.current_wait_seconds = get_interval()
+        while self.current_wait_seconds > 0:
+            self.__check_and_or_do_pause_for_on_wake()
+            time.sleep(self.current_sleep)
+            self.current_wait_seconds -= 1
+
+            if self.current_wait_seconds <= 0:
+                break
+
+            value_ = format_time_remaining(get_interval()) if self.current_wait_seconds <= 0 else format_time_remaining(self.current_wait_seconds)
+            self.__send_data_to_ui("/countdown_change", {"seconds": value_})
+            notification.updateTitle(f"Next in {value_}")
+
+            # current_time = time.time()
+            # elapsed_since_service_start = current_time - self.service_start_time
+            # if int(elapsed_since_service_start) % 3600 == 0 and foreground_type:  # Every hour
+            #     notification.updateMessage(get_service_lifespan_text(elapsed_since_service_start))
+
+    def heart(self):
+        # wait - so it waits before first change so user can cancel if they don't want feature
+        # set
+
+        while self.live:
+
+            self.choseAndShowPreviewForNextWallpaper() # Get Upcoming
+            self.__check_and_or_do_pause_for_on_wake()
+            # Wait for a while
+            self.__count_down()
+
+            if not self.skip_now:
+                self.apply_new_wallpaper()
+            self.skip_now = False
+        notification.updateTitle("Stopping Service....")
+
+    def __check_and_or_do_pause_for_on_wake(self):
+        self.pause_event.wait()
+        truth = my_config.get_on_wake_state()
+        if truth:
+            notification.updateTitle("OnNext Wake")
+            self.pause_event.clear()
+
+    def __write_wallpaper_path_to_file(self, wallpaper_path):
+        # Writing for Java to see for home screen widget
+        if not wallpaper_path:
+            return
+        if not os.path.exists(wallpaper_path):
+            app_logger.error(f"Image - {wallpaper_path} does not exist, can't store path")
+            return
+
+        current_wallpaper_store_path = os.path.join(appFolder(), 'wallpaper.txt')
+        with open(current_wallpaper_store_path, "w") as f:
+            f.write(wallpaper_path)
+
+        try:
+            if not self.is_home_screen_widget_changes_paused:
+                self.update_widget_image(wallpaper_path)
+            else:
+                app_logger.warning("Home Screen Widget Changes Paused...")
+        except Exception as error_updating_widget:
+            app_logger.exception(f"Error update_widget_image  -{error_updating_widget}")
+            traceback.print_exc()
+
+        #try:
+          #  self.changed_widget_text()
+        #except Exception as e:
+         #   self.__log(f"Error changed_widget_text -{e} ping Java Listener", "WARNING")
+         #   traceback.print_exc()
+        #self.changes += 1
+
+    @staticmethod
+    def __set_next_img_in_notification(wallpaper_path):
+        if not wallpaper_path:
+            return
+        if os.path.exists(wallpaper_path):
+            notification.setLargeIcon(wallpaper_path)
+        else:
+            app_logger.error(f"Image - {wallpaper_path} does not exist, can't set notification preview")
+
+    def choseAndShowPreviewForNextWallpaper(self):
+        wallpaper = get_next_wallpaper()
+        self.next_wallpaper_path = wallpaper[1]
+        self.__set_next_img_in_notification(self.next_wallpaper_path)
+        self.__send_data_to_ui("/changed_homescreen_widget",
+                               {"current_wallpaper": None, "next_wallpaper": self.next_wallpaper_path})
+        self.__send_data_to_ui("/changed_wallpaper",
+                               {"current_wallpaper": None, "next_wallpaper": self.next_wallpaper_path})
+        notification.setData({"next wallpaper path": self.next_wallpaper_path})
+
+    def apply_new_wallpaper(self):
+        self.current_wallpaper = self.next_wallpaper_path
+        self.set_wallpaper(self.next_wallpaper_path)
+        self.__write_wallpaper_path_to_file(self.next_wallpaper_path)
+
+    def apply_next_wallpaper(self, *args):
+        """For Screen Listener to change wallpaper and change notification Next wallpaper Image"""
+        if my_config.get_on_wake_state():
+            print("from java",args)
+            self.apply_new_wallpaper()
+            self.choseAndShowPreviewForNextWallpaper()
+
+    def start(self, data=None):
+        # self.__start_main_loop()
+        pass
+
+    def stop(self, *args):
+        notification.updateTitle("Stopping Service...")
+        # time.sleep(0.1)
+        app_logger.info(f"stop args: {args}")
+        self.live = 0
+        self.skip_now = True
+        self.current_wait_seconds = 0
+        self.pause_event.set()
+        self.__server_thread.join()
+        self.__send_data_to_ui("/stopped", {})
+        server.shutdown() # type: ignore
+        service.setAutoRestartService(False)
+        # Trying to Avoid- D ProcessStarter: proc frequent died! proc = org.wally.waller:service_Wallpapercarousel callerPkg = org.wally.waller
+        # service.stopSelf()
+
+    def pause(self, _=None):
+        notification.updateTitle("Carousel Pause")
+        self.pause_event.clear()
+
+    def resume(self, _=None):
+        self.pause_event.set()
+
+    def receiveClientChangeNext(self, *_):
+        if my_config.get_on_wake_state():
+            # Only Change Next Wallpaper and Not Clear Loops that results to choosing new Wallpaper
+            self.choseAndShowPreviewForNextWallpaper()
+            return None
+        # app_logger.info(f"set_next_data args: {_}")
+        self.skip_now = True
+        self.current_wait_seconds = 0
+        return None
+    def toggle_home_screen_widget_changes(self, *_):
+        self.is_home_screen_widget_changes_paused = not self.is_home_screen_widget_changes_paused
+
+    @staticmethod
+    def __send_data_to_ui(path, dict_data):
+        client.send_message(address=path,value=json.dumps(dict_data))
+
+    def set_wallpaper(self, wallpaper_path):
+        self.__send_data_to_ui("/changed_wallpaper", {"current_wallpaper": self.current_wallpaper,"next_wallpaper":self.next_wallpaper_path})
+        change_wallpaper(wallpaper_path)
+
+    def changed_widget_text(self):
+        appWidgetManager = AppWidgetManager("CarouselWidgetProvider")
+
+        text_layout = Layout("carousel_widget")
+        views = RemoteViews(layout=text_layout)
+        views.setTextViewText(text_id="widget_text", text=f"Count: {self.changes}")
+
+        appWidgetManager.updateAppWidget(java_view_object=views.main)
+
+    def update_widget_image(self, wallpaper_path):
+        if not on_android_platform():
+            self.__send_data_to_ui("/changed_homescreen_widget", {"current_wallpaper": self.current_wallpaper,"next_wallpaper":None})
+            app_logger.warning("Failed to Change Home Screen Widget: Not on Android platform")
+            return None
+        context = get_python_activity_context()
+        Bitmap = autoclass('android.graphics.Bitmap')
+        BitmapConfig = autoclass('android.graphics.Bitmap$Config')
+        Canvas = autoclass('android.graphics.Canvas')
+        Paint = autoclass('android.graphics.Paint')
+        Rect = autoclass('android.graphics.Rect')
+        RectF = autoclass('android.graphics.RectF')
+        PorterDuffMode = autoclass('android.graphics.PorterDuff$Mode')
+        PorterDuffXfermode = autoclass('android.graphics.PorterDuffXfermode')
+
+        BitmapFactoryOptions = autoclass('android.graphics.BitmapFactory$Options')
+
+        AppWidgetManager_ = autoclass('android.appwidget.AppWidgetManager')
+        ComponentName = autoclass('android.content.ComponentName')
+        RemoteViews_ = autoclass('android.widget.RemoteViews')
+        View = autoclass('android.view.View')
+        resources = context.getResources()
+        package_name = context.getPackageName()
+
+        image_file = os.path.join(
+            context.getFilesDir().getAbsolutePath(),
+            wallpaper_path
+        )
+
+        if not os.path.exists(image_file):
+            app_logger.error(f"Image not found: {image_file}")
+            return None
+
+        opts = BitmapFactoryOptions()
+        opts.inSampleSize = 4  # widget-safe memory usage
+        src = BitmapFactory.decodeFile(image_file, opts)
+
+        if src is None:
+            app_logger.error("Bitmap decode failed")
+            return None
+
+        # Crop bitmap to square
+        size = min(src.getWidth(), src.getHeight())
+        x = (src.getWidth() - size) // 2
+        y = (src.getHeight() - size) // 2
+        square = Bitmap.createBitmap(src, x, y, size, size)
+
+        # Scale bitmap to widget size
+        widget_dp = 120  # widget layout width/height in dp
+        density = context.getResources().getDisplayMetrics().density
+        widget_px = int(widget_dp * density)  # convert dp to pixels
+
+        scaled_bitmap = Bitmap.createScaledBitmap(square, widget_px, widget_px, True)
+
+        # Create rounded bitmap using Canvas
+        output = Bitmap.createBitmap(widget_px, widget_px, BitmapConfig.ARGB_8888)
+        canvas = Canvas(output)
+
+        paint = Paint()
+        paint.setAntiAlias(True)
+
+        rect = Rect(0, 0, widget_px, widget_px)
+        rectF = RectF(rect)
+
+        corner_radius_px = 16 * density  # 16dp corners
+        canvas.drawARGB(0, 0, 0, 0)
+        canvas.drawRoundRect(rectF, corner_radius_px, corner_radius_px, paint)
+
+        paint.setXfermode(PorterDuffXfermode(PorterDuffMode.SRC_IN))
+        canvas.drawBitmap(scaled_bitmap, rect, rect, paint)
+
+        # Update widget
+        layout_id = resources.getIdentifier("carousel_widget", "layout", package_name)
+        image_id = resources.getIdentifier("test_image", "id", package_name)
+        placeholder_id = resources.getIdentifier("placeholder_text", "id", package_name)
+        app_logger.info(f"layout_id:{layout_id}, image_id:{image_id}, placeholder_id:{placeholder_id}")
+        views = RemoteViews_(package_name, layout_id)
+        views.setImageViewBitmap(image_id, output)
+
+        views.setViewVisibility(image_id, View.VISIBLE)
+        views.setViewVisibility(placeholder_id, View.GONE)
+
+        component = ComponentName(context, f"{package_name}.CarouselWidgetProvider")
+        appWidgetManager = AppWidgetManager_.getInstance(context)
+        ids = appWidgetManager.getAppWidgetIds(component)
+        appWidgetManager.updateAppWidget(ids, views)
+        self.__send_data_to_ui("/changed_homescreen_widget", {"current_wallpaper": self.current_wallpaper,"next_wallpaper":None})
+        return None
+        # app_logger.info(f"Changed Home Screen Widget: {wallpaper_path}")
+
+receivedData = ReceivedData()
+client = udp_client.SimpleUDPClient("0.0.0.0", receivedData.ui_port)
+receivedData = ReceivedData()
+server = None
+def start_service_server():
+    global server
+
+    myDispatcher = dispatcher.Dispatcher()
+    wallpaperServerReceiver = WallpaperServerReceiver()
+    myDispatcher.map(ServiceServerAddress.START.name, wallpaperServerReceiver.start)
+    myDispatcher.map(ServiceServerAddress.PAUSE.name, wallpaperServerReceiver.pause)
+    myDispatcher.map(ServiceServerAddress.RESUME.name, wallpaperServerReceiver.resume)
+    myDispatcher.map(ServiceServerAddress.CHANGE_NEXT.name, wallpaperServerReceiver.receiveClientChangeNext)
+    myDispatcher.map(ServiceServerAddress.STOP.name, wallpaperServerReceiver.stop)
+    myDispatcher.map(ServiceServerAddress.SET_WALLPAPER.name, wallpaperServerReceiver.set_wallpaper)
+    myDispatcher.map(ServiceServerAddress.TOGGLE_HOME_SCREEN_WIDGET_CHANGES.name, wallpaperServerReceiver.toggle_home_screen_widget_changes)
+    myDispatcher.map(ServiceServerAddress.APPLY_NEXT_WALLPAPER.name, wallpaperServerReceiver.apply_next_wallpaper)
+
+    server = osc_server.ThreadingOSCUDPServer(("0.0.0.0", receivedData.service_port), myDispatcher)
+
+    if not on_android_platform():
+        # (venv) fabian@fabian-HP-Pavilion-Laptop-15t-eg300:~/Documents/Laner/mobile/app_src$ python3 -m android.services.wallpaper
+        app_logger.info(f"Service Running From PC- {server.server_address[0]}:{server.server_address[1]}")
+
+    try:
+        server.serve_forever()
+    except Exception as e:
+        app_logger.exception(f"Service Main loop Failed: {e}")
+        traceback.print_exc()
+        # Avoiding process is bad java.lang.SecurityException
+    finally:
+        print('service python: The end...')
+        with open(UI_PORT_STORE_PATH, "w") as f_:
+            f_.write("")
+        with open(SERVICE_PORT_STORE_PATH, "w") as f__:
+            f__.write("")
+
+# foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE_TYPE_DATA_SYNC if on_android_platform() and BuildVersion.SDK_INT >= 30 else 0
+# if foreground_type:
+#     notification.message=f"service lifespan: {SERVICE_LIFESPAN_HOURS}hrs"
+
+# | Method    | Meaning                         |
+# | --------- | ------------------------------- |
+# | `set()`   | 🟢 Green light — go             |
+# | `clear()` | 🔴 Red light — stop             |
+# | `wait()`  | “Wait at the light until green” |

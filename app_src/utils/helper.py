@@ -1,7 +1,10 @@
 # DO NOT IMPORT ANY UI THING TOP GLOBAL LEVEL
 import json
-import os, platform
-import sys, traceback, socket
+import os
+import platform
+import socket
+import sys
+import traceback
 from datetime import datetime
 
 from android_notify.config import get_python_activity_context, from_service_file, on_android_platform
@@ -27,7 +30,7 @@ def is_wine():
     return False
 
 
-def makeFolder(my_folder: str):
+def makeFolder(my_folder):
     """Safely creates a folder if it doesn't exist."""
     # Normalize path for Wine (Windows-on-Linux)
     if is_wine():
@@ -41,11 +44,11 @@ def makeFolder(my_folder: str):
     return my_folder
 
 
-def appFolder() -> str:
+def appFolder() -> str | bytes:
     """Creates (if needed) and returns the Laner download folder path."""
 
     if on_android_platform():
-        from android.storage import app_storage_path # type: ignore # , primary_external_storage_path
+        from android.storage import app_storage_path  # type: ignore # , primary_external_storage_path
         # folder_path = os.path.join(primary_external_storage_path(), 'Pictures', 'Waller')
         folder_path = os.path.join(app_storage_path())
 
@@ -78,8 +81,7 @@ class Tee:
 
 
 def write_logs_to_file(log_folder_name="logs", file_name="all_output1.txt"):
-    # Create folder
-    if DEV:
+    if DEV or not on_android_platform():
         return
     try:
 
@@ -106,7 +108,7 @@ def write_logs_to_file(log_folder_name="logs", file_name="all_output1.txt"):
 class Service:
     def __init__(self, name, args_str="", extra=True):
         try:
-            from android import mActivity # type: ignore
+            from android import mActivity  # type: ignore
         except (ModuleNotFoundError, ImportError):
             mActivity = None
         self.mActivity = mActivity
@@ -150,7 +152,7 @@ class Service:
             return True
 
         except Exception as error_stopping_service:
-            print("Error stopping service:",error_stopping_service)
+            print("Error stopping service:", error_stopping_service)
             traceback.print_exc()
             return False
 
@@ -169,7 +171,7 @@ class Service:
         try:
             self.service.start(self.mActivity, arg)
         except Exception as error_starting_service:
-            print("Error starting service:",error_starting_service)
+            print("Error starting service:", error_starting_service)
             traceback.print_exc()
 
     def __run_service_file(self):
@@ -274,8 +276,11 @@ class Font:
         """
         return os.path.join(self.base_folder, self.name + '-' + fn_type + '.ttf')
 
-def load_kv_file(module_name="", py_file_absolute_path=""):
 
+def load_kv_file(module_name="", py_file_absolute_path=""):
+    if module_name:
+        print("using absolute py path")
+        return None
     if not os.path.exists(py_file_absolute_path):
         print("Invalid py file path")
         return False
@@ -296,7 +301,6 @@ def load_kv_file(module_name="", py_file_absolute_path=""):
 
 
 def toInt(text):
-    print('git',text)
     if not text:
         return None
     try:
@@ -305,6 +309,7 @@ def toInt(text):
         print(error_changing_to_int)
         traceback.print_exc()
     return None
+
 
 def fix_input_on_linux():
     from kivy.utils import platform
@@ -318,3 +323,34 @@ def fix_input_on_linux():
             Config.remove_option('input', option)
 
     return None
+
+
+def register_fonts():
+    from kivy.core.text import LabelBase
+    robot_mono = Font(name='RobotoMono', base_folder="assets/fonts/Roboto_Mono/static")
+    LabelBase.register(
+        name="RobotoMono",
+        fn_regular=robot_mono.get_type_path('Regular'),
+        fn_italic=robot_mono.get_type_path('Italic'),
+        fn_bold=robot_mono.get_type_path('Bold'),
+    )
+
+
+# don't import appFolder() in model.py, Error: circular import.
+UI_PORT_STORE_PATH = os.path.join(appFolder(), "ui_port.txt")
+SERVICE_PORT_STORE_PATH = os.path.join(appFolder(), "port.txt")
+
+
+def get_stored_running_ui_server_port():
+    if os.path.exists(UI_PORT_STORE_PATH):
+        with open(UI_PORT_STORE_PATH, "r") as f:
+            return toInt(f.read())
+    return None
+
+
+def get_stored_running_service_server_port():
+    if os.path.exists(SERVICE_PORT_STORE_PATH):
+        with open(SERVICE_PORT_STORE_PATH, "r") as f:
+            return toInt(f.read())
+    return None
+

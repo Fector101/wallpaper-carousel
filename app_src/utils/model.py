@@ -1,11 +1,11 @@
 from typing import Optional
 from kivymd.app import MDApp
+from typing import cast, Callable, Literal, Any
+from enum import Enum
+
 from utils.ui_service_bridge import UIServiceListener, UIServiceMessenger
-from typing import cast
 from utils.image_operations import ImageOperation
 
-# types/screen_manager_model.py
-from typing import Callable, Literal, Any
 
 class BottomButtonBarModel:
     # callbacks provided from outside
@@ -68,12 +68,12 @@ class WallpaperCarouselAppModel:
 def get_app() -> WallpaperCarouselAppModel:
     return cast(WallpaperCarouselAppModel, MDApp.get_running_app())
 
-from enum import Enum
 
 class GalleryTabs(Enum):
     DAY = "Day"
     NOON = "Noon"
     BOTH = "Both"
+
 
 # # Usage examples
 # print(TimeOfDay.DAY)  # TimeOfDay.DAY
