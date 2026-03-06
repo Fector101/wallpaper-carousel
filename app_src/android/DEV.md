@@ -8,7 +8,7 @@ So if new assets added it doesn't add new files
 adb shell
 run-as org.wally.waller
 ls -l files
-cd files/app
+cd files
 ```
 How to see WAKE INTENT
 ```shell

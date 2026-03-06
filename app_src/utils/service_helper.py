@@ -200,7 +200,6 @@ class WallpaperServerReceiver:
         # self.service_start_time = time.time()
         self.__start_main_loop()
         self.changes = 0
-        print("python init MyWallpaperReceiver")
 
         try:
             print("trying to register")
@@ -239,8 +238,7 @@ class WallpaperServerReceiver:
             if self.current_wait_seconds <= 0:
                 break
 
-            value_ = format_time_remaining(get_interval()) if self.current_wait_seconds <= 0 else format_time_remaining(
-                self.current_wait_seconds)
+            value_ = format_time_remaining(get_interval()) if self.current_wait_seconds <= 0 else format_time_remaining(self.current_wait_seconds)
             self.__send_data_to_ui("/countdown_change", {"seconds": value_})
             self.notification.updateTitle(f"Next in {value_}")
 
@@ -266,11 +264,11 @@ class WallpaperServerReceiver:
         self.notification.updateTitle("Stopping Service....")
 
     def __check_and_or_do_pause_for_on_wake(self):
-        self.pause_event.wait()
         truth = my_config.get_on_wake_state()
         if truth:
             self.notification.updateTitle("OnNext Wake")
             self.pause_event.clear()
+            self.pause_event.wait()
 
     def __write_wallpaper_path_to_file(self, wallpaper_path):
         # Writing for Java to see for home screen widget

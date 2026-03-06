@@ -2,10 +2,12 @@ from kivy.graphics import Color, RoundedRectangle
 from kivy.graphics.boxshadow import BoxShadow
 from kivy.metrics import dp
 from kivy.properties import ListProperty
+
 from kivy.uix.button import Button
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDIconButton
 from kivymd.uix.relativelayout import MDRelativeLayout
+from android_notify import NotificationHandler
 
 from ui.widgets.layouts import get_dimensions
 from utils.model import get_app
@@ -130,7 +132,8 @@ class BottomNavigationBar(MDRelativeLayout):
 
         self.app.bind(device_theme=self.changeBottomBtnsTheme)
         self.changeBottomBtnsTheme(None, self.app.device_theme)
-        self.hide()
+        if not NotificationHandler.has_permission():
+            self.hide()
         # self.color_tab_buttons("thumbs")
 
     def changeBottomBtnsTheme(self, _, theme):
