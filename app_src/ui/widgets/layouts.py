@@ -146,11 +146,15 @@ class MyMDScreen(MDScreen):
 
     status_bar_height = NumericProperty(0)
     nav_bar_height = NumericProperty(0)
+    status_bar_bg = ListProperty([26/255, 27/255, 27/255, 1])
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Window.bind(width=self.thing, height=self.thing, on_resize=self.thing,on_keyboard=self.thing,on_move=self.thing)
-        # Clock.schedule_interval(self.thing, 3)
-        # self.md_bg_color = [1, 1, 0, 1]
+        self.bind(status_bar_bg = self.update_status_bar_bg)
+
+    def update_status_bar_bg(self,_, status_bar_bg):
+        self.status_bar_box.md_bg_color = status_bar_bg
+
     def add_widget(self, widget, *args, **kwargs):
         # self.nav_bar_height = self.status_bar_height = 50
         # self.md_bg_color=[1,1,0,1]
@@ -159,10 +163,11 @@ class MyMDScreen(MDScreen):
             dimensions = get_dimensions()
             self.status_bar_height = dimensions[0]
             self.nav_bar_height = dimensions[1]
+        # self.nav_bar_height = self.status_bar_height = 50
 
         if self.status_bar_box is None:
             self.status_bar_box = MDBoxLayout(size_hint=[1, None], height=self.status_bar_height,
-                                              md_bg_color=[26/255, 27/255, 27/255, 1],
+                                              md_bg_color= self.status_bar_bg,
                                               # md_bg_color=[0,0,1, 1],
                                               pos_hint={"top": 1})
             super().add_widget(self.status_bar_box)
@@ -195,7 +200,6 @@ class MyMDScreen(MDScreen):
         height = Window.height - (self.status_bar_height + self.nav_bar_height)
         if self.screen_content:
             self.screen_content.height = height
-
 
     def thing(self, *args):
         print("for Window bind",args)

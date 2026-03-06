@@ -452,6 +452,10 @@ class SettingsScreen(MyMDScreen):
         self.interval_input = None
         self.name = "settings"
         self.app = MDApp.get_running_app()
+        self.status_bar_bg = [0.45, 0.45, 0.45, 1] if self.app.device_theme == "light" else [0.23, 0.23, 0.23, 1]
+        self.app.bind(device_theme=self.set_theme_color)
+
+
         # b=.1
         # self.md_bg_color = [b,b,b, 1]
         self.app_dir = Path(appFolder())
@@ -776,3 +780,6 @@ class SettingsScreen(MyMDScreen):
     def on_changed_homescreen_widget(self, current_wallpaper, next_wallpaper):
         self.current_image_source = current_wallpaper or self.current_image_source
         self.next_image_source = next_wallpaper or self.next_image_source
+
+    def set_theme_color(self, _, value):
+        self.status_bar_bg = [0.45, 0.45, 0.45, 1] if value == "light" else [0.23, 0.23, 0.23, 1]

@@ -24,6 +24,7 @@ my_config = ConfigManager()
 wallpapers_folder_path = os.path.join(appFolder(), "wallpapers")
 
 notification = Notification(name="from service",channel_id="service_channel",id=101)
+notification.send() # need to send initial before any updates
 service = get_python_service()
 
 

@@ -130,6 +130,7 @@ class WallpaperCarouselApp(MDApp):
 
     def monitor_dark_and_light_device_change(self):
         self.device_theme = is_device_on_light_mode()
+        # self.device_theme='light'
         return self.device_theme
 
 
