@@ -2,6 +2,7 @@ import os, time
 from datetime import datetime
 from pathlib import Path
 
+from android_notify.config import on_android_platform
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.metrics import dp, sp
@@ -348,12 +349,20 @@ class GalleryScreen(MyMDScreen):
         #             print("error_getting_path",error_getting_path)
         #
         #     activity.bind(on_activity_result=test) # handling image with no permission
-        filechooser.open_file(
-            on_selection=self.app.file_operation.copy_add,
-            filters=["image"],
-            multiple=True
-        )
+        self.app.file_operation.show_spinner()
 
+
+        def show_chooser(dt):
+            filechooser.open_file(
+                on_selection=self.app.file_operation.copy_add,
+                filters=["image"],
+                multiple=True
+            )
+        if on_android_platform():
+            Clock.schedule_once(show_chooser)
+        else:
+            import threading
+            threading.Thread(target=show_chooser).start()
         # ----------------- This Also Works Keeping for Reference ---------------------------
         # from jnius import autoclass, cast
         # from android import activity

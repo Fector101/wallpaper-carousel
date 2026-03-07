@@ -1,4 +1,5 @@
 import os
+import threading
 from pathlib import Path
 
 from kivy.clock import Clock
@@ -17,7 +18,7 @@ from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.button import MDIconButton
 from kivy.graphics import Color, Line
 
-from ui.widgets.layouts import MyPopUp, MyMDScreen, get_dimensions
+from ui.widgets.layouts import MyPopUp, MyMDScreen, get_dimensions, LoadingLayout
 from utils.image_operations import thumbnail_path_for, get_image_info
 from utils.helper import appFolder, change_wallpaper
 from utils.config_manager import ConfigManager
@@ -294,7 +295,8 @@ class FullscreenScreen(MyMDScreen):
         self.btn_info.bind(on_release=self.show_info)
         self.btn_fullscreen.bind(on_release=self.toggle_fullscreen)
 
-        self.set_wallpaper_btn.bind(on_release=lambda x: change_wallpaper(self.carousel.current_slide.higher_format))
+        # self.set_wallpaper_btn.bind(on_release=lambda x: change_wallpaper(self.carousel.current_slide.higher_format))
+        self.set_wallpaper_btn.bind(on_release=self.set_as_wallpaper)
         # self.update_images()  # for hot_reload
 
     def toggle_fullscreen(self, *_):
@@ -348,8 +350,16 @@ class FullscreenScreen(MyMDScreen):
         else:
             self.app.sm.gallery_screen.refresh_gallery_screen()
             self.manager.current = "thumbs"
-
+    
+    def set_as_wallpaper(self, *args):
+        spinner_layout = LoadingLayout()
+        def remove_spinner(dt):
+            spinner_layout.remove()
+        threading.Thread(target=change_wallpaper, args=[self.carousel.current_slide.higher_format, remove_spinner]).start()
+        
     def delete_current(self, *_):
+        spinner_layout = LoadingLayout()
+
         gallery_screen = self.manager.gallery_screen
         wallpapers = gallery_screen.wallpapers
         if not wallpapers:
@@ -387,7 +397,7 @@ class FullscreenScreen(MyMDScreen):
         new_index=max(0, min(idx, len(gallery_screen.wallpapers) - 1))
         self.carousel.index = new_index
         self.__patch_for_first_not_getting_called_by_on_current_slide(index=new_index)
-
+        spinner_layout.remove()
     # ====================================================================
     #               IMAGE INFO POPUP
     # ====================================================================

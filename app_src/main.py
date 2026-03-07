@@ -62,7 +62,7 @@ class WallpaperCarouselApp(MDApp):
         self.root_layout.add_widget(self.bottom_bar)
         self.bottom_bar.bind_change()  # needs theme from monitor_dark_and_light_device_change
 
-        self.file_operation = ImageOperation(self.sm.gallery_screen.initialize_tabs)
+        self.file_operation = ImageOperation(load_saved=self.sm.gallery_screen.initialize_tabs)
         self.bind_plyer_fix()
 
         return self.root_layout
@@ -116,17 +116,21 @@ class WallpaperCarouselApp(MDApp):
     def bind_plyer_fix(self):
         if on_android_platform():
             from android import activity  # type: ignore
-            # def set_intent_for_file_operation_class(_, __, intent):
             def set_intent_for_file_operation_class(activity_id, some_int, intent):
+                if self.file_operation.showing_loading_screen and not some_int:
+                    # Fix for Half Screen Popup When no file is picked.
+                    # some_int is usually -1 when a file is chosen and 0 when no file is chosen
+                    self.file_operation.hide_spinner()
                 try:
                     print("intent must be before chooser callback",activity_id,some_int,intent)
                     if intent:
+                        # Fix for permission Error when choosing from Internal Storage section Android FileExplorer
                         self.file_operation.intent = intent
                 except Exception as error_getting_path:
                     app_logger.exception("error_getting_path", error_getting_path)
 
             activity.bind(
-                on_activity_result=set_intent_for_file_operation_class)  # handling permission error in image path
+                on_activity_result=set_intent_for_file_operation_class)
 
     def monitor_dark_and_light_device_change(self):
         self.device_theme = is_device_on_light_mode()

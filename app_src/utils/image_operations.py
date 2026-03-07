@@ -1,15 +1,21 @@
 import os, time
 import shutil
+import threading
 import traceback
 from pathlib import Path
 
+from kivy.clock import Clock
 from android_notify.config import on_android_platform
+
+from ui.widgets.layouts import LoadingLayout
 from utils.helper import appFolder
 from utils.config_manager import ConfigManager
 
 
 class ImageOperation:
     def __init__(self,load_saved):
+        self.showing_loading_screen = False # To fix when no image chosen from Half Popup
+        self.spinner_layout = None
         self.app_dir = Path(appFolder())
         self.myconfig = ConfigManager()
         self.intent = None
@@ -22,8 +28,22 @@ class ImageOperation:
 
         self.load_saved = load_saved
 
-    def copy_add(self, files):
+    def show_spinner(self):
+        self.showing_loading_screen = True
+        self.spinner_layout = LoadingLayout()
+
+    def hide_spinner(self):
+        """
+        Don't Call self.__copy_add removes spinner, This method is for a specific edge case
+        Fix for Half Screen File Chooser filechooser.open_file not calling on_selection"""
+        self.showing_loading_screen = False
+        Clock.schedule_once(self.spinner_layout.remove)
+
+    def __copy_add(self, files):
+        # print('entered',files)
+
         if not files:
+            self.hide_spinner()
             return
         new_images = []
         try:
@@ -69,7 +89,11 @@ class ImageOperation:
             new_images.append(str(dest))
         for img in new_images:
             self.myconfig.add_wallpaper(img)
-        self.load_saved()
+
+        Clock.schedule_once(self.ui_things, 0)
+
+    def copy_add(self, files):
+        threading.Thread(target=self.__copy_add, args=(files,)).start()
 
     def unique(self, dest_name):
         dest = self.wallpapers_dir / dest_name
@@ -79,6 +103,10 @@ class ImageOperation:
             dest = self.wallpapers_dir / f"{base}_{i}{ext}"
             i += 1
         return dest
+
+    def ui_things(self, dt):
+        self.load_saved()
+        self.hide_spinner()
 
     def get_selected_uris(self):
         uris = []

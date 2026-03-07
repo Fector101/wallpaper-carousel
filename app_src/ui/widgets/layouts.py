@@ -1,5 +1,4 @@
 from android_notify.config import on_android_platform, autoclass
-from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.properties import ListProperty, DictProperty, NumericProperty
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -8,8 +7,11 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.relativelayout import MDRelativeLayout
 
 from kivymd.uix.screen import MDScreen
-from kivy.graphics import Color, Line
+# from kivy.graphics import Color, Line
 from kivy.core.window import Window
+from kivymd.uix.floatlayout import MDFloatLayout
+
+from kivymd.app import MDApp
 
 # Add this before creating your main widget or in your build method
 Window.softinput_mode = 'below_target' # or 'pan'
@@ -194,7 +196,7 @@ class MyMDScreen(MDScreen):
         if self.screen_content:
             self.screen_content.add_widget(widget, *args, **kwargs)
 
-        print(self.status_bar_height, self.nav_bar_height)
+        # print(self.status_bar_height, self.nav_bar_height)
 
     def on_size(self, *args):
         height = Window.height - (self.status_bar_height + self.nav_bar_height)
@@ -211,11 +213,11 @@ size: {self.size}
 top: {Window.top}
 {self.status_bar_height}
         """)
-        if self.status_bar_height:
-            print(self.status_bar_height.pos)
+        if self.status_bar_box:
+            print(self.status_bar_box.pos)
 
 # NOTE this from kivymd.uix.button import MDButton has line color feature
-# Still Useful for Element with No Button Behaviour
+# Still Useful for Element with No Button Behavior
 
 class BorderMDRelativeLayout(MDRelativeLayout):
     line_color = ListProperty([1, 0, 0, 1])
@@ -235,3 +237,83 @@ class BorderMDRelativeLayout(MDRelativeLayout):
         self.border.rounded_rectangle = self.round_rect_args  # (self.x,self.y,self.width,self.height,16)
 
 
+class LoadingLayout1(MDFloatLayout):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        app = MDApp.get_running_app()
+
+        c=.1
+        self.md_bg_color=[c,c,c, .5]
+        from kivymd.uix.loadingindicator import MDLoadingIndicator
+        self.spinner = MDLoadingIndicator()
+        self.spinner.start()
+        self.add_widget(self.spinner)
+        # if isinstance(app, kaki.app.App):
+        #     screen = app.root.children[0]
+        #     if isinstance(screen, MyMDScreen):
+        #         current_screen = screen
+        # else:
+        current_screen = app.sm.current_screen
+        current_screen.add_widget(self)
+
+    def remove(self,dt=None):
+        self.spinner.stop()
+        self.parent.remove_widget(self)
+
+
+from kivy.clock import Clock
+from kivy.graphics import Color, Line, Rotate
+from kivy.uix.widget import Widget
+from kivy.utils import get_color_from_hex
+
+class SpinningArcWidget(Widget):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Set a fixed size for the spinner widget
+        self.size = (100, 100)
+        # Draw spinner on the canvas
+        with self.canvas:
+            # Create a rotation instruction; note the origin will be updated as the widget size changes
+            self.rotation = Rotate(angle=0, origin=self.center)
+            # Set a visible color; here white is typical for many spinners, but you can adjust as needed.
+            Color(*get_color_from_hex("#98F1DD"))
+            # Draw an arc: (center_x, center_y, radius, start_angle, end_angle)
+            # A partial circle (e.g. 270°) gives a "spinner" look.
+            self.arc = Line(circle=(self.center_x, self.center_y, 40, 0, 270), width=4)
+        # Ensure that the rotation origin updates when the widget is resized or repositioned.
+        self.bind(pos=self._update_origin, size=self._update_origin)
+        # Schedule an update at roughly 60 frames per second.
+        Clock.schedule_interval(self.update_arc, 0.016)
+
+    def _update_origin(self, *args):
+        # Update the rotation's origin to keep it centered
+        self.rotation.origin = self.center
+        self.arc.circle = (self.center_x, self.center_y, 40, 0, 270)
+
+    def update_arc(self, dt):
+        # Increase the rotation angle to create the spinning effect.
+        self.rotation.angle += 5
+
+# Act as BackDrop
+class LoadingLayout(MDRelativeLayout):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        c = .1
+        self.md_bg_color = [c, c, c, .5]
+        # Center the spinner by positioning it relative to the screen's center.
+        self.spinner = SpinningArcWidget(size_hint=(None, None), size=(100, 100))
+        # Position the spinner in the middle of the screen:
+        self.spinner.pos = ((self.width - self.spinner.width) / 2, (self.height - self.spinner.height) / 2)
+        self.add_widget(self.spinner)
+        # Update the spinner's position when the screen size changes.
+        self.bind(size=self._update_spinner_pos)
+
+        app = MDApp.get_running_app()
+        current_screen = app.root_layout
+        current_screen.add_widget(self)
+
+    def _update_spinner_pos(self, *args):
+        self.spinner.pos = ((self.width - self.spinner.width) / 2, (self.height - self.spinner.height) / 2)
+    def remove(self,dt=None):
+        if self.parent:
+            self.parent.remove_widget(self)  # Hides the spinner by removing it

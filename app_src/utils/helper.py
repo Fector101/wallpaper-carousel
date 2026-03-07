@@ -228,13 +228,20 @@ def get_free_port():
     return port
 
 
-def change_wallpaper(wallpaper_path):
+def change_wallpaper(wallpaper_path, do_ui_thing=None):
     """Actually set the wallpaper"""
+    def run_ui_thing():
+        if do_ui_thing:
+            from kivy.clock import Clock
+            try:
+                Clock.schedule_once(do_ui_thing)
+            except Exception as error_running_ui_function:
+                print(f"Error doing UI thing: {error_running_ui_function}")
+                traceback.print_exc()
     try:
-        if not wallpaper_path:
-            return False
-        elif not os.path.exists(wallpaper_path):
+        if not wallpaper_path or not os.path.exists(wallpaper_path):
             print("Invalid wallpaper path")
+            run_ui_thing()
             return False
 
         WallpaperManager = autoclass('android.app.WallpaperManager') if on_android_platform() else None
@@ -243,9 +250,10 @@ def change_wallpaper(wallpaper_path):
 
         if not wallpaper_manager:
             print("Failed to set wallpaper: wallpaper_manager = None")
+            run_ui_thing()
             return None
 
-        if BuildVersion.SDK_INT >= 24:  # Android 7.0+
+        elif BuildVersion.SDK_INT >= 24:  # Android 7.0+
             bitmap = BitmapFactory.decodeFile(wallpaper_path)
             FLAG_LOCK = WallpaperManager.FLAG_LOCK
             wallpaper_manager.setBitmap(bitmap, None, True, FLAG_LOCK)
@@ -255,11 +263,12 @@ def change_wallpaper(wallpaper_path):
         else:
             toast("Changed Not Supported")
             print("Fail: Lock screen wallpaper not supported on this Android version.")
-
+        run_ui_thing()
         return True
     except Exception as e:
         toast("Failed to Change")
         print("Failed to set wallpaper:", e)
+        run_ui_thing()
         return False
 
 
