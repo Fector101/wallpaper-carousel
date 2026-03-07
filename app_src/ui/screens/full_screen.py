@@ -363,6 +363,7 @@ class FullscreenScreen(MyMDScreen):
         gallery_screen = self.manager.gallery_screen
         wallpapers = gallery_screen.wallpapers
         if not wallpapers:
+            spinner_layout.remove()
             return
 
         idx = self.carousel.index
@@ -391,6 +392,7 @@ class FullscreenScreen(MyMDScreen):
 
         if not gallery_screen.wallpapers:
             self.manager.current = "thumbs"
+            spinner_layout.remove()
             return
             
         self.update_images()
