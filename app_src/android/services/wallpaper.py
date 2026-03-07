@@ -19,7 +19,7 @@ foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE
 
 Notification.createChannel(id="service_channel",name="Carousel Service",description="For Controlling and Previewing Next Wallpaper")
 notification = Notification(title="Starting Carousel...", name="from service",channel_id="service_channel")
-notification.setObeyUserClear(True) # don't show after users clear from Tray
+notification.setObeyUserClear(True) # don't reappear when updated after users clear from Tray
 notification.addButton(text="Stop", receiver_name="CarouselReceiver", action="ACTION_STOP")
 notification.addButton(text="Skip", receiver_name="CarouselReceiver", action="ACTION_SKIP")
 builder = notification.fill_args()
