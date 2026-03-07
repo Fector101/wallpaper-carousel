@@ -7,11 +7,15 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.relativelayout import MDRelativeLayout
 
 from kivymd.uix.screen import MDScreen
-# from kivy.graphics import Color, Line
 from kivy.core.window import Window
 from kivymd.uix.floatlayout import MDFloatLayout
 
 from kivymd.app import MDApp
+
+from kivy.clock import Clock
+from kivy.graphics import Color, Line, Rotate
+from kivy.uix.widget import Widget
+from kivy.utils import get_color_from_hex
 
 # Add this before creating your main widget or in your build method
 Window.softinput_mode = 'below_target' # or 'pan'
@@ -261,11 +265,6 @@ class LoadingLayout1(MDFloatLayout):
         self.parent.remove_widget(self)
 
 
-from kivy.clock import Clock
-from kivy.graphics import Color, Line, Rotate
-from kivy.uix.widget import Widget
-from kivy.utils import get_color_from_hex
-
 class SpinningArcWidget(Widget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -298,6 +297,7 @@ class SpinningArcWidget(Widget):
 class LoadingLayout(MDRelativeLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.disabled=True
         c = .1
         self.md_bg_color = [c, c, c, .5]
         # Center the spinner by positioning it relative to the screen's center.
@@ -309,8 +309,9 @@ class LoadingLayout(MDRelativeLayout):
         self.bind(size=self._update_spinner_pos)
 
         app = MDApp.get_running_app()
-        current_screen = app.root_layout
-        current_screen.add_widget(self)
+        if hasattr(app,"root_layout"):
+            current_screen = app.root_layout
+            current_screen.add_widget(self)
 
     def _update_spinner_pos(self, *args):
         self.spinner.pos = ((self.width - self.spinner.width) / 2, (self.height - self.spinner.height) / 2)
