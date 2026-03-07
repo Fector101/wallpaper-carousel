@@ -352,7 +352,7 @@ class GalleryScreen(MyMDScreen):
         self.app.file_operation.show_spinner()
 
 
-        def show_chooser(dt):
+        def show_chooser(dt=None):
             filechooser.open_file(
                 on_selection=self.app.file_operation.copy_add,
                 filters=["image"],
