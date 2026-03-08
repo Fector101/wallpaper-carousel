@@ -21,26 +21,12 @@
     spacing: dp(15)
     size_hint_y: None
     height: self.minimum_height
-    MDLabel:
-        text: "Carousel Tools"
-        size_hint_y: None
-        height: dp(30)
-        color: TEXT_COLOR_PRIMARY_LIGHT if app.device_theme == "light" else TEXT_COLOR_PRIMARY_DARK
+
     MDBoxLayout:
         spacing: dp(10)
         size_hint_x:1
         adaptive_size:True
         pos_hint: {"center_x": 0.5}
-#        md_bg_color:[1,1,0,1]
-#        TextButton:
-#            text: "Restart Carousel"
-#            theme_bg_color:"Custom"
-#            theme_text_color:"Custom"
-#            md_bg_color: TEXT_COLOR_PRIMARY_DARK if app.device_theme == "light" else BUTTON_BG_DARK
-#            text_color: "black" if app.device_theme == "light" else "white"
-#            radius: [5]
-#            on_release: root.restart_service()
-
         MyMDButton:
             radius: [5]
             theme_bg_color:"Custom"
@@ -51,7 +37,6 @@
                 size_hint_y: None
                 theme_text_color:"Custom"
                 height: dp(50)
-    #                            text_color: self.color
                 text_color: "black" if app.device_theme == "light" else "white"
         MyMDButton:
             theme_bg_color:"Custom"
@@ -59,10 +44,10 @@
             radius: [5]
             pos_hint: {"center_x": 0.5}
             on_release:app.sm.get_screen("settings").terminate_carousel()
-    #                    MDButtonIcon:
-    #                        id: btn_icon
-    #                        icon:"stop"
-    #                        text_color: [1,.2,.2,1] #get_color_from_hex("#FF313")
+#            MDButtonIcon:
+#                id: btn_icon
+#                icon:"stop"
+#                text_color: [1,.2,.2,1] #get_color_from_hex("#FF313")
             MDButtonText:
                 id: btn_text
                 text:  "Stop Carousel"
@@ -115,9 +100,12 @@
                     size_hint_y: None
                     height: dp(50)
 
-                    MDTextField:
+                    MyMDTextField:
                         id: interval_input
                         text: root.interval
+#                        text: "Set to 2.0"
+#                        text_field_opacity_value_disabled_helper_text_label: [0,0,1,1]
+#                        disabled_foreground_color:[0,0,1,1]
                         hint_text: "mins"
                         size_hint_x: 0.55
                         theme_text_color:"Custom"
@@ -128,6 +116,15 @@
                         input_filter: "float"
                         size_hint_y: 1
                         radius: dp(20)
+
+
+#                        disabled:True
+#                        background_disabled_normal: ''
+#                        disabled_color: 1, 1, 0, 1
+##                        text: '1'
+#                        background_normal: ''
+#                        background_color:(0,1,0,1)
+
                     MDButton:
                         radius: [5]
                         radius: 20
@@ -175,7 +172,6 @@
                     QuickSetButton:
                         text: "60:00"
 #
-                CarouselTools:
 
                 Column:
                     adaptive_height: True
@@ -312,6 +308,8 @@
                     ToggleSliderRow:
                         title_text:"Use interval"
                         sub_title_text:f'Get a new wallpaper every "{root.displayed_interval_value}".'
+                    CarouselTools:
+
                 SettingsSection:
                     title_text: "Uninstalling?"
                     MyMDButton:

@@ -21,6 +21,7 @@ from kivymd.uix.button import MDButtonText, MDButton, MDIconButton, MDButtonIcon
 from kivymd.uix.fitimage import FitImage
 from kivymd.uix.label import MDLabel
 from kivymd.uix.selectioncontrol import MDSwitch
+from kivymd.uix.textfield import MDTextField
 
 from ui.widgets.android import toast
 from ui.widgets.layouts import MyMDScreen, Column
@@ -453,6 +454,27 @@ class AdaptiveLabel(Label):
         self.bind(texture_size=self.setter("size"))
 
 
+class MyMDTextField(MDTextField):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    # def on_disabled(self, instance, disabled: bool) -> None:
+    #     print(instance, disabled)
+    #     instance.background_disabled_normal=""
+    #     instance.disabled_color=[1,0,0,1]
+    #     instance.text="1"
+    #     instance.background_normal=""
+    #     instance.background_color=(0,1,0,1)
+
+    #     Clock.schedule_once(self.debug_colors, 1)
+    #
+    # def debug_colors(self, dt):
+    #     print(f"Disabled: {self.disabled}")
+    #     # print(f"Color: {self.color}")
+    #     self.theme_cls.disabledTextColor=[1,0,0,1]
+    #     print(f"text_color_normal: {self.text_color_normal}")
+    #     print(f"theme_cls.disabledTextColor: {self.theme_cls.disabledTextColor}")
+    #     print(f"theme_cls.primaryColor: {self.theme_cls.primaryColor}")
+
 class ToggleSliderRow(Row):
     title_text = StringProperty("")
     sub_title_text = StringProperty("")
@@ -463,7 +485,7 @@ class ToggleSliderRow(Row):
 
         self.text_layout = Column(adaptive_height=1, spacing=dp(1))#,md_bg_color=[1,0,0,.5])
         title_widget = AdaptiveLabel(text=self.title_text, size_hint=[None, None])
-        self.sub_text_widget = AdaptiveLabel(text=self.sub_title_text, size_hint=[None, None], color="grey")
+        self.sub_text_widget = AdaptiveLabel(text=self.sub_title_text, size_hint=[None, None], color="grey",font_size=sp(14))
         self.text_layout.bind(width=self.wrap_text_width)
 
         self.text_layout.add_widget(title_widget)
@@ -495,7 +517,7 @@ class SettingsSection(Column):
         self.add_widget(self.title_widget)
 
         c=.67#.35
-        self.content_layout = Column(md_bg_color = [c,c,c, .1],adaptive_height=1,padding=[dp(10)],radius=dp(5),spacing=dp(30))
+        self.content_layout = Column(md_bg_color = [c,c,c, .1],adaptive_height=1,padding=[dp(10),dp(15)],radius=dp(5),spacing=dp(30))
         self.content_layout.main_container=True
         self.add_widget(self.content_layout)
         self.bind(minimum_height=self.setter("height"))

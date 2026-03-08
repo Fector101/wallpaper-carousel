@@ -70,8 +70,6 @@ class MDLive(App,MDApp):
     ]
 
     def build_app(self, *args):
-
-        print("Inside Build App Auto Reload")
         # return Factory.MyPopUp()
         return Factory.SettingsScreen()
 
