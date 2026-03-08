@@ -9,28 +9,31 @@ from android_widgets import get_package_name
 # from kivy.uix.label import Label
 from kivy.clock import Clock
 from kivy.metrics import dp, sp
-from kivy.properties import StringProperty, ListProperty
+from kivy.properties import StringProperty, ListProperty, ObjectProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+# from kivy.uix.switch import Switch
 from kivy.utils import get_color_from_hex
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDButtonText, MDButton, MDIconButton, MDButtonIcon
 from kivymd.uix.fitimage import FitImage
 from kivymd.uix.label import MDLabel
+from kivymd.uix.selectioncontrol import MDSwitch
 
 from ui.widgets.android import toast
-from ui.widgets.layouts import MyMDScreen
+from ui.widgets.layouts import MyMDScreen, Column
 from ui.widgets.layouts import Row
 from utils.android import add_home_screen_widget
 from utils.config_manager import ConfigManager
-from utils.constants import DEV
+from utils.constants import DEV, THEME_PRIMARY_COLOR, THEME_SECONDARY_COLOR
 from utils.helper import Service, appFolder, smart_convert_minutes
 from utils.helper import load_kv_file  # type
 from utils.model import get_app
 
 load_kv_file(py_file_absolute_path=__file__)
+my_config = ConfigManager()
 
 
 class MyLabel(ButtonBehavior, Label):
@@ -441,10 +444,84 @@ class QuickSetButton(MDButton):
         return mins_text
 
 
+class AdaptiveLabel(Label):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # self.font_name = "RobotoMono"
+        # self.font_size = "14sp"
+
+        self.bind(texture_size=self.setter("size"))
+
+
+class ToggleSliderRow(Row):
+    title_text = StringProperty("")
+    sub_title_text = StringProperty("")
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.adaptive_height=True
+        self.spacing=dp(3)
+
+        self.text_layout = Column(adaptive_height=1, spacing=dp(1))#,md_bg_color=[1,0,0,.5])
+        title_widget = AdaptiveLabel(text=self.title_text, size_hint=[None, None])
+        self.sub_text_widget = AdaptiveLabel(text=self.sub_title_text, size_hint=[None, None], color="grey")
+        self.text_layout.bind(width=self.wrap_text_width)
+
+        self.text_layout.add_widget(title_widget)
+        self.text_layout.add_widget(self.sub_text_widget)
+        self.add_widget(self.text_layout)
+
+        self.switch = MDSwitch(pos_hint={"center_y": .5}, track_color_active=THEME_PRIMARY_COLOR,thumb_color_active=THEME_SECONDARY_COLOR)
+        self.add_widget(self.switch)
+
+        self.bind(title_text=title_widget.setter("text"))
+        self.bind(sub_title_text=self.sub_text_widget.setter("text"))
+
+    def wrap_text_width(self,i,v):
+        # print(f"self.text_layout {self.text_layout.width}, dp:{dp(self.text_layout.width)}") # self.text_layout 470.0, dp:940.0
+        self.sub_text_widget.text_size=[self.text_layout.width,None]
+
+
+class SettingsSection(Column):
+    title_text = StringProperty("")
+    content_layout=ObjectProperty()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.adaptive_height=True
+        self.padding=[0,dp(10)]
+        self.spacing=dp(5)
+        self.title_widget =AdaptiveLabel(text= self.title_text,size_hint=[None,None],color=[0.7, 0.7, 0.9, 1.0],pos_hint={"left":1})
+        self.title_widget.main_container=True
+        self.bind(title_text=self.title_widget.setter("text"))
+        self.add_widget(self.title_widget)
+
+        c=.67#.35
+        self.content_layout = Column(md_bg_color = [c,c,c, .1],adaptive_height=1,padding=[dp(10)],radius=dp(5),spacing=dp(30))
+        self.content_layout.main_container=True
+        self.add_widget(self.content_layout)
+        self.bind(minimum_height=self.setter("height"))
+
+        # ToggleSliderRow
+        # interval = my_config.get_interval()
+        # self.interval_label.text = f"Saved: {}"
+        # t = ToggleSliderRow(title_text="Use On-wake",sub_title_text='Get a new wallpaper each time you "turn on screen".')
+        # t1 = ToggleSliderRow(title_text="Use interval",sub_title_text=f'Get a new wallpaper every "{smart_convert_minutes(interval)}".')
+        #
+        #
+        # self.content_layout.add_widget(t)
+        # self.content_layout.add_widget(t1)
+    # [0.596078431372549, 0.9450980392156862, 0.8666666666666667, 1.0]
+    def add_widget(self, widget, *args, **kwargs):
+        if hasattr(widget, "main_container"):
+            super().add_widget(widget, *args, **kwargs)
+        elif self.content_layout:
+            self.content_layout.add_widget(widget)
+
+
 class SettingsScreen(MyMDScreen):
     current_image_source = StringProperty()
     next_image_source = StringProperty()
     interval = StringProperty()
+    displayed_interval_value = StringProperty() # "2 mins"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -459,9 +536,10 @@ class SettingsScreen(MyMDScreen):
         # b=.1
         # self.md_bg_color = [b,b,b, 1]
         self.app_dir = Path(appFolder())
-        self.my_config = ConfigManager()
         self.wallpapers_dir = self.app_dir / "wallpapers"
-        self.interval = str(self.my_config.get_interval())
+        v=my_config.get_interval()
+        self.displayed_interval_value=smart_convert_minutes(v)
+        self.interval = str(v)
         self.times_tapped = 0
         #
         # scroll = ScrollView(size_hint=(1, 1))
@@ -618,8 +696,9 @@ class SettingsScreen(MyMDScreen):
             toast("Min allowed is 0.17 mins")
             return
         value__ = new_val
-        self.my_config.set_interval(new_val)
-        self.interval_label.text = f"Saved: {smart_convert_minutes(new_val)}"
+        my_config.set_interval(new_val)
+        self.displayed_interval_value = smart_convert_minutes(new_val)
+        self.interval_label.text = f"Saved: {self.displayed_interval_value}"
         toast("Saved")
 
     def update_label(self, seconds):

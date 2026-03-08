@@ -126,7 +126,7 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
             return None
 
         if not image_widget:
-            app_logger.error(f"Error finding Thumb Widget to remove and reuse for another, image_widget: {image_widget}")
+            app_logger.error(f"Error finding PreviewImage Widget to remove and reuse for another, image_widget: {image_widget}")
             return None
 
         gallery_screen.add_wallpaper_to_thumbnails(image_widget=image_widget,tab=new_tab)

@@ -22,7 +22,8 @@ BUTTON_BG_LIGHT = []
 BUTTON_BG_DARK = [.2,.2,.2,1]
 
 
-THEME_COLOR_BRIGHT_COLOR = "#98F1DD"
+THEME_PRIMARY_COLOR = "#98F1DD"
+THEME_SECONDARY_COLOR = "#262C3A"
 
 
 # For helper.py - constants.py should be in same folder as helper.py or this should be moved to helper.py because not really used anywhere else

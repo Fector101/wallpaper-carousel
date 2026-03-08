@@ -324,7 +324,7 @@ class WallpaperServerReceiver:
     def apply_next_wallpaper(self, *args):
         """For Screen Listener to change wallpaper and change notification Next wallpaper Image"""
         if my_config.get_on_wake_state():
-            print("from java", args)
+            # print("from java", args)
             self.apply_new_wallpaper()
             self.choseAndShowPreviewForNextWallpaper()
 

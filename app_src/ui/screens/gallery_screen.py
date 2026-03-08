@@ -58,8 +58,9 @@ def format_file_date(path):
         return file_date.strftime("%d %b")
 
 
-class Thumb(ButtonBehavior, AsyncImage):
+class PreviewImage(ButtonBehavior, AsyncImage):
     high_resolution_path = StringProperty()
+    # theme_cls = StringProperty()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -204,17 +205,17 @@ class DateGroupLayout(Column):
 
         for each_data in self.batch:
             if isinstance(each_data, dict):
-                thumbnailWidget = Thumb(
+                thumbnailWidget = PreviewImage(
                     on_release=each_data["release_function"],
                     high_resolution_path=each_data["high_resolution_path"],
                     source=each_data["thumbnail_path"],
                     # id=each_data["thumbnail_path"],
                 )
-            elif isinstance(each_data, Thumb):
+            elif isinstance(each_data, PreviewImage):
                 thumbnailWidget = each_data
                 app_logger.debug(f"Found: {each_data}")
             else:
-                app_logger.error(f"Error getting Thumb Class or Init Data, got: {each_data}")
+                app_logger.error(f"Error getting PreviewImage Class or Init Data, got: {each_data}")
                 return None
             thumbnailWidget.size_hint = (None, None)
             thumbnailWidget.size = (box_size, box_size)
@@ -232,8 +233,8 @@ class DateGroupLayout(Column):
         images_container_widget = self.images_container
         image_widget=None
         for each_image_widget in list(images_container_widget.children):
-            if not isinstance(each_image_widget, Thumb):
-                app_logger.error(f"Error Getting only Thumb Class, got: {each_image_widget}")
+            if not isinstance(each_image_widget, PreviewImage):
+                app_logger.error(f"Error Getting only PreviewImage Class, got: {each_image_widget}")
                 continue
 
             if image_absolute_path == each_image_widget.high_resolution_path:
@@ -256,8 +257,8 @@ class DateGroupLayout(Column):
         images_container_widget = self.images_container
         children = images_container_widget.children
 
-        if not isinstance(image_widget, Thumb):
-            app_logger.error(f"Error Getting only Thumb Class, got: {image_widget}")
+        if not isinstance(image_widget, PreviewImage):
+            app_logger.error(f"Error Getting only PreviewImage Class, got: {image_widget}")
             return
         images_container_widget.add_widget(image_widget,index=len(children))
         self.__update_title(len(children))
@@ -551,8 +552,8 @@ class GalleryScreen(MyMDScreen):
         return widget
 
     def add_wallpaper_to_thumbnails(self, image_widget, tab=None):
-        if not image_widget or not isinstance(image_widget, Thumb):
-            app_logger.error(f"Didn't get Thumb Widget: {image_widget}")
+        if not image_widget or not isinstance(image_widget, PreviewImage):
+            app_logger.error(f"Didn't get PreviewImage Widget: {image_widget}")
             return None
 
         wallpaper_path = image_widget.high_resolution_path
