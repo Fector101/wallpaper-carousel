@@ -461,7 +461,7 @@ from kivy.properties import ObjectProperty
 
 class BorderInput(BorderMDBoxLayout):
     input = ObjectProperty(None)
-    line_width = NumericProperty(1.2)
+    line_width = NumericProperty(1.5)
     disabled_color= ListProperty((1,1, 1, .3))
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
