@@ -3,7 +3,7 @@ import threading
 from pathlib import Path
 
 from kivy.clock import Clock
-from kivy.properties import ListProperty, ObjectProperty
+from kivy.properties import ListProperty, ObjectProperty, NumericProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.image import AsyncImage
 from kivy.uix.label import Label
@@ -32,13 +32,15 @@ my_config=ConfigManager()
 
 
 class BorderMDBoxLayout(MDBoxLayout):
+    line_width = NumericProperty(1)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         with self.canvas.after:
             c = .5
             self.bg_color_instr = Color(c, c, c, .8)
-            self.border = Line(width=1, rounded_rectangle=self.round_rect_args)
+
+            self.border = Line(width=self.line_width, rounded_rectangle=self.round_rect_args)
         self.bind(pos=self.update_border, size=self.update_border)
 
     @property

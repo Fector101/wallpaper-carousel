@@ -9,7 +9,7 @@ from android_widgets import get_package_name
 # from kivy.uix.label import Label
 from kivy.clock import Clock
 from kivy.metrics import dp, sp
-from kivy.properties import StringProperty, ListProperty, ObjectProperty
+from kivy.properties import StringProperty, ListProperty, ObjectProperty, NumericProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -23,6 +23,7 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.selectioncontrol import MDSwitch
 from kivymd.uix.textfield import MDTextField
 
+from ui.screens.full_screen import BorderMDBoxLayout
 from ui.widgets.android import toast
 from ui.widgets.layouts import MyMDScreen, Column
 from ui.widgets.layouts import Row
@@ -454,17 +455,33 @@ class AdaptiveLabel(Label):
         self.bind(texture_size=self.setter("size"))
 
 
-class MyMDTextField(MDTextField):
+from kivy.uix.textinput import TextInput
+
+from kivy.properties import ObjectProperty
+
+class BorderInput(BorderMDBoxLayout):
+    input = ObjectProperty(None)
+    line_width = NumericProperty(1.2)
+    disabled_color= ListProperty((1,1, 1, .3))
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-    # def on_disabled(self, instance, disabled: bool) -> None:
-    #     print(instance, disabled)
-    #     instance.background_disabled_normal=""
-    #     instance.disabled_color=[1,0,0,1]
-    #     instance.text="1"
-    #     instance.background_normal=""
-    #     instance.background_color=(0,1,0,1)
+        self.radius = dp(20)
+        # self.md_bg_color=[1,1,0,1]
+    def on_disabled(self,instance, value):
+        self.bg_color_instr.rgba = self.disabled_color
 
+    def doing_focus(self,_,state):
+        print("doing_focus",state)
+        if state:
+            self.bg_color_instr.rgba = get_color_from_hex("#98F1DD")
+        else:
+            self.bg_color_instr.rgba = [.5,.5,.5,.8]
+
+    def add_widget(self, widget, *args, **kwargs):
+        self.input = widget
+        self.input.bind(focus=self.doing_focus)
+
+        super().add_widget(widget, *args, **kwargs)
     #     Clock.schedule_once(self.debug_colors, 1)
     #
     # def debug_colors(self, dt):

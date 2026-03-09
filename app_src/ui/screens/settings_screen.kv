@@ -99,31 +99,46 @@
                     spacing: dp(10)
                     size_hint_y: None
                     height: dp(50)
-
-                    MyMDTextField:
-                        id: interval_input
+                    BorderInput:
+                        id: interval_input_con
+                        padding:[dp(2)]
+                        size_hint_y:1
                         text: root.interval
-#                        text: "Set to 2.0"
+                        pos_hint: {"center_y":.5}
+#                        disabled:1
+                        TextInput:
+                            id: interval_input
+                            text:root.interval
+                            multiline: False
+                            background_color:[0,0,0,0]
+                            foreground_color: (1,1,1,1) if self.focus else [.8, .8, .8, 1]
+                            padding_y: (self.height - self.line_height) / 2
+                            input_filter:"float"
+                            disabled_foreground_color: interval_input_con.disabled_color
+#                    TextInput:
+#                        text: root.interval
+#                        text: "Set to 2.0mins"
 #                        text_field_opacity_value_disabled_helper_text_label: [0,0,1,1]
 #                        disabled_foreground_color:[0,0,1,1]
-                        hint_text: "mins"
-                        size_hint_x: 0.55
-                        theme_text_color:"Custom"
-                        text_color_focus: [0,0,0,1] if app.device_theme == "light" else [1, 1, 1, 1]
-                        text_color_normal: [.3,.3,.3,1] if app.device_theme == "light" else [.8, .8, .8, 1]
-                        theme_line_color: "Custom"
-                        line_color_focus: get_color_from_hex("#98F1DD")
-                        input_filter: "float"
-                        size_hint_y: 1
-                        radius: dp(20)
+#                        hint_text: "mins"
+#                        size_hint_x: 0.55
+#                        theme_text_color:"Custom"
+#                        text_color_focus: [0,0,0,1] if app.device_theme == "light" else [1, 1, 1, 1]
+#                        text_color_normal: [.3,.3,.3,1] if app.device_theme == "light" else [.8, .8, .8, 1]
+#                        theme_line_color: "Custom"
+#                        line_color_focus: get_color_from_hex("#98F1DD")
+#                        input_filter: "float"
+#                        size_hint_y: 1
+#                        radius: dp(20)
 
-
-#                        disabled:True
-#                        background_disabled_normal: ''
-#                        disabled_color: 1, 1, 0, 1
-##                        text: '1'
-#                        background_normal: ''
-#                        background_color:(0,1,0,1)
+#                        halign:"left"
+#                        foreground_color:[1,1,1,1]
+#                        cursor_color:"blue"
+#                        padding_y: (self.height - self.line_height) / 2
+##                        disabled_foreground_color: (0,1,0, 1)
+#                        input_filter: "float"
+#                        background_color:[0,0,0,0]
+#                        disabled:1
 
                     MDButton:
                         radius: [5]
