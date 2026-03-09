@@ -83,8 +83,9 @@ class Tee:
 
     @staticmethod
     def fix_log_to_terminal_on_android(message):
-        Log = autoclass("android.util.Log")
-        Log.d("python", message)
+        if on_android_platform():
+            Log = autoclass("android.util.Log")
+            Log.d("python", message)
 
 
 def write_logs_to_file(log_folder_name="logs", file_name="all_output1.txt"):
