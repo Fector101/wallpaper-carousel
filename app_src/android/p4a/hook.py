@@ -1,11 +1,15 @@
 import os
 from pathlib import Path
-from pythonforandroid.toolchain import ToolchainCL
+from pythonforandroid.toolchain import ToolchainCL # type: ignore
 from android_widgets.maker import Receiver, inject_foreground_service_types
 
 spec_file_path = "/home/fabian/Documents/Laner/mobile/buildozer.spec"
-package = "org.wally.waller" if not os.path.exists(spec_file_path) else None
+package = "org.wally.waller"# if not os.path.exists(spec_file_path) else None
+# package = "vercel.app.androidNotify"
 
+
+def insert_to_end_of_xml(new_content,xml_file_content) -> str:
+    return xml_file_content.replace("</application>", f"{new_content}\n</application>")
 
 def generate_receivers(package_: str = None) -> str:
     receivers = [
@@ -54,10 +58,10 @@ def generate_receivers(package_: str = None) -> str:
 
 
 def after_apk_build(toolchain: ToolchainCL):
-    manifest_file = Path(toolchain._dist.dist_dir) / "src" / "main" / "AndroidManifest.xml"
-    text = manifest_file.read_text(encoding="utf-8")
+    android_manifest_file_path = Path(toolchain._dist.dist_dir) / "src" / "main" / "AndroidManifest.xml"
+    print(android_manifest_file_path)
+    manifest_file_content = android_manifest_file_path.read_text(encoding="utf-8")
 
-    # package = "vercel.app.androidNotify"
 
     # Add foregroundServiceType to multiple services
     services = {
@@ -66,14 +70,39 @@ def after_apk_build(toolchain: ToolchainCL):
 
         }
 
-    text = inject_foreground_service_types(
-        manifest_text=text,
+    manifest_file_content = inject_foreground_service_types(
+        manifest_text=manifest_file_content,
         package=package,
         spec_file_path=spec_file_path,
         services=services,
     )
 
     receiver_xml = generate_receivers(package)
+
+
+    if receiver_xml.strip() not in manifest_file_content:
+        manifest_file_content = manifest_file_content.replace("</application>", f"{receiver_xml}\n</application>")
+        print("Receiver added")
+    else:
+        print("Receiver already exists in manifest")
+
+    file_share_to_other_app_provider = f"""
+<provider
+    android:name="androidx.core.content.FileProvider"
+    android:authorities="{package}.fileprovider"
+    android:exported="false"
+    android:grantUriPermissions="true">
+    <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/file_paths" />
+</provider>
+
+    """
+    # text = text.replace("</application>", f"{file_share_to_other_app_provider}\n</application>")
+    manifest_file_content = insert_to_end_of_xml(file_share_to_other_app_provider, manifest_file_content)
+    android_manifest_file_path.write_text(manifest_file_content, encoding="utf-8")
+    print("Successfully_101: Manifest update completed successfully!\n",manifest_file_content)
+
 #     receiver_xml += f"""
 #     <receiver
 #     android:name="org.wally.waller.MyWorker"
@@ -83,16 +112,3 @@ def after_apk_build(toolchain: ToolchainCL):
 #     android:authorities="${applicationId}.androidx-startup"
 #     android:exported="false" />
 # """
-
-    if receiver_xml.strip() not in text:
-        if "</application>" in text:
-            text = text.replace("</application>", f"{receiver_xml}\n</application>")
-            print("Receiver added")
-        else:
-            print("Could not find </application> to insert receiver")
-    else:
-        print("Receiver already exists in manifest")
-
-    manifest_file.write_text(text, encoding="utf-8")
-    print("Successfully_101: Manifest update completed successfully!")
-    print(text)

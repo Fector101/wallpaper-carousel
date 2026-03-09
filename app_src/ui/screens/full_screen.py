@@ -1,7 +1,9 @@
 import os
 import threading
+import traceback
 from pathlib import Path
 
+from android_notify.internal.java_classes import String
 from kivy.clock import Clock
 from kivy.properties import ListProperty, ObjectProperty, NumericProperty
 from kivy.uix.behaviors import ButtonBehavior
@@ -221,6 +223,7 @@ class FullscreenScreen(MyMDScreen):
         self.header_title.text_color = 'white'
         self.header_file_size.text_color = [.6,.6,.6,1]
 
+        self.share_btn = MyMDIconButton(icon="share", style="tonal",on_release=self.share_image_to_other_app)
         self.original_carousel_pos_hint = {'x': 0, 'y': 0.125}
         self.original_carousel_size_hint = (1, 1 - .25)
         self.carousel = MyCarousel(direction="right", loop=True,
@@ -281,6 +284,7 @@ class FullscreenScreen(MyMDScreen):
         self.text_container.add_widget(self.header_title)
         self.text_container.add_widget(self.header_file_size)
         self.header_layout.add_widget(self.text_container)
+        self.header_layout.add_widget(self.share_btn)
         self.layout.add_widget(self.header_layout)
 
 
@@ -299,7 +303,8 @@ class FullscreenScreen(MyMDScreen):
 
         # self.set_wallpaper_btn.bind(on_release=lambda x: change_wallpaper(self.carousel.current_slide.higher_format))
         self.set_wallpaper_btn.bind(on_release=self.set_as_wallpaper)
-        # self.update_images()  # for hot_reload
+        # print("using hot reload stuff")
+        # self.update_images(0)  # for hot_reload
 
     def toggle_fullscreen(self, *_):
         # print(self.carousel.children[0].children)
@@ -428,17 +433,11 @@ class FullscreenScreen(MyMDScreen):
         self.carousel_has_images = False
         gallery_screen = self.manager.gallery_screen
         self.carousel.clear_widgets()
-        # print("cleared widgets")
-        # return
 
         # for hot_reload
-        # self.data = ["/home/fabian/Downloads/home screen.png",
-        #              "/home/fabian/Downloads/storage screen modal - Delete.png",
-        #              "/home/fabian/Documents/Laner/mobile/wallpapers/Anime Art Night Sky Scenery Wallpaper iPhone Phone 4k 1400f.jpg",
-        #              "/home/fabian/Documents/Laner/mobile/wallpapers/content.png",
-        #              "/home/fabian/Documents/Laner/mobile/wallpapers/Anime Girl Wallpaper.jpeg"]
-        for p in gallery_screen.wallpapers:
+        # self.data = ["/home/fabian/Pictures/test.jpg"]
         # for p in self.data:
+        for p in gallery_screen.wallpapers:
             # print("thumbnail_path_for(p)", str(thumbnail_path_for(p)))
             img = AsyncImage(
                 source=str(thumbnail_path_for(p)),  # p,
@@ -533,6 +532,44 @@ class FullscreenScreen(MyMDScreen):
                 proxyImage.bind(on_load=lambda proxy_image, image_object=right_side_img: patch_resolution(proxy_image, image_object))
                 # right_side_img.source = str(right_side_img.higher_format)
         return None
+
+    def share_image_to_other_app(self,widget):
+        file_path = self.current_image
+        print(file_path)
+        try:
+            from jnius import autoclass, cast
+
+            PythonActivity = autoclass('org.kivy.android.PythonActivity')
+            Intent = autoclass('android.content.Intent')
+            File = autoclass('java.io.File')
+            FileProvider = autoclass('androidx.core.content.FileProvider')
+            ClipData = autoclass('android.content.ClipData')
+
+            context = PythonActivity.mActivity
+
+
+            file = File(file_path)
+
+            uri = FileProvider.getUriForFile(
+                context,
+                context.getPackageName() + ".fileprovider",
+                file
+            )
+
+            intent = Intent(Intent.ACTION_SEND)
+            intent.setType("*/*")
+            intent.putExtra(Intent.EXTRA_STREAM, cast('android.os.Parcelable', uri))
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+            # preview
+            clip = ClipData.newUri(context.getContentResolver(), String("Image"), uri)
+            intent.setClipData(clip)
+
+            chooser = Intent.createChooser(intent, String("Share Image"))
+            context.startActivity(chooser)
+        except Exception as error_from_new_feat:
+            print("error_from_new_feat",error_from_new_feat)
+            traceback.print_exc()
 
 
 def patch_resolution(proxy_image, image_object):
