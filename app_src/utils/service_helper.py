@@ -202,7 +202,6 @@ class WallpaperServerReceiver:
         self.changes = 0
 
         try:
-            print("trying to register")
             register_screen_receiver()
         except Exception as error_registering_screen_receiver:
             print("python error_registering_screen_receiver", error_registering_screen_receiver)
