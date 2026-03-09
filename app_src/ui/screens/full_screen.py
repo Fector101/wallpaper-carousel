@@ -3,7 +3,6 @@ import threading
 import traceback
 from pathlib import Path
 
-from android_notify.internal.java_classes import String
 from kivy.clock import Clock
 from kivy.properties import ListProperty, ObjectProperty, NumericProperty
 from kivy.uix.behaviors import ButtonBehavior
@@ -21,10 +20,10 @@ from kivymd.uix.button import MDIconButton
 from kivy.graphics import Color, Line
 
 from ui.widgets.layouts import MyPopUp, MyMDScreen, get_dimensions, LoadingLayout
-from utils.image_operations import thumbnail_path_for, get_image_info
+from utils.image_operations import thumbnail_path_for, get_image_info, share_image_to_other_app
 from utils.helper import appFolder, change_wallpaper
 from utils.config_manager import ConfigManager
-from utils.constants import DEV
+# from utils.constants import DEV
 from utils.model import get_app, GalleryTabs
 from kivy.loader import  Loader
 from utils.logger import app_logger
@@ -223,7 +222,7 @@ class FullscreenScreen(MyMDScreen):
         self.header_title.text_color = 'white'
         self.header_file_size.text_color = [.6,.6,.6,1]
 
-        self.share_btn = MyMDIconButton(icon="share", style="tonal",on_release=self.share_image_to_other_app)
+        self.share_btn = MyMDIconButton(icon="share", style="tonal",on_release=lambda x: share_image_to_other_app(self.current_image))
         self.original_carousel_pos_hint = {'x': 0, 'y': 0.125}
         self.original_carousel_size_hint = (1, 1 - .25)
         self.carousel = MyCarousel(direction="right", loop=True,
@@ -532,44 +531,6 @@ class FullscreenScreen(MyMDScreen):
                 proxyImage.bind(on_load=lambda proxy_image, image_object=right_side_img: patch_resolution(proxy_image, image_object))
                 # right_side_img.source = str(right_side_img.higher_format)
         return None
-
-    def share_image_to_other_app(self,widget):
-        file_path = self.current_image
-        print(file_path)
-        try:
-            from jnius import autoclass, cast
-
-            PythonActivity = autoclass('org.kivy.android.PythonActivity')
-            Intent = autoclass('android.content.Intent')
-            File = autoclass('java.io.File')
-            FileProvider = autoclass('androidx.core.content.FileProvider')
-            ClipData = autoclass('android.content.ClipData')
-
-            context = PythonActivity.mActivity
-
-
-            file = File(file_path)
-
-            uri = FileProvider.getUriForFile(
-                context,
-                context.getPackageName() + ".fileprovider",
-                file
-            )
-
-            intent = Intent(Intent.ACTION_SEND)
-            intent.setType("*/*")
-            intent.putExtra(Intent.EXTRA_STREAM, cast('android.os.Parcelable', uri))
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-
-            # preview
-            clip = ClipData.newUri(context.getContentResolver(), String("Image"), uri)
-            intent.setClipData(clip)
-
-            chooser = Intent.createChooser(intent, String("Share Image"))
-            context.startActivity(chooser)
-        except Exception as error_from_new_feat:
-            print("error_from_new_feat",error_from_new_feat)
-            traceback.print_exc()
 
 
 def patch_resolution(proxy_image, image_object):

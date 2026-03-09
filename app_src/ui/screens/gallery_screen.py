@@ -406,7 +406,7 @@ class GalleryScreen(MyMDScreen):
             if date_label not in data_of_batch_dict_of_lists:
                 data_of_batch_dict_of_lists[date_label] = []
 
-            thumb = get_or_create_thumbnail(each_image_path, dest_dir=self.wallpapers_dir)
+            thumb = get_or_create_thumbnail(each_image_path, destination_dir=self.wallpapers_dir)
 
             data_of_batch_dict_of_lists[date_label].append({
                 "thumbnail_path": str(thumb) if thumb else str(each_image_path),

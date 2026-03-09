@@ -4,20 +4,22 @@ import threading
 import traceback
 from pathlib import Path
 
+from android_notify.internal.java_classes import String
 from kivy.clock import Clock
 from android_notify.config import on_android_platform
 
 from ui.widgets.layouts import LoadingLayout
 from utils.helper import appFolder
 from utils.config_manager import ConfigManager
+from utils.logger import app_logger
 
+my_config = ConfigManager()
 
 class ImageOperation:
     def __init__(self,load_saved):
         self.showing_loading_screen = False # To fix when no image chosen from Half Popup
         self.spinner_layout = None
         self.app_dir = Path(appFolder())
-        self.myconfig = ConfigManager()
         self.intent = None
         self.wallpapers_dir = self.app_dir / "wallpapers"
         try:
@@ -61,50 +63,50 @@ class ImageOperation:
             # print(i,src,'i and src')
             if not os.path.exists(src):
                 continue
-            dest = self.unique(os.path.basename(src))
+            destination_path = self.unique(os.path.basename(src))
             try:
-                shutil.copy2(src, dest)
+                shutil.copy2(src, destination_path)
                 # Set the modification time to current time
-                os.utime(dest, (copy_time, copy_time))
+                os.utime(destination_path, (copy_time, copy_time))
             except PermissionError:
                 try:
                     if i < len(uris):
-                        copy_image_to_internal(dest,uris[i])
+                        copy_image_to_internal(destination_path,uris[i])
                     else:
                         continue
                 except Exception as error_using_java_copy:
                     print("error_using_java_copy: ", error_using_java_copy)
                     traceback.print_exc()
             except Exception as e:
-                print(f"Error copying file '{src}' to '{dest}', Error: {e}")
+                print(f"Error copying file '{src}' to '{destination_path}', Error: {e}")
                 traceback.print_exc()
                 continue
             # generate low-res thumbnail for preview
             try:
-                create_thumbnail(dest, dest_dir=self.wallpapers_dir)
+                create_thumbnail(destination_path, destination_dir=self.wallpapers_dir)
             except Exception as error_creating_thumbnail:
-                print("Error creating thumbnail for:", error_creating_thumbnail,"dest: ", dest)
+                print("Error creating thumbnail for:", error_creating_thumbnail,"destination_path: ", destination_path)
                 traceback.print_exc()
 
-            new_images.append(str(dest))
+            new_images.append(str(destination_path))
         for img in new_images:
-            self.myconfig.add_wallpaper(img)
+            my_config.add_wallpaper(img)
 
         Clock.schedule_once(self.ui_things, 0)
 
     def copy_add(self, files):
         threading.Thread(target=self.__copy_add, args=(files,)).start()
 
-    def unique(self, dest_name):
-        dest = self.wallpapers_dir / dest_name
-        base, ext = os.path.splitext(dest_name)
+    def unique(self, destination_name):
+        destination_path = self.wallpapers_dir / destination_name
+        base, ext = os.path.splitext(destination_name)
         i = 1
-        while dest.exists():
-            dest = self.wallpapers_dir / f"{base}_{i}{ext}"
+        while destination_path.exists():
+            destination_path = self.wallpapers_dir / f"{base}_{i}{ext}"
             i += 1
-        return dest
+        return destination_path
 
-    def ui_things(self, dt):
+    def ui_things(self, _):
         self.load_saved()
         self.hide_spinner()
 
@@ -133,7 +135,7 @@ class ImageOperation:
         return uris
 
 
-def create_thumbnail(src, dest_dir=None, size=(320, 320), quality=60):
+def create_thumbnail(src, destination_dir=None, size=(320, 320), quality=60):
     """Create a low-resolution JPEG thumbnail for src and return its path.
     If Pillow is not available or creation fails, returns the original path string.
     """
@@ -152,7 +154,7 @@ def create_thumbnail(src, dest_dir=None, size=(320, 320), quality=60):
 
     try:
         src_path = Path(src)
-        destination = thumbnail_path_for(src_path, dest_dir)
+        destination = thumbnail_path_for(src_path, destination_dir)
         # If thumbnail already exists and is newer than source, reuse it
         if destination.exists() and destination.stat().st_mtime >= src_path.stat().st_mtime:
             return str(destination)
@@ -176,7 +178,7 @@ def create_thumbnail(src, dest_dir=None, size=(320, 320), quality=60):
         return str(src)
 
 
-def copy_image_to_internal(dest_name,uri):
+def copy_image_to_internal(destination_name, uri):
     import os
     from jnius import autoclass
 
@@ -229,10 +231,10 @@ def copy_image_to_internal(dest_name,uri):
     input_stream = BufferedInputStream(cr.openInputStream(uri))
 
     internal_dir = activity.getFilesDir().getAbsolutePath()
-    dest_path = os.path.join(internal_dir, dest_name)
+    destination_path = os.path.join(internal_dir, destination_name)
 
     output_stream = BufferedOutputStream(
-        FileOutputStream(dest_path)
+        FileOutputStream(destination_path)
     )
 
     buffer = bytearray(1024 * 8)
@@ -247,26 +249,26 @@ def copy_image_to_internal(dest_name,uri):
     output_stream.close()
 
     current_time = time.time()
-    os.utime(dest_path, (current_time, current_time))
+    os.utime(destination_path, (current_time, current_time))
 
-    return dest_path
+    return destination_path
 
 
-def thumbnail_path_for(src, dest_dir=None):
+def thumbnail_path_for(src, destination_dir=None):
     """Return a consistent thumbnail Path for a source image.
-    Thumbnails are stored in a subfolder named 'thumbs' under dest_dir (or source folder by default).
+    Thumbnails are stored in a subfolder named 'thumbs' under destination_dir (or source folder by default).
     """
     p = Path(src)
-    if dest_dir:
-        dest_dir = Path(dest_dir)
+    if destination_dir:
+        destination_dir = Path(destination_dir)
     else:
-        dest_dir = p.parent
-    thumb_dir = dest_dir / "thumbs"
+        destination_dir = p.parent
+    thumb_dir = destination_dir / "thumbs"
     thumb_dir.mkdir(parents=True, exist_ok=True)
     return thumb_dir / f"{p.stem}_thumb.jpg"
 
 
-def use_android_classes_to_create_thumbnail(src, dest_dir=None, size=(320, 320), quality=60):
+def use_android_classes_to_create_thumbnail(src, destination_dir=None, size=(320, 320), quality=60):
     from jnius import autoclass
 
     BitmapFactory = autoclass('android.graphics.BitmapFactory')
@@ -277,7 +279,7 @@ def use_android_classes_to_create_thumbnail(src, dest_dir=None, size=(320, 320),
     Math = autoclass('java.lang.Math')
 
     src_path = src
-    dest_path = dest_dir
+    destination_path = destination_dir
     max_width = size[0]
     max_height = size[1]
 
@@ -305,7 +307,7 @@ def use_android_classes_to_create_thumbnail(src, dest_dir=None, size=(320, 320),
     resized = Bitmap.createScaledBitmap(bitmap, new_w, new_h, True)
 
     # 4. Save as JPEG
-    out = FileOutputStream(dest_path)
+    out = FileOutputStream(destination_path)
     resized.compress(CompressFormat.JPEG, quality, out)
     out.close()
 
@@ -314,9 +316,9 @@ def use_android_classes_to_create_thumbnail(src, dest_dir=None, size=(320, 320),
     resized.recycle()
 
 
-def get_or_create_thumbnail(src, dest_dir=None, size=(320, 320)):
+def get_or_create_thumbnail(src, destination_dir=None, size=(320, 320)):
     """Convenience wrapper to obtain a thumbnail path, creating it if necessary."""
-    return create_thumbnail(src, dest_dir=dest_dir, size=size)
+    return create_thumbnail(src, destination_dir=destination_dir, size=size)
 
 
 def save_existing_file_to_public_pictures(input_file_path):
@@ -382,6 +384,7 @@ def save_existing_file_to_public_pictures(input_file_path):
     #     print("Error loading images", e)
     #     traceback.print_exc()
 
+
 def get_image_info(path):
     info_dict = {
                 "Pixels": "Nil",
@@ -434,3 +437,44 @@ def get_image_info(path):
 
     return info_dict
 
+
+def share_image_to_other_app(image_absolute_path):
+    if not on_android_platform():
+        app_logger.warning("Can't share to Another App, Not on Android.")
+        return None
+    try:
+        from jnius import autoclass, cast
+
+        PythonActivity = autoclass('org.kivy.android.PythonActivity')
+        Intent = autoclass('android.content.Intent')
+        File = autoclass('java.io.File')
+        FileProvider = autoclass('androidx.core.content.FileProvider')
+        ClipData = autoclass('android.content.ClipData')
+
+        context = PythonActivity.mActivity
+
+
+        file = File(image_absolute_path)
+
+        uri = FileProvider.getUriForFile(
+            context,
+            context.getPackageName() + ".fileprovider",
+            file
+        )
+
+        intent = Intent(Intent.ACTION_SEND)
+        intent.setType("*/*")
+        intent.putExtra(Intent.EXTRA_STREAM, cast('android.os.Parcelable', uri))
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+        # preview
+        clip = ClipData.newUri(context.getContentResolver(), String("Image"), uri)
+        intent.setClipData(clip)
+
+        chooser = Intent.createChooser(intent, String("Share Image"))
+        context.startActivity(chooser)
+        app_logger.info("Sharing image to other app")
+
+    except Exception as error_from_trying_to_share_image_to_other_apps:
+        print("error_from_trying_to_share_image_to_other_apps",error_from_trying_to_share_image_to_other_apps)
+        traceback.print_exc()
