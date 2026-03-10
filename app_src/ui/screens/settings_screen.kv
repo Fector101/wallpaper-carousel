@@ -5,6 +5,7 @@
 #:import get_color_from_hex kivy.utils.get_color_from_hex
 #:import add_home_screen_widget utils.android.add_home_screen_widget
 #:import toInt utils.helper.toInt
+#:import ConfigManager utils.config_manager.ConfigManager
 
 
 
@@ -105,69 +106,43 @@
                         size_hint_y:1
                         text: root.interval
                         pos_hint: {"center_y":.5}
-#                        disabled:1
+                        disabled:1
                         TextInput:
                             id: interval_input
-                            text:root.interval
+#                            text:root.interval
+                            text: f"Set to {root.displayed_interval_value}"
                             multiline: False
                             background_color:[0,0,0,0]
                             foreground_color: (1,1,1,1) if self.focus else [.8, .8, .8, 1]
-                            padding_y: (self.height - self.line_height) / 2
+                            padding:[dp(10), (self.height - self.line_height) / 2]
                             input_filter:"float"
                             disabled_foreground_color: interval_input_con.disabled_color
                             cursor_color:"blue"
-#                    TextInput:
-#                        text: root.interval
-#                        text: "Set to 2.0mins"
-#                        text_field_opacity_value_disabled_helper_text_label: [0,0,1,1]
-#                        disabled_foreground_color:[0,0,1,1]
-#                        hint_text: "mins"
-#                        size_hint_x: 0.55
-#                        theme_text_color:"Custom"
-#                        text_color_focus: [0,0,0,1] if app.device_theme == "light" else [1, 1, 1, 1]
-#                        text_color_normal: [.3,.3,.3,1] if app.device_theme == "light" else [.8, .8, .8, 1]
-#                        theme_line_color: "Custom"
-#                        line_color_focus: get_color_from_hex("#98F1DD")
-#                        input_filter: "float"
-#                        size_hint_y: 1
-#                        radius: dp(20)
-
-#                        halign:"left"
-#                        foreground_color:[1,1,1,1]
-#                        cursor_color:"blue"
-#                        padding_y: (self.height - self.line_height) / 2
-##                        disabled_foreground_color: (0,1,0, 1)
-#                        input_filter: "float"
-#                        background_color:[0,0,0,0]
-#                        disabled:1
 
                     MDButton:
+                        id: save_btn
                         radius: [5]
                         radius: 20
                         theme_bg_color:"Custom"
-                        size_hint_x: 0.35
                         theme_height: "Custom"
+                        size_hint_x: 0.35
                         size_hint_y: .9
                         pos_hint:{"center_y":.5}
-                        on_release: root.save_interval()
-                        md_bg_color:get_color_from_hex("#98F1DD")
+                        on_release: root.save_interval(self)
 
+                        md_bg_color: [0.3,0.3,0.3,1] if save_btn_text.text == "Edit" else get_color_from_hex("#98F1DD")
+                        theme_line_color: "Custom"# if save_btn_text.text == "Edit" else "Primary"
+#                        theme_line_color: print(save_btn_text.text,455)
+                        line_color: get_color_from_hex("#98F1DD")
                         MDButtonText:
-                            text: "Save"
+                            id: save_btn_text
+                            text:"Edit"
                             size_hint_y: None
                             theme_text_color:"Custom"
                             height: dp(50)
-                            text_color: get_color_from_hex("#262C3A")
-#                            text_color: get_color_from_hex("#98F1DD")#"black" if app.device_theme == "light" else "white"
-#                            text_color: "black" if app.device_theme == "light" else "white"
                             font_name: "RobotoMono"
-                MDLabel:
-                    id: interval_label
-                    text: f"Using: {root.interval} mins"
-                    size_hint_y: None
-                    height: dp(30)
-                    font_name: "RobotoMono"
-                    color: TEXT_COLOR_PRIMARY_LIGHT if app.device_theme == "light" else TEXT_COLOR_PRIMARY_DARK
+                            text_color: "white"if self.text == "Edit" else get_color_from_hex("#262C3A")
+#                            text_color: get_color_from_hex("#98F1DD")#"black" if app.device_theme == "light" else "white"
 
                 MDGridLayout:
                     id:QuickSetButtonsBox
@@ -316,15 +291,28 @@
                                     text:"Add to Home Screen"
                                     theme_text_color:"Custom"
                                     text_color: "black" if app.device_theme == "light" else "white"
+
                 SettingsSection:
                     title_text: "Carousel"
                     ToggleSliderRow:
                         title_text: "Use On-wake"
                         sub_title_text: 'Get a new wallpaper each time you "turn on screen".'
+                        active: ConfigManager.get_on_wake_state()
+                        change_function: lambda x : ConfigManager.set_on_wake_state(x)
+#                        on_active: ConfigManager.set_on_wake_state(not ConfigManager.get_on_wake_state())
                     ToggleSliderRow:
                         title_text:"Use interval"
                         sub_title_text:f'Get a new wallpaper every "{root.displayed_interval_value}".'
+                        active: not ConfigManager.get_on_wake_state()
+                        change_function: lambda x : ConfigManager.set_on_wake_state(not x)
+#                        on_active: ConfigManager.set_on_wake_state(not ConfigManager.get_on_wake_state())
                     CarouselTools:
+#                SettingsSection:
+#                    title_text: "Start Carousel"
+#                    ToggleSliderRow:
+#                        title_text: "On App Start"
+#                    ToggleSliderRow:
+#                        title_text: "On Phone Restart"
 
                 SettingsSection:
                     title_text: "Uninstalling?"

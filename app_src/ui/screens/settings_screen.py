@@ -9,7 +9,7 @@ from android_widgets import get_package_name
 # from kivy.uix.label import Label
 from kivy.clock import Clock
 from kivy.metrics import dp, sp
-from kivy.properties import StringProperty, ListProperty, ObjectProperty, NumericProperty
+from kivy.properties import StringProperty, ListProperty, ObjectProperty, NumericProperty, BooleanProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -424,11 +424,15 @@ class QuickSetButton(MDButton):
         self.text_widget.text = value
 
     def on_release(self, *args) -> None:
-        for each_button in self.app.sm.settings_screen.ids.QuickSetButtonsBox.children:
+        settings_screen = self.app.sm.settings_screen
+        for each_button in settings_screen.ids.QuickSetButtonsBox.children:
             each_button.md_bg_color = self.un_clicked_bg_color
         self.md_bg_color = self.clicked_bg_color
-        print("self.clicked_bg_color", self.clicked_bg_color)
-        self.app.sm.settings_screen.ids.interval_input.text = self.__get_mins()
+        settings_screen.ids.interval_input_con.disabled = False
+        settings_screen.ids.interval_input.text = settings_screen.interval
+        settings_screen.ids.save_btn_text.text = "Save"
+        # print("self.clicked_bg_color", self.clicked_bg_color)
+        settings_screen.ids.interval_input.text = self.__get_mins()
 
     def __get_mins(self):
         mins_text = "Failed"
@@ -455,8 +459,6 @@ class AdaptiveLabel(Label):
         self.bind(texture_size=self.setter("size"))
 
 
-from kivy.uix.textinput import TextInput
-
 from kivy.properties import ObjectProperty
 
 class BorderInput(BorderMDBoxLayout):
@@ -471,7 +473,6 @@ class BorderInput(BorderMDBoxLayout):
         self.bg_color_instr.rgba = self.disabled_color
 
     def doing_focus(self,_,state):
-        print("doing_focus",state)
         if state:
             self.bg_color_instr.rgba = get_color_from_hex("#98F1DD")
         else:
@@ -482,38 +483,46 @@ class BorderInput(BorderMDBoxLayout):
         self.input.bind(focus=self.doing_focus)
 
         super().add_widget(widget, *args, **kwargs)
-    #     Clock.schedule_once(self.debug_colors, 1)
-    #
-    # def debug_colors(self, dt):
-    #     print(f"Disabled: {self.disabled}")
-    #     # print(f"Color: {self.color}")
-    #     self.theme_cls.disabledTextColor=[1,0,0,1]
-    #     print(f"text_color_normal: {self.text_color_normal}")
-    #     print(f"theme_cls.disabledTextColor: {self.theme_cls.disabledTextColor}")
-    #     print(f"theme_cls.primaryColor: {self.theme_cls.primaryColor}")
 
 class ToggleSliderRow(Row):
     title_text = StringProperty("")
     sub_title_text = StringProperty("")
+    active = BooleanProperty(False)
+    change_function =ObjectProperty()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.sub_text_widget = None
         self.adaptive_height=True
         self.spacing=dp(3)
+        self.__is_subtitle_added = False
 
-        self.text_layout = Column(adaptive_height=1, spacing=dp(1))#,md_bg_color=[1,0,0,.5])
+        self.text_layout = Column(adaptive_height=1, spacing=dp(1),pos_hint={"center_y":.5})#,md_bg_color=[1,0,0,.5])
         title_widget = AdaptiveLabel(text=self.title_text, size_hint=[None, None])
-        self.sub_text_widget = AdaptiveLabel(text=self.sub_title_text, size_hint=[None, None], color="grey",font_size=sp(14))
-        self.text_layout.bind(width=self.wrap_text_width)
+
 
         self.text_layout.add_widget(title_widget)
-        self.text_layout.add_widget(self.sub_text_widget)
         self.add_widget(self.text_layout)
 
-        self.switch = MDSwitch(pos_hint={"center_y": .5}, track_color_active=THEME_PRIMARY_COLOR,thumb_color_active=THEME_SECONDARY_COLOR)
+        self.switch = MDSwitch(pos_hint={"center_y": .5}, track_color_active=THEME_PRIMARY_COLOR,thumb_color_active=THEME_SECONDARY_COLOR,on_active=self.on_active)
         self.add_widget(self.switch)
+        self.bind(active=self.switch.setter("active"))
+        # self.switch.bind(on_active=self.on_active)
 
+
+        self.bind(sub_title_text=self.add_subtitle)
         self.bind(title_text=title_widget.setter("text"))
-        self.bind(sub_title_text=self.sub_text_widget.setter("text"))
+
+    def on_active(self, instance, value):
+        if self.change_function:
+            self.change_function(value)
+
+    def add_subtitle(self,_,v):
+        if v and not self.__is_subtitle_added:
+            self.sub_text_widget = AdaptiveLabel(text=self.sub_title_text, size_hint=[None, None], color="grey", font_size=sp(14))
+            self.text_layout.bind(width=self.wrap_text_width)
+            self.text_layout.add_widget(self.sub_text_widget)
+            self.bind(sub_title_text=self.sub_text_widget.setter("text"))
+            self.__is_subtitle_added = True
 
     def wrap_text_width(self,i,v):
         # print(f"self.text_layout {self.text_layout.width}, dp:{dp(self.text_layout.width)}") # self.text_layout 470.0, dp:940.0
@@ -564,7 +573,6 @@ class SettingsScreen(MyMDScreen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.interval_label = None
         self.interval_input = None
         self.name = "settings"
         self.app = MDApp.get_running_app()
@@ -580,92 +588,7 @@ class SettingsScreen(MyMDScreen):
         self.displayed_interval_value=smart_convert_minutes(v)
         self.interval = str(v)
         self.times_tapped = 0
-        #
-        # scroll = ScrollView(size_hint=(1, 1))
-        #
-        # root = Column(
-        #     padding=[dp(20), dp(30), dp(20), dp(100)],
-        #     spacing=dp(15),
-        #     size_hint_y=None,
-        #     my_widgets = [
-        #         MDLabel(
-        #             text="Settings",
-        #             font_size="22sp",
-        #             size_hint_y=None,
-        #             height=dp(40), font_name="RobotoMono"
-        #         ),
-        #         MDLabel(
-        #             text="Wallpaper Change Interval (minutes)",
-        #             size_hint_y=None,
-        #             height=dp(30), font_name="RobotoMono", font_size=sp(13)
-        #         )
-        #     ]
-        #
-        # )
-        # root.bind(minimum_height=root.setter("height"))  # makes height dynamic based on content
-        #
-        # input_row = Row(
-        #     spacing=dp(10),
-        #     size_hint_y=None,
-        #     height=dp(50),
-        #     my_widgets=[
-        #         MDTextField(
-        #             text=str(self.interval),
-        #             hint_text="mins",
-        #             size_hint_x=0.55,
-        #             # theme_text_color="Custom",
-        #             text_color_focus=[1, 1, 1, 1],
-        #             text_color_normal=[.8, .8, .8, 1],
-        #             # hint_text_color_normal=[.8, .8, .8, 1],
-        #             # hint_text_color_focus=[1, 1, 1, 1],
-        #             input_filter="float"
-        #         ),
-        #         Button(text="Save", size_hint_x=0.35, font_name="RobotoMono", on_release=self.save_interval)
-        #     ]
-        # )
-        #
-        #
-        # root.add_widget(input_row)
-        #
-        # self.interval_label = MDLabel(
-        #     text=f"Saved: {smart_convert_minutes(self.interval)}",
-        #     size_hint_y=None,
-        #     height=dp(30),font_name="RobotoMono"
-        # )
-        # root.add_widget(self.interval_label)
-        #
-        # # ---------- FLEXIBLE SPACER ----------
-        # # root.add_widget(Widget(size_hint_y=1))
-        #
-        # root.add_widget(MDLabel(
-        #     text="Carousel Tools",
-        #     size_hint_y=None,
-        #     height=dp(30)
-        # ))
-        #
-        # restart_btn = TextButton(
-        #     text="Restart Carousel",
-        #     size_hint_y=None,
-        #     height=dp(50),
-        #     on_release=self.restart_service
-        # )
-        # root.add_widget(restart_btn)
-        #
-        # stop_btn = TextButton(
-        #     text="Stop Carousel",
-        #     size_hint_y=None,
-        #     height=dp(50),
-        #     on_release=self.terminate_carousel
-        # )
-        # root.add_widget(stop_btn)
-        #
-        # export_folder_btn = TextButton(
-        #     text="export wallpapers",
-        #     size_hint_y=None,
-        #     height=dp(50),
-        #     on_release=lambda widget: self.export_waller_folder()
-        # )
-        # root.add_widget(export_folder_btn)
+
         #
         # # ---------- TEST BUTTONS ----------
         if DEV:
@@ -711,17 +634,24 @@ class SettingsScreen(MyMDScreen):
         except Exception as e:
             toast("Stop failed", e)
 
-    def save_interval(self, *_):
+    def save_interval(self, widget):
         # print("saving interval")
         # app = MDApp.get_running_app()
         # # app.device_theme = "dark"
         # app.device_theme = "light" if app.device_theme == "dark" else "dark"
         # print(app.device_theme)
+        what_to_do = self.ids.save_btn_text.text
+        if what_to_do == "Edit":
+            self.ids.interval_input_con.disabled = False
+            self.ids.interval_input.text = self.interval
+            self.ids.save_btn_text.text = "Save"
+            return
+        elif what_to_do == "Save":
+            self.ids.interval_input_con.disabled = True
+            self.ids.save_btn_text.text = "Edit"
 
-        # return
         global value__
         self.interval_input = self.ids.interval_input
-        self.interval_label = self.ids.interval_label
 
         try:
             new_val = float(self.interval_input.text)
@@ -737,7 +667,7 @@ class SettingsScreen(MyMDScreen):
         value__ = new_val
         my_config.set_interval(new_val)
         self.displayed_interval_value = smart_convert_minutes(new_val)
-        self.interval_label.text = f"Saved: {self.displayed_interval_value}"
+        self.ids.interval_input.text = f"Saved: {self.displayed_interval_value}"
         toast("Saved")
 
     def update_label(self, seconds):

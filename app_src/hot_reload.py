@@ -71,7 +71,7 @@ class MDLive(App,MDApp):
 
     def build_app(self, *args):
         # return Factory.MyPopUp()
-        return Factory.FullscreenScreen()
+        return Factory.SettingsScreen()
 
     def on_start(self):
         # self.theme_cls.theme_style = "Light"

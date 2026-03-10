@@ -28,41 +28,38 @@ class ConfigManager:
     }
 
     def __init__(self):
-
-        self.config_path = Path(self.config_dir) / "config.json"
         self._ensure_config()
-    @property
-    def config_dir(self):
 
-        if is_platform_android():
-            from android.storage import app_storage_path  # type: ignore
-            app_path = app_storage_path()
-        else:
-            app_path = os.getcwd()
+    if is_platform_android():
+        from android.storage import app_storage_path  # type: ignore
+        config_dir = app_storage_path()
+    else:
+        config_dir = os.getcwd()
 
-        return app_path
+    config_path = Path(config_dir) / "config.json"
 
     def _ensure_config(self):
         if not self.config_path.exists():
             self._write(self.DEFAULT_CONFIG)
 
-    def _read(self):
+    @classmethod
+    def _read(cls):
         try:
-            with open(self.config_path, "r") as f:
+            with open(cls.config_path, "r") as f:
                 return json.load(f)
         except Exception as error_reading_config_file:
             print(f"error reading config file: {error_reading_config_file}")
             try:
-                self._write(self.DEFAULT_CONFIG)
-                return self.DEFAULT_CONFIG
+                cls._write(cls.DEFAULT_CONFIG)
+                return cls.DEFAULT_CONFIG
             except PermissionError:
                 toast("PD: Cannot access config file")
             except Exception as e:
                 toast(str(e))
-
-    def _write(self, data):
+    @classmethod
+    def _write(cls, data):
         try:
-            with open(self.config_path, "w") as f:
+            with open(cls.config_path, "w") as f:
                 json.dump(data, f, indent=4)
         except PermissionError:
             toast("PD: Cannot access config file")
@@ -123,13 +120,18 @@ class ConfigManager:
             data[wallpaper_key_name].remove(path)
             self._write(data)
 
-    def get_on_wake_state(self):
-        return self._read().get("use_on_wake", False)
+    @classmethod
+    def get_on_wake_state(cls):
+        s=cls._read().get("use_on_wake", False)
+        # print("returned",s)
+        return s
 
-    def set_on_wake_state(self, state: bool):
-        data = self._read()
+    @classmethod
+    def set_on_wake_state(cls, state: bool):
+        # print('called',state)
+        data = cls._read()
         data["use_on_wake"] = state
-        self._write(data)
+        cls._write(data)
 
     @property
     def get_use_group_by_date(self):
