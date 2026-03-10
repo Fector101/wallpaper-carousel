@@ -674,7 +674,9 @@ class SettingsScreen(MyMDScreen):
         toast("Saved")
 
     def update_label(self, seconds):
-        if self.ids.pause_home_screen_widget_loop_button.icon == "pause":
+        if my_config.get_on_wake_state():
+            self.ids.countdown_label.text = "OnNext Wake"
+        elif self.ids.pause_home_screen_widget_loop_button.icon == "pause":
             self.ids.countdown_label.text = seconds
 
     def restart_service(self, *_):
@@ -840,6 +842,10 @@ class SettingsScreen(MyMDScreen):
         if instance.title_text == "Use On-wake":
             ConfigManager.set_on_wake_state(value)
             self.is_using_on_wake = value
-        if instance.title_text == "Use interval":
+            self.app.ui_messenger_to_service.tell_service_server_to_use_on_wake()
+            self.ids.countdown_label.text = "OnNext Wake"
+
+        elif instance.title_text == "Use interval":
             ConfigManager.set_on_wake_state(not value)
             self.is_using_on_wake = not value
+            self.app.ui_messenger_to_service.tell_service_server_to_use_interval_loop()

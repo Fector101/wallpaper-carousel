@@ -194,7 +194,7 @@
                         radius:[0,dp(10),dp(10),dp(10)]
                         MDLabel:
                             id: countdown_label
-                            text:"--:--"
+                            text: "OnNext Wake" if ConfigManager.get_on_wake_state() else "--:--"
                             pos_hint:{"right":1}
                             adaptive_size: True
                             theme_text_color: 'Custom'

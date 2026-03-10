@@ -1,12 +1,16 @@
 import traceback
 from android_notify.config import get_python_activity_context,autoclass, on_android_platform
 from android_notify.internal.java_classes import PendingIntent,Intent
-from utils.config_manager import ConfigManager
 
+from utils.logger import app_logger
+from ui.widgets.android import toast
 
 def add_home_screen_widget(button=None):
     try:
         from android_widgets import get_package_name
+        if not on_android_platform():
+            app_logger.warning("Can't add Home Screen Widget, Not on Android.")
+            return
 
         # Android classes
         AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
@@ -48,6 +52,9 @@ def add_home_screen_widget(button=None):
                 None,
                 successCallback
             )
+            msg="Added Home Screen Widget"
+            app_logger.info(msg)
+            toast(msg)
     except Exception as error_adding_home_screen_widget:
         print("error_adding_home_screen_widget",error_adding_home_screen_widget)
         traceback.print_exc()

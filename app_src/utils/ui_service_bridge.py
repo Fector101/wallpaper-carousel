@@ -11,7 +11,7 @@ from utils.constants import ServiceServerAddress
 SERVICE_IP = "0.0.0.0"
 
 
-class UIServiceListener:
+class UIListenToServicer:
     on_changed_wallpaper = None
     on_changed_homescreen_widget = None
     on_countdown_change = None
@@ -148,8 +148,8 @@ class UIServiceListener:
         return None
 
 
-class UIMessengerTOService:
-    TAG = "UIMessengerTOService"
+class UIMessengerToService:
+    TAG = "UIMessengerToService"
 
     def __init__(self, service_port: int):
         self.__client = None
@@ -173,6 +173,13 @@ class UIMessengerTOService:
         app_logger.debug("Toggling Home Screen Widgets Loop")
         self.__send_data_to_service(ServiceServerAddress.TOGGLE_HOME_SCREEN_WIDGET_CHANGES.value, {})
 
+    def tell_service_server_to_use_interval_loop(self):
+        app_logger.debug(f"Telling Service Server to Use Interval Loop")
+        self.__send_data_to_service(ServiceServerAddress.RESUME_USING_INTERVAL_LOOP.value, {})
+
+    def tell_service_server_to_use_on_wake(self):
+        app_logger.debug(f"Telling Service Server to Use On Wake Loop")
+        self.__send_data_to_service(ServiceServerAddress.RESUME_USING_ON_WAKE.value, {})
 
 if __name__ == "__main__":
-    UIServiceListener(5004).start(False)
+    UIListenToServicer(5004).start(False)
