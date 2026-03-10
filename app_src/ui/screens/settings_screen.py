@@ -459,8 +459,6 @@ class AdaptiveLabel(Label):
         self.bind(texture_size=self.setter("size"))
 
 
-from kivy.properties import ObjectProperty
-
 class BorderInput(BorderMDBoxLayout):
     input = ObjectProperty(None)
     line_width = NumericProperty(1.5)
@@ -484,6 +482,7 @@ class BorderInput(BorderMDBoxLayout):
 
         super().add_widget(widget, *args, **kwargs)
 
+
 class ToggleSliderRow(Row):
     title_text = StringProperty("")
     sub_title_text = StringProperty("")
@@ -504,6 +503,7 @@ class ToggleSliderRow(Row):
         self.add_widget(self.text_layout)
 
         self.switch = MDSwitch(pos_hint={"center_y": .5}, track_color_active=THEME_PRIMARY_COLOR,thumb_color_active=THEME_SECONDARY_COLOR,on_active=self.on_active)
+        self.switch.title_text = self.title_text
         self.add_widget(self.switch)
         self.bind(active=self.switch.setter("active"))
         # self.switch.bind(on_active=self.on_active)
@@ -514,7 +514,7 @@ class ToggleSliderRow(Row):
 
     def on_active(self, instance, value):
         if self.change_function:
-            self.change_function(value)
+            self.change_function(instance,value)
 
     def add_subtitle(self,_,v):
         if v and not self.__is_subtitle_added:
@@ -528,9 +528,11 @@ class ToggleSliderRow(Row):
         # print(f"self.text_layout {self.text_layout.width}, dp:{dp(self.text_layout.width)}") # self.text_layout 470.0, dp:940.0
         self.sub_text_widget.text_size=[self.text_layout.width,None]
 
+    def on_title_text(self, widget, value):
+        self.switch.title_text = value
 
 class SettingsSection(Column):
-    title_text = StringProperty("")
+    title_text = StringProperty()
     content_layout=ObjectProperty()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -570,6 +572,7 @@ class SettingsScreen(MyMDScreen):
     next_image_source = StringProperty()
     interval = StringProperty()
     displayed_interval_value = StringProperty() # "2 mins"
+    is_using_on_wake = BooleanProperty(ConfigManager.get_on_wake_state())
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -831,3 +834,12 @@ class SettingsScreen(MyMDScreen):
 
     def set_theme_color(self, _, value):
         self.status_bar_bg = [0.45, 0.45, 0.45, 1] if value == "light" else [0.23, 0.23, 0.23, 1]
+
+    def set_using_on_wake_config(self, instance, value):
+        # print("instance.title_text",instance.title_text, value)
+        if instance.title_text == "Use On-wake":
+            ConfigManager.set_on_wake_state(value)
+            self.is_using_on_wake = value
+        if instance.title_text == "Use interval":
+            ConfigManager.set_on_wake_state(not value)
+            self.is_using_on_wake = not value
