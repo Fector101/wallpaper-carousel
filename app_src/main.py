@@ -22,7 +22,7 @@ from utils.helper import Service, write_logs_to_file, get_free_port, register_fo
 from utils.image_operations import ImageOperation
 from utils.logger import app_logger
 from utils.permissions import ask_permission_to_images
-from utils.ui_service_bridge import UIServiceListener, UIMessengerTOService
+from utils.ui_service_bridge import UIListenToServicer, UIMessengerToService
 
 android_notify_logger.setLevel(logging.DEBUG if on_android_platform() else logging.ERROR)
 
@@ -88,11 +88,11 @@ class WallpaperCarouselApp(MDApp):
 
 
         self.service_port = service_port or get_free_port()
-        self.ui_messenger_to_service = UIMessengerTOService(self.service_port)
+        self.ui_messenger_to_service = UIMessengerToService(self.service_port)
         self.sm.settings_screen.ids.skip_upcoming_wallpaper_button.on_release = self.ui_messenger_to_service.change_next
         self.sm.settings_screen.ids.pause_home_screen_widget_loop_button.on_release = self.ui_messenger_to_service.toggle_home_screen_widget_changes
 
-        self.ui_service_listener = UIServiceListener(ui_port)
+        self.ui_service_listener = UIListenToServicer(ui_port)
         self.ui_service_listener.start()
         self.ui_service_listener.on_countdown_change = self.sm.settings_screen.update_label
         self.ui_service_listener.on_changed_homescreen_widget = self.sm.settings_screen.on_changed_homescreen_widget

@@ -41,5 +41,8 @@ class ServiceServerAddress(Enum):
     TOGGLE_HOME_SCREEN_WIDGET_CHANGES = "/toggle_home_screen_widget_changes"
     APPLY_NEXT_WALLPAPER = "/apply_next_wallpaper"
 
+    RESUME_USING_INTERVAL_LOOP = "/resume_using_interval_loop"
+    RESUME_USING_ON_WAKE = "/pause_using_interval_loop"
+
 DEV=0
 VERSION="1.0.4"

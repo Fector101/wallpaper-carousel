@@ -840,6 +840,10 @@ class SettingsScreen(MyMDScreen):
         if instance.title_text == "Use On-wake":
             ConfigManager.set_on_wake_state(value)
             self.is_using_on_wake = value
-        if instance.title_text == "Use interval":
+            self.app.ui_messenger_to_service.tell_service_server_to_use_on_wake()
+            # self.ids.countdown_label.text = "OnNext Wake"
+
+        elif instance.title_text == "Use interval":
             ConfigManager.set_on_wake_state(not value)
             self.is_using_on_wake = not value
+            self.app.ui_messenger_to_service.tell_service_server_to_use_interval_loop()

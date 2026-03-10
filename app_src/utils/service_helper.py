@@ -265,9 +265,14 @@ class WallpaperServerReceiver:
     def __check_and_or_do_pause_for_on_wake(self):
         truth = my_config.get_on_wake_state()
         if truth:
-            self.notification.updateTitle("OnNext Wake")
-            self.pause_event.clear()
-            self.pause_event.wait()
+            self.resume_using_on_wake()
+
+    def resume_using_on_wake(self,*args):
+        self.notification.updateTitle("OnNext Wake")
+        self.pause_event.clear()
+        self.pause_event.wait()
+    def resume_using_interval_loop(self,*args):
+        self.pause_event.set()
 
     def __write_wallpaper_path_to_file(self, wallpaper_path):
         # Writing for Java to see for home screen widget
@@ -495,6 +500,10 @@ def start_service_server(notification: Notification):
     myDispatcher.map(ServiceServerAddress.TOGGLE_HOME_SCREEN_WIDGET_CHANGES.value,
                      wallpaperServerReceiver.toggle_home_screen_widget_changes)
     myDispatcher.map(ServiceServerAddress.APPLY_NEXT_WALLPAPER.value, wallpaperServerReceiver.apply_next_wallpaper)
+
+
+    myDispatcher.map(ServiceServerAddress.RESUME_USING_INTERVAL_LOOP.value, wallpaperServerReceiver.resume_using_interval_loop)
+    myDispatcher.map(ServiceServerAddress.RESUME_USING_ON_WAKE.value, wallpaperServerReceiver.resume_using_on_wake)
 
     notification.setData(
         {"next wallpaper path": "test.jpg", SERVICE_PORT_ARGUMENT_KEY: receivedDataFromUI.service_port})
