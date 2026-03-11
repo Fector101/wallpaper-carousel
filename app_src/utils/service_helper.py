@@ -34,7 +34,7 @@ def is_between_6am_6pm():
     return start <= now < end
 
 
-def get_next_wallpaper():
+def get_next_wallpaper(current_wallpaper):
     """Get the next wallpaper path and name without setting it yet
     :return: [absolute_path, name]
     """
@@ -55,9 +55,13 @@ def get_next_wallpaper():
         if not images:
             app_logger.warning(f"No images found in {wallpapers_folder_path}")
             return '', ''
-
-        wallpaper_path = random.choice(images)
-        return os.path.basename(wallpaper_path), wallpaper_path
+        new_wallpaper_path = current_wallpaper
+        while current_wallpaper == new_wallpaper_path:
+            new_wallpaper_path = random.choice(images)
+            # print(current_wallpaper == new_wallpaper_path, current_wallpaper, new_wallpaper_path)
+            if len(images) == 1:
+                break
+        return os.path.basename(new_wallpaper_path), new_wallpaper_path
     except Exception as error_getting_next_wallpaper:
         app_logger.exception(f"Failed to get next wallpaper: {error_getting_next_wallpaper}")
         return '', ''
@@ -197,7 +201,6 @@ class WallpaperServerReceiver:
         self.skip_now = False
         self.live = False
         self.next_wallpaper_path = ''
-        self.current_sleep = 1
         self.changes = 0
         self.using_on_wake = my_config.get_on_wake_state()
         self.__start_main_loop()
@@ -238,9 +241,15 @@ class WallpaperServerReceiver:
         print("running on wake")
         self.live = True
         self.running_on_wake_loop=True
+        if not self.next_wallpaper_path:  # check if wallpaper already set from on wake
+            self.choseAndShowPreviewForNextWallpaper()
         while self.live and self.using_on_wake and self.running_on_wake_loop:
-            time.sleep(1)
+            time.sleep(2)
+
+            if not self.next_wallpaper_path:
+                self.notification.updateTitle("No images found")
             self.__update_notification_texts("OnNext Wake", "")
+
             self.using_on_wake=my_config.get_on_wake_state()
         print("ended on wake")
         self.running_on_wake_loop=False
@@ -249,8 +258,9 @@ class WallpaperServerReceiver:
         print("running interval")
         self.live = True
         self.running_on_interval_loop=True
+        self.skip_now=False
         while self.live and self.running_on_interval_loop:
-            if not self.next_wallpaper_path: # check if wallpaper already set from on wake
+            if not self.next_wallpaper_path:  # check if wallpaper already set from on wake
                 self.choseAndShowPreviewForNextWallpaper() # sets self.next_wallpaper_path
 
             if not self.next_wallpaper_path:
@@ -261,10 +271,12 @@ class WallpaperServerReceiver:
             self.count_down_interval()
             if not self.skip_now:
                 self.apply_new_wallpaper()
-        print("ended interval")
+            self.skip_now = False
+        print(f"ended interval live: {self.live}, self.running_on_interval_loop: {self.running_on_interval_loop}")
         self.running_on_interval_loop=False
 
     def resume_using_on_wake(self,*args):
+        print("call to end interval loop")
         self.running_on_interval_loop = False
         self.using_on_wake = True
         self.stop_ongoing_loop()
@@ -292,16 +304,22 @@ class WallpaperServerReceiver:
     def count_down_interval(self):
         self.current_wait_seconds = get_interval()
         while self.current_wait_seconds > 0:
-            time.sleep(self.current_sleep)
+            time.sleep(1)
             self.current_wait_seconds -= 1
 
             if self.current_wait_seconds <= 0 or self.using_on_wake:
                 break
 
-            value_ = format_time_remaining(get_interval()) if self.current_wait_seconds <= 0 else format_time_remaining(
-                self.current_wait_seconds)
-            self.__send_data_to_ui("/countdown_change", {"seconds": value_})
-            self.__update_notification_texts(f"Next in {value_}", "")
+            self.__update_countdown_display()
+
+    def __update_countdown_display(self):
+        if self.current_wait_seconds <= 0:
+            mins = get_interval()
+        else:
+            mins = self.current_wait_seconds
+        value_ = format_time_remaining(mins)
+        self.__update_notification_texts(f"Next in {value_}", "")
+        self.__send_data_to_ui("/countdown_change", {"seconds": value_})
 
     def __write_wallpaper_path_to_file(self, wallpaper_path):
         # Writing for Java to see for home screen widget
@@ -346,7 +364,8 @@ class WallpaperServerReceiver:
             self.notification.updateMessage(message)
 
     def choseAndShowPreviewForNextWallpaper(self):
-        wallpaper = get_next_wallpaper()
+
+        wallpaper = get_next_wallpaper(self.next_wallpaper_path)
         self.next_wallpaper_path = wallpaper[1]
         self.__set_next_img_in_notification(self.next_wallpaper_path)
         self.__send_data_to_ui("/changed_homescreen_widget",
@@ -354,6 +373,7 @@ class WallpaperServerReceiver:
         self.__send_data_to_ui("/changed_wallpaper",
                                {"current_wallpaper": None, "next_wallpaper": self.next_wallpaper_path})
         self.notification.setData({"next wallpaper path": self.next_wallpaper_path})
+        return None
 
     def apply_new_wallpaper(self):
         self.current_wallpaper = self.next_wallpaper_path
@@ -375,11 +395,10 @@ class WallpaperServerReceiver:
 
     def stop(self, *args):
         self.notification.updateTitle("Stopping Service...")
-        # time.sleep(0.1)
         app_logger.info(f"stop args: {args}")
-        self.live = 0
-        self.skip_now = True
-        self.current_wait_seconds = 0
+        self.running_on_wake_loop = False
+        self.running_on_interval_loop = False
+        self.stop_ongoing_loop()
         self.__server_thread.join()
         self.__send_data_to_ui("/stopped", {})
         server.shutdown()  # type: ignore
@@ -388,11 +407,12 @@ class WallpaperServerReceiver:
         # service.stopSelf()
 
     def pause(self, _=None):
-        self.notification.updateTitle("Carousel Pause")
-        self.pause_event.clear()
+        # TODO
+        # self.notification.updateTitle("Carousel Pause")
+        pass
 
     def resume(self, _=None):
-        self.pause_event.set()
+        pass
 
     def receiveClientChangeNext(self, *_):
         self.choseAndShowPreviewForNextWallpaper()
@@ -401,8 +421,13 @@ class WallpaperServerReceiver:
         #     self.choseAndShowPreviewForNextWallpaper()
         #     return None
         # # app_logger.info(f"set_next_data args: {_}")
-        # self.skip_now = True
-        # self.current_wait_seconds = 0
+        # print("self.running_on_interval_loop",self.running_on_interval_loop)
+        if self.running_on_interval_loop:
+            self.skip_now = True
+            self.current_wait_seconds = 0
+            self.__update_countdown_display()
+        elif self.running_on_wake_loop:
+            self.__update_notification_texts("OnNext Wake", "")
         return None
 
     def toggle_home_screen_widget_changes(self, *_):
