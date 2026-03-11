@@ -27,6 +27,7 @@ wallpapers_folder_path = os.path.join(appFolder(), "wallpapers")
 
 service = get_python_service()
 
+
 def is_between_6am_6pm():
     now = datetime.now().time()
     start = dt_time(6, 0)  # 6:00 AM
@@ -118,9 +119,9 @@ def unregister_screen_receiver(receiver):
 
     try:
         activity.unregisterReceiver(receiver)
-        print("python DetectReceiver unregistered successfully!")
+        app_logger.warning("python DetectReceiver unregistered successfully!")
     except Exception as error_unregistering_screen_receiver:
-        print(f"python Failed to unregister receiver: {error_unregistering_screen_receiver}")
+        app_logger.exception(f"python Failed to unregister receiver: {error_unregistering_screen_receiver}")
 
 
 class ReceivedDataFromUI:
@@ -190,7 +191,7 @@ class ReceivedDataFromUI:
 
 
 class WallpaperServerReceiver:
-    # def __int__(self):
+
 
     def __init__(self, notification):
         self.notification = notification
@@ -203,23 +204,23 @@ class WallpaperServerReceiver:
         self.next_wallpaper_path = ''
         self.changes = 0
         self.using_on_wake = my_config.get_on_wake_state()
+        self.running_on_wake_loop = False
+        self.running_on_interval_loop = False
         self.__start_main_loop()
-        self.running_on_wake_loop=False
-        self.running_on_interval_loop=False
         try:
             register_screen_receiver()
         except Exception as error_registering_screen_receiver:
-            print("python error_registering_screen_receiver", error_registering_screen_receiver)
+            app_logger.exception(f"python error_registering_screen_receiver {error_registering_screen_receiver}")
 
     @staticmethod
     def __unregister_screen_state_receiver():
         try:
-            print("trying to unregister")
+            app_logger.debug("trying to unregister")
             DetectReceiver = autoclass('org.wally.waller.DetectReceiver')
             receiver = DetectReceiver()
             unregister_screen_receiver(receiver)
         except Exception as error_getting_screen_receiver:
-            print("python error_getting_screen_receiver", error_getting_screen_receiver)
+            app_logger.exception(f"python error_getting_screen_receiver: {error_getting_screen_receiver}")
 
     def __start_main_loop(self):
         try:
@@ -231,18 +232,19 @@ class WallpaperServerReceiver:
             traceback.print_exc()
 
     def main_loop(self):
-        # print("run once")
+        # app_logger.debug("run once")
         if self.using_on_wake:
             self.loop_for_using_on_wake()
         else:
             self.loop_for_using_interval()
 
     def loop_for_using_on_wake(self):
-        print("running on wake")
         self.live = True
-        self.running_on_wake_loop=True
+        self.running_on_wake_loop = True
         if not self.next_wallpaper_path:  # check if wallpaper already set from on wake
             self.choseAndShowPreviewForNextWallpaper()
+
+        print(f"running on wake")
         while self.live and self.using_on_wake and self.running_on_wake_loop:
             time.sleep(2)
 
@@ -250,18 +252,19 @@ class WallpaperServerReceiver:
                 self.notification.updateTitle("No images found")
             self.__update_notification_texts("OnNext Wake", "")
 
-            self.using_on_wake=my_config.get_on_wake_state()
-        print("ended on wake")
-        self.running_on_wake_loop=False
+            self.using_on_wake = my_config.get_on_wake_state()
+        print(
+            f"ended on wake live: {self.live}, using_on_wake: {self.using_on_wake}, running_on_wake_loop: {self.running_on_wake_loop}")
+        self.running_on_wake_loop = False
 
     def loop_for_using_interval(self):
-        print("running interval")
+        app_logger.debug("running interval")
         self.live = True
-        self.running_on_interval_loop=True
-        self.skip_now=False
+        self.running_on_interval_loop = True
+        self.skip_now = False
         while self.live and self.running_on_interval_loop:
             if not self.next_wallpaper_path:  # check if wallpaper already set from on wake
-                self.choseAndShowPreviewForNextWallpaper() # sets self.next_wallpaper_path
+                self.choseAndShowPreviewForNextWallpaper()  # sets self.next_wallpaper_path
 
             if not self.next_wallpaper_path:
                 time.sleep(1)
@@ -272,11 +275,11 @@ class WallpaperServerReceiver:
             if not self.skip_now:
                 self.apply_new_wallpaper()
             self.skip_now = False
-        print(f"ended interval live: {self.live}, self.running_on_interval_loop: {self.running_on_interval_loop}")
-        self.running_on_interval_loop=False
+        app_logger.warning(f"ended interval live: {self.live}, self.running_on_interval_loop: {self.running_on_interval_loop}")
+        self.running_on_interval_loop = False
 
-    def resume_using_on_wake(self,*args):
-        print("call to end interval loop")
+    def resume_using_on_wake(self, *args):
+        app_logger.info("call to end interval loop")
         self.running_on_interval_loop = False
         self.using_on_wake = True
         self.stop_ongoing_loop()
@@ -284,9 +287,10 @@ class WallpaperServerReceiver:
         if not self.running_on_wake_loop:
             self.loop_for_using_on_wake()
         else:
-            print("still running on wake")
+            app_logger.warning("still running on wake")
 
-    def resume_using_interval_loop(self,*args):
+    def resume_using_interval_loop(self, *args):
+        print("call to end on wake loop")
         self.running_on_wake_loop = False
         self.using_on_wake = False
         self.stop_ongoing_loop()
@@ -357,7 +361,7 @@ class WallpaperServerReceiver:
         else:
             app_logger.error(f"Image - {wallpaper_path} does not exist, can't set notification preview")
 
-    def __update_notification_texts(self,title,message):
+    def __update_notification_texts(self, title, message):
         # print(title,self.notification.title)
         if title != self.notification.title:
             self.notification.updateTitle(title)
@@ -373,6 +377,7 @@ class WallpaperServerReceiver:
         self.__send_data_to_ui("/changed_wallpaper",
                                {"current_wallpaper": None, "next_wallpaper": self.next_wallpaper_path})
         self.notification.setData({"next wallpaper path": self.next_wallpaper_path})
+
         return None
 
     def apply_new_wallpaper(self):
@@ -394,6 +399,7 @@ class WallpaperServerReceiver:
         pass
 
     def stop(self, *args):
+        print("called stop service")
         self.notification.updateTitle("Stopping Service...")
         app_logger.info(f"stop args: {args}")
         self.running_on_wake_loop = False
@@ -562,7 +568,6 @@ def start_service_server(notification: Notification):
     myDispatcher.map(ServiceServerAddress.TOGGLE_HOME_SCREEN_WIDGET_CHANGES.value,
                      wallpaperServerReceiver.toggle_home_screen_widget_changes)
     myDispatcher.map(ServiceServerAddress.APPLY_NEXT_WALLPAPER.value, wallpaperServerReceiver.apply_next_wallpaper)
-
 
     myDispatcher.map(ServiceServerAddress.RESUME_USING_INTERVAL_LOOP.value, wallpaperServerReceiver.resume_using_interval_loop)
     myDispatcher.map(ServiceServerAddress.RESUME_USING_ON_WAKE.value, wallpaperServerReceiver.resume_using_on_wake)
