@@ -300,13 +300,13 @@
                         title_text: "Use On-wake"
                         sub_title_text: 'Get a new wallpaper each time you "turn on screen".'
                         active: root.is_using_on_wake
-                        change_function: lambda instance, value: root.set_using_on_wake_config(instance, value)
+                        change_function: lambda instance, value,is_from_user: root.set_using_on_wake_config(instance, value,is_from_user)
 #                        change_function: lambda x : ConfigManager.set_on_wake_state(x)
                     ToggleSliderRow:
                         title_text:"Use interval"
                         sub_title_text:f'Get a new wallpaper every "{root.displayed_interval_value}".'
-                        active: not root.is_using_on_wake# not ConfigManager.get_on_wake_state()
-                        change_function: lambda instance, value: root.set_using_on_wake_config(instance, value)
+                        active: not root.is_using_on_wake
+                        change_function: lambda instance, value, is_from_user: root.set_using_on_wake_config(instance, value,is_from_user)
 #                        change_function: lambda x : ConfigManager.set_on_wake_state(not x)
                     CarouselTools:
 #                SettingsSection:

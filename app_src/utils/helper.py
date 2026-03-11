@@ -195,7 +195,7 @@ class Service:
 
         threading.Thread(
             target=start_service,
-            daemon=True  # important
+            daemon=True
         ).start()
 
 

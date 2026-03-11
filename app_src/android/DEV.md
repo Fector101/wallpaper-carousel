@@ -17,3 +17,6 @@ adb logcat | grep Intent
 ```shell
 adb logcat | grep -E "python|Wallpapercarousel"
 ```
+```shell
+buildozer android debug && adb install bin/waller-1.0.4-arm64-v8a-debug.apk
+```

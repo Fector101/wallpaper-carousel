@@ -488,6 +488,7 @@ class ToggleSliderRow(Row):
     sub_title_text = StringProperty("")
     active = BooleanProperty(False)
     change_function =ObjectProperty()
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.sub_text_widget = None
@@ -502,7 +503,7 @@ class ToggleSliderRow(Row):
         self.text_layout.add_widget(title_widget)
         self.add_widget(self.text_layout)
 
-        self.switch = MDSwitch(pos_hint={"center_y": .5}, track_color_active=THEME_PRIMARY_COLOR,thumb_color_active=THEME_SECONDARY_COLOR,on_active=self.on_active)
+        self.switch = MDSwitch(pos_hint={"center_y": .5}, track_color_active=THEME_PRIMARY_COLOR,thumb_color_active=THEME_SECONDARY_COLOR,on_active=self.do_thing,on_release=self.set_from_user_key)
         self.switch.title_text = self.title_text
         self.add_widget(self.switch)
         self.bind(active=self.switch.setter("active"))
@@ -511,10 +512,12 @@ class ToggleSliderRow(Row):
 
         self.bind(sub_title_text=self.add_subtitle)
         self.bind(title_text=title_widget.setter("text"))
-
-    def on_active(self, instance, value):
+    def set_from_user_key(self, instance):
+        instance.from_user = True
+    def do_thing(self, instance,*args):
         if self.change_function:
-            self.change_function(instance,value)
+            self.change_function(instance, self.switch.active, instance.from_user if hasattr(instance,"from_user") else False)
+            instance.from_user = False
 
     def add_subtitle(self,_,v):
         if v and not self.__is_subtitle_added:
@@ -839,15 +842,26 @@ class SettingsScreen(MyMDScreen):
     def set_theme_color(self, _, value):
         self.status_bar_bg = [0.45, 0.45, 0.45, 1] if value == "light" else [0.23, 0.23, 0.23, 1]
 
-    def set_using_on_wake_config(self, instance, value):
-        # print("instance.title_text",instance.title_text, value)
+    def set_using_on_wake_config(self, instance, value,from_user):
+        # print("instance.title_text",instance, value)
+        # print('onrelease value',value,instance)
+        if not from_user:
+            return
+        # print(f'{instance.title_text} from_user')
         if instance.title_text == "Use On-wake":
             ConfigManager.set_on_wake_state(value)
             self.is_using_on_wake = value
-            self.app.ui_messenger_to_service.tell_service_server_to_use_on_wake()
-            self.ids.countdown_label.text = "OnNext Wake"
+            if value:
+                self.app.ui_messenger_to_service.tell_service_server_to_use_on_wake()
+                self.ids.countdown_label.text = "OnNext Wake"
+            else:
+                self.app.ui_messenger_to_service.tell_service_server_to_use_interval_loop()
 
         elif instance.title_text == "Use interval":
             ConfigManager.set_on_wake_state(not value)
             self.is_using_on_wake = not value
-            self.app.ui_messenger_to_service.tell_service_server_to_use_interval_loop()
+            if value:
+                self.app.ui_messenger_to_service.tell_service_server_to_use_interval_loop()
+            else:
+                self.app.ui_messenger_to_service.tell_service_server_to_use_on_wake()
+                self.ids.countdown_label.text = "OnNext Wake"
