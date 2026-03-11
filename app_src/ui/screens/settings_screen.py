@@ -623,9 +623,14 @@ class SettingsScreen(MyMDScreen):
         self.current_image_source = get_current_wallpaper()
         self.next_image_source = "assets/icons/icon.png"
 
-    @staticmethod
-    def toggle_home_screen_widget_loop(widget=None):
+    def toggle_home_screen_widget_loop(self,widget=None):
         widget.icon = "play" if widget.icon == "pause" else "pause"
+
+        if widget.icon == "pause":
+            text = "OnNext Wake" if my_config.get_on_wake_state() else "Resuming.."
+        else:
+            text = "Paused"
+        self.ids.countdown_label.text = text
 
     def open_logs_screen(self, _=None):
         self.times_tapped += 1
@@ -679,7 +684,9 @@ class SettingsScreen(MyMDScreen):
         toast("Saved")
 
     def update_label(self, seconds):
-        if my_config.get_on_wake_state():
+        if self.ids.pause_home_screen_widget_loop_button.icon == "play":
+            self.ids.countdown_label.text = "Paused"
+        elif my_config.get_on_wake_state():
             self.ids.countdown_label.text = "OnNext Wake"
         elif self.ids.pause_home_screen_widget_loop_button.icon == "pause":
             self.ids.countdown_label.text = seconds
@@ -853,7 +860,8 @@ class SettingsScreen(MyMDScreen):
             self.is_using_on_wake = value
             if value:
                 self.app.ui_messenger_to_service.tell_service_server_to_use_on_wake()
-                self.ids.countdown_label.text = "OnNext Wake"
+                # print(self.ids.countdown_label.text,111)
+                self.ids.countdown_label.text = "OnNext Wake" if self.ids.countdown_label.text != "Paused" else self.ids.countdown_label.text
             else:
                 self.app.ui_messenger_to_service.tell_service_server_to_use_interval_loop()
 
@@ -864,4 +872,5 @@ class SettingsScreen(MyMDScreen):
                 self.app.ui_messenger_to_service.tell_service_server_to_use_interval_loop()
             else:
                 self.app.ui_messenger_to_service.tell_service_server_to_use_on_wake()
-                self.ids.countdown_label.text = "OnNext Wake"
+                # print(self.ids.countdown_label.text,22)
+                self.ids.countdown_label.text = "OnNext Wake" if self.ids.countdown_label.text != "Paused" else self.ids.countdown_label.text
