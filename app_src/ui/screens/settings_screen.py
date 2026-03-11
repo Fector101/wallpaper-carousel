@@ -531,6 +531,7 @@ class ToggleSliderRow(Row):
     def on_title_text(self, widget, value):
         self.switch.title_text = value
 
+
 class SettingsSection(Column):
     title_text = StringProperty()
     content_layout=ObjectProperty()
@@ -669,6 +670,7 @@ class SettingsScreen(MyMDScreen):
             return
         value__ = new_val
         my_config.set_interval(new_val)
+        self.interval = str(new_val)
         self.displayed_interval_value = smart_convert_minutes(new_val)
         self.ids.interval_input.text = f"Saved: {self.displayed_interval_value}"
         toast("Saved")
