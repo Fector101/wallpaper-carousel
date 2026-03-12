@@ -1,16 +1,20 @@
 name: Build Android APK
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main  # Change to your main branch if different
 
 jobs:
   build-android:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2️⃣ Get version from constants.py
       - name: Get version from constants.py
         id: version
         run: |
@@ -18,10 +22,12 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION"
 
+      # 3️⃣ Decode keystore from secrets
       - name: Decode keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-release-key.jks
 
+      # 4️⃣ Build APK with Buildozer
       - name: Build with Buildozer
         uses: n8marti/buildozer-action@fix-user-doesnt-exist
         id: buildozer
@@ -30,10 +36,13 @@ jobs:
           buildozer_version: stable
           command: pip install android-widgets; buildozer android release
 
+      # 5️⃣ Zipalign APK using Buildozer SDK path
       - name: Zipalign APK
         run: |
-          zipalign -v -p 4 bin/*release-unsigned.apk bin/aligned.apk
+          BUILD_TOOLS=$(ls -d ~/.buildozer/android/platform/build-tools/* | sort -V | tail -n1)
+          $BUILD_TOOLS/zipalign -v -p 4 bin/*release-unsigned.apk bin/aligned.apk
 
+      # 6️⃣ Sign APK
       - name: Sign APK
         run: |
           apksigner sign \
@@ -44,10 +53,12 @@ jobs:
             --out bin/waller.apk \
             bin/aligned.apk
 
+      # 7️⃣ Verify APK
       - name: Verify APK
         run: |
           apksigner verify --verbose bin/waller.apk
 
+      # 8️⃣ Create GitHub Release
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
