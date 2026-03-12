@@ -1,13 +1,12 @@
-name: Build Android APK
+name: Build Signed APK
 
 on:
   push:
-    branches:
-      - main  # Change to your main branch if different
+    branches: [ main ]
 
 jobs:
   build-android:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       # 1️⃣ Checkout repository
@@ -15,53 +14,69 @@ jobs:
         uses: actions/checkout@v4
 
       # 2️⃣ Get version from constants.py
-      - name: Get version from constants.py
+      - name: Get version
         id: version
         run: |
           VERSION=$(python -c "from app_src.utils.constants import VERSION; print(VERSION)")
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION"
 
-      # 3️⃣ Decode keystore from secrets
-      - name: Decode keystore
+      # 3️⃣ Decode keystore from Base64
+      - name: Decode Keystore
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-release-key.jks
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android.jks
 
       # 4️⃣ Build APK with Buildozer
-      - name: Build with Buildozer
-        uses: n8marti/buildozer-action@fix-user-doesnt-exist
-        id: buildozer
+      - name: Build Release APK
+        uses: digreatbrian/buildozer-action@v2
         with:
-          workdir: .
-          buildozer_version: stable
-          command: pip install android-widgets; buildozer android release
+          python-version: 3.11
+          buildozer-cmd: buildozer -v android release
 
-      # 5️⃣ Zipalign APK using Buildozer SDK path
+      # 5️⃣ Find release APK
+      - name: Find release APK
+        id: apk
+        run: |
+          APK_PATH=$(find ./bin -name "*-release-unsigned.apk" | head -n 1)
+          echo "APK_PATH=$APK_PATH" >> $GITHUB_OUTPUT
+
+      # 6️⃣ Zipalign APK
       - name: Zipalign APK
         run: |
-          BUILD_TOOLS=$(ls -d ~/.buildozer/android/platform/build-tools/* | sort -V | tail -n1)
-          $BUILD_TOOLS/zipalign -v -p 4 bin/*release-unsigned.apk bin/aligned.apk
+          ALIGNED_PATH="${{ steps.apk.outputs.APK_PATH/-unsigned/-aligned.apk }}"
+          zipalign -v -p 4 "${{ steps.apk.outputs.APK_PATH }}" "$ALIGNED_PATH"
 
-      # 6️⃣ Sign APK
+      # 7️⃣ Sign APK with apksigner
       - name: Sign APK
         run: |
+          ALIGNED_PATH="${{ steps.apk.outputs.APK_PATH/-unsigned/-aligned.apk }}"
+          SIGNED_PATH="${{ steps.apk.outputs.APK_PATH/-unsigned/-signed.apk }}"
           apksigner sign \
-            --ks my-release-key.jks \
-            --ks-key-alias key-stuff \
+            --ks android.jks \
+            --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
             --ks-pass pass:${{ secrets.KS_PASS }} \
             --key-pass pass:${{ secrets.KEY_PASS }} \
-            --out bin/waller.apk \
-            bin/aligned.apk
+            --out "$SIGNED_PATH" \
+            "$ALIGNED_PATH"
+          echo "Signed APK: $SIGNED_PATH"
 
-      # 7️⃣ Verify APK
+      # 8️⃣ Verify APK
       - name: Verify APK
         run: |
-          apksigner verify --verbose bin/waller.apk
+          SIGNED_PATH="${{ steps.apk.outputs.APK_PATH/-unsigned/-signed.apk }}"
+          apksigner verify --verbose "$SIGNED_PATH"
 
-      # 8️⃣ Create GitHub Release
+      # 9️⃣ Upload signed APK artifact
+      - name: Upload signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-release-apk
+          path: ./bin/*-release-signed.apk
+
+      # 🔟 Create GitHub Release
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.VERSION }}
           name: Release v${{ steps.version.outputs.VERSION }}
-          files: bin/waller.apk
+          files: ./bin/*-release-signed.apk
