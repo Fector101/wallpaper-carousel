@@ -3,7 +3,7 @@ import time
 import traceback
 from pathlib import Path
 
-from android_notify.config import get_python_activity_context, autoclass
+from android_notify.config import get_python_activity_context, autoclass, on_android_platform
 from android_notify.internal.java_classes import PendingIntent, Intent
 from android_widgets import get_package_name
 # from kivy.uix.label import Label
@@ -29,7 +29,7 @@ from ui.widgets.layouts import MyMDScreen, Column
 from ui.widgets.layouts import Row
 from utils.android import add_home_screen_widget
 from utils.config_manager import ConfigManager
-from utils.constants import DEV, THEME_PRIMARY_COLOR, THEME_SECONDARY_COLOR
+from utils.constants import DEV, THEME_PRIMARY_COLOR, THEME_SECONDARY_COLOR, VERSION
 from utils.helper import Service, appFolder, smart_convert_minutes
 from utils.helper import load_kv_file  # type
 from utils.model import get_app
@@ -177,9 +177,10 @@ def show_home_screen_widget_popup1():
 dev_object = {}
 if DEV:
     dev_object = {
-        "schedule_alarm": lambda widget: schedule_alarm(),
-        "start_short_task_service": lambda widget: start_short_task_service(),
-        "schedule_workmanager": lambda widget: schedule_workmanager(),
+        "check update": lambda widget: get_new_apk()
+        # "schedule_alarm": lambda widget: schedule_alarm(),
+        # "start_short_task_service": lambda widget: start_short_task_service(),
+        # "schedule_workmanager": lambda widget: schedule_workmanager(),
         # "open_notification_settings_screen": lambda widget: open_notification_settings_screen(),
         # "show_home_screen_widget_popup1": lambda widget: show_home_screen_widget_popup1(),
     }
@@ -874,3 +875,120 @@ class SettingsScreen(MyMDScreen):
                 self.app.ui_messenger_to_service.tell_service_server_to_use_on_wake()
                 # print(self.ids.countdown_label.text,22)
                 self.ids.countdown_label.text = "OnNext Wake" if self.ids.countdown_label.text != "Paused" else self.ids.countdown_label.text
+
+
+
+
+import requests
+import os
+import traceback
+from utils.constants import VERSION
+
+def download_apk(url, filename="waller.apk"):
+    """Download APK from URL"""
+    try:
+        if on_android_platform():  # Android will be detected via pyjnius
+            from android import mActivity
+            context = mActivity.getApplicationContext()
+            files_dir = context.getFilesDir().getAbsolutePath()
+        else:
+            files_dir = "./"
+
+        apk_path = os.path.join(files_dir, filename)
+        r = requests.get(url, stream=True)
+        r.raise_for_status()
+
+        with open(apk_path, "wb") as f:
+            for chunk in r.iter_content(8192):
+                if chunk:
+                    f.write(chunk)
+
+        print("APK saved to:", apk_path)
+        return apk_path
+
+    except Exception as e:
+        print("Download failed:", e)
+        traceback.print_exc()
+        return None
+
+def install_apk15(apk_path):
+    """Install APK using FileProvider (Android 15+)"""
+    import os
+    from jnius import autoclass
+    from android import mActivity
+
+    if not os.path.exists(apk_path):
+        print("APK not found:", apk_path)
+        return
+
+    context = mActivity.getApplicationContext()
+    Intent = autoclass('android.content.Intent')
+    File = autoclass('java.io.File')
+    FileProvider = autoclass('androidx.core.content.FileProvider')
+    Uri = autoclass('android.net.Uri')
+
+    apk_file = File(apk_path)
+    authority = context.getPackageName() + ".fileprovider"
+    uri = FileProvider.getUriForFile(context, authority, apk_file)
+
+    intent = Intent(Intent.ACTION_VIEW)
+    intent.setDataAndType(uri, "application/vnd.android.package-archive")
+    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    mActivity.startActivity(intent)
+
+def install_apk(apk_path):
+    """Fallback installer for older Android versions"""
+    import os
+    from jnius import autoclass
+    from android import mActivity
+
+    if not os.path.exists(apk_path):
+        print("APK not found:", apk_path)
+        return
+
+    Intent = autoclass('android.content.Intent')
+    Uri = autoclass('android.net.Uri')
+    File = autoclass('java.io.File')
+
+    intent = Intent(Intent.ACTION_VIEW)
+    apk_file = File(apk_path)
+    uri = Uri.fromFile(apk_file)
+    intent.setDataAndType(uri, "application/vnd.android.package-archive")
+    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    mActivity.startActivity(intent)
+
+def check_update():
+    """Check GitHub latest release version"""
+    repo_owner="Fector101"
+    repo_name="wallpaper-carousel"
+    api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest"
+    try:
+        r = requests.get(api_url, timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        print("Here's data:",data)
+        latest_version = data["tag_name"].lstrip("v")  # strip v prefix if any
+        print("latest_version:", latest_version)
+        # apk_url = data["assets"][0]["browser_download_url"]
+        apk_url = "https://github.com/Fector101/wallpaper-carousel/releases/latest/download/waller.apk"
+        print("Current version:", VERSION, "Latest version:", latest_version)
+
+        if latest_version != VERSION:
+            print("Update available!")
+            apk_path = download_apk(apk_url)
+            if apk_path:
+                try:
+                    install_apk15(apk_path)
+                except Exception as e:
+                    print("install_apk15 failed:", e)
+                    try:
+                        install_apk(apk_path)
+                    except Exception as e1:
+                        print("install_apk failed:", e1)
+        else:
+            print("Already up to date.")
+
+    except Exception as e:
+        print("Failed to check updates:", e)
+        traceback.print_exc()

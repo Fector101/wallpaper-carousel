@@ -1,0 +1,56 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get version from constants.py
+        id: version
+        run: |
+          VERSION=$(python -c "from app_src.utils.constants import VERSION; print(VERSION)")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-release-key.jks
+
+      - name: Build with Buildozer
+        uses: n8marti/buildozer-action@fix-user-doesnt-exist
+        id: buildozer
+        with:
+          workdir: .
+          buildozer_version: stable
+          command: pip install android-widgets; buildozer android release
+
+      - name: Zipalign APK
+        run: |
+          zipalign -v -p 4 bin/*release-unsigned.apk bin/aligned.apk
+
+      - name: Sign APK
+        run: |
+          apksigner sign \
+            --ks my-release-key.jks \
+            --ks-key-alias key-stuff \
+            --ks-pass pass:${{ secrets.KS_PASS }} \
+            --key-pass pass:${{ secrets.KEY_PASS }} \
+            --out bin/waller.apk \
+            bin/aligned.apk
+
+      - name: Verify APK
+        run: |
+          apksigner verify --verbose bin/waller.apk
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.VERSION }}
+          name: Release v${{ steps.version.outputs.VERSION }}
+          files: bin/waller.apk
