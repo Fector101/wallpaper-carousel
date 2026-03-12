@@ -39,18 +39,23 @@ jobs:
         run: |
           APK_PATH=$(find ./bin -name "*-release-unsigned.apk" | head -n 1)
           echo "APK_PATH=$APK_PATH" >> $GITHUB_OUTPUT
+          echo "Found APK: $APK_PATH"
 
       # 6️⃣ Zipalign APK
       - name: Zipalign APK
         run: |
-          ALIGNED_PATH="${{ steps.apk.outputs.APK_PATH/-unsigned/-aligned.apk }}"
-          zipalign -v -p 4 "${{ steps.apk.outputs.APK_PATH }}" "$ALIGNED_PATH"
+          APK_PATH="${{ steps.apk.outputs.APK_PATH }}"
+          ALIGNED_PATH="${APK_PATH/-unsigned/-aligned.apk}"
+          echo "Zipaligning $APK_PATH -> $ALIGNED_PATH"
+          zipalign -v -p 4 "$APK_PATH" "$ALIGNED_PATH"
 
       # 7️⃣ Sign APK with apksigner
       - name: Sign APK
         run: |
-          ALIGNED_PATH="${{ steps.apk.outputs.APK_PATH/-unsigned/-aligned.apk }}"
-          SIGNED_PATH="${{ steps.apk.outputs.APK_PATH/-unsigned/-signed.apk }}"
+          ALIGNED_PATH="${{ steps.apk.outputs.APK_PATH }}"
+          ALIGNED_PATH="${ALIGNED_PATH/-unsigned/-aligned.apk}"
+          SIGNED_PATH="${ALIGNED_PATH/-aligned/-signed}"
+          echo "Signing $ALIGNED_PATH -> $SIGNED_PATH"
           apksigner sign \
             --ks android.jks \
             --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
@@ -63,7 +68,8 @@ jobs:
       # 8️⃣ Verify APK
       - name: Verify APK
         run: |
-          SIGNED_PATH="${{ steps.apk.outputs.APK_PATH/-unsigned/-signed.apk }}"
+          APK_PATH="${{ steps.apk.outputs.APK_PATH }}"
+          SIGNED_PATH="${APK_PATH/-unsigned/-signed.apk}"
           apksigner verify --verbose "$SIGNED_PATH"
 
       # 9️⃣ Upload signed APK artifact
