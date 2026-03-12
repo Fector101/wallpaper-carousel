@@ -12,61 +12,64 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Install packages exactly like your local machine
       - name: Install system dependencies
         run: |
           sudo apt update
           sudo apt install -y \
             git zip unzip openjdk-17-jdk python3-pip autoconf libtool \
             pkg-config zlib1g-dev libncurses-dev libtinfo6 cmake \
-            libffi-dev libssl-dev
+            libffi-dev libssl-dev wget
 
-      # Add ~/.local/bin to PATH like your .bashrc
-      - name: Add local bin to PATH
+      - name: Add ~/.local/bin to PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      # Create virtualenv exactly like you do locally
-      - name: Create Python virtual environment
+      - name: Create Python virtualenv
         run: |
           python3 -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
           pip install Cython==0.29.33 virtualenv buildozer
 
-      # Accept Android SDK licenses automatically
+      # Install Android command line tools
+      - name: Install Android cmdline tools
+        run: |
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk
+          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip commandlinetools-linux-*.zip
+          mkdir -p cmdline-tools/latest
+          mv cmdline-tools/* cmdline-tools/latest || true
+          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
+
       - name: Accept Android licenses
         run: |
-          yes | buildozer android update || true
+          yes | sdkmanager --licenses
 
-      # Decode keystore
       - name: Decode keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-release-key.jks
 
-      # Build APK
-      - name: Build release APK
+      - name: Build APK
         run: |
           source venv/bin/activate
           buildozer -v android release
 
-      # Find APK
       - name: Find APK
         id: apk
         run: |
-          APK=$(find ./bin -name "*release*.apk" | head -n 1)
+          APK=$(find ./bin -name "*.apk" | head -n 1)
           echo "APK=$APK" >> $GITHUB_OUTPUT
 
-      # Upload artifact
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: waller-apk
           path: ${{ steps.apk.outputs.APK }}
 
-      # Create GitHub release
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: auto-build-${{ github.run_number }}
-          name: Auto Build ${{ github.run_number }}
+          tag_name: build-${{ github.run_number }}
+          name: Build ${{ github.run_number }}
           files: ${{ steps.apk.outputs.APK }}
