@@ -5,71 +5,112 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  build-android:
     runs-on: ubuntu-22.04
 
     steps:
+      # 1️⃣ Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2️⃣ Setup Java 17
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Export JAVA_HOME
+        run: echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
+
+      # 3️⃣ Install system dependencies
       - name: Install system dependencies
         run: |
           sudo apt update
-          sudo apt install -y \
-            git zip unzip openjdk-17-jdk python3-pip autoconf libtool \
-            pkg-config zlib1g-dev libncurses-dev libtinfo6 cmake \
-            libffi-dev libssl-dev wget
+          sudo apt install -y git zip unzip python3-pip \
+            autoconf libtool pkg-config zlib1g-dev \
+            libncurses-dev libtinfo6 cmake libffi-dev \
+            libssl-dev wget
 
+      # 4️⃣ Add ~/.local/bin to PATH
       - name: Add ~/.local/bin to PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Create Python virtualenv
+      # 5️⃣ Create Python venv and install Buildozer
+      - name: Setup Python virtualenv
         run: |
           python3 -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
           pip install Cython==0.29.33 virtualenv buildozer
 
-      # Install Android command line tools
+      # 6️⃣ Install Android command-line tools
       - name: Install Android cmdline tools
         run: |
           mkdir -p $HOME/android-sdk/cmdline-tools
           cd $HOME/android-sdk
           wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip commandlinetools-linux-*.zip
+          unzip -q commandlinetools-linux-*.zip
           mkdir -p cmdline-tools/latest
           mv cmdline-tools/* cmdline-tools/latest || true
           echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
 
+      # 7️⃣ Accept Android SDK licenses
       - name: Accept Android licenses
-        run: |
-          yes | sdkmanager --licenses
+        run: yes | sdkmanager --licenses
 
+      # 8️⃣ Decode keystore
       - name: Decode keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-release-key.jks
 
+      # 9️⃣ Get version from constants.py
+      - name: Get version from constants.py
+        id: version
+        run: |
+          source venv/bin/activate
+          VERSION=$(python -c "from app_src.utils.constants import VERSION; print(VERSION)")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      # 🔟 Build APK
       - name: Build APK
         run: |
           source venv/bin/activate
           buildozer -v android release
 
+      # 1️⃣1️⃣ Find release APK
       - name: Find APK
         id: apk
         run: |
-          APK=$(find ./bin -name "*.apk" | head -n 1)
+          APK=$(find ./bin -name "*-release-unsigned.apk" | head -n 1)
           echo "APK=$APK" >> $GITHUB_OUTPUT
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: waller-apk
-          path: ${{ steps.apk.outputs.APK }}
+      # 1️⃣2️⃣ Zipalign APK
+      - name: Zipalign APK
+        run: |
+          BUILD_TOOLS=$(ls -d ~/.buildozer/android/platform/build-tools/* | sort -V | tail -n1)
+          $BUILD_TOOLS/zipalign -v -p 4 "${{ steps.apk.outputs.APK }}" bin/aligned.apk
 
+      # 1️⃣3️⃣ Sign APK with apksigner
+      - name: Sign APK
+        run: |
+          apksigner sign \
+            --ks my-release-key.jks \
+            --ks-key-alias key-stuff \
+            --ks-pass pass:${{ secrets.KS_PASS }} \
+            --key-pass pass:${{ secrets.KEY_PASS }} \
+            --out bin/waller.apk bin/aligned.apk
+
+      # 1️⃣4️⃣ Verify APK
+      - name: Verify APK
+        run: apksigner verify --verbose bin/waller.apk
+
+      # 1️⃣5️⃣ Upload to GitHub Release
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: Build ${{ github.run_number }}
-          files: ${{ steps.apk.outputs.APK }}
+          tag_name: v${{ steps.version.outputs.VERSION }}
+          name: Release v${{ steps.version.outputs.VERSION }}
+          files: bin/waller.apk
