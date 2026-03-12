@@ -177,7 +177,7 @@ def show_home_screen_widget_popup1():
 dev_object = {}
 if DEV:
     dev_object = {
-        "check update": lambda widget: get_new_apk()
+        # "check update": lambda widget: check_update()
         # "schedule_alarm": lambda widget: schedule_alarm(),
         # "start_short_task_service": lambda widget: start_short_task_service(),
         # "schedule_workmanager": lambda widget: schedule_workmanager(),
@@ -621,6 +621,7 @@ class SettingsScreen(MyMDScreen):
 
         # self.add_widget(root) for auto reload
         # self.save_interval()
+        self.ids.main_container.add_widget(Button(text="Check For New Version",on_release=check_update,size_hint_y=None, height=dp(50)))
         self.current_image_source = get_current_wallpaper()
         self.next_image_source = "assets/icons/icon.png"
 
@@ -958,7 +959,7 @@ def install_apk(apk_path):
     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     mActivity.startActivity(intent)
 
-def check_update():
+def check_update(*args):
     """Check GitHub latest release version"""
     repo_owner="Fector101"
     repo_name="wallpaper-carousel"
