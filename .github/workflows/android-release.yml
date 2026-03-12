@@ -13,21 +13,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Read version from constants.py
-      - name: Get version
-        id: version
-        run: |
-          VERSION=$(python3 -c "from app_src.utils.constants import VERSION; print(VERSION)")
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Building version $VERSION"
-
       # Setup Python
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: 3.11
 
-      # Setup Java
+      # Setup Java (required by Android tools)
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -41,8 +33,7 @@ jobs:
           sudo apt install -y \
             git zip unzip autoconf libtool pkg-config \
             zlib1g-dev libncurses5-dev libncursesw5-dev \
-            libtinfo5 cmake libffi-dev libssl-dev \
-            openjdk-17-jdk
+            libtinfo5 cmake libffi-dev libssl-dev
 
       # Install Buildozer
       - name: Install Buildozer
@@ -50,17 +41,32 @@ jobs:
           python -m pip install --upgrade pip
           pip install Cython==0.29.33 buildozer
 
+      # Get version from your constants file
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(python3 -c "from app_src.utils.constants import VERSION; print(VERSION)")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version $VERSION"
+
       # Decode keystore
-      - name: Decode Keystore
+      - name: Decode keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android.jks
 
-      # Build APK
-      - name: Build release APK
+      # Build release APK
+      - name: Build APK
         run: |
           buildozer -v android release
 
-      # Find APK
+      # Accept Android licenses (fix for aidl error)
+      - name: Accept Android licenses
+        run: |
+          if [ -d "$HOME/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin" ]; then
+            yes | $HOME/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+          fi
+
+      # Find the generated APK
       - name: Find APK
         id: apk
         run: |
@@ -68,24 +74,25 @@ jobs:
           echo "APK_PATH=$APK_PATH" >> $GITHUB_OUTPUT
           echo "Found APK: $APK_PATH"
 
-      # Zipalign
+      # Zipalign APK
       - name: Zipalign APK
         run: |
           BUILD_TOOLS=$(find ~/.buildozer/android/platform/android-sdk/build-tools -maxdepth 1 -type d | sort -V | tail -n1)
+
           APK="${{ steps.apk.outputs.APK_PATH }}"
           ALIGNED="${APK/-unsigned/-aligned.apk}"
 
           echo "Using build-tools: $BUILD_TOOLS"
           $BUILD_TOOLS/zipalign -v -p 4 "$APK" "$ALIGNED"
 
+          echo "ALIGNED_APK=$ALIGNED" >> $GITHUB_ENV
+
       # Sign APK
       - name: Sign APK
         run: |
           BUILD_TOOLS=$(find ~/.buildozer/android/platform/android-sdk/build-tools -maxdepth 1 -type d | sort -V | tail -n1)
 
-          APK="${{ steps.apk.outputs.APK_PATH }}"
-          ALIGNED="${APK/-unsigned/-aligned.apk}"
-          SIGNED="${APK/-unsigned/-signed.apk}"
+          SIGNED="${ALIGNED_APK/-aligned/-signed}"
 
           $BUILD_TOOLS/apksigner sign \
             --ks android.jks \
@@ -93,7 +100,7 @@ jobs:
             --ks-pass pass:${{ secrets.KS_PASS }} \
             --key-pass pass:${{ secrets.KEY_PASS }} \
             --out "$SIGNED" \
-            "$ALIGNED"
+            "$ALIGNED_APK"
 
           echo "SIGNED_APK=$SIGNED" >> $GITHUB_ENV
 
@@ -104,14 +111,14 @@ jobs:
           $BUILD_TOOLS/apksigner verify --verbose "$SIGNED_APK"
 
       # Upload artifact
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: waller-apk
           path: ${{ env.SIGNED_APK }}
 
-      # Create GitHub Release
-      - name: Create Release
+      # Create GitHub release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.VERSION }}
