@@ -9,17 +9,18 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+      # Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Java 17 required
+      # Setup Java 17 (required for sdkmanager)
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
-      # System dependencies
+      # Install Linux dependencies
       - name: Install system dependencies
         run: |
           sudo apt update
@@ -29,53 +30,63 @@ jobs:
             libncurses-dev libtinfo6 cmake \
             libffi-dev libssl-dev wget
 
-      - name: Add ~/.local/bin to PATH
+      # Add ~/.local/bin to PATH
+      - name: Add local bin to PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      # Python + Buildozer
-      - name: Setup Python
+      # Setup Python environment
+      - name: Setup Python + Buildozer
         run: |
           python3 -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
           pip install Cython==0.29.33 buildozer
 
-      # Create Buildozer directories
-      - name: Prepare Buildozer directories
+      # Prepare Buildozer SDK folder
+      - name: Prepare Android SDK folder
         run: |
-          mkdir -p ~/.buildozer/android/platform/android-sdk/cmdline-tools
+          mkdir -p ~/.buildozer/android/platform/android-sdk
 
-      # Install Android commandline tools directly where Buildozer expects them
+      # Install Android command line tools
       - name: Install Android cmdline tools
         run: |
           cd ~/.buildozer/android/platform/android-sdk
+
           wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip commandlinetools-linux-*.zip
+          unzip -q commandlinetools-linux-*.zip
+
           mkdir -p cmdline-tools/latest
           mv cmdline-tools/* cmdline-tools/latest || true
 
-      # Accept licenses
+          # Buildozer expects old tools/bin/sdkmanager
+          mkdir -p tools/bin
+
+          ln -s ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager tools/bin/sdkmanager
+          ln -s ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/avdmanager tools/bin/avdmanager
+
+      # Accept Android licenses
       - name: Accept Android licenses
         run: |
-          yes | ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+          yes | ~/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager --licenses
 
-      # Install required build tools (contains aidl)
+      # Install build-tools required for aidl
       - name: Install Android build-tools
         run: |
-          yes | ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager "build-tools;29.0.0"
+          yes | ~/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager "build-tools;29.0.0"
 
-      # Decode signing key
+      # Decode keystore
       - name: Decode keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-release-key.jks
 
-      # Get version
+      # Get version from constants.py
       - name: Get version
         id: version
         run: |
           source venv/bin/activate
           VERSION=$(python -c "from app_src.utils.constants import VERSION; print(VERSION)")
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version $VERSION"
 
       # Build APK
       - name: Build APK
@@ -83,14 +94,15 @@ jobs:
           source venv/bin/activate
           buildozer -v android release
 
-      # Locate APK
-      - name: Find APK
+      # Find unsigned APK
+      - name: Locate APK
         id: apk
         run: |
           APK=$(find ./bin -name "*-release-unsigned.apk" | head -n 1)
           echo "APK=$APK" >> $GITHUB_OUTPUT
+          echo "Found APK: $APK"
 
-      # Zipalign
+      # Zipalign APK
       - name: Zipalign APK
         run: |
           BUILD_TOOLS=$(ls -d ~/.buildozer/android/platform/android-sdk/build-tools/* | sort -V | tail -n1)
@@ -107,11 +119,13 @@ jobs:
             --out bin/waller.apk \
             bin/aligned.apk
 
+      # Verify APK
       - name: Verify APK
-        run: apksigner verify --verbose bin/waller.apk
+        run: |
+          apksigner verify --verbose bin/waller.apk
 
-      # Release
-      - name: Create Release
+      # Create GitHub release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.VERSION }}
