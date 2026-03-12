@@ -5,132 +5,68 @@ on:
     branches: [ main ]
 
 jobs:
-  build-android:
+  build:
     runs-on: ubuntu-22.04
 
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.11
-
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-
+      # Install packages exactly like your local machine
       - name: Install system dependencies
         run: |
           sudo apt update
           sudo apt install -y \
-            git zip unzip autoconf libtool pkg-config \
-            zlib1g-dev libncurses5-dev libncursesw5-dev \
-            libtinfo5 cmake libffi-dev libssl-dev
+            git zip unzip openjdk-17-jdk python3-pip autoconf libtool \
+            pkg-config zlib1g-dev libncurses-dev libtinfo6 cmake \
+            libffi-dev libssl-dev
 
+      # Add ~/.local/bin to PATH like your .bashrc
+      - name: Add local bin to PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Install Buildozer
+      # Create virtualenv exactly like you do locally
+      - name: Create Python virtual environment
         run: |
-          python -m pip install --upgrade pip
-          pip install Cython==0.29.33 buildozer
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install Cython==0.29.33 virtualenv buildozer
 
-
-      - name: Install Android cmdline-tools
-        run: |
-          mkdir -p $HOME/android-sdk/cmdline-tools
-          cd $HOME/android-sdk
-
-          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip commandlinetools-linux-*.zip
-
-          mkdir -p cmdline-tools/latest
-          mv cmdline-tools/* cmdline-tools/latest || true
-
-          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-
-
+      # Accept Android SDK licenses automatically
       - name: Accept Android licenses
         run: |
-          yes | sdkmanager --licenses
+          yes | buildozer android update || true
 
-
-      - name: Get version
-        id: version
-        run: |
-          VERSION=$(python3 -c "from app_src.utils.constants import VERSION; print(VERSION)")
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
-
+      # Decode keystore
       - name: Decode keystore
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android.jks
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-release-key.jks
 
-
-      - name: Build APK
+      # Build APK
+      - name: Build release APK
         run: |
+          source venv/bin/activate
           buildozer -v android release
 
-
+      # Find APK
       - name: Find APK
         id: apk
         run: |
-          APK_PATH=$(find ./bin -name "*-release-unsigned.apk" | head -n 1)
-          echo "APK_PATH=$APK_PATH" >> $GITHUB_OUTPUT
+          APK=$(find ./bin -name "*release*.apk" | head -n 1)
+          echo "APK=$APK" >> $GITHUB_OUTPUT
 
-
-      - name: Zipalign APK
-        run: |
-          BUILD_TOOLS=$(find ~/.buildozer/android/platform/android-sdk/build-tools -maxdepth 1 -type d | sort -V | tail -n1)
-
-          APK="${{ steps.apk.outputs.APK_PATH }}"
-          ALIGNED="${APK/-unsigned/-aligned.apk}"
-
-          $BUILD_TOOLS/zipalign -v -p 4 "$APK" "$ALIGNED"
-
-          echo "ALIGNED_APK=$ALIGNED" >> $GITHUB_ENV
-
-
-      - name: Sign APK
-        run: |
-          BUILD_TOOLS=$(find ~/.buildozer/android/platform/android-sdk/build-tools -maxdepth 1 -type d | sort -V | tail -n1)
-
-          SIGNED="${ALIGNED_APK/-aligned/-signed}"
-
-          $BUILD_TOOLS/apksigner sign \
-            --ks android.jks \
-            --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
-            --ks-pass pass:${{ secrets.KS_PASS }} \
-            --key-pass pass:${{ secrets.KEY_PASS }} \
-            --out "$SIGNED" \
-            "$ALIGNED_APK"
-
-          echo "SIGNED_APK=$SIGNED" >> $GITHUB_ENV
-
-
-      - name: Verify APK
-        run: |
-          BUILD_TOOLS=$(find ~/.buildozer/android/platform/android-sdk/build-tools -maxdepth 1 -type d | sort -V | tail -n1)
-          $BUILD_TOOLS/apksigner verify --verbose "$SIGNED_APK"
-
-
-      - name: Upload artifact
+      # Upload artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: waller-apk
-          path: ${{ env.SIGNED_APK }}
+          path: ${{ steps.apk.outputs.APK }}
 
-
-      - name: Create GitHub release
+      # Create GitHub release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.VERSION }}
-          name: Release v${{ steps.version.outputs.VERSION }}
-          files: ${{ env.SIGNED_APK }}
+          tag_name: auto-build-${{ github.run_number }}
+          name: Auto Build ${{ github.run_number }}
+          files: ${{ steps.apk.outputs.APK }}
