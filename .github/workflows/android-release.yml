@@ -115,7 +115,7 @@ jobs:
           echo "Signing APK with $BUILD_TOOLS/apksigner"
           "$BUILD_TOOLS/apksigner" sign \
             --ks my-release-key.jks \
-            --ks-key-alias key-stuff \
+            --ks-key-alias ${{ secrets.ALIAS_NAME }} \
             --ks-pass pass:${{ secrets.KS_PASS }} \
             --key-pass pass:${{ secrets.KEY_PASS }} \
             --out bin/waller.apk \
