@@ -9,48 +9,104 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      # 1️⃣ Checkout the repository
+      # Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Get version from constants.py
-      - name: Get version from constants.py
-        id: version
-        run: |
-          VERSION=$(python3 -c "from app_src.utils.constants import VERSION; print(VERSION)")
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Building version: $VERSION"
+      # Setup Java 17 (required for sdkmanager)
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
 
-      # 3️⃣ Decode keystore from base64
+      # Install Linux dependencies
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            git zip unzip python3-pip \
+            autoconf libtool pkg-config zlib1g-dev \
+            libncurses-dev libtinfo6 cmake \
+            libffi-dev libssl-dev wget
+
+      # Add ~/.local/bin to PATH
+      - name: Add local bin to PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      # Setup Python environment
+      - name: Setup Python + Buildozer
+        run: |
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install Cython==0.29.33 buildozer android-widgets
+
+      # Prepare Buildozer SDK folder
+      - name: Prepare Android SDK folder
+        run: |
+          mkdir -p ~/.buildozer/android/platform/android-sdk
+
+      # Install Android command line tools
+      - name: Install Android cmdline tools
+        run: |
+          cd ~/.buildozer/android/platform/android-sdk
+
+          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q commandlinetools-linux-*.zip
+
+          mkdir -p cmdline-tools/latest
+          mv cmdline-tools/* cmdline-tools/latest || true
+
+          # Buildozer expects old tools/bin/sdkmanager
+          mkdir -p tools/bin
+
+          ln -s ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager tools/bin/sdkmanager
+          ln -s ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/avdmanager tools/bin/avdmanager
+
+      # Accept Android licenses
+      - name: Accept Android licenses
+        run: |
+          yes | ~/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager --licenses
+
+      # Install build-tools required for aidl
+      - name: Install Android build-tools
+        run: |
+          yes | ~/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager "build-tools;29.0.0"
+
+      # Decode keystore
       - name: Decode keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-release-key.jks
 
-      # 4️⃣ Install system dependencies & Python packages
-      - name: Install dependencies
+      # Get version from constants.py
+      - name: Get version
+        id: version
         run: |
-          sudo apt update
-          sudo apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool \
-              pkg-config zlib1g-dev libncurses-dev libtinfo6 cmake libffi-dev libssl-dev
-          python3 -m venv venv
           source venv/bin/activate
-          pip install --upgrade Cython==0.29.33 virtualenv buildozer android-widgets
-        shell: bash
+          VERSION=$(python -c "from app_src.utils.constants import VERSION; print(VERSION)")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version $VERSION"
 
-      # 5️⃣ Build Release APK with Buildozer
+      # Build APK
       - name: Build APK
         run: |
           source venv/bin/activate
           buildozer -v android release
-        shell: bash
 
-      # 6️⃣ Zipalign APK
+      # Find unsigned APK
+      - name: Locate APK
+        id: apk
+        run: |
+          APK=$(find ./bin -name "*-release-unsigned.apk" | head -n 1)
+          echo "APK=$APK" >> $GITHUB_OUTPUT
+          echo "Found APK: $APK"
+
+      # Zipalign APK
       - name: Zipalign APK
         run: |
           BUILD_TOOLS=$(ls -d ~/.buildozer/android/platform/android-sdk/build-tools/* | sort -V | tail -n1)
-          echo "Using build-tools: $BUILD_TOOLS"
-          "$BUILD_TOOLS/zipalign" -v -p 4 bin/*release-unsigned.apk bin/aligned.apk
-        shell: bash
+          $BUILD_TOOLS/zipalign -v -p 4 "${{ steps.apk.outputs.APK }}" bin/aligned.apk
 
       # Sign APK
       - name: Sign APK
@@ -71,9 +127,9 @@ jobs:
           BUILD_TOOLS=$(ls -d ~/.buildozer/android/platform/android-sdk/build-tools/* | sort -V | tail -n1)
           "$BUILD_TOOLS/apksigner" verify --verbose bin/waller.apk
 
-      # 9️⃣ Upload APK as release artifact
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+      # Create GitHub release
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: waller-apk
-          path: bin/waller.apk
+          tag_name: v${{ steps.version.outputs.VERSION }}
+          name: Release v${{ steps.version.outputs.VERSION }}
