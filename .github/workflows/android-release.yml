@@ -52,11 +52,11 @@ jobs:
           "$BUILD_TOOLS/zipalign" -v -p 4 bin/*release-unsigned.apk bin/aligned.apk
         shell: bash
 
-      # 7️⃣ Sign APK using apksigner
+      # Sign APK
       - name: Sign APK
         run: |
           BUILD_TOOLS=$(ls -d ~/.buildozer/android/platform/android-sdk/build-tools/* | sort -V | tail -n1)
-          echo "Signing APK with apksigner from $BUILD_TOOLS"
+          echo "Signing APK with $BUILD_TOOLS/apksigner"
           "$BUILD_TOOLS/apksigner" sign \
             --ks my-release-key.jks \
             --ks-key-alias key-stuff \
@@ -64,14 +64,12 @@ jobs:
             --key-pass pass:${{ secrets.KEY_PASS }} \
             --out bin/waller.apk \
             bin/aligned.apk
-        shell: bash
 
-      # 8️⃣ Verify APK
+      # Verify APK
       - name: Verify APK
         run: |
           BUILD_TOOLS=$(ls -d ~/.buildozer/android/platform/android-sdk/build-tools/* | sort -V | tail -n1)
           "$BUILD_TOOLS/apksigner" verify --verbose bin/waller.apk
-        shell: bash
 
       # 9️⃣ Upload APK as release artifact
       - name: Upload APK artifact
