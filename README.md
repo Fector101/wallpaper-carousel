@@ -1,8 +1,8 @@
 Wally: A working Android wallpaper carousel with no ads.
 
-[![Build](https://github.com/Fector101/wallpaper-carousel/actions/workflows/android.yml/badge.svg)](https://github.com/Fector101/wallpaper-carousel/actions/workflows/android.yml)
+[![Build](https://github.com/Fector101/wallpaper-carousel/actions/workflows/android-release.yml/badge.svg)](https://github.com/Fector101/wallpaper-carousel/actions/workflows/android.yml)
 
-[APK Download](https://github.com/Fector101/wallpaper-carousel/actions/runs/21792823342/artifacts/5420865979)
+[APK Download](https://github.com/Fector101/wallpaper-carousel/releases/download/v1.0.4/waller.apk)
 
 - Every 2mins wallpaper switches to a new image already provided by user.
 
