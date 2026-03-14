@@ -59,6 +59,13 @@ class WallpaperCarouselApp(MDApp):
             on_camera=self.sm.go_to_thumbs,
             on_settings=self.sm.go_to_settings,
         )
+
+        is_fullscreen = self.sm.current in ["welcome", "fullscreen", "logs", "update_screen"]
+        if is_fullscreen:
+            self.bottom_bar.hide()
+        elif self.bottom_bar:
+            self.bottom_bar.show()
+
         self.root_layout.add_widget(self.bottom_bar)
         self.bottom_bar.bind_change()  # needs theme from monitor_dark_and_light_device_change
 

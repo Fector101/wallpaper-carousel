@@ -110,7 +110,7 @@ def install_apk15(apk_path):
 
 def get_new_apk(*args):
     print("get_new_apk",args)
-    server_ip="192.168.0.3"
+    server_ip="pc_ip"
     apk_path = download_apk(url=f"http://{server_ip}:8000/Laner/mobile/bin/waller-1.0.5-arm64-v8a_armeabi-v7a-release.apk")
     if apk_path:
         try:

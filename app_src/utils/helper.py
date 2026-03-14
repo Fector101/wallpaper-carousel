@@ -371,3 +371,12 @@ def get_stored_running_service_server_port():
             return toInt(f.read())
     return None
 
+
+def get_current_wallpaper():
+    try:
+        current_wallpaper_store_path = os.path.join(appFolder(), 'wallpaper.txt')
+        with open(current_wallpaper_store_path, "r") as f:
+            path = f.read()
+    except FileNotFoundError:
+        path = "assets/icons/icon.png"
+    return path or "assets/icons/icon.png"

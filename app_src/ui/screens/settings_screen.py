@@ -1,3 +1,4 @@
+import threading
 import os
 import time
 import traceback
@@ -23,6 +24,7 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.selectioncontrol import MDSwitch
 from kivymd.uix.textfield import MDTextField
 
+from ui.screens.download_apk_screen import thread_check_for_update
 from ui.screens.full_screen import BorderMDBoxLayout
 from ui.widgets.android import toast
 from ui.widgets.layouts import MyMDScreen, Column
@@ -198,7 +200,7 @@ def get_current_wallpaper():
 
 class TextButton(MDButton):
     text = StringProperty("")
-    text_color = StringProperty("")
+    text_color = ListProperty("")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -621,7 +623,7 @@ class SettingsScreen(MyMDScreen):
 
         # self.add_widget(root) for auto reload
         # self.save_interval()
-        self.ids.main_container.add_widget(Button(text="Check For New Version",on_release=check_update,size_hint_y=None, height=dp(50)))
+        self.ids.main_container.add_widget(Button(text="Check For New Version",on_release=self.check_for_update,size_hint_y=None, height=dp(50)))
         self.current_image_source = get_current_wallpaper()
         self.next_image_source = "assets/icons/icon.png"
 
@@ -877,7 +879,9 @@ class SettingsScreen(MyMDScreen):
                 # print(self.ids.countdown_label.text,22)
                 self.ids.countdown_label.text = "OnNext Wake" if self.ids.countdown_label.text != "Paused" else self.ids.countdown_label.text
 
-
+    def check_for_update(self,*args):
+        show = self.app.sm.download_apk_screen.show #
+        Clock.schedule_once(lambda dt: thread_check_for_update(dt, show),5)
 
 
 import requests
@@ -976,7 +980,7 @@ def check_update(*args):
         print("Current version:", VERSION, "Latest version:", latest_version)
 
         if latest_version != VERSION:
-            print("Update available!")
+            toast("Update available!")
             apk_path = download_apk(apk_url)
             if apk_path:
                 try:
@@ -988,7 +992,7 @@ def check_update(*args):
                     except Exception as e1:
                         print("install_apk failed:", e1)
         else:
-            print("Already up to date.")
+            toast("Already up to date.")
 
     except Exception as e:
         print("Failed to check updates:", e)

@@ -9,6 +9,7 @@ from ui.screens.settings_screen import SettingsScreen
 from ui.screens.full_screen import FullscreenScreen
 from ui.screens.welcome_screen import WelcomeScreen
 from ui.screens.logs_screen import LogsScreen
+from ui.screens.download_apk_screen import DownloadApkScreen
 
 
 
@@ -22,19 +23,23 @@ class ScreenManager(MDScreenManager):
         self.full_screen = FullscreenScreen()
         self.settings_screen = SettingsScreen()
         self.log_screen = LogsScreen()
+        self.download_apk_screen = DownloadApkScreen()
 
         self.add_widget(self.gallery_screen)
         self.add_widget(self.full_screen)
         self.add_widget(self.settings_screen)
         self.add_widget(self.welcome_screen)
         self.add_widget(self.log_screen)
+        self.add_widget(self.download_apk_screen)
 
         if not NotificationHandler.has_permission():
             self.current = "welcome"
-
+        else:
+            self.current = "thumbs"
+        # self.current = "update_screen"
     def on_current(self,*args):
         screen_name = args[1]
-        is_fullscreen = screen_name == "fullscreen" or screen_name == "welcome" or screen_name == "logs"
+        is_fullscreen = screen_name in ["welcome","fullscreen","logs","update_screen"]
         if is_fullscreen and self.app.bottom_bar:
             self.app.bottom_bar.hide()
         elif self.app.bottom_bar:
