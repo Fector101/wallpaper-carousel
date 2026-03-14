@@ -37,6 +37,7 @@ def get_apk_directory():
 def download_apk(url, filename="waller.apk", progress_callback=None):
     """Download APK with resume support"""
     try:
+        sent_percent = 0
         print("Entered download apk:", url)
 
         files_dir = get_apk_directory()
@@ -70,7 +71,9 @@ def download_apk(url, filename="waller.apk", progress_callback=None):
 
                     if total_size and progress_callback:
                         percent = int((downloaded / total_size) * 100)
-                        progress_callback(percent)
+                        if sent_percent != percent:
+                            sent_percent=percent
+                            progress_callback(percent)
 
         return apk_path
 
@@ -126,6 +129,7 @@ def install_apk(apk_path):
     mActivity.startActivity(intent)
 
 def do_android_install(apk_path):
+    print("Called do_android_install")
     try:
         install_apk15(apk_path)
     except Exception as e:
@@ -166,7 +170,6 @@ class TextButton(MDButton):
 
 
 class ProgressButton(MDBoxLayout):
-    function=ObjectProperty()
     clicked=BooleanProperty(False)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -187,10 +190,11 @@ class ProgressButton(MDBoxLayout):
             size_hint=[1, 1],
             theme_width="Custom",
             theme_height="Custom",
-            on_release=self.function
+            # on_release=self.function
         )
+        # self.streak.bind(on_release=self.function)
+        # self.bind(function=self.streak.on_release)
         self.add_widget(self.streak)
-
         self.layered_color = [0, 0, 0, .23]
         with self.canvas.after:
             self.bg_color_instr = Color(*self.layered_color)
@@ -207,19 +211,22 @@ class ProgressButton(MDBoxLayout):
         percent = min(max(percent, 0), 100)
         self.streak.text = f"Downloading {percent}%"
 
-        per = self.width * (percent / 100)
-        self.rect.size = [self.width - per, self.height]
-
         if percent == 100:
-            Clock.schedule_once(lambda dt: setattr(self.streak, "text", "Installing..."))
             self.clicked=False
+            per=self.width
+            self.rect.a = 0
+        else:
+            per = self.width * (percent / 100)
 
+        self.rect.size = [self.width - per, self.height]
+        # print(f"time 2 {percent}")
 
 class DownloadApkScreen(MyMDScreen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.new_version = ''
+        self.clock_for_progress_update=None
         self.apk_size = 0
         app = MDApp.get_running_app()
         self.md_bg_color = [0.9, 0.9, 0.9, 1] if app.device_theme == "light" else [.1, .1, .1, 1]
@@ -273,7 +280,8 @@ class DownloadApkScreen(MyMDScreen):
                       theme_font_size="Custom", font_size=sp(14), adaptive_size=1)
         bottom_container.add_widget(txt)
 
-        self.update_button = ProgressButton(function=lambda x: self.start_download(self.update_button))
+        self.update_button = ProgressButton()#function=lambda x: self.start_download(self.update_button))
+        self.update_button.streak.bind(on_release=self.start_download)
 
         self.later_button = TextButton(
             text="Not now",
@@ -293,8 +301,8 @@ class DownloadApkScreen(MyMDScreen):
         root.add_widget(bottom_container)
         self.add_widget(root)
 
-        # Clock.schedule_once(lambda dt: thread_check_for_update(dt, self.show),5)
-        # Clock.schedule_once(lambda dt: self.dev(),3)
+        Clock.schedule_once(lambda dt: thread_check_for_update(dt, self.show),5)
+        # Clock.schedule_once(lambda dt: self.dev())
 
     def dev(self):
         print("Using hot reload...")
@@ -313,20 +321,25 @@ class DownloadApkScreen(MyMDScreen):
         self.new_stuff_container.clear_widgets()
         self.new_stuff_container.add_widget(rst_widget)
 
-    def start_download(self,widget):
-        if widget.clicked:
+    def start_download(self,widget=None):
+        print("Clicked start download...")
+
+        if self.update_button.clicked:
             app_logger.warning("Already Clicked Download.")
             return
-        widget.clicked=True
+        self.update_button.clicked=True
         self.later_button.text = "Hide"
         def progress(percent):
-            Clock.schedule_once(lambda dt: widget.update_progress(percent))
+            if self.clock_for_progress_update:
+                self.clock_for_progress_update.cancel()
+            self.clock_for_progress_update = Clock.schedule_once(lambda dt: self.update_button.update_progress(percent))
         def worker():
             apk_path__ = download_apk(
                 "https://github.com/Fector101/wallpaper-carousel/releases/latest/download/waller.apk",
                 progress_callback=progress,
                 filename=get_apk_filename(self.new_version)
             )
+            app_logger.info(f"Downloaded apk_path:{apk_path__}")
             if apk_path__:
                 self.change_download_btn_to_install(apk_path__,"Tap to Install")
                 # do_android_install(apk_path__)
@@ -338,9 +351,30 @@ class DownloadApkScreen(MyMDScreen):
             progress(0)
             threading.Thread(target=worker, daemon=True).start()
 
+    def start_install(self,widget):
+        apk_path=get_apk_path(self.new_version)
+        print(f"Clicked start install...:{apk_path}")
+        do_android_install(apk_path)
+
     def change_download_btn_to_install(self,apk_path,text="Install Update"):
-        self.update_button.streak.text = text
-        self.update_button.function = lambda x: do_android_install(apk_path)
+        app_logger.info(f"Called change btn to install: {apk_path}")
+        if self.clock_for_progress_update:
+            self.clock_for_progress_update.cancel()
+        # print("time 1",self.update_button.streak.txt.text)
+        Clock.schedule_once(lambda x: setattr(self.update_button.streak, "text", text), 1)
+        # self.update_button.streak.txt.text = text
+
+        self.update_button.streak.unbind(on_release = self.start_download)
+        self.update_button.streak.bind(on_release = self.start_install)
+
+    def change_download_btn_to_download(self,text="Download APK for Upgrade"):
+        app_logger.info(f"Called change btn to download")
+        Clock.schedule_once(lambda x: setattr(self.update_button.streak,"text",text),1)
+        # self.update_button.streak.txt.text = text
+
+        self.update_button.streak.bind(on_release = self.start_download)
+        self.update_button.streak.unbind(on_release = self.start_install)
+        # self.update_button.function = lambda x:do_android_install(apk_path)
 
     def go_to_gallery_screen(self):
         manager = self.manager
@@ -351,13 +385,22 @@ class DownloadApkScreen(MyMDScreen):
 
     def show(self, new_version, release_notes, apk_size):
         self.disabled=True
-        self.h1_text_widget.text=f"Discover new version V{new_version}"
-        self.new_version=new_version
-        self.apk_size=apk_size
         Clock.schedule_once(lambda dt: setattr(self, "disabled", False),1)
+        self.h1_text_widget.text=f"Discover new version V{new_version}"
+        self.new_version = new_version
+        self.apk_size = apk_size
         self.add_body_to_new_stuff_container(release_notes)
         if self.manager:
             self.manager.current = self.name
+
+        apk_path = get_apk_path(self.new_version)
+        valid_apk = apk_is_valid(apk_path, self.apk_size)
+        if valid_apk:
+            self.change_download_btn_to_install(apk_path)
+        else:
+            self.change_download_btn_to_download()
+
+
 
 
 def thread_check_for_update(dt, download_apk_screen__show):
