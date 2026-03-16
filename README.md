@@ -26,6 +26,7 @@ Wally: A working Android wallpaper carousel with no ads.
 ### Help
 - Saving added images in app path only
 - Added export button to get images if uninstalling app
+- A Button to Share Images to other Apps
 - App is set to Auto detect android Theme (Dark Theme Recommended 😅)
 
 ## Few Screen Samples
