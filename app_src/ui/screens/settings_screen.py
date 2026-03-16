@@ -27,7 +27,7 @@ from kivymd.uix.textfield import MDTextField
 from ui.screens.download_apk_screen import thread_check_for_update
 from ui.screens.full_screen import BorderMDBoxLayout
 from ui.widgets.android import toast
-from ui.widgets.layouts import MyMDScreen, Column
+from ui.widgets.layouts import MyMDScreen, Column, LoadingLayout
 from ui.widgets.layouts import Row
 from utils.android import add_home_screen_widget
 from utils.config_manager import ConfigManager
@@ -880,120 +880,127 @@ class SettingsScreen(MyMDScreen):
                 self.ids.countdown_label.text = "OnNext Wake" if self.ids.countdown_label.text != "Paused" else self.ids.countdown_label.text
 
     def check_for_update(self,*args):
-        show = self.app.sm.download_apk_screen.show #
-        Clock.schedule_once(lambda dt: thread_check_for_update(dt, show),5)
+        spinner_layout = LoadingLayout()
+        def DownloadApkScreen__show(new_version, release_notes, apk_size):
+            spinner_layout.remove()
+            self.app.sm.download_apk_screen.show(new_version, release_notes, apk_size)
+        def DownloadApkScreen__do_not_show(msg):
+            toast(msg)
+            spinner_layout.remove()
 
-
-import requests
-import os
-import traceback
-from utils.constants import VERSION
-
-def download_apk(url, filename="waller.apk"):
-    """Download APK from URL"""
-    try:
-        if on_android_platform():  # Android will be detected via pyjnius
-            from android import mActivity
-            context = mActivity.getApplicationContext()
-            files_dir = context.getFilesDir().getAbsolutePath()
-        else:
-            files_dir = "./"
-
-        apk_path = os.path.join(files_dir, filename)
-        r = requests.get(url, stream=True)
-        r.raise_for_status()
-
-        with open(apk_path, "wb") as f:
-            for chunk in r.iter_content(8192):
-                if chunk:
-                    f.write(chunk)
-
-        print("APK saved to:", apk_path)
-        return apk_path
-
-    except Exception as e:
-        print("Download failed:", e)
-        traceback.print_exc()
-        return None
-
-def install_apk15(apk_path):
-    """Install APK using FileProvider (Android 15+)"""
-    import os
-    from jnius import autoclass
-    from android import mActivity
-
-    if not os.path.exists(apk_path):
-        print("APK not found:", apk_path)
-        return
-
-    context = mActivity.getApplicationContext()
-    Intent = autoclass('android.content.Intent')
-    File = autoclass('java.io.File')
-    FileProvider = autoclass('androidx.core.content.FileProvider')
-    Uri = autoclass('android.net.Uri')
-
-    apk_file = File(apk_path)
-    authority = context.getPackageName() + ".fileprovider"
-    uri = FileProvider.getUriForFile(context, authority, apk_file)
-
-    intent = Intent(Intent.ACTION_VIEW)
-    intent.setDataAndType(uri, "application/vnd.android.package-archive")
-    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    mActivity.startActivity(intent)
-
-def install_apk(apk_path):
-    """Fallback installer for older Android versions"""
-    import os
-    from jnius import autoclass
-    from android import mActivity
-
-    if not os.path.exists(apk_path):
-        print("APK not found:", apk_path)
-        return
-
-    Intent = autoclass('android.content.Intent')
-    Uri = autoclass('android.net.Uri')
-    File = autoclass('java.io.File')
-
-    intent = Intent(Intent.ACTION_VIEW)
-    apk_file = File(apk_path)
-    uri = Uri.fromFile(apk_file)
-    intent.setDataAndType(uri, "application/vnd.android.package-archive")
-    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    mActivity.startActivity(intent)
-
-def check_update(*args):
-    """Check GitHub latest release version"""
-    repo_owner="Fector101"
-    repo_name="wallpaper-carousel"
-    api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest"
-    try:
-        r = requests.get(api_url, timeout=10)
-        r.raise_for_status()
-        data = r.json()
-        print("Here's data:",data)
-        latest_version = data["tag_name"].lstrip("v")  # strip v prefix if any
-        print("latest_version:", latest_version)
-        # apk_url = data["assets"][0]["browser_download_url"]
-        apk_url = "https://github.com/Fector101/wallpaper-carousel/releases/latest/download/waller.apk"
-        print("Current version:", VERSION, "Latest version:", latest_version)
-
-        if latest_version != VERSION:
-            toast("Update available!")
-            apk_path = download_apk(apk_url)
-            if apk_path:
-                try:
-                    install_apk15(apk_path)
-                except Exception as e:
-                    print("install_apk15 failed:", e)
-                    try:
-                        install_apk(apk_path)
-                    except Exception as e1:
-                        print("install_apk failed:", e1)
-        else:
-            toast("Already up to date.")
-
-    except Exception as e:
-        print("Failed to check updates:", e)
-        traceback.print_exc()
+        Clock.schedule_once(lambda dt: thread_check_for_update(dt, DownloadApkScreen__show,DownloadApkScreen__do_not_show))
+#
+#
+# import requests
+# import os
+# import traceback
+# from utils.constants import VERSION
+#
+# def download_apk(url, filename="waller.apk"):
+#     """Download APK from URL"""
+#     try:
+#         if on_android_platform():  # Android will be detected via pyjnius
+#             from android import mActivity
+#             context = mActivity.getApplicationContext()
+#             files_dir = context.getFilesDir().getAbsolutePath()
+#         else:
+#             files_dir = "./"
+#
+#         apk_path = os.path.join(files_dir, filename)
+#         r = requests.get(url, stream=True)
+#         r.raise_for_status()
+#
+#         with open(apk_path, "wb") as f:
+#             for chunk in r.iter_content(8192):
+#                 if chunk:
+#                     f.write(chunk)
+#
+#         print("APK saved to:", apk_path)
+#         return apk_path
+#
+#     except Exception as e:
+#         print("Download failed:", e)
+#         traceback.print_exc()
+#         return None
+#
+# def install_apk15(apk_path):
+#     """Install APK using FileProvider (Android 15+)"""
+#     import os
+#     from jnius import autoclass
+#     from android import mActivity
+#
+#     if not os.path.exists(apk_path):
+#         print("APK not found:", apk_path)
+#         return
+#
+#     context = mActivity.getApplicationContext()
+#     Intent = autoclass('android.content.Intent')
+#     File = autoclass('java.io.File')
+#     FileProvider = autoclass('androidx.core.content.FileProvider')
+#     Uri = autoclass('android.net.Uri')
+#
+#     apk_file = File(apk_path)
+#     authority = context.getPackageName() + ".fileprovider"
+#     uri = FileProvider.getUriForFile(context, authority, apk_file)
+#
+#     intent = Intent(Intent.ACTION_VIEW)
+#     intent.setDataAndType(uri, "application/vnd.android.package-archive")
+#     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+#     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+#     mActivity.startActivity(intent)
+#
+# def install_apk(apk_path):
+#     """Fallback installer for older Android versions"""
+#     import os
+#     from jnius import autoclass
+#     from android import mActivity
+#
+#     if not os.path.exists(apk_path):
+#         print("APK not found:", apk_path)
+#         return
+#
+#     Intent = autoclass('android.content.Intent')
+#     Uri = autoclass('android.net.Uri')
+#     File = autoclass('java.io.File')
+#
+#     intent = Intent(Intent.ACTION_VIEW)
+#     apk_file = File(apk_path)
+#     uri = Uri.fromFile(apk_file)
+#     intent.setDataAndType(uri, "application/vnd.android.package-archive")
+#     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+#     mActivity.startActivity(intent)
+#
+# def check_update(*args):
+#     """Check GitHub latest release version"""
+#     repo_owner="Fector101"
+#     repo_name="wallpaper-carousel"
+#     api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest"
+#     try:
+#         r = requests.get(api_url, timeout=10)
+#         r.raise_for_status()
+#         data = r.json()
+#         print("Here's data:",data)
+#         latest_version = data["tag_name"].lstrip("v")  # strip v prefix if any
+#         print("latest_version:", latest_version)
+#         # apk_url = data["assets"][0]["browser_download_url"]
+#         apk_url = "https://github.com/Fector101/wallpaper-carousel/releases/latest/download/waller.apk"
+#         print("Current version:", VERSION, "Latest version:", latest_version)
+#
+#         if latest_version != VERSION:
+#             toast("Update available!")
+#             apk_path = download_apk(apk_url)
+#             if apk_path:
+#                 try:
+#                     install_apk15(apk_path)
+#                 except Exception as e:
+#                     print("install_apk15 failed:", e)
+#                     try:
+#                         install_apk(apk_path)
+#                     except Exception as e1:
+#                         print("install_apk failed:", e1)
+#         else:
+#             toast("Already up to date.")
+#
+#     except Exception as e:
+#         print("Failed to check updates:", e)
+#         traceback.print_exc()

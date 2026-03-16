@@ -1,0 +1,14 @@
+[color=#4CAF50][b]New[/b][/color]
+• Time Interval or On-Screen Wake wallpaper changes
+• Scheduled wallpapers (Noon / Day)
+• Redesigned Gallery & Settings
+• Share images to other apps
+• In-app Home Screen widget controls
+• GitHub sideload updater
+• Theme colors
+
+[color=#4CAF50][b]Changes[/b][/color]
+• Improved layout replacing the old full-screen design
+
+[color=#4CAF50][b]Fixes[/b][/color]
+• DPI shape inconsistencies fixed

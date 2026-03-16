@@ -1,0 +1,28 @@
+# V1.0.4
+
+## What's New
+- Choose between time intervals or On-screen Wake for wallpaper change
+- Choose when to use certain wallpapers Noon or Day
+- Better Gallery and Settings Screen Design
+- Ability to Share Images to Other Apps
+- Ability to Add and Control Home Screen Widgets by clicking buttons in-app
+- Sideloading A way to update when new version released on GitHub (dev) stable in next version
+- Theme Colours.
+
+## Changes
+- left full screen design to better layout
+
+## Fixes
+- Inconsistent shapes on different android DPIs
+
+## Screenshots
+
+| New Share Screen | Better Gallery Screen |
+|------------------|-----------------------|
+| ![Image_2026_03_16_02_08_09](https://github.com/user-attachments/assets/2c23956c-609a-42a4-896b-bc44c5d29fbf) | ![galleryscreen](https://github.com/user-attachments/assets/1afa1bc8-a8a8-46e1-b5f4-c1a5f4842146) |
+
+### Better Settings Screen
+
+| | |
+|---|---|
+| ![Image_2026_03_16_02_18_55](https://github.com/user-attachments/assets/514be5ac-7cc4-4d2c-b63c-4cff5851d565) | ![Image_2026_03_16_02_19_06](https://github.com/user-attachments/assets/a44593e9-fc0b-4bfd-92c7-5ee4cc899105) |

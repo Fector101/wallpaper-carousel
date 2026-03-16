@@ -15,7 +15,8 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDButtonText, MDButton
 from kivymd.uix.fitimage import FitImage
 from kivymd.uix.label import MDLabel
-from kivymd.uix.relativelayout import MDRelativeLayout
+# from kivymd.uix.relativelayout import MDRelativeLayout
+from kivymd.uix.scrollview import MDScrollView
 
 from ui.widgets.android import toast
 from ui.widgets.layouts import MyMDScreen, Column, Row
@@ -270,7 +271,7 @@ class DownloadApkScreen(MyMDScreen):
         )
         body_content.add_widget(self.h1_text_widget)
 
-        self.new_stuff_container = MDRelativeLayout()
+        self.new_stuff_container = MDScrollView()
         body_content.add_widget(self.new_stuff_container)
 
         # Bottom Container
@@ -301,12 +302,13 @@ class DownloadApkScreen(MyMDScreen):
         root.add_widget(bottom_container)
         self.add_widget(root)
 
-        Clock.schedule_once(lambda dt: thread_check_for_update(dt, self.show),5)
+        Clock.schedule_once(lambda dt: thread_check_for_update(dt, self.show),3)
         # Clock.schedule_once(lambda dt: self.dev())
 
     def dev(self):
         print("Using hot reload...")
-        self.show("1.0.4",DEFAULT_RELEASE_NOTE,0) # hot reload
+        # self.add_body_to_new_stuff_container(DEFAULT_RELEASE_NOTE)
+        # self.show("1.0.4",DEFAULT_RELEASE_NOTE,0) # hot reload
         # self.change_download_btn_to_install(None)
 
     def add_body_to_new_stuff_container(self, markup_text):
@@ -403,10 +405,10 @@ class DownloadApkScreen(MyMDScreen):
 
 
 
-def thread_check_for_update(dt, download_apk_screen__show):
-    threading.Thread(target=check_update, args=[download_apk_screen__show],daemon=True).start()
+def thread_check_for_update(dt, download_apk_screen__show,download_apk_screen__do_not_show=None):
+    threading.Thread(target=check_update, args=[download_apk_screen__show,download_apk_screen__do_not_show],daemon=True).start()
 
-def check_update(download_apk_screen__show,*args):
+def check_update(download_apk_screen__show,download_apk_screen__do_not_show=None,*args):
     """Check GitHub latest release version"""
     repo_owner = "Fector101"
     repo_name = "wallpaper-carousel"
@@ -417,7 +419,9 @@ def check_update(download_apk_screen__show,*args):
 
     def go_to_update_screen(dt):
         download_apk_screen__show(new_version=latest_version,release_notes=release_notes,apk_size=apk_size)
-
+    def do_not_go_to_update_screen(msg):
+        if download_apk_screen__do_not_show:
+            download_apk_screen__do_not_show(msg=msg)
     try:
         print("Checking for latest release version...")
         r = requests.get(api_url, timeout=10)
@@ -429,26 +433,28 @@ def check_update(download_apk_screen__show,*args):
 
         if latest_version != VERSION:
             Clock.schedule_once(lambda dt: toast("Update available!"))
-            release_notes = get_release_note_txt(data)
+            release_notes = get_release_note_txt(data,latest_version)
             apk_size = get_apk_size(data)
             Clock.schedule_once(go_to_update_screen)
         else:
-            Clock.schedule_once(lambda dt: toast("Already up to date."))
+            Clock.schedule_once(lambda dt: do_not_go_to_update_screen("Already up to date."))
 
     except requests.exceptions.ReadTimeout:
-        print("Timeout Error, Slow internet Connection:")
+        msg_ = "Timeout Error, Slow internet Connection"
+        Clock.schedule_once(lambda dt: do_not_go_to_update_screen(msg_))
+        print(msg_)
 
     except Exception as e:
-        print("Failed to check updates:", e)
+        Clock.schedule_once(lambda dt: do_not_go_to_update_screen(f"Failed:{e}"))
         traceback.print_exc()
 
-def get_release_note_txt(data):
+def get_release_note_txt(data,latest_version):
     """Check GitHub latest release version"""
     release_notes = None
-    
+    file_name = f"update-note-v{latest_version}.txt"
     found_note = False
     for asset in data["assets"]:
-        if asset["name"] == "release-note.txt":
+        if asset["name"] == file_name:
             found_note = True
             url = asset["browser_download_url"]
             print("Downloading release notes:", url)
@@ -467,7 +473,7 @@ def get_release_note_txt(data):
                 traceback.print_exc()
             break
     if not found_note:
-        app_logger.warning("Didn't find release notes for App-In Display 'release-note.txt'")
+        app_logger.warning(f"Didn't find release notes for App-In Display '{file_name}'")
     return release_notes or DEFAULT_RELEASE_NOTE
 
 def get_apk_filename(version):
