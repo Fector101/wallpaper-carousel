@@ -76,20 +76,6 @@ jobs:
         run: |
           yes | ~/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager "build-tools;29.0.0"
 
-      # Decode keystore
-      - name: Decode keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-release-key.jks
-
-      # Get version from constants.py
-      - name: Get version
-        id: version
-        run: |
-          source venv/bin/activate
-          VERSION=$(python -c "from app_src.utils.constants import VERSION; print(VERSION)")
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Building version $VERSION"
-
       # Build APK
       - name: Build APK
         run: |
