@@ -82,9 +82,13 @@ jobs:
           source venv/bin/activate
           pip install android-widgets git+https://github.com/kivy/buildozer legacy-cgi setuptools cython==0.29.34
           buildozer android debug
+          APK=$(find ./bin -name "*-debug.apk" | head -n 1)
+          echo "apk=$APK" >> $GITHUB_OUTPUT
+          echo "Built APK: $APK"
+          
           
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: package
-          path: ${{ steps.buildozer.outputs.filename }}
+          path: ${{ steps.build.outputs.apk }}
