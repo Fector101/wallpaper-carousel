@@ -215,7 +215,7 @@ class ProgressButton(MDBoxLayout):
         if percent == 100:
             self.clicked=False
             per=self.width
-            self.rect.a = 0
+            self.bg_color_instr.a = 0
         else:
             per = self.width * (percent / 100)
 
