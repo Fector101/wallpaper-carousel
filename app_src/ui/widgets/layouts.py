@@ -17,6 +17,8 @@ from kivy.graphics import Color, Line, Rotate
 from kivy.uix.widget import Widget
 from kivy.utils import get_color_from_hex
 
+from android_notify.internal.java_classes import BuildVersion
+
 # Add this before creating your main widget or in your build method
 Window.softinput_mode = 'below_target' # or 'pan'
 
@@ -165,7 +167,7 @@ class MyMDScreen(MDScreen):
         # self.nav_bar_height = self.status_bar_height = 50
         # self.md_bg_color=[1,1,0,1]
 
-        if on_android_platform():
+        if on_android_platform() and BuildVersion.SDK_INT >= 30:
             dimensions = get_dimensions()
             self.status_bar_height = dimensions[0]
             self.nav_bar_height = dimensions[1]
