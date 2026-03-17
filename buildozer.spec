@@ -39,6 +39,7 @@ android.gradle_dependencies = androidx.core:core-ktx:1.12.0, com.google.android.
 android.enable_androidx = True
 p4a.hook = %(source.dir)s/android/p4a/hook.py
 p4a.branch = develop
+orientation=all
 
 android.archs = arm64-v8a, armeabi-v7a
 android.allow_backup = True
