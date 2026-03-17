@@ -17,7 +17,7 @@ jobs:
         id: buildozer
         with:
           workdir: .
-          buildozer_version: stable
+          buildozer_version: master
           command: pip install android-widgets; buildozer android debug
 
       - name: Upload artifacts
