@@ -80,7 +80,7 @@ jobs:
       - name: Build APK
         run: |
           source venv/bin/activate
-          pip install android-widgets git+https://github.com/kivy/buildozer pip install legacy-cgi setuptools cython==0.29.34
+          pip install android-widgets git+https://github.com/kivy/buildozer legacy-cgi setuptools cython==0.29.34
           buildozer android debug
           
       - name: Upload artifacts
