@@ -95,6 +95,7 @@ class DateGroupLayout(Column):
     images_container = ObjectProperty()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        # self.md_bg_color=[1,0,0,1]
         self.title_text_widget = None
         self.rect = None
         self.spacing = dp(10)
@@ -173,7 +174,9 @@ class DateGroupLayout(Column):
         header_layout.add_widget(self.toggle_drop_btn)
         self.add_widget(header_layout)
 
-        self.images_container = MyMDGridLayout()
+        self.images_container = MyMDGridLayout(
+            # md_bg_color=[0,1,0,1]
+        )
         # self.images_container.md_bg_color= [1,0,0,1]
 
         # self.images_container.size_hint_y = None
@@ -182,7 +185,8 @@ class DateGroupLayout(Column):
         # self.images_container.width = Window.width - 30#self.width
         self.images_container.bind(minimum_height=self.images_container.setter("height"))
 
-        window_width_minus_padding = Window.width - 50
+        # print("self.width",self.width)
+        window_width_minus_padding = self.width - 50
         self.images_container.width = dp(window_width_minus_padding)
         # print(f"self.images_container.width: {self.images_container.width} == window_width_minus_padding: {window_width_minus_padding},self.width: {self.width}")
         # if self.images_container.width != window_width_minus_padding:
@@ -228,6 +232,29 @@ class DateGroupLayout(Column):
 
         self.add_widget(line)
         return None
+    def on_size(self,_,size):
+        width, height=size
+        # print("self.width,width",self.width,width)
+        if not self.images_container:
+            return None
+        window_width_minus_padding = self.width - 50
+        self.images_container.width = dp(window_width_minus_padding)
+        available_width = window_width_minus_padding - spacing
+        cols = self.__cols_math(available_width)
+        self.images_container.cols = cols
+        total_spacing = spacing * (cols - 1)
+        box_size = (available_width - total_spacing) / cols
+        for each_child in self.walk():
+            if isinstance(each_child, PreviewImage):
+                each_child.size=(box_size, box_size)
+        return None
+
+    def __cols_math(self,available_width):
+        return max(1, int(
+            (available_width + spacing) // (min_box_size + spacing)
+        ))
+
+        # resize_grid
 
     def remove_wallpaper_from_badge_display(self, image_absolute_path):
         images_container_widget = self.images_container
@@ -598,6 +625,25 @@ class GalleryScreen(MyMDScreen):
         size = len(value)
         txt = "image" if size == 1 else "images"
         self.ids.header_info_label.text = f"{size} {txt} found"
+
+    def set_widget_left_and_right_padding(self,left_padding, right_padding):
+        # self.screen_content.md_bg_color=[1,0,0,1]
+        # left_padding=right_padding=50
+        root_container = self.ids.main_container
+        # print("left_padding, right_padding",left_padding, right_padding)
+        if not isinstance(root_container, MDBoxLayout):
+            app_logger.error(f"Didn't get Right widget MDBoxLayout got: {root_container}")
+            return
+        if left_padding:
+            root_container.padding=[left_padding+10, left_padding+10, right_padding+10, 10]
+            root_container.orientation="horizontal"
+            self.ids.tab_buttons_box.orientation="vertical"
+            self.ids.tools_section.padding=[0,0,0,0] #dev hidden btns
+        else:
+            root_container.padding=[left_padding+10, 10, right_padding+10, 10]
+            root_container.orientation="vertical"
+            self.ids.tab_buttons_box.orientation="horizontal"
+            self.ids.tools_section.padding = [0, 0, 0, dp(20)] #dev hidden btns
 
 
 if __name__ == "__main__":

@@ -1,3 +1,7 @@
+import traceback
+
+from kivymd.uix.widget import MDWidget
+
 from android_notify.config import on_android_platform, autoclass
 from kivy.metrics import dp
 from kivy.properties import ListProperty, DictProperty, NumericProperty
@@ -16,6 +20,9 @@ from kivy.clock import Clock
 from kivy.graphics import Color, Line, Rotate
 from kivy.uix.widget import Widget
 from kivy.utils import get_color_from_hex
+
+from android_notify.internal.java_classes import BuildVersion
+from utils.logger import app_logger
 
 # Add this before creating your main widget or in your build method
 Window.softinput_mode = 'below_target' # or 'pan'
@@ -100,6 +107,7 @@ def get_dimensions():
     status_bar_height = 0
     nav_bar_height = 0
     if not on_android_platform():
+        return [50,50]
         return [status_bar_height, nav_bar_height]
 
     PythonActivity = autoclass("org.kivy.android.PythonActivity")
@@ -145,81 +153,113 @@ def get_dimensions():
     return [status_bar_height, nav_bar_height]
 
 
+def get_nav_bar_height():
+    dimensions = get_dimensions()
+    return dimensions[1]
+
+
+def get_status_bar_height():
+    dimensions = get_dimensions()
+    return dimensions[0]
+
+# For header use In python file self.status_bar_height. In kv file root.status_bar_height
+# each subclass should implement set_widget_left_and_right_padding
 class MyMDScreen(MDScreen):
-    status_bar_box = ObjectProperty()
     navigation_buttons_box = ObjectProperty()
     screen_content = ObjectProperty()
 
-    status_bar_height = NumericProperty(0)
-    nav_bar_height = NumericProperty(0)
-    status_bar_bg = ListProperty([26/255, 27/255, 27/255, 1])
+    dimensions = get_dimensions()
+    status_bar_height = NumericProperty(get_status_bar_height())
+    nav_bar_height = NumericProperty(get_nav_bar_height())
+    status_bar_bg = ListProperty([26 / 255, 27 / 255, 27 / 255, 1])
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.bind(status_bar_bg = self.update_status_bar_bg)
-
-    def update_status_bar_bg(self,_, status_bar_bg):
-        self.status_bar_box.md_bg_color = status_bar_bg
+        self.change_layout_orientation_clock = None
+        Window.bind(size=self.on_window_resize)
+        self.on_window_resize(Window, (Window.width, Window.height))
 
     def add_widget(self, widget, *args, **kwargs):
-        # self.nav_bar_height = self.status_bar_height = 50
-        # self.md_bg_color=[1,1,0,1]
-
-        if on_android_platform():
-            dimensions = get_dimensions()
-            self.status_bar_height = dimensions[0]
-            self.nav_bar_height = dimensions[1]
-        # self.nav_bar_height = self.status_bar_height = 50
-
-        if self.status_bar_box is None:
-            self.status_bar_box = MDBoxLayout(size_hint=[1, None], height=self.status_bar_height,
-                                              md_bg_color= self.status_bar_bg,
-                                              # md_bg_color=[0,0,1, 1],
-                                              pos_hint={"top": 1})
-            super().add_widget(self.status_bar_box)
-
         if self.screen_content is None:
-            # MDFloatLayout
-            self.screen_content = MDRelativeLayout(size_hint=[1, None],
-                                                   # pos_hint={"top": 1},
-                                                height=Window.height - (self.status_bar_height + self.nav_bar_height),
-                                                md_bg_color=[1, 0, 0, 0],
-                                                # md_bg_color=[1, 0, 0, 1]
-                                                   )
-            self.screen_content.orientation = "vertical"
-            self.screen_content.y = self.nav_bar_height
+            self.screen_content = MDBoxLayout(
+                pos_hint={"top": 1}, padding = [0, 0, 0, self.nav_bar_height],orientation = "vertical"
+                # md_bg_color=[1, 0, 0, 1],
+            )
             super().add_widget(self.screen_content)
-
-        if self.navigation_buttons_box is None:
-            self.navigation_buttons_box = MDBoxLayout(size_hint=[1, None], height=self.nav_bar_height,
-                                                      # md_bg_color=[0,1,0, 1]
-                                                      md_bg_color=[26/255, 27/255, 27/255, 1]
-                                                      )
-            super().add_widget(self.navigation_buttons_box)
 
         if self.screen_content:
             self.screen_content.add_widget(widget, *args, **kwargs)
 
-        # print(self.status_bar_height, self.nav_bar_height)
+    def on_window_resize(self, _, size):
+        if self.change_layout_orientation_clock:
+            self.change_layout_orientation_clock.cancel()
+        self.change_layout_orientation_clock = Clock.schedule_once(lambda x: self.do_thing(size), 1)
 
-    def on_size(self, *args):
-        height = Window.height - (self.status_bar_height + self.nav_bar_height)
-        if self.screen_content:
-            self.screen_content.height = height
+    def do_thing(self, size):
+        width, height = size
+        orientation = "portrait" if height > width else "landscape"
+        if not self.screen_content:
+            return
 
-    def thing(self, *args):
-        print("for Window bind",args)
-        print(f"""
-Window.width: {Window.width}
-Window.height: {Window.height}
-pos: {self.pos}
-size: {self.size}
-top: {Window.top}
-{self.status_bar_height}
-        """)
-        if self.status_bar_box:
-            print(self.status_bar_box.pos)
+        if orientation == "landscape":
+            self.screen_content.padding = [0, 0, 0, 0]
+            pos = self.__get_right_positioning()
+            self.set_widget_left_and_right_padding(left_padding=pos[0],right_padding=pos[1])
+            # self.set_widget_left_and_right_padding(left_padding=self.status_bar_height,right_padding=self.nav_bar_height)
+        else:
+            self.screen_content.padding = [0, 0, 0, self.nav_bar_height]
+            self.set_widget_left_and_right_padding(left_padding=0,right_padding=0)
 
+    def set_widget_left_and_right_padding(self,left_padding, right_padding):
+        pass
+        # print("Mad Bread",left_padding,right_padding)
+        # self.ids.main_container.padding=[dp(left_padding+25), dp(25), dp(right_padding+25), dp(0)]
+
+    @staticmethod
+    def __get_rotation():
+        PythonActivity = autoclass("org.kivy.android.PythonActivity")
+        activity = PythonActivity.mActivity
+
+        try:
+            # Modern method
+            display = activity.getDisplay()
+        except Exception as error_getting_rotation:
+            app_logger.exception(error_getting_rotation)
+            traceback.print_exc()
+            # Fallback for older Android
+            wm = activity.getSystemService(activity.WINDOW_SERVICE)
+            display = wm.getDefaultDisplay()
+
+        return display.getRotation()
+
+    def __get_right_positioning(self):
+        default = self.status_bar_height, self.nav_bar_height
+        if not on_android_platform():
+            return default
+        Surface = autoclass('android.view.Surface')
+        rotation = self.__get_rotation()
+
+        print("rotation:", rotation)
+        # Using status bar position
+        # "TOP (Portrait)", "RIGHT (Landscape)", "BOTTOM (Upside Down)""
+        if rotation in [Surface.ROTATION_0,Surface.ROTATION_90,Surface.ROTATION_180]:
+            print(rotation)
+            return default
+        elif rotation == Surface.ROTATION_270: # "LEFT (Landscape)"
+            print("Rotation: 270")
+            return self.nav_bar_height,self.status_bar_height
+        else:
+            app_logger.error(f"Unknown rotation: {rotation}")
+            return default
+
+class GenericStatusBarSpacer(MDWidget):
+    status_bar_height=NumericProperty(0)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.size_hint=[1, None]
+        self.pos_hint={'center_x': .5, 'top': 1}
+        self.height=self.status_bar_height
+        self.bind(height=lambda _,value: setattr(self, 'height', value))
 # NOTE this from kivymd.uix.button import MDButton has line color feature
 # Still Useful for Element with No Button Behavior
 

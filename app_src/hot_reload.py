@@ -58,7 +58,7 @@ class MDLive(App,MDApp):
         "SettingsScreen":"ui.screens.settings_screen",
         "DownloadApkScreen":"ui.screens.download_apk_screen",
         "HomeScreenWidgetControllerUI":"ui.screens.settings_screen",
-        # "LogsScreen":"ui.screens.logs_screen",
+        "LogsScreen":"ui.screens.logs_screen",
         "FullscreenScreen":"ui.screens.full_screen",
         "GalleryScreen":"ui.screens.gallery_screen",
         # "NotificationScreen": "important",
@@ -72,7 +72,7 @@ class MDLive(App,MDApp):
 
     def build_app(self, *args):
         # return Factory.MyPopUp()
-        return Factory.DownloadApkScreen()
+        return Factory.GalleryScreen()
 
     def on_start(self):
         # self.theme_cls.theme_style = "Light"

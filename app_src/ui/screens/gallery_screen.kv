@@ -8,137 +8,158 @@
 <GalleryScreen>:
     md_bg_color:  [0.8,0.8, 0.8, 1] if app.device_theme == "light" else [.1,.1,.1,1]
 
-    Column:
-        spacing:10
-        padding:[10,10]
-        pos_hint: {"top":1}
-        size_hint: [1,1]
-        Row:
-            pos_hint:{"right":1}
-            adaptive_size: True
-            padding: [0,0,0,dp(30)]
-#            md_bg_color:[1,0,1,1]
-#            MDIconButton:
-#                icon: "view-dashboard-outline"
-#                theme_icon_color:"Custom"
-#                icon_color: [.8,.8,.8,1]
-#            MDIconButton:
-#                icon: "dots-vertical"
-#                theme_icon_color:"Custom"
-#                icon_color: [.8,.8,.8,1]
+    MDFloatLayout:
         Column:
+            id: main_container
+    #        orientation:"vertical"
             spacing:10
-            padding: [dp(20), 0, dp(20), dp(10)]
-#            size_hint_y:0.13
-            adaptive_height: True
-            MDLabel:
-                text:"Waller"
-                theme_font_name:"Custom"
-                font_name:"RobotoMono"
-                theme_text_color:"Custom"
-                text_color:"black" if app.device_theme == "light" else "white"
-                bold:True
-                theme_font_size:"Custom"
-                font_size:"24sp"
+#            md_bg_color:[1,0,.31,1]
+            padding:[10,10]
+            pos_hint: {"top":1}
+            size_hint: [1,1]
+            Column:
+                id:head_section
+                pos_hint: {"top":1}
                 adaptive_size:True
-            MDLabel:
-                id: header_info_label
-                text:"0 images found"
-                theme_font_name:"Custom"
-                font_name:"RobotoMono"
-                theme_text_color:"Custom"
-                text_color:"black" if app.device_theme == "light" else "white"
-                italic:True
-                theme_font_size:"Custom"
-                font_size:"14sp"
-                adaptive_size:True
+#                adaptive_width:1
+#                md_bg_color:[1,0,1,1]
+                padding: [dp(0), dp(root.status_bar_height), dp(0), dp(0)]
+                Row:
+                    id: tools_section
+                    pos_hint:{"right":1}
+                    adaptive_size: True
+                    padding: [0,0,0,dp(20)]
+        #            md_bg_color:[1,0,1,1]
+        #            MDIconButton:
+        #                icon: "view-dashboard-outline"
+        #                theme_icon_color:"Custom"
+        #                icon_color: [.8,.8,.8,1]
+        #            MDIconButton:
+        #                icon: "dots-vertical"
+        #                theme_icon_color:"Custom"
+        #                icon_color: [.8,.8,.8,1]
+                Column:
+                    spacing:10
+                    padding: [dp(20), 0, dp(20), dp(10)]
+                    adaptive_size: True
+        #            pos_hint: {"center_y":.9}
+        #            md_bg_color:[1,0,0,1]
+        #            orientation:"vertical"
+        #            size_hint_y:None
+        #            height:self.minimum_height
+                    MDLabel:
+                        text:"Waller"
+                        theme_font_name:"Custom"
+                        font_name:"RobotoMono"
+                        theme_text_color:"Custom"
+                        text_color:"black" if app.device_theme == "light" else "white"
+                        bold:True
+                        theme_font_size:"Custom"
+                        font_size:"24sp"
+                        adaptive_size:True
+                    MDLabel:
+                        id: header_info_label
+                        text:"0 images found"
+                        theme_font_name:"Custom"
+                        font_name:"RobotoMono"
+                        theme_text_color:"Custom"
+                        text_color:"black" if app.device_theme == "light" else "white"
+                        italic:True
+                        theme_font_size:"Custom"
+                        font_size:"14sp"
+                        adaptive_size:True
+#                        size_hint_x:None
+#                        width:self.texture_size[0]
+#                        halign:"left"
 
-        Row:
-            adaptive_height: True
-            spacing: dp(10)
-            padding: [dp(10),0,0,dp(5)]
-            MDButton:
-                theme_bg_color:"Custom"
-#                md_bg_color: (1, 1, 1, 1) if root.current_tab == "Both" else (0.25, 0.25, 0.25, 1)
-                md_bg_color: get_color_from_hex(THEME_PRIMARY_COLOR) if root.current_tab == GalleryTabs.BOTH.value else (0.25, 0.25, 0.25, 1)
-                on_release: root.load_saved()
-                theme_height: "Custom"
-                theme_width: "Custom"
-                height: dp(36)
-                width: dp(60)
-                MDButtonText:
-                    pos_hint: {"center_x":.5,"center_y":.5}
-                    text: GalleryTabs.BOTH.value
-                    theme_text_color:"Custom"
-#                    text_color: "black" if app.device_theme == "light" else "white"
-                    theme_font_name:"Custom"
-                    font_name: "RobotoMono"
-#                    theme_font_size:"Custom"
-#                    font_size: sp(16)
-                    text_color: [0,0,0,1] if root.current_tab == self.text else (0.85, 0.85, 0.85, 1)
+                Row:
+                    id: tab_buttons_box
+#                    orientation:"vertical"
+                    adaptive_size: True
+                    spacing: dp(10)
+#                    md_bg_color:[1,1,0,1]
+                    padding: [dp(10),0,0,dp(5)]
+                    MDButton:
+                        theme_bg_color:"Custom"
+        #                md_bg_color: (1, 1, 1, 1) if root.current_tab == "Both" else (0.25, 0.25, 0.25, 1)
+                        md_bg_color: get_color_from_hex(THEME_PRIMARY_COLOR) if root.current_tab == GalleryTabs.BOTH.value else (0.25, 0.25, 0.25, 1)
+                        on_release: root.load_saved()
+                        theme_height: "Custom"
+                        theme_width: "Custom"
+                        height: dp(36)
+                        width: dp(60)
+                        MDButtonText:
+                            pos_hint: {"center_x":.5,"center_y":.5}
+                            text: GalleryTabs.BOTH.value
+                            theme_text_color:"Custom"
+        #                    text_color: "black" if app.device_theme == "light" else "white"
+                            theme_font_name:"Custom"
+                            font_name: "RobotoMono"
+        #                    theme_font_size:"Custom"
+        #                    font_size: sp(16)
+                            text_color: [0,0,0,1] if root.current_tab == self.text else (0.85, 0.85, 0.85, 1)
 
-            MDButton:
-                theme_bg_color:"Custom"
-                theme_height: "Custom"
-                theme_width: "Custom"
-                height: dp(36)
-                width: dp(60)
-#                md_bg_color: (1,1, 1, 1) if root.current_tab == "Day" else (0.25, 0.25, 0.25, 1)
-                md_bg_color: get_color_from_hex(THEME_PRIMARY_COLOR) if root.current_tab == GalleryTabs.DAY.value else (0.25, 0.25, 0.25, 1)
-                on_release: root.load_day_wallpapers()
-                MDButtonText:
+                    MDButton:
+                        theme_bg_color:"Custom"
+                        theme_height: "Custom"
+                        theme_width: "Custom"
+                        height: dp(36)
+                        width: dp(60)
+        #                md_bg_color: (1,1, 1, 1) if root.current_tab == "Day" else (0.25, 0.25, 0.25, 1)
+                        md_bg_color: get_color_from_hex(THEME_PRIMARY_COLOR) if root.current_tab == GalleryTabs.DAY.value else (0.25, 0.25, 0.25, 1)
+                        on_release: root.load_day_wallpapers()
+                        MDButtonText:
 
-                    pos_hint: {"center_x":.5,"center_y":.5}
-                    text: GalleryTabs.DAY.value
-                    theme_text_color:"Custom"
-#                    text_color: "black" if app.device_theme == "light" else "white"
-                    theme_font_name:"Custom"
-                    font_name: "RobotoMono"
-#                    theme_font_size:"Custom"
-#                    font_size: sp(16)
-                    text_color: [0,0,0,1] if root.current_tab == self.text else (0.85, 0.85, 0.85, 1)
+                            pos_hint: {"center_x":.5,"center_y":.5}
+                            text: GalleryTabs.DAY.value
+                            theme_text_color:"Custom"
+        #                    text_color: "black" if app.device_theme == "light" else "white"
+                            theme_font_name:"Custom"
+                            font_name: "RobotoMono"
+        #                    theme_font_size:"Custom"
+        #                    font_size: sp(16)
+                            text_color: [0,0,0,1] if root.current_tab == self.text else (0.85, 0.85, 0.85, 1)
 
-            MDButton:
-                theme_bg_color:"Custom"
-#                md_bg_color: (1,1, 1, 1) if root.current_tab == "Noon" else (0.25, 0.25, 0.25, 1)
-                md_bg_color: get_color_from_hex(THEME_PRIMARY_COLOR) if root.current_tab == GalleryTabs.NOON.value else (0.25, 0.25, 0.25, 1)
-                on_release: root.load_noon_wallpapers()
-                theme_height: "Custom"
-                theme_width: "Custom"
-                height: dp(36)
-                width: dp(60)
-                MDButtonText:
-                    pos_hint: {"center_x":.5,"center_y":.5}
-                    text: GalleryTabs.NOON.value
-                    theme_text_color:"Custom"
-#                    text_color: "black" if app.device_theme == "light" else "white"
-                    theme_font_name:"Custom"
-                    font_name: "RobotoMono"
-#                    theme_font_size:"Custom"
-#                    font_size: sp(16)
-                    text_color: [0,0,0,1] if root.current_tab == self.text else (0.85, 0.85, 0.85, 1)
-#        MDBoxLayout:
-#            md_bg_color:[1,0,0,1]
-#            orientation:"vertical"
+                    MDButton:
+                        theme_bg_color:"Custom"
+        #                md_bg_color: (1,1, 1, 1) if root.current_tab == "Noon" else (0.25, 0.25, 0.25, 1)
+                        md_bg_color: get_color_from_hex(THEME_PRIMARY_COLOR) if root.current_tab == GalleryTabs.NOON.value else (0.25, 0.25, 0.25, 1)
+                        on_release: root.load_noon_wallpapers()
+                        theme_height: "Custom"
+                        theme_width: "Custom"
+                        height: dp(36)
+                        width: dp(60)
+                        MDButtonText:
+                            pos_hint: {"center_x":.5,"center_y":.5}
+                            text: GalleryTabs.NOON.value
+                            theme_text_color:"Custom"
+        #                    text_color: "black" if app.device_theme == "light" else "white"
+                            theme_font_name:"Custom"
+                            font_name: "RobotoMono"
+        #                    theme_font_size:"Custom"
+        #                    font_size: sp(16)
+                            text_color: [0,0,0,1] if root.current_tab == self.text else (0.85, 0.85, 0.85, 1)
+    #        MDBoxLayout:
+    #            md_bg_color:[1,0,0,1]
+    #            orientation:"vertical"
 
-        ScrollView:
-            size_hint: (1,1)
-            ScrollViewMainColumn:
-                id: wallpapers_container
-                size_hint_y: None
-                height:self.minimum_height
-                padding:[0, 0, 0, dp(120)]
+            ScrollView:
+                size_hint: (1,1)
+                ScrollViewMainColumn:
+                    id: wallpapers_container
+                    size_hint_y: None
+                    height:self.minimum_height
+                    padding:[0, 0, 0, dp(120)]
 
 
-
-    MDFabButton:
-        icon:"plus"
-        on_release: root.open_file_chooser()
-        pos_hint: {"right": .9, "center_y": 0.25}
-        theme_font_size: "Custom"
-        font_size: sp(30)
-        theme_bg_color: "Custom"
-#        md_bg_color: get_color_from_hex("#1A1B1B") if app.device_theme == "light" else "white"
-#        text_color: [0.8,0.8, 0.8, 1] if app.device_theme == "light" else [.3,.3,.4,1]
-        md_bg_color: get_color_from_hex("#262C3A")
-        text_color: get_color_from_hex("#98F1DD")
+        MDFabButton:
+            icon:"plus"
+            on_release: root.open_file_chooser()
+            pos_hint: {"right": .9,"center_y":.15}
+            theme_font_size: "Custom"
+            font_size: sp(30)
+            theme_bg_color: "Custom"
+    #        md_bg_color: get_color_from_hex("#1A1B1B") if app.device_theme == "light" else "white"
+    #        text_color: [0.8,0.8, 0.8, 1] if app.device_theme == "light" else [.3,.3,.4,1]
+            md_bg_color: get_color_from_hex("#262C3A")
+            text_color: get_color_from_hex("#98F1DD")

@@ -17,7 +17,7 @@ from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.label import MDLabel, MDIcon
 
-from ui.widgets.layouts import MyMDScreen
+from ui.widgets.layouts import MyMDScreen,GenericStatusBarSpacer
 
 from ui.widgets.buttons import MyRoundButton
 from ui.widgets.android import toast
@@ -131,6 +131,12 @@ class NotificationRequestLayout(MDGridLayout):
 class WelcomeScreen(MyMDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.app = get_app()
 
         self.name = "welcome"
+        self.generic_status_bar_spacer = GenericStatusBarSpacer(
+            status_bar_height=self.status_bar_height,
+        md_bg_color=[0.8, 0.8, 0.8, 1] if self.app.device_theme == "light" else[.1, .1, .1, 1]
+        )
+        self.add_widget(self.generic_status_bar_spacer)
         self.add_widget(NotificationRequestLayout())
