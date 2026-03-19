@@ -1,11 +1,8 @@
-import threading
 import os
 import time
 import traceback
 from pathlib import Path
 
-from android_notify.config import get_python_activity_context, autoclass, on_android_platform
-from android_notify.internal.java_classes import PendingIntent, Intent
 from android_widgets import get_package_name
 # from kivy.uix.label import Label
 from kivy.clock import Clock
@@ -22,16 +19,16 @@ from kivymd.uix.button import MDButtonText, MDButton, MDIconButton, MDButtonIcon
 from kivymd.uix.fitimage import FitImage
 from kivymd.uix.label import MDLabel
 from kivymd.uix.selectioncontrol import MDSwitch
-from kivymd.uix.textfield import MDTextField
 
+from android_notify.config import get_python_activity_context, autoclass, on_android_platform
+from android_notify.internal.java_classes import PendingIntent, Intent
 from ui.screens.download_apk_screen import thread_check_for_update
 from ui.screens.full_screen import BorderMDBoxLayout
 from ui.widgets.android import toast
-from ui.widgets.layouts import MyMDScreen, Column, LoadingLayout
+from ui.widgets.layouts import LoadingLayout, Column, get_dimensions, MyMDScreen
 from ui.widgets.layouts import Row
-from utils.android import add_home_screen_widget
 from utils.config_manager import ConfigManager
-from utils.constants import DEV, THEME_PRIMARY_COLOR, THEME_SECONDARY_COLOR, VERSION
+from utils.constants import DEV, THEME_PRIMARY_COLOR, THEME_SECONDARY_COLOR
 from utils.helper import Service, appFolder, smart_convert_minutes
 from utils.helper import load_kv_file  # type
 from utils.model import get_app
@@ -295,95 +292,6 @@ class IconTextButton(MDButton):
         self.adjust_width()
 
 
-class HomeScreenWidgetControllerUI(MDBoxLayout):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.orientation = "vertical"
-        self.adaptive_height = True
-        padding = [dp(10), 0, dp(10), 0]
-        # d=.15
-        # d=.55
-        d = .75
-        header = MDBoxLayout(
-            orientation="horizontal",
-            size_hint_y=None,
-            md_bg_color=[d, d, d, 1],
-            padding=padding, radius=[dp(10), dp(10), dp(0), 0]
-        )
-        header.adaptive_width = True
-        header.height = dp(50)
-
-        header_text = MDLabel(text="Home Screen Widget")  # ,theme_font_name ="Custom",font_name="Roboto",bold=True)
-        header_text.theme_font_size = "Custom"
-        header_text.font_size = sp(14)
-        header_text.pos_hint = {"center_y": 0.5}
-        # header_text.theme_text_color = 'Custom'
-        # header_text.theme_bg_color = 'Custom'
-        # header_text.md_bg_color = [1,1,0,1]
-        header_text.adaptive_size = True
-
-        header.add_widget(header_text)
-
-        main_content = MDBoxLayout(adaptive_size=True, size_hint_x=1, spacing=dp(10), padding=[dp(10)],
-                                   radius=[0, dp(10), dp(10), dp(10)])
-        main_content.orientation = "vertical"  # height=True,size_hint_x=1,spacing=dp(10),padding=padding,md_bg_color= [.3,1,.3,1])
-        s = .2
-        main_content.md_bg_color = [s, s, s, .3]
-        self.countdown_label = MDLabel(text="0:13", pos_hint={"right": 1}, adaptive_size=True,
-                                       # theme_text_color = 'Custom',
-                                       # text_color = 'white',
-                                       theme_font_name="Custom", font_name="Roboto", bold=True)
-        main_content.add_widget(self.countdown_label)  # ,md_bg_color=[1,0,1,1]))
-
-        images_layout = MDBoxLayout(adaptive_height=True, size_hint_x=1, spacing=dp(10))
-        # images_layout.adaptive_width=True
-
-        self.current_image_layout = HomeScreenImageDisplay(title="Current", source=get_current_wallpaper(),
-                                                           image_size=(dp(120), dp(120)))
-        self.next_image_layout = HomeScreenImageDisplay(title="Next", source="assets/icons/icon.png",
-                                                        image_size=(dp(60), dp(60)))
-        images_layout.add_widget(self.current_image_layout)
-        images_layout.add_widget(self.next_image_layout)
-
-        self.skip_upcoming_wallpaper_button = TextButton(text="Skip Next")
-        btns_layout = Row(
-            my_widgets=[
-                TextButton(text="Change Current"),
-                self.skip_upcoming_wallpaper_button
-            ],
-            adaptive_size=True,
-            spacing=dp(10),
-            pos_hint={"right": 1}
-        )
-        main_content.add_widget(images_layout)
-        main_content.add_widget(btns_layout)
-
-        last_btns_layout = Row(
-            my_widgets=[
-                ToggleButton(pos_hint={"right": 1}),
-                IconTextButton(icon="plus", text="Add to Home Screen", on_release=add_home_screen_widget)
-            ],
-            adaptive_size=True,
-            spacing=dp(10),
-            pos_hint={"right": 1}
-        )
-        main_content.add_widget(last_btns_layout)
-
-        self.add_widget(header)
-        self.add_widget(main_content)
-        #
-        # app = MDApp.get_running_app()
-        # app.ui_service_listener.on_countdown_change =self.update_label
-
-    # def update_label(self,seconds):
-    #     self.countdown_label.text = seconds
-    #
-    # def on_changed_homescreen_widget(self,current_wallpaper,next_wallpaper):
-    #     self.current_image_layout.image.source = current_wallpaper or self.current_image_layout.image.source
-    #     self.next_image_layout.image.source = next_wallpaper or self.next_image_layout.image.source
-    #
-
-
 class QuickSetButton(MDButton):
     text = StringProperty("")
     line_color = [.25, .25, .25, 1]
@@ -419,7 +327,7 @@ class QuickSetButton(MDButton):
         self.set_theme_color()
         self.add_widget(self.text_widget)
 
-    def set_theme_color(self,*args):
+    def set_theme_color(self, *args):
         # self.md_bg_color=TEXT_COLOR_PRIMARY_DARK if self.app.device_theme == "light" else BUTTON_BG_DARK
         self.text_widget.text_color = "black" if self.app.device_theme == "light" else "white"
 
@@ -465,19 +373,21 @@ class AdaptiveLabel(Label):
 class BorderInput(BorderMDBoxLayout):
     input = ObjectProperty(None)
     line_width = NumericProperty(1.5)
-    disabled_color= ListProperty((1,1, 1, .3))
+    disabled_color = ListProperty((1, 1, 1, .3))
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.radius = dp(20)
         # self.md_bg_color=[1,1,0,1]
-    def on_disabled(self,instance, value):
+
+    def on_disabled(self, instance, value):
         self.bg_color_instr.rgba = self.disabled_color
 
-    def doing_focus(self,_,state):
+    def doing_focus(self, _, state):
         if state:
             self.bg_color_instr.rgba = get_color_from_hex("#98F1DD")
         else:
-            self.bg_color_instr.rgba = [.5,.5,.5,.8]
+            self.bg_color_instr.rgba = [.5, .5, .5, .8]
 
     def add_widget(self, widget, *args, **kwargs):
         self.input = widget
@@ -490,49 +400,57 @@ class ToggleSliderRow(Row):
     title_text = StringProperty("")
     sub_title_text = StringProperty("")
     active = BooleanProperty(False)
-    change_function =ObjectProperty()
+    change_function = ObjectProperty()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.sub_text_widget = None
-        self.adaptive_height=True
-        self.spacing=dp(3)
+        self.adaptive_height = True
+        self.spacing = dp(3)
         self.__is_subtitle_added = False
 
-        self.text_layout = Column(adaptive_height=1, spacing=dp(1),pos_hint={"center_y":.5})#,md_bg_color=[1,0,0,.5])
+        self.text_layout = Column(
+            adaptive_height=1,
+            spacing=dp(1),
+            pos_hint={"center_y": .5})  # ,md_bg_color=[1,0,0,.5])
         title_widget = AdaptiveLabel(text=self.title_text, size_hint=[None, None])
-
 
         self.text_layout.add_widget(title_widget)
         self.add_widget(self.text_layout)
 
-        self.switch = MDSwitch(pos_hint={"center_y": .5}, track_color_active=THEME_PRIMARY_COLOR,thumb_color_active=THEME_SECONDARY_COLOR,on_active=self.do_thing,on_release=self.set_from_user_key)
+        self.switch = MDSwitch(pos_hint={"center_y": .5}, track_color_active=THEME_PRIMARY_COLOR,
+                               thumb_color_active=THEME_SECONDARY_COLOR, on_active=self.do_thing,
+                               on_release=self.set_from_user_key)
         self.switch.title_text = self.title_text
         self.add_widget(self.switch)
         self.bind(active=self.switch.setter("active"))
         # self.switch.bind(on_active=self.on_active)
 
+        self.bind(sub_title_text=self.add_subtitle, title_text=title_widget.setter("text"))
+        # self.bind(title_text=title_widget.setter("text"))
 
-        self.bind(sub_title_text=self.add_subtitle)
-        self.bind(title_text=title_widget.setter("text"))
-    def set_from_user_key(self, instance):
-        instance.from_user = True
-    def do_thing(self, instance,*args):
-        if self.change_function:
-            self.change_function(instance, self.switch.active, instance.from_user if hasattr(instance,"from_user") else False)
-            instance.from_user = False
-
-    def add_subtitle(self,_,v):
+    #
+    def add_subtitle(self, _, v):
         if v and not self.__is_subtitle_added:
-            self.sub_text_widget = AdaptiveLabel(text=self.sub_title_text, size_hint=[None, None], color="grey", font_size=sp(14))
+            self.__is_subtitle_added = True
+            self.sub_text_widget = AdaptiveLabel(text=self.sub_title_text, size_hint=[None, None], color="grey",
+                                                 font_size=sp(14))
             self.text_layout.bind(width=self.wrap_text_width)
             self.text_layout.add_widget(self.sub_text_widget)
             self.bind(sub_title_text=self.sub_text_widget.setter("text"))
-            self.__is_subtitle_added = True
 
-    def wrap_text_width(self,i,v):
+    def set_from_user_key(self, instance):
+        instance.from_user = True
+
+    def do_thing(self, instance, *args):
+        if self.change_function:
+            self.change_function(instance, self.switch.active,
+                                 instance.from_user if hasattr(instance, "from_user") else False)
+            instance.from_user = False
+
+    def wrap_text_width(self, i, v):
         # print(f"self.text_layout {self.text_layout.width}, dp:{dp(self.text_layout.width)}") # self.text_layout 470.0, dp:940.0
-        self.sub_text_widget.text_size=[self.text_layout.width,None]
+        self.sub_text_widget.text_size = [self.text_layout.width, None]
 
     def on_title_text(self, widget, value):
         self.switch.title_text = value
@@ -540,20 +458,25 @@ class ToggleSliderRow(Row):
 
 class SettingsSection(Column):
     title_text = StringProperty()
-    content_layout=ObjectProperty()
+    content_layout = ObjectProperty()
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.adaptive_height=True
-        self.padding=[0,dp(10)]
-        self.spacing=dp(5)
-        self.title_widget =AdaptiveLabel(text= self.title_text,size_hint=[None,None],color=[0.7, 0.7, 0.9, 1.0],pos_hint={"left":1})
-        self.title_widget.main_container=True
+        self.adaptive_height = True
+        self.padding = [0, dp(10)]
+        self.spacing = dp(5)
+        self.title_widget = AdaptiveLabel(text=self.title_text, size_hint=[None, None], color=[0.7, 0.7, 0.9, 1.0],
+                                          pos_hint={"left": 1})
+        self.title_widget.main_container = True
         self.bind(title_text=self.title_widget.setter("text"))
         self.add_widget(self.title_widget)
 
-        c=.67#.35
-        self.content_layout = Column(md_bg_color = [c,c,c, .1],adaptive_height=1,padding=[dp(10),dp(15)],radius=dp(5),spacing=dp(30))
-        self.content_layout.main_container=True
+        c = .67  # .35
+        self.content_layout = Column(
+            md_bg_color=[c, c, c, .1], radius=dp(5),
+            adaptive_height=1, padding=[dp(10), dp(15)],
+            spacing=dp(30))
+        self.content_layout.main_container = True
         self.add_widget(self.content_layout)
         self.bind(minimum_height=self.setter("height"))
 
@@ -566,6 +489,7 @@ class SettingsSection(Column):
         #
         # self.content_layout.add_widget(t)
         # self.content_layout.add_widget(t1)
+
     # [0.596078431372549, 0.9450980392156862, 0.8666666666666667, 1.0]
     def add_widget(self, widget, *args, **kwargs):
         if hasattr(widget, "main_container"):
@@ -578,7 +502,7 @@ class SettingsScreen(MyMDScreen):
     current_image_source = StringProperty()
     next_image_source = StringProperty()
     interval = StringProperty()
-    displayed_interval_value = StringProperty() # "2 mins"
+    displayed_interval_value = StringProperty()  # "2 mins"
     is_using_on_wake = BooleanProperty(ConfigManager.get_on_wake_state())
 
     def __init__(self, **kwargs):
@@ -589,13 +513,12 @@ class SettingsScreen(MyMDScreen):
         self.status_bar_bg = [0.45, 0.45, 0.45, 1] if self.app.device_theme == "light" else [0.23, 0.23, 0.23, 1]
         self.app.bind(device_theme=self.set_theme_color)
 
-
         # b=.1
         # self.md_bg_color = [b,b,b, 1]
         self.app_dir = Path(appFolder())
         self.wallpapers_dir = self.app_dir / "wallpapers"
-        v=my_config.get_interval()
-        self.displayed_interval_value=smart_convert_minutes(v)
+        v = my_config.get_interval()
+        self.displayed_interval_value = smart_convert_minutes(v)
         self.interval = str(v)
         self.times_tapped = 0
 
@@ -623,11 +546,12 @@ class SettingsScreen(MyMDScreen):
 
         # self.add_widget(root) for auto reload
         # self.save_interval()
-        self.ids.main_container.add_widget(Button(text="Check For New Version",on_release=self.check_for_update,size_hint_y=None, height=dp(50)))
+        self.ids.main_container.add_widget(
+            Button(text="Check For New Version", on_release=self.check_for_update, size_hint_y=None, height=dp(50)))
         self.current_image_source = get_current_wallpaper()
         self.next_image_source = "assets/icons/icon.png"
 
-    def toggle_home_screen_widget_loop(self,widget=None):
+    def toggle_home_screen_widget_loop(self, widget=None):
         widget.icon = "play" if widget.icon == "pause" else "pause"
 
         if widget.icon == "pause":
@@ -853,7 +777,7 @@ class SettingsScreen(MyMDScreen):
     def set_theme_color(self, _, value):
         self.status_bar_bg = [0.45, 0.45, 0.45, 1] if value == "light" else [0.23, 0.23, 0.23, 1]
 
-    def set_using_on_wake_config(self, instance, value,from_user):
+    def set_using_on_wake_config(self, instance, value, from_user):
         # print("instance.title_text",instance, value)
         # print('onrelease value',value,instance)
         if not from_user:
@@ -879,16 +803,23 @@ class SettingsScreen(MyMDScreen):
                 # print(self.ids.countdown_label.text,22)
                 self.ids.countdown_label.text = "OnNext Wake" if self.ids.countdown_label.text != "Paused" else self.ids.countdown_label.text
 
-    def check_for_update(self,*args):
+    def check_for_update(self, *args):
         spinner_layout = LoadingLayout()
+
         def DownloadApkScreen__show(new_version, release_notes, apk_size):
             spinner_layout.remove()
             self.app.sm.download_apk_screen.show(new_version, release_notes, apk_size)
+
         def DownloadApkScreen__do_not_show(msg):
             toast(msg)
             spinner_layout.remove()
 
-        Clock.schedule_once(lambda dt: thread_check_for_update(dt, DownloadApkScreen__show,DownloadApkScreen__do_not_show))
+        Clock.schedule_once(
+            lambda dt: thread_check_for_update(dt, DownloadApkScreen__show, DownloadApkScreen__do_not_show))
+
+    def set_widget_left_and_right_padding(self,left_padding, right_padding):
+        self.ids.main_container.padding=[dp(left_padding+25), dp(25), dp(right_padding+25), dp(100)]
+        self.ids.title_text_case.padding=[dp(left_padding+25), dp(self.status_bar_height-20 if self.status_bar_height>20 else self.status_bar_height+20 ), dp(0), dp(20)]
 #
 #
 # import requests

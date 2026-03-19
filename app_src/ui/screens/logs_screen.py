@@ -13,7 +13,7 @@ from kivy.core.clipboard import Clipboard
 from kivy.uix.screenmanager import NoTransition
 from ui.widgets.android import toast
 
-from ui.widgets.layouts import MyMDScreen
+from ui.widgets.layouts import MyMDScreen, GenericStatusBarSpacer
 
 # ---------- CONFIG ----------
 LOG_HORIZONTAL_PADDING = dp(10)
@@ -38,7 +38,10 @@ class LogsScreen(MyMDScreen):
         self._file_pos = 0
         self._line_count = 0
         self._auto_update_started = False
-
+        self.generic_status_bar_spacer = GenericStatusBarSpacer(
+            status_bar_height=self.status_bar_height,
+            md_bg_color= [.1, .1, .1, 1])
+        self.add_widget(self.generic_status_bar_spacer)
         # ---------- LOG FILE SETUP ----------
 
         os.makedirs(self.logs_dir, exist_ok=True)

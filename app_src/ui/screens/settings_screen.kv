@@ -65,7 +65,8 @@
 #        spacing: dp(25)
         pos_hint: {"top":1}
         MDBoxLayout:
-            padding: dp(25), dp(20), dp(0), dp(25)
+            id: title_text_case
+            padding: dp(25), dp(root.status_bar_height-20 if root.status_bar_height>20 else root.status_bar_height+20 ), dp(0), dp(20)
             size_hint_y: None
             height: self.minimum_height
             md_bg_color: [0.45,0.45,0.45, 1] if app.device_theme == "light" else [0.23,0.23,0.23, 1]
@@ -87,6 +88,7 @@
                 height: self.minimum_height
 #                md_bg_color:[1,0,1,1]
                 padding: dp(25), dp(25), dp(25), dp(100)
+#                padding:[100,0]
                 spacing: dp(15)
                 MDLabel:
                     text: "Wallpaper Change Interval (minutes)"
@@ -172,10 +174,10 @@
                     MDBoxLayout:
                         size_hint_y: None
                         height: dp(50)
-    #                    md_bg_color: [0.75,0.75,0.75, 1]
                         md_bg_color: [0.45,0.45,0.45, 1] if app.device_theme == "light" else [0.23,0.23,0.23, 1]
+#                        md_bg_color: [0.75,0.75,0.75, 1]
                         radius: [dp(10),dp(10),dp(0),0]
-                        adaptive_width:True
+#                        adaptive_width:True
                         padding: [dp(10),0,dp(10),0]
 
                         MDLabel:
@@ -191,7 +193,7 @@
                         size_hint_x:1
                         spacing:dp(10)
                         padding:[dp(10)]
-                        radius:[0,dp(10),dp(10),dp(10)]
+                        radius:[0,dp(0),dp(10),dp(10)]
                         MDLabel:
                             id: countdown_label
                             text: "OnNext Wake" if ConfigManager.get_on_wake_state() else "--:--"

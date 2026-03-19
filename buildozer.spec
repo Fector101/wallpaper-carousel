@@ -27,7 +27,7 @@ osx.python_version = 3
 osx.kivy_version = 1.9.1
 
 fullscreen = 0
-orientation = portrait
+orientation = all
 
 android.api = 35
 android.permissions = RECEIVE_BOOT_COMPLETED, INTERNET, VIBRATE, USE_EXACT_ALARM, SCHEDULE_EXACT_ALARM, FOREGROUND_SERVICE, FOREGROUND_SERVICE_SPECIAL_USE, POST_NOTIFICATIONS, SET_WALLPAPER, READ_MEDIA_IMAGES, (name=android.permission.READ_EXTERNAL_STORAGE;maxSdkVersion=32), (name=android.permission.WRITE_EXTERNAL_STORAGE;maxSdkVersion=28), REQUEST_INSTALL_PACKAGES

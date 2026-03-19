@@ -19,7 +19,7 @@ from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.button import MDIconButton
 from kivy.graphics import Color, Line
 
-from ui.widgets.layouts import MyPopUp, MyMDScreen, get_dimensions, LoadingLayout
+from ui.widgets.layouts import MyPopUp, MyMDScreen, get_dimensions, LoadingLayout, GenericStatusBarSpacer
 from utils.image_operations import thumbnail_path_for, get_image_info, share_image_to_other_app
 from utils.helper import appFolder, change_wallpaper
 from utils.config_manager import ConfigManager
@@ -183,6 +183,11 @@ class FullscreenScreen(MyMDScreen):
         self.md_bg_color =[0, 0, 0, 1]
         self.bottom_height = 0.12
         self.is_fullscreen = False
+
+        self.generic_status_bar_spacer=GenericStatusBarSpacer(
+            status_bar_height=self.status_bar_height,
+            md_bg_color=[0.8, 0.8, 0.8, 1] if self.app.device_theme == "light" else [.1, .1,.1, 1])
+        self.add_widget(self.generic_status_bar_spacer)
 
         # Main layout container
         self.layout = MDFloatLayout(md_bg_color=[0, 0, 0, 1])
