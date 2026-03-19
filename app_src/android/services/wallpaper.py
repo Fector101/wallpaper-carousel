@@ -15,7 +15,7 @@ android_notify_logger.setLevel(logging.WARNING if on_android_platform() else log
 app_logger.setLevel(logging.INFO)
 
 service = get_python_service()
-foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE_TYPE_SPECIAL_USE if on_android_platform() and BuildVersion.SDK_INT >= 30 else 0
+foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE_TYPE_SPECIAL_USE if on_android_platform() and BuildVersion.SDK_INT >= 34 else 0
 
 Notification.createChannel(id="service_channel",name="Carousel Service",description="For Controlling and Previewing Next Wallpaper")
 notification = Notification(title="Starting Carousel...", name="from service",channel_id="service_channel")

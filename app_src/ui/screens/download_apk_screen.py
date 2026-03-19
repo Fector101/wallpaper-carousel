@@ -445,8 +445,8 @@ def check_update(download_apk_screen__show,download_apk_screen__do_not_show=None
         print(msg_)
 
     except Exception as e:
-        Clock.schedule_once(lambda dt: do_not_go_to_update_screen(f"Failed:{e}"))
         traceback.print_exc()
+        Clock.schedule_once(lambda dt, e=e: do_not_go_to_update_screen(f"Failed:{e}"))
 
 def get_release_note_txt(data,latest_version):
     """Check GitHub latest release version"""
