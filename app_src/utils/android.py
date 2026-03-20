@@ -60,7 +60,6 @@ def add_home_screen_widget(button=None):
         traceback.print_exc()
 
 
-
 def is_device_on_light_mode():
     if not on_android_platform():
         return "dark"
@@ -87,7 +86,6 @@ def is_device_on_light_mode():
             # print("error_getting_device_in_light_or_dark_mode:", error_getting_device_in_light_or_dark_mode)
             # TODO get dark/light theme from PC
         return "dark"
-
 
 
 def test_java_action():
@@ -242,3 +240,71 @@ def test_java_action():
     #
     #     log.warning(f"FOUND {len(image_uris)} IMAGES")
     #     return image_uris
+
+PythonActivity = autoclass('org.kivy.android.PythonActivity')
+from jnius import autoclass, PythonJavaClass, java_method
+
+if on_android_platform():
+    # Native Display Listener
+    class DisplayListener(PythonJavaClass):
+        __javainterfaces__ = ['android/hardware/display/DisplayManager$DisplayListener']
+        __javacontext__ = 'app'
+
+        def __init__(self, callback):
+            super().__init__()
+            self.callback = callback
+
+        @java_method('(I)V')
+        def onDisplayAdded(self, displayId):
+            pass
+
+        @java_method('(I)V')
+        def onDisplayRemoved(self, displayId):
+            pass
+
+        @java_method('(I)V')
+        def onDisplayChanged(self, displayId):
+            activity = PythonActivity.mActivity
+            display = activity.getDisplay()
+            rotation = display.getRotation()
+
+            if self.callback:
+                self.callback(rotation)
+    # It didn't call when switching form 90 to 270
+    # class ConfigChangeListener(PythonJavaClass):
+    #     __javainterfaces__ = ['android/content/ComponentCallbacks']
+    #     __javacontext__ = 'app'
+    #
+    #     def __init__(self, callback):
+    #         super().__init__()
+    #         self.callback = callback
+    #
+    #     @java_method('()V')
+    #     def onLowMemory(self):
+    #         pass
+    #
+    #     @java_method('(Landroid/content/res/Configuration;)V')
+    #     def onConfigurationChanged(self, newConfig):
+    #         activity = PythonActivity.mActivity
+    #
+    #         try:
+    #             display = activity.getDisplay()
+    #         except Exception as error_getting_display_modern_android_method:
+    #             print(error_getting_display_modern_android_method)
+    #             wm = activity.getSystemService(activity.WINDOW_SERVICE)
+    #             display = wm.getDefaultDisplay()
+    #
+    #         rotation = display.getRotation()
+    #
+    #         if self.callback:
+    #             try:
+    #                 self.callback(rotation)
+    #             except Exception as error_getting_display_modern_android_method:
+    #                 print(error_getting_display_modern_android_method)
+else:
+    class DisplayListener:
+        def __init__(self, callback):
+            self.callback = callback
+    # class ConfigChangeListener:
+    #     def __init__(self, callback):
+    #         self.callback = callback

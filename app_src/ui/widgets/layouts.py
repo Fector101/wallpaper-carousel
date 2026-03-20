@@ -191,14 +191,17 @@ class MyMDScreen(MDScreen):
             self.screen_content.add_widget(widget, *args, **kwargs)
 
     def on_window_resize(self, _, size):
+        if on_android_platform():
+            return None
         if self.change_layout_orientation_clock:
             self.change_layout_orientation_clock.cancel()
         self.change_layout_orientation_clock = Clock.schedule_once(lambda x: self.do_thing(size), 1)
+        return None
 
     def do_thing(self, size):
         width, height = size
         orientation = "portrait" if height > width else "landscape"
-        if not self.screen_content:
+        if not self.screen_content or on_android_platform():
             return
 
         if orientation == "landscape":
@@ -209,6 +212,14 @@ class MyMDScreen(MDScreen):
         else:
             self.screen_content.padding = [0, 0, 0, self.nav_bar_height]
             self.set_widget_left_and_right_padding(left_padding=0,right_padding=0)
+
+    def adjust_padding(self, rotation):
+        if rotation == "TOP":
+            self.screen_content.padding = [0, 0, 0, self.nav_bar_height]
+        elif rotation == "BOTTOM":
+            self.screen_content.padding = [0, 0, 0, self.nav_bar_height+self.status_bar_height]
+        elif rotation in ["LEFT", "RIGHT"]:
+            self.screen_content.padding = [0, 0, 0, 0]
 
     def set_widget_left_and_right_padding(self,left_padding, right_padding):
         pass
