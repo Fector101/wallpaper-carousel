@@ -8,7 +8,7 @@ package.name = waller
 #package.domain = app.vercel
 package.domain = org.wally
 author = Fabian © Copyright Info
-version = 1.0.4
+version = 1.0.4.1
 
 source.dir = app_src
 
