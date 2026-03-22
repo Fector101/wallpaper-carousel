@@ -1,0 +1,6 @@
+[color=#4CAF50][b]New[/b][/color]
+• Different Layouts On Screen Rotate
+
+[color=#4CAF50][b]Fixes[/b][/color]
+• Fatal Error when launching app and updater checks for new version when no internet available
+• Fatal Error when updater downloads APK
