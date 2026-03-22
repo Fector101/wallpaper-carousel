@@ -1,0 +1,9 @@
+# V1.0.4.1
+
+## What's New
+- Different Layout On Screen Rotate
+
+## Fixes
+- Fatal Error when launching app and updater checks for new version when no internet available
+- Fatal Error when updater downloads APK
+
