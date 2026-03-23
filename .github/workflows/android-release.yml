@@ -73,7 +73,7 @@ jobs:
       # Install build-tools required for aidl
       - name: Install Android build-tools
         run: |
-          yes | ~/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager "build-tools;29.0.0"
+          yes | ~/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager "platforms;android-33" "build-tools;34.0.0"
 
       # Decode keystore
       - name: Decode keystore
