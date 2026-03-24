@@ -36,6 +36,7 @@ jobs:
       - name: Add local bin to PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
 
+      # Setup Python environment
       - name: Setup Python + Buildozer
         run: |
           python3 -m venv venv
@@ -73,7 +74,7 @@ jobs:
       # Install build-tools required for aidl
       - name: Install Android build-tools
         run: |
-          yes | ~/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager "platforms;android-33" "build-tools;34.0.0"
+          yes | ~/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager "build-tools;29.0.0"
 
       # Decode keystore
       - name: Decode keystore
@@ -93,7 +94,6 @@ jobs:
       - name: Build APK
         run: |
           source venv/bin/activate
-          pip install android-widgets git+https://github.com/kivy/buildozer legacy-cgi setuptools cython==0.29.34
           buildozer -v android release
 
       # Find unsigned APK
