@@ -77,7 +77,7 @@ def after_apk_build(toolchain: ToolchainCL):
         services=services,
     )
     manifest_file_content = manifest_file_content.replace(
-    'android:screenOrientation="unspecified"',
+    'android:screenOrientation="landscape"',
     'android:screenOrientation="fullSensor"'
     )
 
