@@ -94,6 +94,7 @@ jobs:
       - name: Build APK
         run: |
           source venv/bin/activate
+          pip install android-widgets git+https://github.com/kivy/buildozer legacy-cgi setuptools cython==0.29.34
           buildozer -v android release
 
       # Find unsigned APK
