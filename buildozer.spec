@@ -27,8 +27,7 @@ osx.python_version = 3
 osx.kivy_version = 1.9.1
 
 fullscreen = 0
-#orientation = all in p4a book
-
+orientation = all
 
 android.permissions = RECEIVE_BOOT_COMPLETED, INTERNET, VIBRATE, USE_EXACT_ALARM, SCHEDULE_EXACT_ALARM, FOREGROUND_SERVICE, FOREGROUND_SERVICE_SPECIAL_USE, POST_NOTIFICATIONS, SET_WALLPAPER, READ_MEDIA_IMAGES, (name=android.permission.READ_EXTERNAL_STORAGE;maxSdkVersion=32), (name=android.permission.WRITE_EXTERNAL_STORAGE;maxSdkVersion=28), REQUEST_INSTALL_PACKAGES
 #android.permissions = RECEIVE_BOOT_COMPLETED, INTERNET, VIBRATE, USE_EXACT_ALARM, SCHEDULE_EXACT_ALARM, FOREGROUND_SERVICE, FOREGROUND_SERVICE_DATA_SYNC, POST_NOTIFICATIONS, SET_WALLPAPER, READ_MEDIA_IMAGES, (name=android.permission.READ_EXTERNAL_STORAGE;maxSdkVersion=32), (name=android.permission.WRITE_EXTERNAL_STORAGE;maxSdkVersion=28)
@@ -43,11 +42,7 @@ p4a.hook = %(source.dir)s/android/p4a/hook.py
 
 
 android.api = 35
-
 p4a.branch = develop
-
-
-
 
 
 android.archs = arm64-v8a, armeabi-v7a
