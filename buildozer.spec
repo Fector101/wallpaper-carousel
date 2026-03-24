@@ -42,12 +42,12 @@ p4a.hook = %(source.dir)s/android/p4a/hook.py
 
 
 
-android.api = 34
-android.minapi = 24
-android.ndk_api = 24
+android.api = 35
+#android.minapi = 24
+#android.ndk_api = 24
 
-android.sdk = 34
-android.build_tools = 34.0.0
+#android.sdk = 34
+#android.build_tools = 34.0.0
 
 p4a.branch = develop
 
