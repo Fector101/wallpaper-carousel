@@ -8,7 +8,7 @@ package.name = waller
 #package.domain = app.vercel
 package.domain = org.wally
 author = Fabian © Copyright Info
-version = 1.0.4.1
+version = 1.0.5
 
 source.dir = app_src
 
@@ -43,11 +43,6 @@ p4a.hook = %(source.dir)s/android/p4a/hook.py
 
 
 android.api = 35
-#android.minapi = 24
-#android.ndk_api = 24
-
-#android.sdk = 34
-#android.build_tools = 34.0.0
 
 p4a.branch = develop
 
