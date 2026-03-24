@@ -76,6 +76,10 @@ def after_apk_build(toolchain: ToolchainCL):
         spec_file_path=spec_file_path,
         services=services,
     )
+    manifest_file_content = manifest_file_content.replace(
+    'android:screenOrientation="unspecified"',
+    'android:screenOrientation="fullSensor"'
+    )
 
     receiver_xml = generate_receivers(package)
 

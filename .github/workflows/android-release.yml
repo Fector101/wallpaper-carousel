@@ -36,6 +36,7 @@ jobs:
       - name: Add local bin to PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
 
+      # Setup Python environment
       - name: Setup Python + Buildozer
         run: |
           python3 -m venv venv

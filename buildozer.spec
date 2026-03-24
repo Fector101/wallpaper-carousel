@@ -8,7 +8,7 @@ package.name = waller
 #package.domain = app.vercel
 package.domain = org.wally
 author = Fabian © Copyright Info
-version = 1.0.4.1
+version = 1.0.5
 
 source.dir = app_src
 
@@ -29,7 +29,6 @@ osx.kivy_version = 1.9.1
 fullscreen = 0
 orientation = all
 
-android.api = 35
 android.permissions = RECEIVE_BOOT_COMPLETED, INTERNET, VIBRATE, USE_EXACT_ALARM, SCHEDULE_EXACT_ALARM, FOREGROUND_SERVICE, FOREGROUND_SERVICE_SPECIAL_USE, POST_NOTIFICATIONS, SET_WALLPAPER, READ_MEDIA_IMAGES, (name=android.permission.READ_EXTERNAL_STORAGE;maxSdkVersion=32), (name=android.permission.WRITE_EXTERNAL_STORAGE;maxSdkVersion=28), REQUEST_INSTALL_PACKAGES
 #android.permissions = RECEIVE_BOOT_COMPLETED, INTERNET, VIBRATE, USE_EXACT_ALARM, SCHEDULE_EXACT_ALARM, FOREGROUND_SERVICE, FOREGROUND_SERVICE_DATA_SYNC, POST_NOTIFICATIONS, SET_WALLPAPER, READ_MEDIA_IMAGES, (name=android.permission.READ_EXTERNAL_STORAGE;maxSdkVersion=32), (name=android.permission.WRITE_EXTERNAL_STORAGE;maxSdkVersion=28)
 android.add_src = %(source.dir)s/android/src
@@ -38,7 +37,13 @@ android.gradle_dependencies = androidx.core:core-ktx:1.12.0, com.google.android.
 #android.gradle_dependencies = com.google.android.material:material:1.6.0, androidx.core:core-ktx:1.15.0, androidx.core:core:1.6.0, androidx.work:work-runtime:2.9.0
 android.enable_androidx = True
 p4a.hook = %(source.dir)s/android/p4a/hook.py
+
+
+
+
+android.api = 35
 p4a.branch = develop
+
 
 android.archs = arm64-v8a, armeabi-v7a
 android.allow_backup = True
