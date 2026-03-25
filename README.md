@@ -53,4 +53,10 @@ Wally: A working Android wallpaper carousel with no ads.
 |![gallery-screen](.github/docs-imgs/request-screen.jpg) | ![gallery-screen dark](.github/docs-imgs/request-screen-dark.jpg) | 
 
 
+**Share Image to other App**
+
+
+![gallery-screen](.github/docs-imgs/share-modal.jpg)
+
+
 ---
