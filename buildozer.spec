@@ -8,7 +8,9 @@ package.name = waller
 #package.domain = app.vercel
 package.domain = org.wally
 author = Fabian © Copyright Info
+# Don't use pattern 0.0.0.0 i get some Gradle Error "can't find application path waller."
 version = 1.0.5
+
 
 source.dir = app_src
 
@@ -59,3 +61,5 @@ android.release_artifact = apk
 [buildozer]
 log_level = 2
 warn_on_root = 1
+
+# Don't write inline comments
