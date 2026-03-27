@@ -31,6 +31,7 @@ Wally: A working Android wallpaper carousel with no ads.
 
 ## Few Screen Samples
 
+All screenshot samples are in low Res (for fast loading)
 | **View Screen Design** | **Home Screen Widget** |
 |-------------------------------------|--------------------------------------------------------|
 |![app-view-img-screen_1_360x800](.github/docs-imgs/full-screen-design.jpg) | ![home-screen_1_360x800](.github/docs-imgs/home-screen-widget.jpg) |
