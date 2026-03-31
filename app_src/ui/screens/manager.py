@@ -102,6 +102,11 @@ class ScreenManager(MDScreenManager):
                     elif rotation in ["TOP", "BOTTOM"]:
                         each_screen.set_widget_left_and_right_padding(0,0)
                     each_screen.adjust_padding(rotation)
+                    try:
+                        self.app.btm_sheet.adjust_padding(rotation)
+                    except Exception as error:
+                        print(error)
+                    # MyBtmSheet
                 except Exception as e:
                     print(e)
             else:

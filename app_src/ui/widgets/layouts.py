@@ -1,5 +1,6 @@
 import traceback
 
+# from kivy.uix.floatlayout import FloatLayout
 from kivymd.uix.widget import MDWidget
 
 from android_notify.config import on_android_platform, autoclass
@@ -187,8 +188,10 @@ class MyMDScreen(MDScreen):
             )
             super().add_widget(self.screen_content)
 
-        if self.screen_content:
+        if self.screen_content and not isinstance(widget,LoadingLayout):
             self.screen_content.add_widget(widget, *args, **kwargs)
+        elif isinstance(widget,LoadingLayout):
+            super().add_widget(widget)
 
     def on_window_resize(self, _, size):
         if on_android_platform():
@@ -346,11 +349,15 @@ class SpinningArcWidget(Widget):
 
 # Act as BackDrop
 class LoadingLayout(MDRelativeLayout):
+# class LoadingLayout(MDFloatLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.disabled=True
         c = .1
         self.md_bg_color = [c, c, c, .5]
+        # self.size_hint = [1, 1]
+        self.size_hint = [None, None]
+        self.size = [Window.width, Window.height]
         # Center the spinner by positioning it relative to the screen's center.
         self.spinner = SpinningArcWidget(size_hint=(None, None), size=(100, 100))
         # Position the spinner in the middle of the screen:
@@ -360,9 +367,17 @@ class LoadingLayout(MDRelativeLayout):
         self.bind(size=self._update_spinner_pos)
 
         app = MDApp.get_running_app()
-        if hasattr(app,"root_layout"):
-            current_screen = app.root_layout
+        if hasattr(app,"sm") and hasattr(app.sm,"current_screen"):
+            current_screen = app.sm.current_screen
+            # skip=1
+            # for r in current_screen.walk():
+            #     if isinstance(r,FloatLayout):
+            #         print('r',r)
+            #         if not skip:
             current_screen.add_widget(self)
+        else:
+            app_logger.warning("Add loading layout to parent")
+                    # skip=0
 
     def _update_spinner_pos(self, *args):
         self.spinner.pos = ((self.width - self.spinner.width) / 2, (self.height - self.spinner.height) / 2)

@@ -6,10 +6,12 @@ from kivy.core.window import Window
 from kivy.properties import StringProperty
 from kivy.utils import platform
 from kivymd.app import MDApp
+from kivymd.uix.navigationdrawer import MDNavigationLayout
 from kivymd.uix.relativelayout import MDRelativeLayout
 
 from android_notify import NotificationHandler, logger as android_notify_logger
 from android_notify.config import on_android_platform
+from ui.screens.gallery_screen import MyBtmSheet
 
 from ui.screens.manager import ScreenManager
 from ui.widgets.android import toast
@@ -41,6 +43,7 @@ class WallpaperCarouselApp(MDApp):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.btm_sheet = None
         self.service_port = None
         self.ui_messenger_to_service = None
         self.file_operation = None
@@ -50,7 +53,8 @@ class WallpaperCarouselApp(MDApp):
         self.bottom_bar = None
 
     def build(self):
-        self.root_layout = MDRelativeLayout()
+        self.root_layout = MDNavigationLayout()
+        # self.root_layout = MDRelativeLayout()
 
         self.sm = ScreenManager()
         self.root_layout.add_widget(self.sm)
@@ -68,6 +72,10 @@ class WallpaperCarouselApp(MDApp):
 
         self.root_layout.add_widget(self.bottom_bar)
         self.bottom_bar.bind_change()  # needs theme from monitor_dark_and_light_device_change
+
+        # get_number_of_cols()
+        self.btm_sheet = MyBtmSheet()
+        self.root_layout.add_widget(self.btm_sheet)
 
         self.file_operation = ImageOperation(load_saved=self.sm.gallery_screen.initialize_tabs)
         self.bind_plyer_fix()

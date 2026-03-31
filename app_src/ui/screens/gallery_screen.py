@@ -2,6 +2,8 @@ import os, time
 from datetime import datetime
 from pathlib import Path
 
+from kivymd.uix.menu import MDDropdownMenu
+
 from android_notify.config import on_android_platform
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -23,7 +25,7 @@ from kivymd.uix.relativelayout import MDRelativeLayout
 from plyer import filechooser
 
 from utils.logger import app_logger
-from ui.widgets.layouts import MyMDScreen, Column  # used in .kv file
+from ui.widgets.layouts import MyMDScreen, Column, Row, get_nav_bar_height, get_status_bar_height  # used in .kv file
 from utils.config_manager import ConfigManager
 from utils.helper import appFolder, load_kv_file  # type
 from utils.image_operations import get_or_create_thumbnail
@@ -35,7 +37,6 @@ load_kv_file(py_file_absolute_path=__file__)
 
 min_box_size = dp(80)
 spacing = dp(2)
-
 
 def format_file_date(path):
     if not os.path.exists(path):
@@ -56,6 +57,310 @@ def format_file_date(path):
         return f"{delta_days} days ago"
     else:
         return file_date.strftime("%d %b")
+
+
+def get_cols_with_math(available_width):
+    return max(1, int(
+        (available_width + spacing) // (min_box_size + spacing)
+    ))
+
+    # resize_grid
+
+
+def get_number_of_cols():
+    app = MDApp.get_running_app()
+    # my_config = ConfigManager()
+    cols = my_config.get_cols()
+
+    print("get_number_of_cols", type(cols), cols)
+    return cols
+
+class DropDownMain(Row):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.menu = None
+        self.adaptive_size= 1
+        self.md_bg_color=[0,0,0,.1]
+        self.spacing= dp(10)
+        self.radius= [dp(5)]
+        self.padding= [dp(5)]
+
+        # with self.canvas.after:
+        #     self.bg_color_instr = Color(1,0,0,1)
+        #     self.rect = RoundedRectangle(radius=[5, 0, 0, 5], size=[100, 100])
+        #     self.rect.pos = self.pos
+        #
+        # self.bind(pos = lambda _,x:setattr(self.rect,"pos",x), size = lambda _,x:setattr(self.rect,"size",x))
+
+        #
+        # t = MDListItemTrailingIcon(
+        #     icon="search",
+        #     theme_icon_color="Custom",
+        #     icon_color=[.6, .6, .6, 1],
+        # )
+        # self.add_widget(t)
+        # self.bind(touch_up=self.on_release)
+
+    def on_release(self):
+        app_logger.warning("TODO Add Un-Grouped Logic")
+        return True
+        items = [
+            {"text": "grouped", "trailing_icon": "check", "text_color": "white","divider_color":"red","md_bg_color":[.14,.14,.14,1]},
+            {"text": "un-grouped", "text_color": "white","divider_color":"red","md_bg_color":[.14,.14,.14,1]}
+            #, "trailing_icon": "check"}
+        ]
+        self.menu = MDDropdownMenu(
+            caller=self,
+            items=items,
+            width_mult=4,
+           theme_bg_color="Custom",
+           theme_text_color="Custom",
+            ver_growth="down",
+            hor_growth="left",
+
+        )
+        self.menu.open()
+
+
+from kivymd.uix.bottomsheet.bottomsheet import MDBottomSheet,MDBottomSheetDragHandle,MDBottomSheetDragHandleTitle,MDBottomSheetDragHandleButton
+
+class TypeMapElement(MDBoxLayout):
+    selected = BooleanProperty(False)
+    icon = StringProperty()
+    title = StringProperty()
+    func = ObjectProperty()
+    cols_int = NumericProperty()
+    def on_touch_up(self,touch):
+        self.parent.parent.hide(False) # Closes MDBottomSheet
+        return super().on_touch_up(touch)
+
+
+class TypeMapElementOptions(MDBoxLayout):
+    selected = BooleanProperty(False)
+    icon = StringProperty()
+    title = StringProperty()
+    func = ObjectProperty()
+    # def on_touch_up(self,touch):
+    #     self.parent.parent.hide(False) # Closes MDBottomSheet
+    #     return super().on_touch_up(touch)
+
+
+class MyBtmSheet(MDBottomSheet):
+    sheet_type = "standard"
+    items = []
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # super(MyBtmSheet,self).__init__(**kwargs)
+        self.md_bg_color=[.14,.14,.14,1]
+        self.adaptive_height=1
+        # self.size_hint_y = None
+        # self.height = dp(410)
+        self.padding=[0,0,0, get_nav_bar_height()*2.5]
+        self.drag_sheet = MDBottomSheetDragHandle(
+            # drag_handle_color= "grey"
+            # md_bg_color=[1,1,0,1],
+            drag_handle_color = [.7, .7, .7, 1],
+
+
+        )
+        # with self.drag_sheet.canvas.after:
+        #     self.bg_color_instr = Color(1,0,0,1)
+        #     self.rect = RoundedRectangle(radius=[5, 0, 0, 5], size=[100, 100])
+        #     self.rect.pos = self.drag_sheet.pos
+
+        # self.drag_sheet.bind(pos = lambda _,x:setattr(self.rect,"pos",x), size = lambda _,x:setattr(self.rect,"size",x))
+
+
+        self.sheet_title = MDBottomSheetDragHandleTitle(
+            text="Display Settings",
+            pos_hint={"center_y": .5},
+            adaptive_height=True,
+            shorten_from='right',
+            shorten=True,
+            theme_text_color= "Custom",
+            text_color="white",
+
+        )
+        self.drag_sheet.add_widget(self.sheet_title)
+        self.drag_sheet.add_widget(
+            MDBottomSheetDragHandleButton(
+                icon="close",
+                ripple_effect=False,
+                on_release=lambda x: self.set_state("close"),
+                theme_text_color="Custom",
+                text_color="white"
+
+            )
+        )
+
+        self.content = MDBoxLayout(padding=[0, 0, 0, 0], orientation="vertical",spacing=dp(10))
+        # self.content.md_bg_color = [1, 0, 0, 1]
+        self.content.adaptive_height=1
+        self.add_widget(self.drag_sheet)
+        self.add_widget(self.content)
+        self.enable_swiping = 0
+        c=.3
+        self.items=[{
+            "header_title": "Grouped",
+            "icon": "search",
+            "function": print,
+
+        }]
+        self.content.add_widget(MDLabel(text="View",adaptive_size=1,theme_text_color="Custom",text_color=[0.7, 0.7, 0.9, 1.0],padding=[dp(15),0,0,0]))#,pos_hint={"center_x":.1}))
+        self.content.add_widget(
+            TypeMapElementOptions(
+                title="Layout",
+                icon="form-dropdown",
+                func=self.__change_number_of_columns_in_store,
+                md_bg_color=[ c,c,c,.3]
+
+            )
+        )
+        self.content.add_widget(
+            MDLabel(
+                text="Grid Columns",
+                adaptive_size=1,
+                theme_text_color="Custom",
+                text_color=[0.7, 0.7, 0.9, 1.0],
+                padding=[dp(15),0,0,0]
+            )
+        )
+        self.content.add_widget(
+            TypeMapElement(
+                title="3 Cols",
+                cols_int=3,
+                # icon="form-dropdown",
+                func=self.__change_number_of_columns_in_store,
+                md_bg_color=[ c,c,c,.3]
+
+            )
+        )
+        self.content.add_widget(
+            TypeMapElement(
+                title="4 Cols",
+                cols_int=4,
+                # icon="form-dropdown",
+                func=self.__change_number_of_columns_in_store,
+                md_bg_color=[ c,c,c,.3]
+
+            )
+        )
+        self.content.add_widget(
+            TypeMapElement(
+                title="5 Cols",
+                cols_int=5,
+                func=self.__change_number_of_columns_in_store,
+                md_bg_color=[ c,c,c,.3]
+
+            )
+        )
+        self.content.add_widget(
+            TypeMapElement(
+                title="6 Cols",
+                cols_int=6,
+                func=self.__change_number_of_columns_in_store,
+                md_bg_color=[ c,c,c,.3]
+
+            )
+        )
+        # for each_item in self.items:
+        #     title=each_item['header_title'].capitalize()
+        #     icon=each_item['icon']
+        #     function=each_item['function']
+        #     self.content.add_widget(
+        #         TypeMapElement(
+        #             title=title,
+        #             icon=icon,
+        #             func=function
+        #         )
+        #     )
+        # self.set_state("open")
+
+
+    def on_touch_up(self,e):
+
+        x,y=e.pos
+
+        # print(f"x:{x}, y:{y}")
+        for each in self.walk():
+            if isinstance(each,DropDownMain):
+                # drop_down_pos=each.pos
+                drop_down_pos_x,drop_down_pos_y=each.pos
+                if drop_down_pos_x <= x <= drop_down_pos_x + each.width and drop_down_pos_y <= y <= drop_down_pos_y + each.height:
+                # if x >= drop_down_pos_x and y >= drop_down_pos_y x <= drop_down_pos_x + each.width and y <= drop_down_pos_y + each.height:
+                #     print('thing')
+                    each.on_release()
+
+    def on_touch_move(self, touch):
+        if self.enable_swiping:
+            if self.status == "opened" and abs(touch.y - touch.oy) > self.swipe_distance:
+                self.status = "closing_with_swipe"
+        if self.status == "closing_with_swipe":
+            self.open_progress = max( min( self.open_progress + (touch.dy if self.anchor == "left" else - touch.dy) / self.height, 1 ), 0 )
+            if touch.pos[1] <=get_nav_bar_height():
+                self.hide(False)
+            return True
+        return None
+
+    def on_close(self, *args):
+        self.enable_swiping = 0
+        return super().on_close(*args)
+
+    def show(self):
+        self.enable_swiping = True
+        self.set_state("toggle")
+        self.__mark_number_of_cols_selected()
+
+    def __mark_number_of_cols_selected(self):
+        for each in self.walk():
+            if isinstance(each,TypeMapElement):
+                clickable_item =each
+                clickable_item_ids =clickable_item.ids#["icon"]
+                clickable_item_ids.icon_widget.icon = ""
+                if clickable_item.cols_int == my_config.get_cols():
+                    # print(clickable_item, clickable_item_ids, clickable_item.cols_int)
+                    clickable_item_ids.icon_widget.icon = "check"
+
+    def __change_number_of_columns_in_store(self, caller,text):
+
+        chosen_cols = caller.cols_int
+        my_config.set_cols(chosen_cols)
+        clickable_children = self.walk()#caller.parent.children
+        for each in clickable_children:
+            if not isinstance(each,TypeMapElement):
+                continue
+            each.ids["icon_widget"].icon = ""
+            if each.cols_int == chosen_cols:
+                each.ids["icon_widget"].icon = "check"
+
+        app = MDApp.get_running_app()
+        gallery_screen = app.sm.current_screen
+        if not isinstance(gallery_screen, GalleryScreen):
+            app_logger.error("Add way to use other screens")
+            return
+
+        # gallery_screen = None
+        # for e in app.sm.screens:
+        #     gallery_screen = e
+        #     if isinstance(e,GalleryScreen):
+        #         break
+        for each in gallery_screen.walk():
+            if isinstance(each,DateGroupLayout):
+                each.change_preview_img_size(None,chosen_cols)
+        self.hide()
+    def hide(self, animation=True):
+        self.set_state('close', animation=animation)
+
+    def adjust_padding(self,rotation):
+        # self.screen_content.padding = [0, 0, 0, self.nav_bar_height + self.status_bar_height]
+        if rotation == "TOP":
+            self.padding = [0, 0, 0, get_nav_bar_height()*2.5]
+
+        elif rotation == "BOTTOM":
+            self.padding = [0, 0, 0,(get_nav_bar_height()*2.5) + get_nav_bar_height()]
+
+        pass
 
 
 class PreviewImage(ButtonBehavior, AsyncImage):
@@ -93,6 +398,9 @@ class DateGroupLayout(Column):
     is_collapsed = BooleanProperty(False)
 
     images_container = ObjectProperty()
+    cols = NumericProperty(0)
+    doing_cols_change = BooleanProperty(False)
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # self.md_bg_color=[1,0,0,1]
@@ -107,6 +415,8 @@ class DateGroupLayout(Column):
 
         Clock.schedule_once(self.build_grid)
         self.image_elements = []
+
+        self.bind(cols=self.change_preview_img_size)
 
         # self.md_bg_color=[.1,1,.3,1]
 
@@ -198,15 +508,14 @@ class DateGroupLayout(Column):
         available_width = window_width_minus_padding - spacing
         # available_width = self.images_container.width - spacing
 
-        cols = max(1, int(
-            (available_width + spacing) // (min_box_size + spacing)
-        ))
+        self.cols = my_config.get_cols() or get_cols_with_math(available_width)
+        # self.cols = max(1, int(
+        #     (available_width + spacing) // (min_box_size + spacing)
+        # ))
+        total_spacing = spacing * (self.cols - 1)
+        box_size = (available_width - total_spacing) / self.cols
 
-        total_spacing = spacing * (cols - 1)
-        box_size = (available_width - total_spacing) / cols
-
-        self.images_container.cols = cols
-
+        self.images_container.cols = self.cols
         for each_data in self.batch:
             if isinstance(each_data, dict):
                 thumbnailWidget = PreviewImage(
@@ -232,29 +541,32 @@ class DateGroupLayout(Column):
 
         self.add_widget(line)
         return None
+
     def on_size(self,_,size):
-        width, height=size
-        # print("self.width,width",self.width,width)
-        if not self.images_container:
-            return None
-        window_width_minus_padding = self.width - 50
-        self.images_container.width = dp(window_width_minus_padding)
-        available_width = window_width_minus_padding - spacing
-        cols = self.__cols_math(available_width)
-        self.images_container.cols = cols
-        total_spacing = spacing * (cols - 1)
-        box_size = (available_width - total_spacing) / cols
-        for each_child in self.walk():
-            if isinstance(each_child, PreviewImage):
-                each_child.size=(box_size, box_size)
+        # print("self.on_size",self.width)
+        # print("self.cols",self.cols)
+        if self.cols == 1:
+        # if self.doing_cols_change:
+        #     self.doing_cols_change = False
+        #     return None
+        #     print("on_size")
+            if not self.images_container:
+                return None
+            window_width_minus_padding = self.width - 50
+            self.images_container.width = window_width_minus_padding#dp(window_width_minus_padding)
+            available_width = window_width_minus_padding - spacing
+            cols = get_cols_with_math(available_width)
+            self.cols = cols
+            self.images_container.cols = cols
+            total_spacing = spacing * (cols - 1)
+            thumb_size = (available_width - total_spacing) / cols
+            for each_child in self.walk():
+                if isinstance(each_child, PreviewImage):
+                    each_child.size=(thumb_size, thumb_size)
+        else:
+            self.change_preview_img_size(None,self.cols)
+
         return None
-
-    def __cols_math(self,available_width):
-        return max(1, int(
-            (available_width + spacing) // (min_box_size + spacing)
-        ))
-
-        # resize_grid
 
     def remove_wallpaper_from_badge_display(self, image_absolute_path):
         images_container_widget = self.images_container
@@ -308,6 +620,23 @@ class DateGroupLayout(Column):
             self.toggle_drop_btn.icon = "triangle-down"
             self.is_collapsed = True
 
+    def change_preview_img_size(self,widget,number_of_cols):
+        if not self.cols:
+            return None
+        # print("change_preview_img_size")
+
+        self.doing_cols_change = True
+
+        window_width_minus_padding = self.width - 50
+        self.images_container.cols = number_of_cols
+        self.cols = number_of_cols
+        thumb_size = (window_width_minus_padding + spacing + (number_of_cols * spacing))/number_of_cols
+        for each_child in self.images_container.children:
+            each_child.size = (thumb_size, thumb_size)
+                # print('did thing')
+        return None
+        # self.doing_cols_change=False
+
 
 class GalleryScreen(MyMDScreen):
     current_tab = StringProperty(GalleryTabs.BOTH.value)
@@ -343,6 +672,8 @@ class GalleryScreen(MyMDScreen):
         #
         # self.add_widget(self.bottom_bar)
         self.initialize_tabs(no_clock=True)
+        # self.btm_sheet = MyBtmSheet()
+        # self.add_widget(self.btm_sheet)
         # self.load_saved()
 
     def initialize_tabs(self, no_clock=False):
@@ -638,12 +969,14 @@ class GalleryScreen(MyMDScreen):
             root_container.padding=[left_padding+10, left_padding+10, right_padding+10, 10]
             root_container.orientation="horizontal"
             self.ids.tab_buttons_box.orientation="vertical"
-            self.ids.tools_section.padding=[0,0,0,0] #dev hidden btns
+            self.ids.head_section.adaptive_width=0
         else:
             root_container.padding=[left_padding+10, 10, right_padding+10, 10]
             root_container.orientation="vertical"
             self.ids.tab_buttons_box.orientation="horizontal"
-            self.ids.tools_section.padding = [0, 0, 0, dp(20)] #dev hidden btns
+            self.ids.head_section.adaptive_width=1
+            self.ids.head_section.size_hint_x=1
+
 
 
 if __name__ == "__main__":
