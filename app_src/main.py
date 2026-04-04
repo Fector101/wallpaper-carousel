@@ -11,11 +11,11 @@ from kivymd.uix.relativelayout import MDRelativeLayout
 
 from android_notify import NotificationHandler, logger as android_notify_logger
 from android_notify.config import on_android_platform
-from ui.screens.gallery_screen import MyBtmSheet
 
 from ui.screens.manager import ScreenManager
 from ui.widgets.android import toast
 from ui.widgets.buttons import BottomNavigationBar
+from ui.widgets.bottom_sheet import MyBtmSheet
 
 from utils.android import is_device_on_light_mode
 from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY

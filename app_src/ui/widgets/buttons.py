@@ -1,3 +1,4 @@
+from kivy.clock import Clock
 from kivy.graphics import Color, RoundedRectangle
 from kivy.graphics.boxshadow import BoxShadow
 from kivy.metrics import dp
@@ -79,16 +80,19 @@ class BottomNavigationBar(MDNavigationDrawer):
         self.set_state('open')
         self.drawer_type='standard'
         self.app = get_app()
-        self.pos_hint = {'center_x':0.5}
+        self.pos_hint = {'center_x':0.5, 'center_y':0.1}
         self.md_bg_color=[0,0,0,0]
         self.old_setting_btn_color = None
         self.old_gallery_btn_color = None
-
+        self.padding=[1]
         self.on_camera = on_camera
         self.on_settings = on_settings
-        self.size_hint = (None, None)
-        android_nav_bar_height = get_dimensions()[1]
-        self.size = [self.minimum_width,dp(android_nav_bar_height * 2) or dp(140)]
+        # self.size_hint = (None, None)
+        self.size_hint_x = None
+        self.adaptive_height = 1
+        self.width = self.minimum_width
+        # android_nav_bar_height = get_dimensions()[1]
+        # self.size = [self.minimum_width,dp(android_nav_bar_height * 2) or dp(140)]
         # self.md_bg_color = [1,1,0,1]
 
         # Button container
@@ -97,7 +101,7 @@ class BottomNavigationBar(MDNavigationDrawer):
             orientation="horizontal",
             spacing=0,
             size_hint=(None, None),
-            pos_hint={"center_x": 0.5, "center_y": 0.55},
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
             md_bg_color=[1, 1, 1, 1],
             radius=radius,
         )
@@ -141,6 +145,7 @@ class BottomNavigationBar(MDNavigationDrawer):
             self.hide()
         # self.color_tab_buttons("thumbs")
         self.on_size()
+        Clock.schedule_once(self.on_size, 5)
 
     def on_size(self, *args):
         if self.pass_width:
@@ -149,6 +154,7 @@ class BottomNavigationBar(MDNavigationDrawer):
 
         # print("on_size",args)
         self.width = self.minimum_width
+        self.adaptive_width = True
         self.pass_width=True
 
     def on_width(self, *args):
@@ -158,6 +164,7 @@ class BottomNavigationBar(MDNavigationDrawer):
 
         # print("width",args)
         self.width = self.minimum_width
+        self.adaptive_width = True
         self.pass_width=True
         return
 

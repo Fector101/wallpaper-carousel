@@ -2,8 +2,6 @@ import os, time
 from datetime import datetime
 from pathlib import Path
 
-from kivymd.uix.menu import MDDropdownMenu
-
 from android_notify.config import on_android_platform
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -75,293 +73,6 @@ def get_number_of_cols():
     print("get_number_of_cols", type(cols), cols)
     return cols
 
-class DropDownMain(Row):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.menu = None
-        self.adaptive_size= 1
-        self.md_bg_color=[0,0,0,.1]
-        self.spacing= dp(10)
-        self.radius= [dp(5)]
-        self.padding= [dp(5)]
-
-        # with self.canvas.after:
-        #     self.bg_color_instr = Color(1,0,0,1)
-        #     self.rect = RoundedRectangle(radius=[5, 0, 0, 5], size=[100, 100])
-        #     self.rect.pos = self.pos
-        #
-        # self.bind(pos = lambda _,x:setattr(self.rect,"pos",x), size = lambda _,x:setattr(self.rect,"size",x))
-
-        #
-        # t = MDListItemTrailingIcon(
-        #     icon="search",
-        #     theme_icon_color="Custom",
-        #     icon_color=[.6, .6, .6, 1],
-        # )
-        # self.add_widget(t)
-        # self.bind(touch_up=self.on_release)
-
-    def on_release(self):
-        app_logger.warning("TODO Add Un-Grouped Logic")
-        return True
-        items = [
-            {"text": "grouped", "trailing_icon": "check", "text_color": "white","divider_color":"red","md_bg_color":[.14,.14,.14,1]},
-            {"text": "un-grouped", "text_color": "white","divider_color":"red","md_bg_color":[.14,.14,.14,1]}
-            #, "trailing_icon": "check"}
-        ]
-        self.menu = MDDropdownMenu(
-            caller=self,
-            items=items,
-            width_mult=4,
-           theme_bg_color="Custom",
-           theme_text_color="Custom",
-            ver_growth="down",
-            hor_growth="left",
-
-        )
-        self.menu.open()
-
-
-from kivymd.uix.bottomsheet.bottomsheet import MDBottomSheet,MDBottomSheetDragHandle,MDBottomSheetDragHandleTitle,MDBottomSheetDragHandleButton
-
-class TypeMapElement(MDBoxLayout):
-    selected = BooleanProperty(False)
-    icon = StringProperty()
-    title = StringProperty()
-    func = ObjectProperty()
-    cols_int = NumericProperty()
-    def on_touch_up(self,touch):
-        self.parent.parent.hide(False) # Closes MDBottomSheet
-        return super().on_touch_up(touch)
-
-
-class TypeMapElementOptions(MDBoxLayout):
-    selected = BooleanProperty(False)
-    icon = StringProperty()
-    title = StringProperty()
-    func = ObjectProperty()
-    # def on_touch_up(self,touch):
-    #     self.parent.parent.hide(False) # Closes MDBottomSheet
-    #     return super().on_touch_up(touch)
-
-
-class MyBtmSheet(MDBottomSheet):
-    sheet_type = "standard"
-    items = []
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # super(MyBtmSheet,self).__init__(**kwargs)
-        self.md_bg_color=[.14,.14,.14,1]
-        self.adaptive_height=1
-        # self.size_hint_y = None
-        # self.height = dp(410)
-        self.padding=[0,0,0, get_nav_bar_height()*2.5]
-        self.drag_sheet = MDBottomSheetDragHandle(
-            # drag_handle_color= "grey"
-            # md_bg_color=[1,1,0,1],
-            drag_handle_color = [.7, .7, .7, 1],
-
-
-        )
-        # with self.drag_sheet.canvas.after:
-        #     self.bg_color_instr = Color(1,0,0,1)
-        #     self.rect = RoundedRectangle(radius=[5, 0, 0, 5], size=[100, 100])
-        #     self.rect.pos = self.drag_sheet.pos
-
-        # self.drag_sheet.bind(pos = lambda _,x:setattr(self.rect,"pos",x), size = lambda _,x:setattr(self.rect,"size",x))
-
-
-        self.sheet_title = MDBottomSheetDragHandleTitle(
-            text="Display Settings",
-            pos_hint={"center_y": .5},
-            adaptive_height=True,
-            shorten_from='right',
-            shorten=True,
-            theme_text_color= "Custom",
-            text_color="white",
-
-        )
-        self.drag_sheet.add_widget(self.sheet_title)
-        self.drag_sheet.add_widget(
-            MDBottomSheetDragHandleButton(
-                icon="close",
-                ripple_effect=False,
-                on_release=lambda x: self.set_state("close"),
-                theme_text_color="Custom",
-                text_color="white"
-
-            )
-        )
-
-        self.content = MDBoxLayout(padding=[0, 0, 0, 0], orientation="vertical",spacing=dp(10))
-        # self.content.md_bg_color = [1, 0, 0, 1]
-        self.content.adaptive_height=1
-        self.add_widget(self.drag_sheet)
-        self.add_widget(self.content)
-        self.enable_swiping = 0
-        c=.3
-        self.items=[{
-            "header_title": "Grouped",
-            "icon": "search",
-            "function": print,
-
-        }]
-        self.content.add_widget(MDLabel(text="View",adaptive_size=1,theme_text_color="Custom",text_color=[0.7, 0.7, 0.9, 1.0],padding=[dp(15),0,0,0]))#,pos_hint={"center_x":.1}))
-        self.content.add_widget(
-            TypeMapElementOptions(
-                title="Layout",
-                icon="form-dropdown",
-                func=self.__change_number_of_columns_in_store,
-                md_bg_color=[ c,c,c,.3]
-
-            )
-        )
-        self.content.add_widget(
-            MDLabel(
-                text="Grid Columns",
-                adaptive_size=1,
-                theme_text_color="Custom",
-                text_color=[0.7, 0.7, 0.9, 1.0],
-                padding=[dp(15),0,0,0]
-            )
-        )
-        self.content.add_widget(
-            TypeMapElement(
-                title="3 Cols",
-                cols_int=3,
-                # icon="form-dropdown",
-                func=self.__change_number_of_columns_in_store,
-                md_bg_color=[ c,c,c,.3]
-
-            )
-        )
-        self.content.add_widget(
-            TypeMapElement(
-                title="4 Cols",
-                cols_int=4,
-                # icon="form-dropdown",
-                func=self.__change_number_of_columns_in_store,
-                md_bg_color=[ c,c,c,.3]
-
-            )
-        )
-        self.content.add_widget(
-            TypeMapElement(
-                title="5 Cols",
-                cols_int=5,
-                func=self.__change_number_of_columns_in_store,
-                md_bg_color=[ c,c,c,.3]
-
-            )
-        )
-        self.content.add_widget(
-            TypeMapElement(
-                title="6 Cols",
-                cols_int=6,
-                func=self.__change_number_of_columns_in_store,
-                md_bg_color=[ c,c,c,.3]
-
-            )
-        )
-        # for each_item in self.items:
-        #     title=each_item['header_title'].capitalize()
-        #     icon=each_item['icon']
-        #     function=each_item['function']
-        #     self.content.add_widget(
-        #         TypeMapElement(
-        #             title=title,
-        #             icon=icon,
-        #             func=function
-        #         )
-        #     )
-        # self.set_state("open")
-
-
-    def on_touch_up(self,e):
-
-        x,y=e.pos
-
-        # print(f"x:{x}, y:{y}")
-        for each in self.walk():
-            if isinstance(each,DropDownMain):
-                # drop_down_pos=each.pos
-                drop_down_pos_x,drop_down_pos_y=each.pos
-                if drop_down_pos_x <= x <= drop_down_pos_x + each.width and drop_down_pos_y <= y <= drop_down_pos_y + each.height:
-                # if x >= drop_down_pos_x and y >= drop_down_pos_y x <= drop_down_pos_x + each.width and y <= drop_down_pos_y + each.height:
-                #     print('thing')
-                    each.on_release()
-
-    def on_touch_move(self, touch):
-        if self.enable_swiping:
-            if self.status == "opened" and abs(touch.y - touch.oy) > self.swipe_distance:
-                self.status = "closing_with_swipe"
-        if self.status == "closing_with_swipe":
-            self.open_progress = max( min( self.open_progress + (touch.dy if self.anchor == "left" else - touch.dy) / self.height, 1 ), 0 )
-            if touch.pos[1] <=get_nav_bar_height():
-                self.hide(False)
-            return True
-        return None
-
-    def on_close(self, *args):
-        self.enable_swiping = 0
-        return super().on_close(*args)
-
-    def show(self):
-        self.enable_swiping = True
-        self.set_state("toggle")
-        self.__mark_number_of_cols_selected()
-
-    def __mark_number_of_cols_selected(self):
-        for each in self.walk():
-            if isinstance(each,TypeMapElement):
-                clickable_item =each
-                clickable_item_ids =clickable_item.ids#["icon"]
-                clickable_item_ids.icon_widget.icon = ""
-                if clickable_item.cols_int == my_config.get_cols():
-                    # print(clickable_item, clickable_item_ids, clickable_item.cols_int)
-                    clickable_item_ids.icon_widget.icon = "check"
-
-    def __change_number_of_columns_in_store(self, caller,text):
-
-        chosen_cols = caller.cols_int
-        my_config.set_cols(chosen_cols)
-        clickable_children = self.walk()#caller.parent.children
-        for each in clickable_children:
-            if not isinstance(each,TypeMapElement):
-                continue
-            each.ids["icon_widget"].icon = ""
-            if each.cols_int == chosen_cols:
-                each.ids["icon_widget"].icon = "check"
-
-        app = MDApp.get_running_app()
-        gallery_screen = app.sm.current_screen
-        if not isinstance(gallery_screen, GalleryScreen):
-            app_logger.error("Add way to use other screens")
-            return
-
-        # gallery_screen = None
-        # for e in app.sm.screens:
-        #     gallery_screen = e
-        #     if isinstance(e,GalleryScreen):
-        #         break
-        for each in gallery_screen.walk():
-            if isinstance(each,DateGroupLayout):
-                each.change_preview_img_size(None,chosen_cols)
-        self.hide()
-    def hide(self, animation=True):
-        self.set_state('close', animation=animation)
-
-    def adjust_padding(self,rotation):
-        # self.screen_content.padding = [0, 0, 0, self.nav_bar_height + self.status_bar_height]
-        if rotation == "TOP":
-            self.padding = [0, 0, 0, get_nav_bar_height()*2.5]
-
-        elif rotation == "BOTTOM":
-            self.padding = [0, 0, 0,(get_nav_bar_height()*2.5) + get_nav_bar_height()]
-
-        pass
-
 
 class PreviewImage(ButtonBehavior, AsyncImage):
     high_resolution_path = StringProperty()
@@ -420,34 +131,7 @@ class DateGroupLayout(Column):
 
         # self.md_bg_color=[.1,1,.3,1]
 
-    #
-    # def fix_images_width(self, width):
-    #     width = width - 20
-    #     if not self.images_container:
-    #         print('none')
-    #         return None
-    #     print('not none')
-    #     available_width = width - spacing
-    #
-    #     cols = max(1, int(
-    #         (available_width + spacing) // (min_box_size + spacing)
-    #     ))
-    #
-    #     total_spacing = spacing * (cols - 1)
-    #     box_size = (available_width - total_spacing) / cols
-    #
-    #     self.images_container.cols = cols
-    #     # self.images_container.width=width
-    #     for each_image in self.image_elements:
-    #         each_image.size = (box_size,box_size)
-    #     return None
-
-    # def on_width(self, instance, value):
-    #     # self.fix_images_width(value)
-    #     print("parent on_width",value)
     def build_grid(self, *args):
-        # print("build_grid")
-        # return
         header_layout = MDRelativeLayout(
             adaptive_height=1,
             size_hint_x=1,
@@ -473,10 +157,6 @@ class DateGroupLayout(Column):
             font_size="14sp",
             pos_hint={"center_y": .5, "right": 1}
         )
-        # self.toggle_drop_btn.theme_width="Custom"
-        # self.toggle_drop_btn.theme_height="Custom"
-        # self.toggle_drop_btn.width=20
-        # self.toggle_drop_btn.height=20
 
         self.toggle_drop_btn.bind(on_release=self.toggle_dropdown)
 
@@ -485,33 +165,20 @@ class DateGroupLayout(Column):
         self.add_widget(header_layout)
 
         self.images_container = MyMDGridLayout(
-            # md_bg_color=[0,1,0,1]
+            # md_bg_color=[0,1,0,1],
+            adaptive_width = True
         )
-        # self.images_container.md_bg_color= [1,0,0,1]
 
-        # self.images_container.size_hint_y = None
-        self.images_container.size_hint = [None, None]
-        # self.images_container.width = self.width
-        # self.images_container.width = Window.width - 30#self.width
+        self.images_container.size_hint_y = None
         self.images_container.bind(minimum_height=self.images_container.setter("height"))
 
-        # print("self.width",self.width)
         window_width_minus_padding = self.width - 50
-        self.images_container.width = dp(window_width_minus_padding)
-        # print(f"self.images_container.width: {self.images_container.width} == window_width_minus_padding: {window_width_minus_padding},self.width: {self.width}")
-        # if self.images_container.width != window_width_minus_padding:
-        #     app_logger.warning(
-        #         f"Images sizing Improper: self.width ==  Window.width - 20, {self.images_container.width - 40} == {window_width_minus_padding}, Ignore if images are sized properly, if self.width very smaller than Window.width also ignore"
-        #     )
 
         self.images_container.spacing = spacing
         available_width = window_width_minus_padding - spacing
-        # available_width = self.images_container.width - spacing
 
         self.cols = my_config.get_cols() or get_cols_with_math(available_width)
-        # self.cols = max(1, int(
-        #     (available_width + spacing) // (min_box_size + spacing)
-        # ))
+
         total_spacing = spacing * (self.cols - 1)
         box_size = (available_width - total_spacing) / self.cols
 
@@ -522,7 +189,6 @@ class DateGroupLayout(Column):
                     on_release=each_data["release_function"],
                     high_resolution_path=each_data["high_resolution_path"],
                     source=each_data["thumbnail_path"],
-                    # id=each_data["thumbnail_path"],
                 )
             elif isinstance(each_data, PreviewImage):
                 thumbnailWidget = each_data
@@ -532,8 +198,6 @@ class DateGroupLayout(Column):
                 return None
             thumbnailWidget.size_hint = (None, None)
             thumbnailWidget.size = (box_size, box_size)
-            # self.image_elements.append(thumbnailWidget)
-            # self.scroll_view_main_column.wallpapers_on_display.append(thumbnailWidget)
             self.images_container.add_widget(thumbnailWidget)
 
         self.add_widget(self.images_container)
@@ -543,20 +207,12 @@ class DateGroupLayout(Column):
         return None
 
     def on_size(self,_,size):
-        # print("self.on_size",self.width)
-        # print("self.cols",self.cols)
         if self.cols == 1:
-        # if self.doing_cols_change:
-        #     self.doing_cols_change = False
-        #     return None
-        #     print("on_size")
             if not self.images_container:
                 return None
             window_width_minus_padding = self.width - 50
-            self.images_container.width = window_width_minus_padding#dp(window_width_minus_padding)
             available_width = window_width_minus_padding - spacing
-            cols = get_cols_with_math(available_width)
-            self.cols = cols
+            self.cols = cols = get_cols_with_math(available_width)
             self.images_container.cols = cols
             total_spacing = spacing * (cols - 1)
             thumb_size = (available_width - total_spacing) / cols
@@ -623,17 +279,18 @@ class DateGroupLayout(Column):
     def change_preview_img_size(self,widget,number_of_cols):
         if not self.cols:
             return None
-        # print("change_preview_img_size")
 
         self.doing_cols_change = True
-
-        window_width_minus_padding = self.width - 50
         self.images_container.cols = number_of_cols
         self.cols = number_of_cols
-        thumb_size = (window_width_minus_padding + spacing + (number_of_cols * spacing))/number_of_cols
+
+        window_width_minus_padding = self.width - 50
+        available_width = window_width_minus_padding - spacing
+        total_spacing = spacing * (self.cols - 1)
+        thumb_size = (available_width - total_spacing) / number_of_cols
+        # thumb_size = (window_width_minus_padding + spacing + (number_of_cols * spacing))/number_of_cols
         for each_child in self.images_container.children:
             each_child.size = (thumb_size, thumb_size)
-                # print('did thing')
         return None
         # self.doing_cols_change=False
 
@@ -654,12 +311,14 @@ class GalleryScreen(MyMDScreen):
 
         self.tab_instances = {}
         # print("hot reload stuff in gallery screen")
-        # # self.bottom_bar = BottomNavigationBar(
-        # #     on_camera=None,
-        # #     on_settings=None,
-        # #     width=dp(120),
-        # #     height=dp(500),
-        # # )
+        # from ui.widgets.buttons import BottomNavigationBar
+        #
+        # self.bottom_bar = BottomNavigationBar(
+        #     on_camera=None,
+        #     on_settings=None,
+        #     width=dp(120),
+        #     height=dp(500),
+        # )
         # self.bottom_bar = Button(
         #     on_release=self.dev1,
         #     text="triangle",
@@ -957,24 +616,22 @@ class GalleryScreen(MyMDScreen):
         txt = "image" if size == 1 else "images"
         self.ids.header_info_label.text = f"{size} {txt} found"
 
-    def set_widget_left_and_right_padding(self,left_padding, right_padding):
-        # self.screen_content.md_bg_color=[1,0,0,1]
-        # left_padding=right_padding=50
+    def set_widget_left_and_right_padding(self,left_padding, right_padding,rotation):
+
         root_container = self.ids.main_container
-        # print("left_padding, right_padding",left_padding, right_padding)
         if not isinstance(root_container, MDBoxLayout):
             app_logger.error(f"Didn't get Right widget MDBoxLayout got: {root_container}")
             return
-        if left_padding:
+        if rotation in ["LEFT", 'RIGHT', "landscape"]:
+        # if left_padding:
             root_container.padding=[left_padding+10, left_padding+10, right_padding+10, 10]
             root_container.orientation="horizontal"
             self.ids.tab_buttons_box.orientation="vertical"
-            self.ids.head_section.adaptive_width=0
+            self.ids.head_section.adaptive_width=1
         else:
             root_container.padding=[left_padding+10, 10, right_padding+10, 10]
             root_container.orientation="vertical"
             self.ids.tab_buttons_box.orientation="horizontal"
-            self.ids.head_section.adaptive_width=1
             self.ids.head_section.size_hint_x=1
 
 
