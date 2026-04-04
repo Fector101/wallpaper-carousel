@@ -1,30 +1,30 @@
 #:import THEME_PRIMARY_COLOR utils.constants.THEME_PRIMARY_COLOR
 #:import GalleryTabs utils.model.GalleryTabs
-
-<TypeMapElement>
-    id:bottom_sheet_item
-    orientation: "horizontal"
-    adaptive_height: True
-    spacing: 0
-
-    MDListItem:
-        theme_bg_color:"Custom"
-        md_bg_color: bottom_sheet_item.md_bg_color
-        on_release: root.func(bottom_sheet_item,root.title)
-
-        MDListItemHeadlineText:
-            text: root.title
-            theme_text_color:"Custom"
-#            text_color:"black" if app.device_theme == "light" else "white"
-            theme_text_color: "Custom"
-#            text_color: "#EDF1F9" if not root.selected else app.theme_cls.primaryColor
-            text_color: get_color_from_hex(THEME_PRIMARY_COLOR) if root.selected else (0.65, 0.65, 0.65, 1)
-            bold: False
-
-        MDListItemTrailingIcon:
-            id: icon
-            icon: "check"
-            theme_icon_color:"Custom"
-            icon_color: get_color_from_hex(THEME_PRIMARY_COLOR) if root.selected else (0.65, 0.65, 0.65, 1)
-            theme_bg_color: "Custom"
-            md_bg_color: get_color_from_hex(THEME_PRIMARY_COLOR) if root.selected else (0.65, 0.65, 0.65, 1)
+#
+#<TypeMapElement>
+#    id:bottom_sheet_item
+#    orientation: "horizontal"
+#    adaptive_height: True
+#    spacing: 0
+#
+#    MDListItem:
+#        theme_bg_color:"Custom"
+#        md_bg_color: bottom_sheet_item.md_bg_color
+#        on_release: root.func(bottom_sheet_item,root.title)
+#
+#        MDListItemHeadlineText:
+#            text: root.title
+#            theme_text_color:"Custom"
+##            text_color:"black" if app.device_theme == "light" else "white"
+#            theme_text_color: "Custom"
+##            text_color: "#EDF1F9" if not root.selected else app.theme_cls.primaryColor
+#            text_color: get_color_from_hex(THEME_PRIMARY_COLOR) if root.selected else (0.65, 0.65, 0.65, 1)
+#            bold: False
+#
+#        MDListItemTrailingIcon:
+#            id: icon
+#            icon: "check"
+#            theme_icon_color:"Custom"
+#            icon_color: get_color_from_hex(THEME_PRIMARY_COLOR) if root.selected else (0.65, 0.65, 0.65, 1)
+#            theme_bg_color: "Custom"
+#            md_bg_color: get_color_from_hex(THEME_PRIMARY_COLOR) if root.selected else (0.65, 0.65, 0.65, 1)

@@ -1,5 +1,6 @@
 import traceback
 
+# from kivy.uix.floatlayout import FloatLayout
 from kivymd.uix.widget import MDWidget
 
 from android_notify.config import on_android_platform, autoclass
@@ -103,11 +104,11 @@ class MyPopUp(Popup):
 from kivy.properties import ObjectProperty
 
 
-def get_dimensions():
+def get_dimensions(bypass_android_version=False):
     status_bar_height = 0
     nav_bar_height = 0
-    if not on_android_platform():
-        return [50,50]
+    if not bypass_android_version and (not on_android_platform() or BuildVersion.SDK_INT < 35):
+        # return [50,50]
         return [status_bar_height, nav_bar_height]
 
     PythonActivity = autoclass("org.kivy.android.PythonActivity")
@@ -153,13 +154,13 @@ def get_dimensions():
     return [status_bar_height, nav_bar_height]
 
 
-def get_nav_bar_height():
-    dimensions = get_dimensions()
+def get_nav_bar_height(bypass_android_version=False):
+    dimensions = get_dimensions(bypass_android_version)
     return dimensions[1]
 
 
-def get_status_bar_height():
-    dimensions = get_dimensions()
+def get_status_bar_height(bypass_android_version=False):
+    dimensions = get_dimensions(bypass_android_version)
     return dimensions[0]
 
 # For header use In python file self.status_bar_height. In kv file root.status_bar_height
@@ -187,18 +188,20 @@ class MyMDScreen(MDScreen):
             )
             super().add_widget(self.screen_content)
 
-        if self.screen_content:
+        if self.screen_content and not isinstance(widget,LoadingLayout):
             self.screen_content.add_widget(widget, *args, **kwargs)
+        elif isinstance(widget,LoadingLayout):
+            super().add_widget(widget)
 
     def on_window_resize(self, _, size):
         if on_android_platform():
             return None
         if self.change_layout_orientation_clock:
             self.change_layout_orientation_clock.cancel()
-        self.change_layout_orientation_clock = Clock.schedule_once(lambda x: self.do_thing(size), 1)
+        self.change_layout_orientation_clock = Clock.schedule_once(lambda x: self.portrait__or__landscape(size), 1)
         return None
 
-    def do_thing(self, size):
+    def portrait__or__landscape(self, size):
         width, height = size
         orientation = "portrait" if height > width else "landscape"
         if not self.screen_content or on_android_platform():
@@ -207,11 +210,11 @@ class MyMDScreen(MDScreen):
         if orientation == "landscape":
             self.screen_content.padding = [0, 0, 0, 0]
             pos = self.__get_right_positioning()
-            self.set_widget_left_and_right_padding(left_padding=pos[0],right_padding=pos[1])
+            self.set_widget_left_and_right_padding(left_padding=pos[0],right_padding=pos[1],rotation=orientation)
             # self.set_widget_left_and_right_padding(left_padding=self.status_bar_height,right_padding=self.nav_bar_height)
         else:
             self.screen_content.padding = [0, 0, 0, self.nav_bar_height]
-            self.set_widget_left_and_right_padding(left_padding=0,right_padding=0)
+            self.set_widget_left_and_right_padding(left_padding=0,right_padding=0,rotation=orientation)
 
     def adjust_padding(self, rotation):
         if rotation == "TOP":
@@ -221,7 +224,7 @@ class MyMDScreen(MDScreen):
         elif rotation in ["LEFT", "RIGHT"]:
             self.screen_content.padding = [0, 0, 0, 0]
 
-    def set_widget_left_and_right_padding(self,left_padding, right_padding):
+    def set_widget_left_and_right_padding(self,left_padding, right_padding,rotation):
         pass
         # print("Mad Bread",left_padding,right_padding)
         # self.ids.main_container.padding=[dp(left_padding+25), dp(25), dp(right_padding+25), dp(0)]
@@ -346,11 +349,15 @@ class SpinningArcWidget(Widget):
 
 # Act as BackDrop
 class LoadingLayout(MDRelativeLayout):
+# class LoadingLayout(MDFloatLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.disabled=True
         c = .1
         self.md_bg_color = [c, c, c, .5]
+        # self.size_hint = [1, 1]
+        self.size_hint = [None, None]
+        self.size = [Window.width, Window.height]
         # Center the spinner by positioning it relative to the screen's center.
         self.spinner = SpinningArcWidget(size_hint=(None, None), size=(100, 100))
         # Position the spinner in the middle of the screen:
@@ -360,9 +367,17 @@ class LoadingLayout(MDRelativeLayout):
         self.bind(size=self._update_spinner_pos)
 
         app = MDApp.get_running_app()
-        if hasattr(app,"root_layout"):
-            current_screen = app.root_layout
+        if hasattr(app,"sm") and hasattr(app.sm,"current_screen"):
+            current_screen = app.sm.current_screen
+            # skip=1
+            # for r in current_screen.walk():
+            #     if isinstance(r,FloatLayout):
+            #         print('r',r)
+            #         if not skip:
             current_screen.add_widget(self)
+        else:
+            app_logger.warning("Add loading layout to parent")
+                    # skip=0
 
     def _update_spinner_pos(self, *args):
         self.spinner.pos = ((self.width - self.spinner.width) / 2, (self.height - self.spinner.height) / 2)

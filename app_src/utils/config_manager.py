@@ -1,4 +1,5 @@
 import json, os
+import traceback
 from pathlib import Path
 from ui.widgets.android import toast
 
@@ -19,6 +20,7 @@ def is_platform_android():
 class ConfigManager:
     DEFAULT_CONFIG = {
         "interval_mins": 2.0,
+        "cols": 0,
         "wallpapers": [],
         "noon_wallpapers":[],
         "day_wallpapers":[],
@@ -56,6 +58,7 @@ class ConfigManager:
                 toast("PD: Cannot access config file")
             except Exception as e:
                 toast(str(e))
+                traceback.print_exc()
     @classmethod
     def _write(cls, data):
         try:
@@ -65,6 +68,7 @@ class ConfigManager:
             toast("PD: Cannot access config file")
         except Exception as e:
             toast(str(e))
+            traceback.print_exc()
 
     # ---------- INTERVAL ----------
     def get_interval(self):
@@ -131,6 +135,17 @@ class ConfigManager:
         # print('called',state)
         data = cls._read()
         data["use_on_wake"] = state
+        cls._write(data)
+
+    @classmethod
+    def get_cols(cls):
+        s=cls._read().get("cols", cls.DEFAULT_CONFIG["cols"])
+        return s
+
+    @classmethod
+    def set_cols(cls, cols: int):
+        data = cls._read()
+        data["cols"] = cols
         cls._write(data)
 
     @property

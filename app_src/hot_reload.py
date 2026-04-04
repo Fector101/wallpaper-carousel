@@ -61,10 +61,12 @@ class MDLive(App,MDApp):
         "LogsScreen":"ui.screens.logs_screen",
         "FullscreenScreen":"ui.screens.full_screen",
         "GalleryScreen":"ui.screens.gallery_screen",
+        "MyBtmSheet":"ui.screens.gallery_screen",
         # "NotificationScreen": "important",
         "WelcomeScreen": "ui.screens.welcome_screen",
         # "MyRoundButton": "ui.widgets.buttons",
         "BottomNavigationBar": "ui.widgets.buttons",
+        "LoadingLayout": "ui.widgets.layouts",
     }
     AUTORELOADER_PATHS = [
         ("./ui", {"recursive": True})
@@ -90,7 +92,6 @@ class MDLive(App,MDApp):
                 each_widget.lightDark()
 
 MDLive().run()
-
 
 
 

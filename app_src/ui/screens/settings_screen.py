@@ -817,7 +817,7 @@ class SettingsScreen(MyMDScreen):
         Clock.schedule_once(
             lambda dt: thread_check_for_update(dt, DownloadApkScreen__show, DownloadApkScreen__do_not_show))
 
-    def set_widget_left_and_right_padding(self,left_padding, right_padding):
+    def set_widget_left_and_right_padding(self,left_padding, right_padding,rotation):
         self.ids.main_container.padding=[dp(left_padding+25), dp(25), dp(right_padding+25), dp(100)]
         self.ids.title_text_case.padding=[dp(left_padding+25), dp(self.status_bar_height-20 if self.status_bar_height>20 else self.status_bar_height+20 ), dp(0), dp(20)]
 #

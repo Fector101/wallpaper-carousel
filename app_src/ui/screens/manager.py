@@ -96,12 +96,17 @@ class ScreenManager(MDScreenManager):
                     status_bar_height=each_screen.status_bar_height
                     nav_bar_height=each_screen.nav_bar_height
                     if rotation == "RIGHT":
-                        each_screen.set_widget_left_and_right_padding(status_bar_height,nav_bar_height)
+                        each_screen.set_widget_left_and_right_padding(status_bar_height,nav_bar_height,rotation)
                     elif rotation == "LEFT":
-                        each_screen.set_widget_left_and_right_padding(nav_bar_height, status_bar_height)
+                        each_screen.set_widget_left_and_right_padding(nav_bar_height, status_bar_height,rotation)
                     elif rotation in ["TOP", "BOTTOM"]:
-                        each_screen.set_widget_left_and_right_padding(0,0)
+                        each_screen.set_widget_left_and_right_padding(0,0,rotation)
                     each_screen.adjust_padding(rotation)
+                    try:
+                        self.app.btm_sheet.adjust_padding(rotation)
+                    except Exception as error:
+                        print(error)
+                    # MyBtmSheet
                 except Exception as e:
                     print(e)
             else:

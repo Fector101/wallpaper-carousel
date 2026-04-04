@@ -6,3 +6,4 @@ logs/*
 config.json
 wallpaper.txt
 port.txt
+ui_port.txt

@@ -23,7 +23,7 @@ from kivymd.uix.relativelayout import MDRelativeLayout
 from plyer import filechooser
 
 from utils.logger import app_logger
-from ui.widgets.layouts import MyMDScreen, Column  # used in .kv file
+from ui.widgets.layouts import MyMDScreen, Column, Row, get_nav_bar_height, get_status_bar_height  # used in .kv file
 from utils.config_manager import ConfigManager
 from utils.helper import appFolder, load_kv_file  # type
 from utils.image_operations import get_or_create_thumbnail
@@ -35,7 +35,6 @@ load_kv_file(py_file_absolute_path=__file__)
 
 min_box_size = dp(80)
 spacing = dp(2)
-
 
 def format_file_date(path):
     if not os.path.exists(path):
@@ -56,6 +55,23 @@ def format_file_date(path):
         return f"{delta_days} days ago"
     else:
         return file_date.strftime("%d %b")
+
+
+def get_cols_with_math(available_width):
+    return max(1, int(
+        (available_width + spacing) // (min_box_size + spacing)
+    ))
+
+    # resize_grid
+
+
+def get_number_of_cols():
+    app = MDApp.get_running_app()
+    # my_config = ConfigManager()
+    cols = my_config.get_cols()
+
+    print("get_number_of_cols", type(cols), cols)
+    return cols
 
 
 class PreviewImage(ButtonBehavior, AsyncImage):
@@ -93,6 +109,9 @@ class DateGroupLayout(Column):
     is_collapsed = BooleanProperty(False)
 
     images_container = ObjectProperty()
+    cols = NumericProperty(0)
+    doing_cols_change = BooleanProperty(False)
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # self.md_bg_color=[1,0,0,1]
@@ -108,36 +127,11 @@ class DateGroupLayout(Column):
         Clock.schedule_once(self.build_grid)
         self.image_elements = []
 
+        self.bind(cols=self.change_preview_img_size)
+
         # self.md_bg_color=[.1,1,.3,1]
 
-    #
-    # def fix_images_width(self, width):
-    #     width = width - 20
-    #     if not self.images_container:
-    #         print('none')
-    #         return None
-    #     print('not none')
-    #     available_width = width - spacing
-    #
-    #     cols = max(1, int(
-    #         (available_width + spacing) // (min_box_size + spacing)
-    #     ))
-    #
-    #     total_spacing = spacing * (cols - 1)
-    #     box_size = (available_width - total_spacing) / cols
-    #
-    #     self.images_container.cols = cols
-    #     # self.images_container.width=width
-    #     for each_image in self.image_elements:
-    #         each_image.size = (box_size,box_size)
-    #     return None
-
-    # def on_width(self, instance, value):
-    #     # self.fix_images_width(value)
-    #     print("parent on_width",value)
     def build_grid(self, *args):
-        # print("build_grid")
-        # return
         header_layout = MDRelativeLayout(
             adaptive_height=1,
             size_hint_x=1,
@@ -163,10 +157,6 @@ class DateGroupLayout(Column):
             font_size="14sp",
             pos_hint={"center_y": .5, "right": 1}
         )
-        # self.toggle_drop_btn.theme_width="Custom"
-        # self.toggle_drop_btn.theme_height="Custom"
-        # self.toggle_drop_btn.width=20
-        # self.toggle_drop_btn.height=20
 
         self.toggle_drop_btn.bind(on_release=self.toggle_dropdown)
 
@@ -175,45 +165,30 @@ class DateGroupLayout(Column):
         self.add_widget(header_layout)
 
         self.images_container = MyMDGridLayout(
-            # md_bg_color=[0,1,0,1]
+            # md_bg_color=[0,1,0,1],
+            adaptive_width = True
         )
-        # self.images_container.md_bg_color= [1,0,0,1]
 
-        # self.images_container.size_hint_y = None
-        self.images_container.size_hint = [None, None]
-        # self.images_container.width = self.width
-        # self.images_container.width = Window.width - 30#self.width
+        self.images_container.size_hint_y = None
         self.images_container.bind(minimum_height=self.images_container.setter("height"))
 
-        # print("self.width",self.width)
         window_width_minus_padding = self.width - 50
-        self.images_container.width = dp(window_width_minus_padding)
-        # print(f"self.images_container.width: {self.images_container.width} == window_width_minus_padding: {window_width_minus_padding},self.width: {self.width}")
-        # if self.images_container.width != window_width_minus_padding:
-        #     app_logger.warning(
-        #         f"Images sizing Improper: self.width ==  Window.width - 20, {self.images_container.width - 40} == {window_width_minus_padding}, Ignore if images are sized properly, if self.width very smaller than Window.width also ignore"
-        #     )
 
         self.images_container.spacing = spacing
         available_width = window_width_minus_padding - spacing
-        # available_width = self.images_container.width - spacing
 
-        cols = max(1, int(
-            (available_width + spacing) // (min_box_size + spacing)
-        ))
+        self.cols = my_config.get_cols() or get_cols_with_math(available_width)
 
-        total_spacing = spacing * (cols - 1)
-        box_size = (available_width - total_spacing) / cols
+        total_spacing = spacing * (self.cols - 1)
+        box_size = (available_width - total_spacing) / self.cols
 
-        self.images_container.cols = cols
-
+        self.images_container.cols = self.cols
         for each_data in self.batch:
             if isinstance(each_data, dict):
                 thumbnailWidget = PreviewImage(
                     on_release=each_data["release_function"],
                     high_resolution_path=each_data["high_resolution_path"],
                     source=each_data["thumbnail_path"],
-                    # id=each_data["thumbnail_path"],
                 )
             elif isinstance(each_data, PreviewImage):
                 thumbnailWidget = each_data
@@ -223,8 +198,6 @@ class DateGroupLayout(Column):
                 return None
             thumbnailWidget.size_hint = (None, None)
             thumbnailWidget.size = (box_size, box_size)
-            # self.image_elements.append(thumbnailWidget)
-            # self.scroll_view_main_column.wallpapers_on_display.append(thumbnailWidget)
             self.images_container.add_widget(thumbnailWidget)
 
         self.add_widget(self.images_container)
@@ -232,29 +205,24 @@ class DateGroupLayout(Column):
 
         self.add_widget(line)
         return None
+
     def on_size(self,_,size):
-        width, height=size
-        # print("self.width,width",self.width,width)
-        if not self.images_container:
-            return None
-        window_width_minus_padding = self.width - 50
-        self.images_container.width = dp(window_width_minus_padding)
-        available_width = window_width_minus_padding - spacing
-        cols = self.__cols_math(available_width)
-        self.images_container.cols = cols
-        total_spacing = spacing * (cols - 1)
-        box_size = (available_width - total_spacing) / cols
-        for each_child in self.walk():
-            if isinstance(each_child, PreviewImage):
-                each_child.size=(box_size, box_size)
+        if self.cols == 1:
+            if not self.images_container:
+                return None
+            window_width_minus_padding = self.width - 50
+            available_width = window_width_minus_padding - spacing
+            self.cols = cols = get_cols_with_math(available_width)
+            self.images_container.cols = cols
+            total_spacing = spacing * (cols - 1)
+            thumb_size = (available_width - total_spacing) / cols
+            for each_child in self.walk():
+                if isinstance(each_child, PreviewImage):
+                    each_child.size=(thumb_size, thumb_size)
+        else:
+            self.change_preview_img_size(None,self.cols)
+
         return None
-
-    def __cols_math(self,available_width):
-        return max(1, int(
-            (available_width + spacing) // (min_box_size + spacing)
-        ))
-
-        # resize_grid
 
     def remove_wallpaper_from_badge_display(self, image_absolute_path):
         images_container_widget = self.images_container
@@ -308,6 +276,24 @@ class DateGroupLayout(Column):
             self.toggle_drop_btn.icon = "triangle-down"
             self.is_collapsed = True
 
+    def change_preview_img_size(self,widget,number_of_cols):
+        if not self.cols:
+            return None
+
+        self.doing_cols_change = True
+        self.images_container.cols = number_of_cols
+        self.cols = number_of_cols
+
+        window_width_minus_padding = self.width - 50
+        available_width = window_width_minus_padding - spacing
+        total_spacing = spacing * (self.cols - 1)
+        thumb_size = (available_width - total_spacing) / number_of_cols
+        # thumb_size = (window_width_minus_padding + spacing + (number_of_cols * spacing))/number_of_cols
+        for each_child in self.images_container.children:
+            each_child.size = (thumb_size, thumb_size)
+        return None
+        # self.doing_cols_change=False
+
 
 class GalleryScreen(MyMDScreen):
     current_tab = StringProperty(GalleryTabs.BOTH.value)
@@ -325,12 +311,14 @@ class GalleryScreen(MyMDScreen):
 
         self.tab_instances = {}
         # print("hot reload stuff in gallery screen")
-        # # self.bottom_bar = BottomNavigationBar(
-        # #     on_camera=None,
-        # #     on_settings=None,
-        # #     width=dp(120),
-        # #     height=dp(500),
-        # # )
+        # from ui.widgets.buttons import BottomNavigationBar
+        #
+        # self.bottom_bar = BottomNavigationBar(
+        #     on_camera=None,
+        #     on_settings=None,
+        #     width=dp(120),
+        #     height=dp(500),
+        # )
         # self.bottom_bar = Button(
         #     on_release=self.dev1,
         #     text="triangle",
@@ -343,6 +331,8 @@ class GalleryScreen(MyMDScreen):
         #
         # self.add_widget(self.bottom_bar)
         self.initialize_tabs(no_clock=True)
+        # self.btm_sheet = MyBtmSheet()
+        # self.add_widget(self.btm_sheet)
         # self.load_saved()
 
     def initialize_tabs(self, no_clock=False):
@@ -626,24 +616,28 @@ class GalleryScreen(MyMDScreen):
         txt = "image" if size == 1 else "images"
         self.ids.header_info_label.text = f"{size} {txt} found"
 
-    def set_widget_left_and_right_padding(self,left_padding, right_padding):
-        # self.screen_content.md_bg_color=[1,0,0,1]
-        # left_padding=right_padding=50
+    def set_widget_left_and_right_padding(self,left_padding, right_padding,rotation):
+
         root_container = self.ids.main_container
-        # print("left_padding, right_padding",left_padding, right_padding)
         if not isinstance(root_container, MDBoxLayout):
             app_logger.error(f"Didn't get Right widget MDBoxLayout got: {root_container}")
             return
-        if left_padding:
+        if rotation in ["LEFT", 'RIGHT', "landscape"]:
             root_container.padding=[left_padding+10, left_padding+10, right_padding+10, 10]
             root_container.orientation="horizontal"
             self.ids.tab_buttons_box.orientation="vertical"
-            self.ids.tools_section.padding=[0,0,0,0] #dev hidden btns
+            self.ids.head_section.adaptive_width=1
+            self.ids.head_section.size_hint_x=None
+            self.ids.head_section.width=self.ids.head_section.minimum_width
+            self.ids.head_section.padding= [dp(0), 0, dp(10), dp(0)]
+
         else:
             root_container.padding=[left_padding+10, 10, right_padding+10, 10]
             root_container.orientation="vertical"
             self.ids.tab_buttons_box.orientation="horizontal"
-            self.ids.tools_section.padding = [0, 0, 0, dp(20)] #dev hidden btns
+            self.ids.head_section.size_hint_x=1
+            self.ids.head_section.padding= [dp(0), dp(self.status_bar_height), dp(10), dp(0)]
+
 
 
 if __name__ == "__main__":

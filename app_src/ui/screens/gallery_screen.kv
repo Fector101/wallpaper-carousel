@@ -5,6 +5,101 @@
 #:import GalleryTabs utils.model.GalleryTabs
 
 
+<TypeMapElement>
+    id:bottom_sheet_item
+    orientation: "horizontal"
+    adaptive_height: True
+    spacing: 0
+    radius: [dp(10)]
+    size_hint_x:.95
+    pos_hint:{"center_x":.5}
+    MDListItem:
+        theme_bg_color:"Custom"
+        radius: [dp(10)]
+        md_bg_color: [0,0,0,0]
+        on_release: root.func(bottom_sheet_item,root.title)
+
+        MDListItemHeadlineText:
+            id:text_widget
+            text: root.title
+            theme_text_color:"Custom"
+            text_color:"black" if app.device_theme == "light" else "white"
+            theme_text_color: "Custom"
+#            text_color: "#EDF1F9" if not root.selected else app.theme_cls.primaryColor
+#            text_color: get_color_from_hex(THEME_PRIMARY_COLOR) if root.selected else (0.65, 0.65, 0.65, 1)
+            bold: False
+
+        MDListItemTrailingIcon:
+            id: icon_widget
+            icon: "check"
+            theme_icon_color:"Custom"
+            icon_color: text_widget.text_color
+#            icon_color: get_color_from_hex(THEME_PRIMARY_COLOR)
+
+<TypeMapElementOptions>
+    id:bottom_sheet_item1
+    orientation: "horizontal"
+#    size_hint_y: None
+#    height: self.minimum_height
+    adaptive_height: True
+    spacing: 0
+    size_hint_x:.95
+    pos_hint:{"center_x":.5}
+    radius: [dp(10)]
+
+    MDListItem:
+        theme_bg_color:"Custom"
+        radius: [dp(10)]
+        md_bg_color: [0,0,0,0]
+#        md_bg_color: bottom_sheet_item.md_bg_color
+#        on_release: root.func(bottom_sheet_item,root.title)
+        MDListItemHeadlineText:
+            text: root.title
+            theme_text_color:"Custom"
+            text_color:"black" if app.device_theme == "light" else "white"
+#            theme_text_color: "Custom"
+#            text_color: "#EDF1F9" if not root.selected else app.theme_cls.primaryColor
+#            text_color: get_color_from_hex(THEME_PRIMARY_COLOR) if root.selected else (0.65, 0.65, 0.65, 1)
+            bold: False
+
+        DropDownMain:
+#            md_bg_color:[ .614,.14,.14,1]
+            adaptive_size: 1
+            spacing: dp(10)
+            radius: [5]
+#            padding: [5]
+
+            MDLabel:
+                text: "grouped"
+                adaptive_size: 1
+                theme_text_color:"Custom"
+                text_color: [ .8,.8,.8,1]
+    #                pos_hint: {"center_x": .5}
+            MDListItemTrailingIcon:
+                id: icon
+                icon: root.icon
+                theme_icon_color:"Custom"
+                icon_color: [ .6,.6,.6,1]
+
+#
+#        Row:
+##            md_bg_color:[ .614,.14,.14,1]
+#            adaptive_size: 1
+#            spacing: dp(10)
+#            radius: [5]
+#            padding: [5]
+#            MDLabel:
+#                text: "grouped"
+#                adaptive_size: 1
+#                theme_text_color:"Custom"
+#                text_color: [ .8,.8,.8,1]
+##                pos_hint: {"center_": .5}
+#            MDListItemTrailingIcon:
+#                id: icon
+#                icon: root.icon
+#                theme_icon_color:"Custom"
+#                icon_color: [ .6,.6,.6,1]
+
 <GalleryScreen>:
     md_bg_color:  [0.8,0.8, 0.8, 1] if app.device_theme == "light" else [.1,.1,.1,1]
 
@@ -20,20 +115,22 @@
             Column:
                 id:head_section
                 pos_hint: {"top":1}
-                adaptive_size:True
-#                adaptive_width:1
+                adaptive_height:True
+#                adaptive_size:True
+#                size_hint_x:1
 #                md_bg_color:[1,0,1,1]
-                padding: [dp(0), dp(root.status_bar_height), dp(0), dp(0)]
+                padding: [dp(0), dp(root.status_bar_height), dp(10), dp(0)]
                 Row:
                     id: tools_section
                     pos_hint:{"right":1}
                     adaptive_size: True
                     padding: [0,0,0,dp(20)]
-        #            md_bg_color:[1,0,1,1]
-        #            MDIconButton:
-        #                icon: "view-dashboard-outline"
-        #                theme_icon_color:"Custom"
-        #                icon_color: [.8,.8,.8,1]
+#                    md_bg_color:[1,0,1,1]
+                    MDIconButton:
+                        icon: "view-dashboard-outline"
+                        theme_icon_color:"Custom"
+                        icon_color: [.8,.8,.8,1]
+                        on_release: app.btm_sheet.show()
         #            MDIconButton:
         #                icon: "dots-vertical"
         #                theme_icon_color:"Custom"

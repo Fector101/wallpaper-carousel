@@ -1,11 +1,13 @@
+from kivy.clock import Clock
 from kivy.graphics import Color, RoundedRectangle
 from kivy.graphics.boxshadow import BoxShadow
 from kivy.metrics import dp
-from kivy.properties import ListProperty
+from kivy.properties import ListProperty, BooleanProperty
 
 from kivy.uix.button import Button
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDIconButton
+from kivymd.uix.navigationdrawer import MDNavigationDrawer
 from kivymd.uix.relativelayout import MDRelativeLayout
 from android_notify import NotificationHandler
 
@@ -69,21 +71,28 @@ class MyRoundButton(Button):
         self.rect1.size = self.size
 
 
-class BottomNavigationBar(MDRelativeLayout):
+class BottomNavigationBar(MDNavigationDrawer):
     """Floating bottom bar with two buttons with centered icons only."""
+    pass_width = BooleanProperty(False)
 
     def __init__(self, on_camera=None, on_settings=None, **kwargs):
         super().__init__(**kwargs)
+        self.set_state('open')
+        self.drawer_type='standard'
         self.app = get_app()
-
+        self.pos_hint = {'center_x':0.5, 'center_y':0.1}
+        self.md_bg_color=[0,0,0,0]
         self.old_setting_btn_color = None
         self.old_gallery_btn_color = None
-
+        self.padding=[1]
         self.on_camera = on_camera
         self.on_settings = on_settings
-        self.size_hint = (1, None)
-        android_nav_bar_height = get_dimensions()[1]
-        self.height = dp(android_nav_bar_height * 2) or dp(140)
+        # self.size_hint = (None, None)
+        self.size_hint_x = None
+        self.adaptive_height = 1
+        self.width = self.minimum_width
+        # android_nav_bar_height = get_dimensions()[1]
+        # self.size = [self.minimum_width,dp(android_nav_bar_height * 2) or dp(140)]
         # self.md_bg_color = [1,1,0,1]
 
         # Button container
@@ -135,6 +144,29 @@ class BottomNavigationBar(MDRelativeLayout):
         if not NotificationHandler.has_permission():
             self.hide()
         # self.color_tab_buttons("thumbs")
+        self.on_size()
+        Clock.schedule_once(self.on_size, 5)
+
+    def on_size(self, *args):
+        if self.pass_width:
+            self.pass_width = False
+            return
+
+        # print("on_size",args)
+        self.width = self.minimum_width
+        self.adaptive_width = True
+        self.pass_width=True
+
+    def on_width(self, *args):
+        if self.pass_width:
+            self.pass_width = False
+            return
+
+        # print("width",args)
+        self.width = self.minimum_width
+        self.adaptive_width = True
+        self.pass_width=True
+        return
 
     def changeBottomBtnsTheme(self, _, theme):
         if hasattr(self.app, "sm") and self.app.sm:
@@ -151,9 +183,11 @@ class BottomNavigationBar(MDRelativeLayout):
         self.button_box.md_bg_color = self.btn_camera.md_bg_color
 
     def hide(self):
+        self.set_state('close')
         self.button_box.pos_hint = {"center_x": 0.5, "y": -1}
 
     def show(self):
+        self.set_state('open')
         self.button_box.pos_hint = {"center_x": 0.5, "center_y": 0.5}
 
     def _camera_pressed(self, *args):
