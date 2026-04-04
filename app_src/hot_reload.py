@@ -93,3 +93,49 @@ class MDLive(App,MDApp):
 
 MDLive().run()
 
+
+
+# from jnius import PythonJavaClass, java_method
+
+
+# from android.config import ACTIVITY_CLASS_NAME, ACTIVITY_CLASS_NAMESPACE
+# ACTIVITY_CLASS_NAME = os.getenv("MAIN_ACTIVITY_HOST_CLASS_NAME")
+# ACTIVITY_CLASS_NAMESPACE = ACTIVITY_CLASS_NAME.replace('.','/')
+# ACTIVITY_CLASS_NAME, ACTIVITY_CLASS_NAMESPACE = ['','']
+# print(ACTIVITY_CLASS_NAME,"||",ACTIVITY_CLASS_NAMESPACE)
+#
+#
+#
+# def android_print(text):
+#     print(text)
+#
+# class _onRequestPermissionsCallback(PythonJavaClass):
+#     """Callback class for registering a Python callback from
+#     onRequestPermissionsResult in PythonActivity.
+#     """
+#     __javainterfaces__ = [ACTIVITY_CLASS_NAMESPACE + '$PermissionsCallback']
+#     __javacontext__ = 'app'
+#
+#     def __init__(self, func):
+#         self.func = func
+#         android_print("one_ring_to_rule_them_all3 self.func = func")
+#         super().__init__()
+#         android_print("one_ring_to_rule_them_all3 self.func = func super")
+#
+#     @java_method('(I[Ljava/lang/String;[I)V')
+#     def onRequestPermissionsResult(self, requestCode,
+#                                    permissions, grantResults):
+#         self.func(requestCode, permissions, grantResults)
+#
+# def my_ask_with_callback(python_callback):
+#     android_print("one_ring_to_rule_them_all0")
+#     _java_callback = _onRequestPermissionsCallback(python_callback)
+#     android_print("one_ring_to_rule_them_all1")
+#     mActivity = autoclass(ACTIVITY_CLASS_NAME).mActivity
+#     android_print("one_ring_to_rule_them_all2")
+#     mActivity.addPermissionsCallback(_java_callback)
+#     android_print("one_ring_to_rule_them_all3")
+#     mActivity.requestPermissionsWithRequestCode(
+#         ["android.permission.POST_NOTIFICATIONS"], 202)
+#     android_print("one_ring_to_rule_them_all4")
+#
