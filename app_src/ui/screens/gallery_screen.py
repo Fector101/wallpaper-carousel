@@ -623,16 +623,20 @@ class GalleryScreen(MyMDScreen):
             app_logger.error(f"Didn't get Right widget MDBoxLayout got: {root_container}")
             return
         if rotation in ["LEFT", 'RIGHT', "landscape"]:
-        # if left_padding:
             root_container.padding=[left_padding+10, left_padding+10, right_padding+10, 10]
             root_container.orientation="horizontal"
             self.ids.tab_buttons_box.orientation="vertical"
             self.ids.head_section.adaptive_width=1
+            self.ids.head_section.size_hint_x=None
+            self.ids.head_section.width=self.ids.head_section.minimum_width
+            self.ids.head_section.padding= [dp(0), 0, dp(10), dp(0)]
+
         else:
             root_container.padding=[left_padding+10, 10, right_padding+10, 10]
             root_container.orientation="vertical"
             self.ids.tab_buttons_box.orientation="horizontal"
             self.ids.head_section.size_hint_x=1
+            self.ids.head_section.padding= [dp(0), dp(self.status_bar_height), dp(10), dp(0)]
 
 
 

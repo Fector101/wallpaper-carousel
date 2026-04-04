@@ -215,28 +215,32 @@ class MyBtmSheet(MDBottomSheet):
         # self.set_state("open")
 
 
-    def on_touch_up(self,e):
-
-        x,y=e.pos
-
-        # print(f"x:{x}, y:{y}")
+    def on_touch_up(self,touch):
+        touch_x,touch_y=touch.pos
         for each in self.walk():
             if isinstance(each,DropDownMain):
-                # drop_down_pos=each.pos
                 drop_down_pos_x,drop_down_pos_y=each.pos
-                if drop_down_pos_x <= x <= drop_down_pos_x + each.width and drop_down_pos_y <= y <= drop_down_pos_y + each.height:
-                # if x >= drop_down_pos_x and y >= drop_down_pos_y x <= drop_down_pos_x + each.width and y <= drop_down_pos_y + each.height:
-                #     print('thing')
+                if drop_down_pos_x <= touch_x <= drop_down_pos_x + each.width and drop_down_pos_y <= touch_y <= drop_down_pos_y + each.height:
                     each.on_release()
 
+        # print("touch.pos[1]", touch.pos[1])
+        # print(f"y: {self.y}, height: {self.height}")
+        # print(f"x:{x}, y:{y}")
+
+        # self.y starts at 0 then going down it becoming negative value of self.height
+        is_at_half_of_height = self.y*-1 >= max(1,self.height) / 2
+        # print(is_at_half_of_height,f"y: {self.y}, height: {self.height}, half:{ max(1,self.height) / 2}")
+        if self.status in ["opened","closing_with_swipe"]:
+            if is_at_half_of_height:
+                self.hide()
+            else:
+                self.show()
     def on_touch_move(self, touch):
         if self.enable_swiping:
             if self.status == "opened" and abs(touch.y - touch.oy) > self.swipe_distance:
                 self.status = "closing_with_swipe"
         if self.status == "closing_with_swipe":
             self.open_progress = max( min( self.open_progress + (touch.dy if self.anchor == "left" else - touch.dy) / self.height, 1 ), 0 )
-            if touch.pos[1] <=get_nav_bar_height():
-                self.hide(False)
             return True
         return None
 
@@ -244,9 +248,9 @@ class MyBtmSheet(MDBottomSheet):
         self.enable_swiping = 0
         return super().on_close(*args)
 
-    def show(self):
+    def show(self,animation=True):
         self.enable_swiping = True
-        self.set_state("toggle")
+        self.set_state("open",animation=animation)
         self.__mark_number_of_cols_selected()
 
     def __mark_number_of_cols_selected(self):
@@ -286,6 +290,7 @@ class MyBtmSheet(MDBottomSheet):
             if isinstance(each,DateGroupLayout):
                 each.change_preview_img_size(None,chosen_cols)
         self.hide()
+
     def hide(self, animation=True):
         self.set_state('close', animation=animation)
 
