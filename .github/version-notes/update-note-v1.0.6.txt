@@ -1,0 +1,5 @@
+[color=#4CAF50][b]New[/b][/color]
+• Users can now control amount of columns on gallery screen
+
+[color=#4CAF50][b]Fixes[/b][/color]
+• removed weird bars on top and bottom of screen on devices less than android 15
