@@ -1,0 +1,7 @@
+# V1.0.6
+
+## What's New
+- Users can now control amount of columns on screen
+
+## Fixes
+- weird bars on top and bottom of screen on devices less than android 15
