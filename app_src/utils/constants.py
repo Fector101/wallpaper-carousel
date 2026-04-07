@@ -45,4 +45,4 @@ class ServiceServerAddress(Enum):
     RESUME_USING_ON_WAKE = "/pause_using_interval_loop"
 
 DEV=0
-VERSION="1.0.5"
+VERSION="1.0.6"
