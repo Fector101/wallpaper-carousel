@@ -9,7 +9,7 @@ package.name = waller
 package.domain = org.wally
 author = Fabian © Copyright Info
 # Don't use pattern 0.0.0.0 i get some Gradle Error "can't find application path waller."
-version = 1.0.5
+version = 1.0.6
 
 
 source.dir = app_src
