@@ -82,13 +82,7 @@ def after_apk_build(toolchain: ToolchainCL):
     )
 
     receiver_xml = generate_receivers(package)
-
-
-    if receiver_xml.strip() not in manifest_file_content:
-        manifest_file_content = manifest_file_content.replace("</application>", f"{receiver_xml}\n</application>")
-        print("Receiver added")
-    else:
-        print("Receiver already exists in manifest")
+    manifest_file_content = insert_to_end_of_xml(receiver_xml, manifest_file_content)
 
     file_share_to_other_app_provider = f"""
 <provider
@@ -100,12 +94,29 @@ def after_apk_build(toolchain: ToolchainCL):
         android:name="android.support.FILE_PROVIDER_PATHS"
         android:resource="@xml/file_paths" />
 </provider>
-
     """
-    # text = text.replace("</application>", f"{file_share_to_other_app_provider}\n</application>")
     manifest_file_content = insert_to_end_of_xml(file_share_to_other_app_provider, manifest_file_content)
+
+    image_share_from_other_apps_to_app_activity = """
+
+<intent-filter>
+    <action android:name="android.intent.action.SEND" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <data android:mimeType="image/*" />
+</intent-filter>
+
+<intent-filter>
+    <action android:name="android.intent.action.SEND_MULTIPLE" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <data android:mimeType="image/*" />
+</intent-filter>
+
+</activity>
+    """
+    manifest_file_content = manifest_file_content.replace("</activity>", f"{image_share_from_other_apps_to_app_activity}")
+
     android_manifest_file_path.write_text(manifest_file_content, encoding="utf-8")
-    print("Successfully_101: Manifest update completed successfully!\n",manifest_file_content)
+    print("Successfully: Updated Manifest!\n",manifest_file_content)
 
 #     receiver_xml += f"""
 #     <receiver

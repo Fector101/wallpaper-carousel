@@ -4,9 +4,9 @@ import threading
 import traceback
 from pathlib import Path
 
-from android_notify.internal.java_classes import String
+from android_notify.internal.java_classes import String, autoclass, cast, Intent
 from kivy.clock import Clock
-from android_notify.config import on_android_platform
+from android_notify.config import on_android_platform, get_python_activity_context
 
 from ui.widgets.layouts import LoadingLayout
 from utils.helper import appFolder
@@ -31,13 +31,16 @@ class ImageOperation:
         self.load_saved = load_saved
 
     def show_spinner(self):
-        self.showing_loading_screen = True
-        self.spinner_layout = LoadingLayout()
+        def ui(_):
+            self.showing_loading_screen = True
+            self.spinner_layout = LoadingLayout()
+        Clock.schedule_once(ui)
 
     def hide_spinner(self):
         """
         Don't Call self.__copy_add removes spinner, This method is for a specific edge case
         Fix for Half Screen File Chooser filechooser.open_file not calling on_selection"""
+        print(f"self.spinner_layout {self.spinner_layout},{self.showing_loading_screen}")
         self.showing_loading_screen = False
         Clock.schedule_once(self.spinner_layout.remove)
 
@@ -133,6 +136,74 @@ class ImageOperation:
             uris.append(uri)
 
         return uris
+
+    def handle_image_sharing_from_others_app(self, intent):
+        tag="handle_image_sharing_from_others_app"
+        if intent is None:
+            app_logger.warning(f"{tag}- Intent is None")
+            return None
+        showing_spinner = False
+        try:
+            action = intent.getAction()
+            type_ = intent.getType()
+
+            print(f"{tag} -start",len(os.listdir(self.wallpapers_dir)))
+            if action == Intent.ACTION_SEND and type_ is not None and type_.startswith("image/"):
+                showing_spinner = True
+                # self.show_spinner()
+                uri = intent.getParcelableExtra(Intent.EXTRA_STREAM)
+                if uri:
+                    uri = cast("android.net.Uri", uri)
+                else:
+                    uri = intent.getData()
+
+                uri = cast("android.net.Uri", uri)
+                file_path = self.unique(get_file_name_from_uri(uri))
+                my_config.add_wallpaper(str(file_path))
+                copy_image_to_internal(destination_name=file_path, uri=uri)
+                print(f"done shared single{file_path}")
+
+            elif action == Intent.ACTION_SEND_MULTIPLE and type_ is not None and type_.startswith("image/"):
+                showing_spinner = True
+                # self.show_spinner()
+                uris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)
+                new_images=[]
+                if uris and len(uris) > 0:
+                    for each_uri in uris:
+                        file_path = self.unique(get_file_name_from_uri(each_uri))
+                        new_images.append(str(file_path))
+                        copy_image_to_internal(destination_name=file_path, uri=each_uri)
+                        print(f"done shared multiple{file_path}")
+                for img in new_images:
+                    my_config.add_wallpaper(img)
+                print("shared multiple")
+
+            else:
+                app_logger.warning(f"Didn't recognize intent action: {action}, type:{type_}")
+
+            print(f"{tag} -end",len(os.listdir(self.wallpapers_dir)))
+
+        except Exception as error_handle_image_sharing_from_others_app:
+            print(f"error_{tag}",error_handle_image_sharing_from_others_app)
+
+        finally:
+            if showing_spinner:
+                self.ui_things(None)
+
+    def setup_share_from_others_to_app_listener(self):
+        if not on_android_platform():
+            app_logger.warning("Can't Share Image to App, You're not on Android")
+            return
+        try:
+            from android import activity  # type: ignore
+            PythonActivity = autoclass('org.kivy.android.PythonActivity')
+            activity.bind(on_new_intent=self.handle_image_sharing_from_others_app)
+
+            # Handle initial intent when app starts
+            self.handle_image_sharing_from_others_app(PythonActivity.mActivity.getIntent())
+        except Exception as error_setup_share_from_others_to_app_listener:
+            print("error_setup_share_from_others_to_app_listener",error_setup_share_from_others_to_app_listener)
+            traceback.print_exc()
 
 
 def create_thumbnail(src, destination_dir=None, size=(320, 320), quality=60):
@@ -446,7 +517,6 @@ def share_image_to_other_app(image_absolute_path):
         from jnius import autoclass, cast
 
         PythonActivity = autoclass('org.kivy.android.PythonActivity')
-        Intent = autoclass('android.content.Intent')
         File = autoclass('java.io.File')
         FileProvider = autoclass('androidx.core.content.FileProvider')
         ClipData = autoclass('android.content.ClipData')
@@ -478,3 +548,27 @@ def share_image_to_other_app(image_absolute_path):
     except Exception as error_from_trying_to_share_image_to_other_apps:
         print("error_from_trying_to_share_image_to_other_apps",error_from_trying_to_share_image_to_other_apps)
         traceback.print_exc()
+
+
+def get_file_name_from_uri(uri):
+    try:
+        # PythonActivity = autoclass("org.kivy.android.PythonActivity")
+        OpenableColumns = autoclass("android.provider.OpenableColumns")
+
+        activity = get_python_activity_context()
+        # activity = PythonActivity.mActivity
+        cr = activity.getContentResolver()
+
+        cursor = cr.query(uri, None, None, None, None)
+
+        if cursor and cursor.moveToFirst():
+            name_index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if name_index != -1:
+                file_name = cursor.getString(name_index)
+                cursor.close()
+                return file_name
+    except Exception as error_getting_file_name_from_uri:
+        print("error_getting_file_name_from_uri",error_getting_file_name_from_uri)
+        traceback.print_exc()
+        # fallback if not found
+        return f"{int(time.time())}.png"

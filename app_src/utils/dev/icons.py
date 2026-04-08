@@ -16,6 +16,15 @@ from kivymd.uix.textfield import MDTextField, MDTextFieldHintText
 
 
 
+
+from kivy import Config
+# Linux has some weirdness with the touchpad by default... remove it
+options = Config.options('input')
+for option in options:
+    if Config.get('input', option) == 'probesysfs':
+        Config.remove_option('input', option)
+
+
 Builder.load_string('''
 <IconItem>
 

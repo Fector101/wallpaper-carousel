@@ -69,7 +69,7 @@ class ScreenManager(MDScreenManager):
         screen_name = args[1]
         is_fullscreen = screen_name in ["welcome","fullscreen","logs","update_screen"]
         if is_fullscreen and self.app.bottom_bar:
-            self.app.bottom_bar.hide()
+            self.app.bottom_bar.hide(animation=False)
         elif self.app.bottom_bar:
             self.app.bottom_bar.show()
         super().on_current(instance=args[0],value=args[1])
