@@ -7,7 +7,6 @@ from kivy.properties import StringProperty
 from kivy.utils import platform
 from kivymd.app import MDApp
 from kivymd.uix.navigationdrawer import MDNavigationLayout
-from kivymd.uix.relativelayout import MDRelativeLayout
 
 from android_notify import NotificationHandler, logger as android_notify_logger
 from android_notify.config import on_android_platform
@@ -66,7 +65,7 @@ class WallpaperCarouselApp(MDApp):
 
         is_fullscreen = self.sm.current in ["welcome", "fullscreen", "logs", "update_screen"]
         if is_fullscreen:
-            self.bottom_bar.hide()
+            self.bottom_bar.hide(animation=False)
         elif self.bottom_bar:
             self.bottom_bar.show()
 
@@ -79,6 +78,7 @@ class WallpaperCarouselApp(MDApp):
 
         self.file_operation = ImageOperation(load_saved=self.sm.gallery_screen.initialize_tabs)
         self.bind_plyer_fix()
+        self.file_operation.setup_share_from_others_to_app_listener()
 
         return self.root_layout
 

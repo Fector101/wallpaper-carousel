@@ -51,6 +51,7 @@ class ConfigManager:
                 return json.load(f)
         except Exception as error_reading_config_file:
             print(f"error reading config file: {error_reading_config_file}")
+            traceback.print_exc()
             try:
                 cls._write(cls.DEFAULT_CONFIG)
                 return cls.DEFAULT_CONFIG

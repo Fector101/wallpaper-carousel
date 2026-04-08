@@ -182,12 +182,12 @@ class BottomNavigationBar(MDNavigationDrawer):
         self.btn_settings.md_bg_color = light_theme_bg if theme == "light" else dark_theme_bg
         self.button_box.md_bg_color = self.btn_camera.md_bg_color
 
-    def hide(self):
-        self.set_state('close')
+    def hide(self,animation=True):
+        self.set_state('close', animation=animation)
         self.button_box.pos_hint = {"center_x": 0.5, "y": -1}
 
-    def show(self):
-        self.set_state('open')
+    def show(self,animation=True):
+        self.set_state('open', animation=animation)
         self.button_box.pos_hint = {"center_x": 0.5, "center_y": 0.5}
 
     def _camera_pressed(self, *args):
