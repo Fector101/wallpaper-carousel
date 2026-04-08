@@ -32,22 +32,23 @@ class ImageOperation:
 
     def show_spinner(self):
         def ui(_):
-            self.showing_loading_screen = True
             self.spinner_layout = LoadingLayout()
+            self.showing_loading_screen = True
         Clock.schedule_once(ui)
 
     def hide_spinner(self):
         """
         Don't Call self.__copy_add removes spinner, This method is for a specific edge case
         Fix for Half Screen File Chooser filechooser.open_file not calling on_selection"""
-        print(f"self.spinner_layout {self.spinner_layout},{self.showing_loading_screen}")
+        if self.showing_loading_screen:
+            Clock.schedule_once(self.spinner_layout.remove)
         self.showing_loading_screen = False
-        Clock.schedule_once(self.spinner_layout.remove)
 
     def __copy_add(self, files):
         # print('entered',files)
 
         if not files:
+            Clock.schedule_once(lambda dt: self.load_saved(has_files=False))# for hiding bottom nav
             self.hide_spinner()
             return
         new_images = []
@@ -142,53 +143,42 @@ class ImageOperation:
         if intent is None:
             app_logger.warning(f"{tag}- Intent is None")
             return None
-        showing_spinner = False
         try:
             action = intent.getAction()
             type_ = intent.getType()
 
-            print(f"{tag} -start",len(os.listdir(self.wallpapers_dir)))
-            if action == Intent.ACTION_SEND and type_ is not None and type_.startswith("image/"):
-                showing_spinner = True
-                # self.show_spinner()
+            # print(f"{tag} -start {len(os.listdir(self.wallpapers_dir))}, action:{action},type_{type_}")
+            if action == Intent.ACTION_SEND:
                 uri = intent.getParcelableExtra(Intent.EXTRA_STREAM)
                 if uri:
                     uri = cast("android.net.Uri", uri)
                 else:
                     uri = intent.getData()
 
-                uri = cast("android.net.Uri", uri)
-                file_path = self.unique(get_file_name_from_uri(uri))
-                my_config.add_wallpaper(str(file_path))
-                copy_image_to_internal(destination_name=file_path, uri=uri)
-                print(f"done shared single{file_path}")
+                if uri and is_image_uri(uri):
+                    self.show_spinner()
+                    def start_thread(_):
+                        threading.Thread(target=self._process_single_image,args=(uri,),daemon=True).start()
+                    Clock.schedule_once(start_thread, 0)
 
-            elif action == Intent.ACTION_SEND_MULTIPLE and type_ is not None and type_.startswith("image/"):
-                showing_spinner = True
-                # self.show_spinner()
+
+            elif action == Intent.ACTION_SEND_MULTIPLE:
                 uris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)
-                new_images=[]
-                if uris and len(uris) > 0:
-                    for each_uri in uris:
-                        file_path = self.unique(get_file_name_from_uri(each_uri))
-                        new_images.append(str(file_path))
-                        copy_image_to_internal(destination_name=file_path, uri=each_uri)
-                        print(f"done shared multiple{file_path}")
-                for img in new_images:
-                    my_config.add_wallpaper(img)
-                print("shared multiple")
+                image_uris = [u for u in uris if is_image_uri(u)]
+                if image_uris:
+                    self.show_spinner()
+                    def start_thread(_):
+                        threading.Thread(target=self._process_multiple_images,args=(image_uris,),daemon=True).start()
+                    Clock.schedule_once(start_thread, 0)
 
             else:
                 app_logger.warning(f"Didn't recognize intent action: {action}, type:{type_}")
 
-            print(f"{tag} -end",len(os.listdir(self.wallpapers_dir)))
+            # print(f"{tag} -end {len(os.listdir(self.wallpapers_dir))}")
 
         except Exception as error_handle_image_sharing_from_others_app:
             print(f"error_{tag}",error_handle_image_sharing_from_others_app)
 
-        finally:
-            if showing_spinner:
-                self.ui_things(None)
 
     def setup_share_from_others_to_app_listener(self):
         if not on_android_platform():
@@ -204,6 +194,43 @@ class ImageOperation:
         except Exception as error_setup_share_from_others_to_app_listener:
             print("error_setup_share_from_others_to_app_listener",error_setup_share_from_others_to_app_listener)
             traceback.print_exc()
+
+    def _process_multiple_images(self, image_uris):
+        try:
+            new_images = []
+            if image_uris and len(image_uris) > 0:
+                for each_uri in image_uris:
+                    file_path = self.unique(get_file_name_from_uri(each_uri))
+                    new_images.append(str(file_path))
+                    copy_image_to_internal(destination_name=file_path, uri=each_uri)
+                    print(f"done shared multiple{file_path}")
+
+            for img in new_images:
+                my_config.add_wallpaper(img)
+
+            print("shared multiple")
+
+        except Exception as e:
+            print("error_processing_images", e)
+
+        finally:
+            Clock.schedule_once(self.ui_things)
+
+    def _process_single_image(self, uri):
+        try:
+
+            file_path = self.unique(get_file_name_from_uri(uri))
+            my_config.add_wallpaper(str(file_path))
+
+            copy_image_to_internal(destination_name=file_path, uri=uri)
+
+            print(f"done shared single{file_path}")
+
+        except Exception as e:
+            print("error_processing_single", e)
+
+        finally:
+            Clock.schedule_once(self.ui_things)
 
 
 def create_thumbnail(src, destination_dir=None, size=(320, 320), quality=60):
@@ -572,3 +599,10 @@ def get_file_name_from_uri(uri):
         traceback.print_exc()
         # fallback if not found
         return f"{int(time.time())}.png"
+
+
+def is_image_uri(uri):
+    PythonActivity = autoclass('org.kivy.android.PythonActivity')
+    resolver = PythonActivity.mActivity.getContentResolver()
+    mime = resolver.getType(uri)
+    return mime and mime.startswith("image/")
