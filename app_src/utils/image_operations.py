@@ -48,7 +48,7 @@ class ImageOperation:
         # print('entered',files)
 
         if not files:
-            Clock.schedule_once(lambda dt: self.load_saved(has_files=False))# for hiding bottom nav
+            Clock.schedule_once(lambda dt: self.load_saved(has_files=False))# for showing bottom nav
             self.hide_spinner()
             return
         new_images = []

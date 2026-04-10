@@ -17,6 +17,9 @@ from kivy.core.text import LabelBase
 
 import os
 from datetime import datetime
+from ui.widgets.layouts import MyMDScreen, GenericStatusBarSpacer, Column
+from kivymd.uix.boxlayout import MDBoxLayout
+
 
 # Quality presets: (label, camera_resolution, jpeg_quality, active_color)
 QUALITY_PRESETS = {
@@ -75,7 +78,6 @@ class RotatedCamera(Camera):
             self._apply_transform()
 
 
-
 class RoundedButton(Button):
     """Button with rounded corners and background color."""
     def __init__(self, **kwargs):
@@ -91,12 +93,12 @@ class RoundedButton(Button):
             Color(*self.background_color)
             RoundedRectangle(pos=self.pos, size=self.size, radius=[10])
 
-from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.app import MDApp
 
-class CameraLayout(BoxLayout):
+class CameraScreen(MyMDScreen):
     def __init__(self, **kwargs):
-        super().__init__(orientation='vertical', **kwargs)
+        super().__init__(**kwargs)
+
+        self.name="camera"
         self._current_index = 1        # 1 = front on Android
         self._quality = 'Medium'
         try:
@@ -104,18 +106,21 @@ class CameraLayout(BoxLayout):
         except Exception as e:
             print(e)
             traceback.print_exc()
-        Clock.schedule_once(self._start_camera, 1.0)
-
-
-    # ------------------------------------------------------------------
-    # UI Construction
-    # ------------------------------------------------------------------
+        # Clock.schedule_once(self.start_camera, 1.0)
 
     def _build_ui(self):
+        self.root=Column()
         # Main background color
+
         self.canvas.before.add(Color(*BG_COLOR))
         self.canvas.before.add(RoundedRectangle(size=self.size, pos=self.pos))
         self.bind(size=self._update_bg, pos=self._update_bg)
+
+        self.generic_status_bar_spacer = GenericStatusBarSpacer(
+            status_bar_height=self.status_bar_height,
+            md_bg_color=[.1, .1, .1, 1])
+        self.root.add_widget(self.generic_status_bar_spacer)
+
 
         # Status label at top
         self.status_label = Label(
@@ -125,7 +130,7 @@ class CameraLayout(BoxLayout):
             color=(0.9, 0.9, 0.9, 1),
             bold=True,
         )
-        self.add_widget(self.status_label)
+        self.root.add_widget(self.status_label)
 
         # Camera preview container (with rounded corners border)
         self.camera_container = MDBoxLayout(
@@ -150,7 +155,7 @@ class CameraLayout(BoxLayout):
             keep_ratio=False
         )
         self.camera_container.add_widget(self.camera)
-        self.add_widget(self.camera_container)
+        self.root.add_widget(self.camera_container)
 
         # Quality selection row (styled)
         quality_row = BoxLayout(
@@ -181,7 +186,7 @@ class CameraLayout(BoxLayout):
             btn.bind(on_release=self._on_quality_btn)
             quality_row.add_widget(btn)
             self._quality_btns[name] = btn
-        self.add_widget(quality_row)
+        self.root.add_widget(quality_row)
 
         # Action buttons row
         btn_row = BoxLayout(
@@ -204,9 +209,18 @@ class CameraLayout(BoxLayout):
         )
         self.flip_btn.bind(on_release=self.flip_camera)
 
+        self.back_tn = RoundedButton(
+            text='Back',
+            font_size='14sp',
+            background_color=FLIP_COLOR,
+            on_release=self.go_to_gallery_screen,
+        )
+
+
         btn_row.add_widget(self.capture_btn)
         btn_row.add_widget(self.flip_btn)
-        self.add_widget(btn_row)
+        btn_row.add_widget(self.back_tn)
+        self.root.add_widget(btn_row)
 
         # Path / info label
         self.path_label = Label(
@@ -218,10 +232,11 @@ class CameraLayout(BoxLayout):
             valign='middle',
         )
         self.path_label.bind(size=self.path_label.setter('text_size'))
-        self.add_widget(self.path_label)
+        self.root.add_widget(self.path_label)
+        self.add_widget(self.root)
 
     def _update_bg(self, *args):
-        self.canvas.before.clear()
+        self.root.canvas.before.clear()
         with self.canvas.before:
             Color(*BG_COLOR)
             RoundedRectangle(size=self.size, pos=self.pos, radius=[0])
@@ -246,7 +261,7 @@ class CameraLayout(BoxLayout):
         self._refresh_quality_btn_colors()
         self.status_label.text = f'Quality set to {name} - restarting...'
         self._set_buttons_enabled(False)
-        self._release_camera()
+        self.release_camera()
         Clock.schedule_once(self._reopen_camera, 0.6)
 
     def _refresh_quality_btn_colors(self):
@@ -263,7 +278,7 @@ class CameraLayout(BoxLayout):
     # Camera lifecycle
     # ------------------------------------------------------------------
 
-    def _start_camera(self, dt=None):
+    def start_camera(self, dt=None):
         try:
             res = QUALITY_PRESETS[self._quality][0]
             self.camera.resolution = res
@@ -275,12 +290,16 @@ class CameraLayout(BoxLayout):
         except Exception as e:
             self.status_label.text = f'Error: {e}'
 
-    def _release_camera(self):
+    def release_camera(self):
         try:
             self.camera.play = False
             if self.camera._camera is not None:
-                self.camera._camera.stop()
+                try:
+                    self.camera._camera.stop()
+                except Exception as e:
+                    print("release camera error:", e)
                 if hasattr(self.camera._camera, '_android_camera'):
+                    print("on android release_camera")
                     ac = self.camera._camera._android_camera
                     if ac is not None:
                         try:
@@ -295,6 +314,7 @@ class CameraLayout(BoxLayout):
                 self.camera._camera = None
         except Exception as e:
             self.status_label.text = f'Release warning: {e}'
+            print(f'Release warning: {e}')
 
     def _reopen_camera(self, dt):
         try:
@@ -332,7 +352,7 @@ class CameraLayout(BoxLayout):
     def flip_camera(self, *args):
         self.status_label.text = 'Switching camera...'
         self._set_buttons_enabled(False)
-        self._release_camera()
+        self.release_camera()
         self._current_index = 0 if self._current_index == 1 else 1
         Clock.schedule_once(self._reopen_camera, 0.6)
 
@@ -450,16 +470,24 @@ class CameraLayout(BoxLayout):
         except Exception:
             pass
 
-
-class FrontCameraApp(MDApp):
-    def build(self):
-        self.title = ' Front Camera'
-        return CameraLayout()
-
-    def on_stop(self):
-        if hasattr(self.root, '_release_camera'):
-            self.root._release_camera()
-
+    def go_to_gallery_screen(self,*_):
+        self.release_camera()
+        setattr(self.manager, "current", "thumbs")
 
 if __name__ == '__main__':
+    from kivymd.app import MDApp
+
+
+    class FrontCameraApp(MDApp):
+        def build(self):
+            self.title = ' Front Camera'
+            self.c=CameraScreen()
+            Clock.schedule_once(lambda x: self.on_stop(),5)
+            return self.c
+
+        def on_stop(self):
+            if hasattr(self.c, 'release_camera'):
+                self.c.release_camera()
+
+
     FrontCameraApp().run()

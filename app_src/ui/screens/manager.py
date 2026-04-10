@@ -18,6 +18,7 @@ from ui.screens.full_screen import FullscreenScreen
 from ui.screens.welcome_screen import WelcomeScreen
 from ui.screens.logs_screen import LogsScreen
 from ui.screens.download_apk_screen import DownloadApkScreen
+from ui.screens.camera_screen import CameraScreen
 
 
 
@@ -29,12 +30,14 @@ class ScreenManager(MDScreenManager):
         self.welcome_screen = WelcomeScreen()
         self.gallery_screen = GalleryScreen()
         self.full_screen = FullscreenScreen()
+        self.camera_screen = CameraScreen()
         self.settings_screen = SettingsScreen()
         self.log_screen = LogsScreen()
         self.download_apk_screen = DownloadApkScreen()
 
         self.add_widget(self.gallery_screen)
         self.add_widget(self.full_screen)
+        self.add_widget(self.camera_screen)
         self.add_widget(self.settings_screen)
         self.add_widget(self.welcome_screen)
         self.add_widget(self.log_screen)
@@ -67,7 +70,7 @@ class ScreenManager(MDScreenManager):
 
     def on_current(self,*args):
         screen_name = args[1]
-        is_fullscreen = screen_name in ["welcome","fullscreen","logs","update_screen"]
+        is_fullscreen = screen_name in ["welcome","fullscreen","logs","update_screen","camera"]
         if is_fullscreen and self.app.bottom_bar:
             self.app.bottom_bar.hide(animation=False)
         elif self.app.bottom_bar:
