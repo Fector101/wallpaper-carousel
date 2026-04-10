@@ -1,63 +1,102 @@
-Wally: A working Android wallpaper carousel with no ads.
+# Wally
+
+**A simple, ad-free Android wallpaper carousel.**
 
 [![Build](https://github.com/Fector101/wallpaper-carousel/actions/workflows/android-release.yml/badge.svg)](https://github.com/Fector101/wallpaper-carousel/actions/workflows/android-release.yml)
 
-[APK Download](https://github.com/Fector101/wallpaper-carousel/releases/download/v1.0.6/waller.apk)
-
-- The wallpaper automatically switches to a new user-selected image every 2 minutes (or at a custom interval set by the user). Users can also choose changes to happen on screen wakes.
-
-
-
-## More Features
-
-### Home screen widget
-- To view Lock-screen image from home screen
-- Can Tap to Enter App
-
-### Notification
-- Large Icon to Preview Next image
-- Skip Button to change upcoming Image
-- Stop Button to End carousel 
-
-### Permissions
-- Access to Only Images.
-- Notifications for more user controls and preview
-
-### Help
-- Saving added images in app path only
-- Added export button to get images if uninstalling app
-- A Button to Share Images to other Apps
-- App is set to Auto detect android Theme (Dark Theme Recommended 😅)
-
-## Few Screen Samples
-
-All screenshot samples are in low Res (for fast loading)
-| **View Screen Design** | **Home Screen Widget** |
-|-------------------------------------|--------------------------------------------------------|
-|![app-view-img-screen_1_360x800](.github/docs-imgs/full-screen-design.jpg) | ![home-screen_1_360x800](.github/docs-imgs/home-screen-widget.jpg) |
-
+**[Download APK](https://github.com/Fector101/wallpaper-carousel/releases/download/v1.0.6/waller.apk)**
 
 ---
 
+## Overview
 
-| **Gallery Screen Design** | **Preview Screen Design** |
-|-------------------------------------|--------------------------------------------------------|
-|![gallery-screen](.github/docs-imgs/galleryscreen.jpg) | ![preview-screen](.github/docs-imgs/fullscreen.jpg) |
+Wally automatically rotates your wallpapers using images you choose.
 
+* Change wallpapers every **2 minutes** (or any custom interval)
+* Option to update wallpapers on **screen wake**
+* Fully **offline** and **ad-free**
 
 ---
 
+## Features
 
+### Wallpaper Carousel
 
-| **Request Screen Design** | **Request Screen Dark Mode** |
-|-------------------------------------|--------------------------------------------------------|
-|![gallery-screen](.github/docs-imgs/request-screen.jpg) | ![gallery-screen dark](.github/docs-imgs/request-screen-dark.jpg) | 
+* Automatically cycles through selected images
+* Custom time intervals
+* Optional change on screen wake
 
+### Home Screen Widget
 
-**Share Image to other App**
+* View current lock-screen wallpaper from your home screen
+* Tap the widget to quickly open the app
 
+### Notification Controls
 
-![gallery-screen](.github/docs-imgs/share-modal.jpg)
+* Preview the next wallpaper (large icon)
+* Skip to the next image
+* Stop the carousel anytime
 
+### Image Import & Sharing
+
+* Share images directly to Wally from other apps
+* Easily share images from Wally to other apps
+
+---
+
+## Permissions
+
+* Images only — no unnecessary access
+* Notifications — for controls and previews
+
+---
+
+## Help & Notes
+
+* Images are stored inside the app’s internal directory
+* Use the Export feature before uninstalling to keep your images
+* Automatically adapts to system theme (dark mode recommended)
+
+---
+
+## Screenshots
+
+*All screenshots are low resolution for faster loading*
+
+### Main Screens
+
+| View Screen                                                      | Home Screen Widget                                       |
+| ---------------------------------------------------------------- | -------------------------------------------------------- |
+| ![app-view-img-screen](.github/docs-imgs/full-screen-design.jpg) | ![home-screen](.github/docs-imgs/home-screen-widget.jpg) |
+
+---
+
+### Gallery & Preview
+
+| Gallery Screen                                         | Preview Screen                                      |
+| ------------------------------------------------------ | --------------------------------------------------- |
+| ![gallery-screen](.github/docs-imgs/galleryscreen.jpg) | ![preview-screen](.github/docs-imgs/fullscreen.jpg) |
+
+---
+
+### Request Screens
+
+| Light Mode                                             | Dark Mode                                                  |
+| ------------------------------------------------------ | ---------------------------------------------------------- |
+| ![request-light](.github/docs-imgs/request-screen.jpg) | ![request-dark](.github/docs-imgs/request-screen-dark.jpg) |
+
+---
+
+### Share Feature
+
+![share-modal](.github/docs-imgs/share-modal.jpg)
+
+---
+
+## Why Wally?
+
+* No ads
+* No tracking
+* Clean, focused wallpaper experience
 
 ---
