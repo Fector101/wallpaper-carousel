@@ -335,7 +335,12 @@ class GalleryScreen(MyMDScreen):
         # self.add_widget(self.btm_sheet)
         # self.load_saved()
 
-    def initialize_tabs(self, no_clock=False):
+    def initialize_tabs(self, no_clock=False, has_files=True):
+        if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
+            self.app.bottom_bar.show(animation=False)
+        if not has_files:
+            return
+
         def run_widgets_creation( *args):
             self.generate_tab_widgets(tab_name=GalleryTabs.BOTH.value, wallpapers=self._filter_existing_paths(my_config.get_wallpapers()))
             self.generate_tab_widgets(tab_name=GalleryTabs.DAY.value, wallpapers=self._filter_existing_paths(my_config.get_day_wallpapers()))
@@ -638,6 +643,13 @@ class GalleryScreen(MyMDScreen):
             self.ids.head_section.size_hint_x=1
             self.ids.head_section.padding= [dp(0), dp(self.status_bar_height), dp(10), dp(0)]
 
+    def change_amount_of_columns(self,chosen_cols):
+        for each_tab,data in self.tab_instances.items():
+            tab_container = data["widget"]
+
+            for each in tab_container.walk():
+                if isinstance(each, DateGroupLayout):
+                    each.change_preview_img_size(None, chosen_cols)
 
 
 if __name__ == "__main__":

@@ -73,7 +73,7 @@ class WallpaperCarouselApp(MDApp):
         self.bottom_bar.bind_change()  # needs theme from monitor_dark_and_light_device_change
 
         # get_number_of_cols()
-        self.btm_sheet = MyBtmSheet()
+        self.btm_sheet = MyBtmSheet(change_number_or_cols=self.sm.gallery_screen.change_amount_of_columns)
         self.root_layout.add_widget(self.btm_sheet)
 
         self.file_operation = ImageOperation(load_saved=self.sm.gallery_screen.initialize_tabs)
