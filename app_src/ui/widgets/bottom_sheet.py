@@ -85,6 +85,7 @@ class TypeMapElementOptions(MDBoxLayout):
 class MyBtmSheet(MDBottomSheet):
     sheet_type = "standard"
     items = []
+    change_number_or_cols = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -235,6 +236,7 @@ class MyBtmSheet(MDBottomSheet):
                 self.hide()
             else:
                 self.show()
+
     def on_touch_move(self, touch):
         if self.enable_swiping:
             if self.status == "opened" and abs(touch.y - touch.oy) > self.swipe_distance:
@@ -264,7 +266,6 @@ class MyBtmSheet(MDBottomSheet):
                     clickable_item_ids.icon_widget.icon = "check"
 
     def __change_number_of_columns_in_store(self, caller,text):
-
         chosen_cols = caller.cols_int
         my_config.set_cols(chosen_cols)
         clickable_children = self.walk()#caller.parent.children
@@ -275,20 +276,17 @@ class MyBtmSheet(MDBottomSheet):
             if each.cols_int == chosen_cols:
                 each.ids["icon_widget"].icon = "check"
 
-        app = MDApp.get_running_app()
-        gallery_screen = app.sm.current_screen
-        if not isinstance(gallery_screen, GalleryScreen):
-            app_logger.error("Add way to use other screens")
-            return
-
-        # gallery_screen = None
-        # for e in app.sm.screens:
-        #     gallery_screen = e
-        #     if isinstance(e,GalleryScreen):
-        #         break
-        for each in gallery_screen.walk():
-            if isinstance(each,DateGroupLayout):
-                each.change_preview_img_size(None,chosen_cols)
+        self.change_number_or_cols(chosen_cols=chosen_cols)
+        #
+        # app = MDApp.get_running_app()
+        # gallery_screen = app.sm.current_screen
+        # if not isinstance(gallery_screen, GalleryScreen):
+        #     app_logger.error("Add way to use other screens")
+        #     return
+        #
+        # for each in gallery_screen.walk():
+        #     if isinstance(each,DateGroupLayout):
+        #         each.change_preview_img_size(None,chosen_cols)
         self.hide()
 
     def hide(self, animation=True):
