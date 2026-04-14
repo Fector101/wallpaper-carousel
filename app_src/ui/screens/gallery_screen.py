@@ -690,6 +690,13 @@ class GalleryScreen(MyMDScreen):
         self.manager.current_screen.start_camera()
         # self.app.sm.current_screen._start_camera()
 
+    def change_amount_of_columns(self,chosen_cols):
+        for each_tab,data in self.tab_instances.items():
+            tab_container = data["widget"]
+
+            for each in tab_container.walk():
+                if isinstance(each, DateGroupLayout):
+                    each.change_preview_img_size(None, chosen_cols)
 class FabButtonLayout(MDFloatLayout):
     btns=ListProperty()
     def __init__(self, **kwargs):

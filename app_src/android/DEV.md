@@ -206,3 +206,12 @@ jobs:
           files: bin/waller.apk
 
 ```
+### To see Only App Logs
+```shell
+adb logcat | grep -E "python"
+```
+
+
+## P4a.hook
+Peek at AndroidManifest.xml File before editing with [hook.py](p4a/hook.py)
+[AndroidManifest.xml Location](../../.buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/waller/src/main/AndroidManifest.xml)
