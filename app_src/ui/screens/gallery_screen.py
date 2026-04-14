@@ -335,6 +335,7 @@ class GalleryScreen(MyMDScreen):
         # self.btm_sheet = MyBtmSheet()
         # self.add_widget(self.btm_sheet)
         # self.load_saved()
+
     def initialize_tabs(self, no_clock=False, has_files=True):
         if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
             self.app.bottom_bar.show(animation=False)
