@@ -3,6 +3,7 @@ Front-Facing Camera App - with quality selector + live preview rotation (canvas 
 Enhanced UI design with modern look & feel.
 """
 
+import traceback
 from datetime import datetime
 from functools import partial
 
@@ -16,20 +17,7 @@ from utils.logger import app_logger
 if on_android_platform():
     from android.permissions import request_permissions, Permission # type: ignore
 
-# Quality presets: (label, camera_resolution, jpeg_quality, active_color)
-QUALITY_PRESETS = {
-    'Low':    ((320, 240),  50, (0.2, 0.6, 0.9, 1)),    # blue
-    'Medium': ((640, 480),  80, (0.3, 0.8, 0.4, 1)),    # green
-    'High':   ((1280, 720), 95, (0.9, 0.5, 0.2, 1)),    # orange
-}
-INACTIVE_COLOR = (0.3, 0.3, 0.3, 1)
-BG_COLOR = (0.12, 0.12, 0.12, 1)       # dark background
-BUTTON_COLOR = (0.2, 0.2, 0.2, 1)
-CAPTURE_COLOR = (0.9, 0.3, 0.2, 1)      # reddish capture
-FLIP_COLOR = (0.3, 0.5, 0.8, 1)         # blue flip
-
-# Register a default font (optional, just for consistency)
-#LabelBase.register(name='Roboto', fn_regular='Roboto-Regular.ttf')  # falls back to DroidSans
+from utils.model import get_app
 
 
 C_DEBUG = 1
@@ -42,9 +30,12 @@ C_SCAN_QR = 69
 C_SCAN_CAMERA = C_SCAN_QR+1
 
 
+
 class CameraScreen(MyMDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.app = get_app()
+
         self._cb_end_scan = None
         self.name="camera"
         self._PythonActivity = autoclass("org.kivy.android.PythonActivity")
@@ -53,6 +44,7 @@ class CameraScreen(MyMDScreen):
 
         self._Activity = autoclass("android.app.Activity")
         self.build()
+
     def build(self):
         print('called binding CameraScreen.build')
         if on_android_platform():
@@ -129,6 +121,15 @@ class CameraScreen(MyMDScreen):
         print(f"callable_test from App._ret_scan_load_config {result}")
         # callable_test from App._ret_scan_load_config (1, 'QrWork::Timeout / Users ends')
         # callable_test from App._ret_scan_load_config (0, '/data/user/0/org.wally.waller/cache/captures/IMG_20260414_225638.jpg')
+        print(f"got: {result}, [0]: {result[0]}")
+        if not result[0]:
+            complete_file_path = result[1]
+            print(f"using file: {complete_file_path}")
+            try:
+                self.app.file_operation.copy_add([complete_file_path])
+            except Exception as error_adding_image:
+                print(f"error_adding_image:{error_adding_image}")
+                traceback.print_exc()
         self.manager.current = "thumbs"
 
     def capture_photo(self, *args):
