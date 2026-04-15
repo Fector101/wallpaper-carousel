@@ -42,7 +42,7 @@ jobs:
           python3 -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
-          pip install Cython==0.29.34 buildozer android-widgets materialyoucolor==2.0.10 git+https://github.com/kivy/buildozer legacy-cgi setuptools
+          pip install Cython==0.29.33 buildozer android-widgets
 
       # Prepare Buildozer SDK folder
       - name: Prepare Android SDK folder
@@ -81,12 +81,13 @@ jobs:
         id: build
         run: |
           source venv/bin/activate
+          pip install android-widgets git+https://github.com/kivy/buildozer legacy-cgi setuptools cython==0.29.34
           buildozer android debug
           APK=$(find ./bin -name "*-debug.apk" | head -n 1)
           echo "apk=$APK" >> $GITHUB_OUTPUT
           echo "Built APK: $APK"
           
-          
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
