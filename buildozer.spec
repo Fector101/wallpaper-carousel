@@ -36,7 +36,9 @@ android.permissions = RECEIVE_BOOT_COMPLETED, INTERNET, VIBRATE, USE_EXACT_ALARM
 
 android.add_src = %(source.dir)s/android/src
 android.add_resources = %(source.dir)s/android/res
-android.gradle_dependencies = androidx.core:core-ktx:1.12.0, com.google.android.material:material:1.12.0,androidx.camera:camera-core:1.3.4,androidx.camera:camera-camera2:1.3.4,androidx.camera:camera-lifecycle:1.3.4,androidx.camera:camera-view:1.3.4,androidx.core:core-ktx:1.12.0,androidx.appcompat:appcompat:1.6.1,androidx.activity:activity:1.8.2,com.google.guava:guava:31.1-android
+android.gradle_dependencies = androidx.core:core-ktx:1.12.0, com.google.android.material:material:1.12.0,androidx.camera:camera-core:1.3.4,androidx.camera:camera-camera2:1.3.4,androidx.camera:camera-lifecycle:1.3.4,androidx.camera:camera-view:1.3.4,androidx.core:core-ktx:1.12.0,androidx.appcompat:appcompat:1.6.1,androidx.activity:activity:1.8.2
+
+# android.gradle_dependencies = androidx.core:core-ktx:1.12.0, com.google.android.material:material:1.12.0,androidx.camera:camera-core:1.3.4,androidx.camera:camera-camera2:1.3.4,androidx.camera:camera-lifecycle:1.3.4,androidx.camera:camera-view:1.3.4,androidx.core:core-ktx:1.12.0,androidx.appcompat:appcompat:1.6.1,androidx.activity:activity:1.8.2,com.google.guava:guava:31.1-android
 #android.gradle_dependencies = androidx.core:core-ktx:1.12.0, com.google.android.material:material:1.12.0
 android.enable_androidx = True
 p4a.hook = %(source.dir)s/android/p4a/hook.py
