@@ -42,7 +42,7 @@ jobs:
           python3 -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
-          pip install Cython==0.29.34 buildozer android-widgets materialyoucolor==2.0.10
+          pip install Cython==0.29.34 buildozer android-widgets materialyoucolor==2.0.10 git+https://github.com/kivy/buildozer legacy-cgi setuptools
 
       # Prepare Buildozer SDK folder
       - name: Prepare Android SDK folder
@@ -81,7 +81,6 @@ jobs:
         id: build
         run: |
           source venv/bin/activate
-          pip install git+https://github.com/kivy/buildozer legacy-cgi setuptools 
           buildozer android debug
           APK=$(find ./bin -name "*-debug.apk" | head -n 1)
           echo "apk=$APK" >> $GITHUB_OUTPUT
