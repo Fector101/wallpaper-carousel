@@ -50,7 +50,8 @@ android.api = 35
 p4a.branch = develop
 
 
-android.archs = arm64-v8a, armeabi-v7a
+android.archs = arm64-v8a
+# android.archs = arm64-v8a, armeabi-v7a
 android.allow_backup = True
 
 
