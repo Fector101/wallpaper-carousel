@@ -1,4 +1,4 @@
-# Wally
+# Waller
 
 **A simple, ad-free Android wallpaper carousel.**
 
@@ -93,7 +93,7 @@ Wally automatically rotates your wallpapers using images you choose.
 
 ---
 
-## Why Wally?
+## Why Waller?
 
 * No ads
 * No tracking
