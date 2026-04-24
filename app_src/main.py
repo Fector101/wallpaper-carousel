@@ -137,7 +137,7 @@ class WallpaperCarouselApp(MDApp):
                     # some_int is usually -1 when a file is chosen and 0 when no file is chosen
                     self.file_operation.hide_spinner()
                 try:
-                    print("intent must be before chooser callback",activity_id,some_int,intent)
+                    print(f"intent must be before chooser callback activity_id: {activity_id}, some_int: {some_int}, intent:{intent}")
                     if intent:
                         # Fix for permission Error when choosing from Internal Storage section Android FileExplorer
                         self.file_operation.intent = intent

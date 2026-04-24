@@ -2,6 +2,8 @@ import os, time
 from datetime import datetime
 from pathlib import Path
 
+from kivymd.uix.floatlayout import MDFloatLayout
+
 from android_notify.config import on_android_platform
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -15,7 +17,7 @@ from kivy.uix.tabbedpanel import TabbedPanel
 
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.button import MDIconButton
+from kivymd.uix.button import MDIconButton, MDFabButton
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.label import MDLabel
 from kivymd.uix.relativelayout import MDRelativeLayout
@@ -298,9 +300,8 @@ class DateGroupLayout(Column):
 class GalleryScreen(MyMDScreen):
     current_tab = StringProperty(GalleryTabs.BOTH.value)
     wallpapers = ListProperty([])
-
+    showing_action_btns=BooleanProperty(False)
     def __init__(self, **kwargs):
-
         super().__init__(**kwargs)
         self.app = get_app()
         # self.app.device_theme = "light"
@@ -354,6 +355,7 @@ class GalleryScreen(MyMDScreen):
             Clock.schedule_once(run_widgets_creation)
 
     def open_file_chooser(self, *_):
+        self.close_choice_popup()
         # file_operation = FileOperation(self.update_thumbnails_method)
         # if platform == 'android':
         #     from android import activity # type: ignore
@@ -373,6 +375,7 @@ class GalleryScreen(MyMDScreen):
         #
         #     activity.bind(on_activity_result=test) # handling image with no permission
         self.app.file_operation.show_spinner()
+        self.app.bottom_bar.hide(animation=False)
 
 
         def show_chooser(dt=None):
@@ -643,6 +646,51 @@ class GalleryScreen(MyMDScreen):
             self.ids.head_section.size_hint_x=1
             self.ids.head_section.padding= [dp(0), dp(self.status_bar_height), dp(10), dp(0)]
 
+    def toggle_choice_popup(self,button_instance,fab_button_layout,add_with_phone_gallery_btn,add_with_phone_camera_btn):
+        fab_button_layout.btns = [button_instance,add_with_phone_gallery_btn,add_with_phone_camera_btn]
+
+        if self.showing_action_btns:
+            self.close_choice_popup()
+        else:
+            self.open_choice_popup()
+
+    def open_choice_popup(self):
+        fab_button_layout = self.ids.fab_btn_widget
+        button_instance = self.ids.fab_button
+        self.ids.fab_btn_widget.md_bg_color = [.2, .2, .2, .4]
+
+        y=button_instance.pos[1]
+        height=button_instance.height
+        self.ids.actions_container_widget.y = height+y + 10
+        self.ids.actions_container_widget.opacity = 1
+        button_instance.icon = "close"
+        fab_button_layout.showing = True
+        self.showing_action_btns= True
+        if hasattr(self.app, "bottom_bar"):
+            self.app.bottom_bar.hide(animation=False)
+        else:
+            app_logger.warning("No bottom nav bar to hide, You're on Hot Reload ")
+
+    def close_choice_popup(self):
+        fab_button_layout=self.ids.fab_btn_widget
+        button_instance=self.ids.fab_button
+        self.ids.fab_btn_widget.md_bg_color = [0, 0, 0, 0]
+        self.ids.actions_container_widget.y=-100
+        self.ids.actions_container_widget.opacity = 0
+        button_instance.icon = "plus"
+        fab_button_layout.showing = False
+        self.showing_action_btns= False
+        if hasattr(self.app, "bottom_bar"):
+            self.app.bottom_bar.show(animation=False)
+        else:
+            app_logger.warning("No bottom nav bar to show, You're on Hot Reload ")
+
+    def open_camera(self,*_):
+        Clock.schedule_once(lambda *_:setattr(self.manager, "current", "camera"))
+        self.manager.current="camera"
+        self.manager.current_screen.start_camera()
+        # self.app.sm.current_screen._start_camera()
+
     def change_amount_of_columns(self,chosen_cols):
         for each_tab,data in self.tab_instances.items():
             tab_container = data["widget"]
@@ -650,6 +698,54 @@ class GalleryScreen(MyMDScreen):
             for each in tab_container.walk():
                 if isinstance(each, DateGroupLayout):
                     each.change_preview_img_size(None, chosen_cols)
+class FabButtonLayout(MDFloatLayout):
+    btns=ListProperty()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.showing=False
+        Clock.schedule_once(lambda dt:self.adjust_children(),1)
+        Clock.schedule_once(lambda dt:self.adjust_children(),4)
+
+    def on_touch_up(self, touch):
+        widget_on_floating_screen = False
+        for each_btn in self.btns:
+            widget_on_floating_screen = each_btn.collide_point(*touch.pos)
+            if widget_on_floating_screen:
+                break
+
+        if self.showing and not widget_on_floating_screen:
+            return True
+        return super(FabButtonLayout, self).on_touch_up(touch)
+
+    def on_touch_down(self, touch):
+        widget_on_floating_screen = False
+        for each_btn in self.btns:
+            widget_on_floating_screen = each_btn.collide_point(*touch.pos)
+            if widget_on_floating_screen:
+                break
+        if self.showing and not widget_on_floating_screen:
+            return True
+
+        # if self.collide_point(*touch.pos):
+        #     print("Widget clicked!")
+        #     # Returning True consumes the touch and stops propagation
+        #     return True
+        return super(FabButtonLayout, self).on_touch_down(touch)
+
+    def adjust_children(self):
+        floating_button = None
+        other_btns_case = None
+        for each_widget in self.children:
+            if isinstance(each_widget, MDFabButton):
+                floating_button = each_widget
+            if isinstance(each_widget,Column):
+                other_btns_case = each_widget
+        if not other_btns_case or not floating_button:
+            app_logger.error(f"Didn't find any children for other_btns_case:{other_btns_case}, floating_button:{floating_button}")
+            return
+        y=floating_button.pos[1]
+        height=floating_button.height
+        other_btns_case.y = height+y + 20
 
 
 if __name__ == "__main__":

@@ -114,6 +114,11 @@ def after_apk_build(toolchain: ToolchainCL):
 </activity>
     """
     manifest_file_content = manifest_file_content.replace("</activity>", f"{image_share_from_other_apps_to_app_activity}")
+    manifest_file_content = insert_to_end_of_xml(f"""
+    <activity
+        android:name="{package}.CameraActivity"
+        android:exported="false"
+        android:screenOrientation="fullSensor" />""",manifest_file_content)
 
     android_manifest_file_path.write_text(manifest_file_content, encoding="utf-8")
     print("Successfully: Updated Manifest!\n",manifest_file_content)

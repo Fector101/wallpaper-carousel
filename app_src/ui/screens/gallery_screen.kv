@@ -3,6 +3,7 @@
 #:import BUTTON_BG_DARK utils.constants.BUTTON_BG_DARK
 #:import THEME_PRIMARY_COLOR utils.constants.THEME_PRIMARY_COLOR
 #:import GalleryTabs utils.model.GalleryTabs
+#:import Clock kivy.clock
 
 
 <TypeMapElement>
@@ -248,15 +249,90 @@
                     height:self.minimum_height
                     padding:[0, 0, 0, dp(120)]
 
+        FabButtonLayout:
+            id: fab_btn_widget
+            md_bg_color: [0,0,0,0]
+#            md_bg_color: [.8,.8,.8,.4]
 
-        MDFabButton:
-            icon:"plus"
-            on_release: root.open_file_chooser()
-            pos_hint: {"right": .9,"center_y":.15}
-            theme_font_size: "Custom"
-            font_size: sp(30)
-            theme_bg_color: "Custom"
-    #        md_bg_color: get_color_from_hex("#1A1B1B") if app.device_theme == "light" else "white"
-    #        text_color: [0.8,0.8, 0.8, 1] if app.device_theme == "light" else [.3,.3,.4,1]
-            md_bg_color: get_color_from_hex("#262C3A")
-            text_color: get_color_from_hex("#98F1DD")
+#            size_hint:[None,None]
+#            size: [root.height,root.width]
+#            adaptive_size: 1
+#            pos_hint: {"right": .9,"center_y":.15}
+            Column:
+                id: actions_container_widget
+#                md_bg_color: [0,.4,.3,1]
+                adaptive_size: 1
+                opacity:0
+#                pos:[0,0]
+                pos_hint: {"right": .93}
+#                pos_hint: {"right": .93,"center_y":.15}
+                spacing: dp(10)
+                MDButton:
+                    id: add_with_phone_camera_btn
+                    on_release: root.open_camera()
+#                    on_release: lambda *_: Clock.schedule_once(lambda *_:setattr(root.manager,"current","camera"))
+                    theme_bg_color: "Custom"
+                    md_bg_color: get_color_from_hex("#262C3A")
+                    radius: [15]
+#                    theme_width:"Custom"
+#                    theme_height:"Custom"
+#                    size:[135,50]
+
+                    MDButtonText:
+                        text: "Camera"
+                        theme_text_color: "Custom"
+                        text_color: get_color_from_hex("#98F1DD")
+#                        theme_font_size: "Custom"
+#                        padding: [10,0,0,0]
+#                        font_size: sp(18)
+#                        adaptive_size:1
+                        bold:1
+                    MDButtonIcon:
+                        icon:"camera-plus"
+                        text_color: get_color_from_hex("#98F1DD")
+#                        theme_font_size: "Custom"
+#                        font_size: sp(30)
+                MDButton:
+                    id: add_with_phone_gallery_btn
+                    on_release: root.open_file_chooser()
+                    theme_bg_color: "Custom"
+                    md_bg_color: get_color_from_hex("#262C3A")
+                    radius: [15]
+                    MDButtonText:
+                        text: "Photos"
+                        theme_text_color: "Custom"
+                        text_color: get_color_from_hex("#98F1DD")
+#                        theme_font_size: "Custom"
+#                        font_size: sp(18)
+#                        adaptive_size:1
+#                        padding: [10,0,0,0]
+                        bold:1
+                    MDButtonIcon:
+                        icon:"image-plus"
+                        text_color: get_color_from_hex("#98F1DD")
+#                        theme_font_size: "Custom"
+#                        font_size: sp(30)
+
+            MDFabButton:
+                id: fab_button
+                icon:"plus"
+                on_release: root.toggle_choice_popup(self,fab_btn_widget,add_with_phone_gallery_btn,add_with_phone_camera_btn)
+                theme_font_size: "Custom"
+                font_size: sp(30)
+                theme_bg_color: "Custom"
+                md_bg_color: get_color_from_hex("#262C3A")
+                text_color: get_color_from_hex("#98F1DD")
+#                pos_hint: {"right": .9,"center_y":.16}
+                pos_hint: {"right": .9,"center_y":.2}
+
+#MDFabButton:
+#            icon:"plus"
+#            on_release: root.open_file_chooser()
+#            pos_hint: {"right": .9,"center_y":.15}
+#            theme_font_size: "Custom"
+#            font_size: sp(30)
+#            theme_bg_color: "Custom"
+#    #        md_bg_color: get_color_from_hex("#1A1B1B") if app.device_theme == "light" else "white"
+#    #        text_color: [0.8,0.8, 0.8, 1] if app.device_theme == "light" else [.3,.3,.4,1]
+#            md_bg_color:
+#            text_color: get_color_from_hex("#98F1DD")

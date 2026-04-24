@@ -384,3 +384,6 @@ class LoadingLayout(MDRelativeLayout):
     def remove(self,dt=None):
         if self.parent:
             self.parent.remove_widget(self)  # Hides the spinner by removing it
+            app_logger.warning("Removing Loading layout from parent")
+        else:
+            app_logger.warning("Loading layout has no parent")
