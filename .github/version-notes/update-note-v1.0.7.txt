@@ -1,5 +1,5 @@
 [color=#4CAF50][b]New[/b][/color]
-• Ability to Share Images from other apps to waller
+• Ability to Share Images from other apps to waller.
 
 [color=#4CAF50][b]Fixes[/b][/color]
-• New number of columns not applying to other tabs
+• New number of columns not applying to other tabs if they aren't currently open.
