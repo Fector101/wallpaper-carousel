@@ -87,11 +87,14 @@ Wally automatically rotates your wallpapers using images you choose.
 
 ---
 
-### Share Feature
+### Image Share Features
 
-![share-modal](.github/docs-imgs/share-modal.jpg)
+| Share To other apps                                             | Share From other Apps                                               |
+| ------------------------------------------------------ | ---------------------------------------------------------- |
+| ![share-to-modal](.github/docs-imgs/share-modal.jpg) | ![share-from-modal](.github/docs-imgs/share-from-modal.jpg) |
 
 ---
+
 
 ## Why Waller?
 
