@@ -1,0 +1,7 @@
+# V1.0.7
+
+## New
+- Ability to Share Images from other apps to waller.
+
+## Fixes
+- New number of columns not applying to other tabs if they aren't currently open.
