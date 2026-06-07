@@ -6,7 +6,7 @@ from android_notify.config import on_android_platform
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.metrics import dp, sp
-from kivy.properties import StringProperty, NumericProperty, ListProperty, BooleanProperty, ObjectProperty
+from kivy.properties import StringProperty, NumericProperty, ListProperty, BooleanProperty, ObjectProperty, DictProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.button import Button
 from kivy.uix.image import AsyncImage
@@ -298,6 +298,7 @@ class DateGroupLayout(Column):
 class GalleryScreen(MyMDScreen):
     current_tab = StringProperty(GalleryTabs.BOTH.value)
     wallpapers = ListProperty([])
+    images_data = DictProperty({})
 
     def __init__(self, **kwargs):
 
@@ -347,6 +348,11 @@ class GalleryScreen(MyMDScreen):
             self.generate_tab_widgets(tab_name=GalleryTabs.NOON.value, wallpapers=self._filter_existing_paths(my_config.get_noon_wallpapers()))
             self.current_tab = GalleryTabs.BOTH.value
             self.on_current_tab(None, self.current_tab)
+            self.images_data={ #for full_screen init
+                GalleryTabs.BOTH.value: self.tab_instances[GalleryTabs.BOTH.value]["wallpapers"],
+                GalleryTabs.DAY.value: self.tab_instances[GalleryTabs.DAY.value]["wallpapers"],
+                GalleryTabs.NOON.value: self.tab_instances[GalleryTabs.NOON.value]["wallpapers"],
+            }
 
         if no_clock:  # using clock in init breaks DateGroupLayout height
             run_widgets_creation()
@@ -409,11 +415,12 @@ class GalleryScreen(MyMDScreen):
         #     print("error_testing_picker", error_testing_picker)
 
     def generate_tab_widgets(self, tab_name, wallpapers, dt=None):
-        self.wallpapers = wallpapers
+        # self.wallpapers = wallpapers
         tab_title = f"{len(self.wallpapers)} images found"
 
         self.wallpapers = sorted(
-            self.wallpapers,
+            wallpapers,
+            # self.wallpapers,
             key=lambda image_path: os.stat(image_path).st_mtime,
             reverse=True  # newest first
         )

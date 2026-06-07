@@ -78,8 +78,8 @@ class LogsScreen(MyMDScreen):
 
         # Buttons at bottom
         buttons = BoxLayout(size_hint_y=None, height=dp(50), spacing=dp(10))
-        add_btn = Button(text="Add Test Log")
-        add_btn.bind(on_release=lambda *_: self.add_test_log())
+        add_btn = Button(text="Export Logs")
+        add_btn.bind(on_release=lambda *_: self.export_logs())
         clear_btn = Button(text="Clear Logs")
         clear_btn.bind(on_release=lambda *_: self.clear_logs())
         buttons.add_widget(add_btn)
@@ -158,12 +158,68 @@ class LogsScreen(MyMDScreen):
             f.write(full_log+"\n")
         self.scroll.scroll_y = 0
 
-    def add_test_log(self):
-        self.add_log("INFO This is a normal log message")
-        self.add_log("WARN Something looks suspicious")
-        self.add_log("ERROR Something broke badly")
-        self.add_log("EXCEPTION ValueError: invalid input")
-        self.add_log("TRACEBACK File \"main.py\", line 42")
+    def export_logs(self, *_):
+        if not os.path.exists(self.log_file_path):
+            toast("No logs to export")
+            return
+
+        from jnius import autoclass
+        from android_notify.config import get_python_activity_context
+
+        context = get_python_activity_context()
+
+        Environment = autoclass('android.os.Environment')
+        ContentValues = autoclass('android.content.ContentValues')
+        BuildVersion = autoclass('android.os.Build$VERSION')
+        File = autoclass('java.io.File')
+        FileInputStream = autoclass('java.io.FileInputStream')
+
+        if BuildVersion.SDK_INT >= 29:
+            MediaStoreDownloads = autoclass('android.provider.MediaStore$Downloads')
+            MediaColumns = autoclass('android.provider.MediaStore$MediaColumns')
+
+            content_values = ContentValues()
+            content_values.put(MediaColumns.DISPLAY_NAME, "app_logs.txt")
+            content_values.put(MediaColumns.MIME_TYPE, "text/plain")
+            content_values.put(MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+
+            resolver = context.getContentResolver()
+            uri = resolver.insert(MediaStoreDownloads.EXTERNAL_CONTENT_URI, content_values)
+
+            if uri:
+                try:
+                    input_stream = FileInputStream(File(self.log_file_path))
+                    output_stream = resolver.openOutputStream(uri)
+
+                    buffer = bytearray(8192)
+                    while True:
+                        length = input_stream.read(buffer)
+                        if length <= 0:
+                            break
+                        output_stream.write(buffer, 0, length)
+
+                    input_stream.close()
+                    output_stream.close()
+                    toast("Logs exported to Downloads")
+                except Exception as e:
+                    print("Export error:", e)
+                    toast("Export failed")
+            else:
+                toast("Export failed")
+        else:
+            downloads_dir = Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_DOWNLOADS
+            ).getAbsolutePath()
+            dest_path = os.path.join(downloads_dir, "app_logs.txt")
+            try:
+                with open(self.log_file_path, "r") as src, open(dest_path, "w") as dst:
+                    dst.write(src.read())
+                MediaScannerConnection = autoclass('android.media.MediaScannerConnection')
+                MediaScannerConnection.scanFile(context, [dest_path], ["text/plain"], None)
+                toast("Logs exported to Downloads")
+            except Exception as e:
+                print("Export error:", e)
+                toast("Export failed")
 
     def clear_logs(self):
         self.logs_layout.clear_widgets()

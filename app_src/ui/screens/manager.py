@@ -28,17 +28,18 @@ class ScreenManager(MDScreenManager):
         self.app = get_app()
         self.welcome_screen = WelcomeScreen()
         self.gallery_screen = GalleryScreen()
-        self.full_screen = FullscreenScreen()
+        self.full_screen = FullscreenScreen(images_data=self.gallery_screen.images_data)
+        self.settings_screen = SettingsScreen()
         self.settings_screen = SettingsScreen()
         self.log_screen = LogsScreen()
-        self.download_apk_screen = DownloadApkScreen()
+        # self.download_apk_screen = DownloadApkScreen()
 
         self.add_widget(self.gallery_screen)
         self.add_widget(self.full_screen)
         self.add_widget(self.settings_screen)
         self.add_widget(self.welcome_screen)
         self.add_widget(self.log_screen)
-        self.add_widget(self.download_apk_screen)
+        # self.add_widget(self.download_apk_screen)
         self.__register_rotate_listener()
         # self.__run_rotate_method_for_each_screen("BOTTOM")
 
@@ -85,8 +86,11 @@ class ScreenManager(MDScreenManager):
     def open_image_in_full_screen(self, index):
         self.transition = NoTransition()
         self.current = "fullscreen"
-        self.full_screen.update_images(index)
-        self.full_screen.carousel.index = index
+        self.full_screen.current_tab = self.gallery_screen.current_tab
+        self.full_screen.index = index
+
+        # self.full_screen.update_images(index)
+        # self.full_screen.carousel.index = index
 
     def on_rotation(self, rotation):
         rotation=self.__get_rotation_name(rotation)

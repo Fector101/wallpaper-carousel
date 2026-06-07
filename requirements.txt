@@ -1,0 +1,6 @@
+kivy
+android-notify
+android-widgets
+python-osc
+https://github.com/Fector101/plyer/archive/feature/file-type-parser.zip
+https://github.com/kivymd/KivyMD/archive/master.zip

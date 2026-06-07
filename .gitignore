@@ -7,3 +7,6 @@ config.json
 wallpaper.txt
 port.txt
 ui_port.txt
+bin
+.buildozer
+test*

@@ -4,8 +4,9 @@ import traceback
 from pathlib import Path
 
 from kivy.clock import Clock
-from kivy.properties import ListProperty, ObjectProperty, NumericProperty
+from kivy.properties import ListProperty, ObjectProperty, NumericProperty, DictProperty
 from kivy.uix.behaviors import ButtonBehavior
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import AsyncImage
 from kivy.uix.label import Label
 from kivy.metrics import dp, sp
@@ -76,8 +77,8 @@ class MyMDIconButton(MDIconButton):
 
 class PictureButton(ButtonBehavior,MDRelativeLayout):
     app_src = ''#'/home/fabian/Documents/Laner/mobile/app_src/'
-    images = [app_src+"assets/icons/t.png",app_src+"assets/icons/moon.png",app_src+"assets/icons/sun.png"]#ListProperty([])
-    # images = ["/home/fabian/Documents/Laner/mobile/app_src/assets/icons/t.png","/home/fabian/Documents/Laner/mobile/app_src/assets/icons/moon.png","/home/fabian/Documents/Laner/mobile/app_src/assets/icons/sun.png"]#ListProperty([])
+    images = [app_src+"assets/icons/both.png",app_src+"assets/icons/moon.png",app_src+"assets/icons/sun.png"]#ListProperty([])
+    # images = ["/home/fabian/Documents/Laner/mobile/app_src/assets/icons/both.png","/home/fabian/Documents/Laner/mobile/app_src/assets/icons/moon.png","/home/fabian/Documents/Laner/mobile/app_src/assets/icons/sun.png"]#ListProperty([])
     img_sizes = [100,42,42]
     screen_color = ListProperty()
     fullscreen = ObjectProperty()
@@ -109,30 +110,33 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
         return tab_name
 
     def on_release(self):
-        current_image = self.fullscreen.current_image
+        img_path = self.fullscreen.current_image
         gallery_screen = self.app.sm.gallery_screen
         old_tab = self.get_tab_from_index(self.i)
+
         self.i = self.i + 1 if self.i < len(self.images) - 1 else 0
         new_tab = self.get_tab_from_index(self.i)
 
-        self._update_image()
-        self.__change_tab_from_wallpaper_storage(current_image=current_image,old_tab=old_tab,new_tab=new_tab)
+        slide = self.fullscreen.remove_image_in_tab_carousel(img_src=img_path)
+        self.fullscreen.add_image_to_tab_carousel(slide,new_tab)
 
+        self.__change_tab_from_wallpaper_storage(current_image=img_path,old_tab=old_tab,new_tab=new_tab)
         # try:
         #     gallery_screen.wallpapers.remove(current_image)
         # except ValueError as error_removing_path_from_wallpapers_list:
         #     app_logger.error(f"error_removing_path_from_wallpapers_list: {error_removing_path_from_wallpapers_list}")
         try:
-            image_widget = gallery_screen.remove_wallpaper_from_thumbnails(wallpaper_path=current_image,tab=old_tab)
+            image_widget = gallery_screen.remove_wallpaper_from_thumbnails(wallpaper_path=img_path,tab=old_tab)
         except Exception as error_finding_widget:
             app_logger.error(f"Error Removing Widget: {error_finding_widget}")
             return None
 
         if not image_widget:
-            app_logger.error(f"Error finding PreviewImage Widget to remove and reuse for another, image_widget: {image_widget}")
+            app_logger.error(f"Error finding PreviewImage Widget to remove and reuse for another, img_path: {img_path} in tab:{old_tab}")
             return None
 
         gallery_screen.add_wallpaper_to_thumbnails(image_widget=image_widget,tab=new_tab)
+        # self.update_header_texts(img_src)
         return None
 
     @staticmethod
@@ -168,7 +172,10 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
 
 
 class FullscreenScreen(MyMDScreen):
-    current_image: str # used in toggle btn
+    current_image=''# used in toggle btn
+    images_data= DictProperty({})
+    tabs_carousel_widgets= DictProperty({})
+    index=NumericProperty(-1)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -230,9 +237,9 @@ class FullscreenScreen(MyMDScreen):
         self.share_btn = MyMDIconButton(icon="share", style="tonal",on_release=lambda x: share_image_to_other_app(self.current_image))
         self.original_carousel_pos_hint = {'x': 0, 'y': 0.125}
         self.original_carousel_size_hint = (1, 1 - .25)
-        self.carousel = MyCarousel(direction="right", loop=True,
-                                   size_hint=self.original_carousel_size_hint,
-                                   pos_hint=self.original_carousel_pos_hint)
+        self.carousel=None
+        self.carousel_container=BoxLayout()
+
         # self.carousel.bind(index=self.on_index)
 
         self.btm_btn_layout_root = MDRelativeLayout(
@@ -283,7 +290,7 @@ class FullscreenScreen(MyMDScreen):
 
 
         self.add_widget(self.layout)
-        self.layout.add_widget(self.carousel)
+        self.layout.add_widget(self.carousel_container)
         self.header_layout.add_widget(self.btn_toggle)
         self.text_container.add_widget(self.header_title)
         self.text_container.add_widget(self.header_file_size)
@@ -309,6 +316,7 @@ class FullscreenScreen(MyMDScreen):
         self.set_wallpaper_btn.bind(on_release=self.set_as_wallpaper)
         # print("using hot reload stuff")
         # self.update_images(0)  # for hot_reload
+        self.load_images()
 
     def toggle_fullscreen(self, *_):
         # print(self.carousel.children[0].children)
@@ -376,8 +384,10 @@ class FullscreenScreen(MyMDScreen):
         if not wallpapers:
             spinner_layout.remove()
             return
+        
+        carousel= self.carousel_container.children[0]# carousel is only child
 
-        idx = self.carousel.index
+        idx = carousel.index
         # Get path without removing it from the list directly
         path = wallpapers[idx]
 
@@ -406,10 +416,11 @@ class FullscreenScreen(MyMDScreen):
             spinner_layout.remove()
             return
             
-        self.update_images()
+        # self.update_images()
+        self.remove_image_in_tab_carousel(img_src=path)
         new_index=max(0, min(idx, len(gallery_screen.wallpapers) - 1))
-        self.carousel.index = new_index
-        self.__patch_for_first_not_getting_called_by_on_current_slide(index=new_index)
+        carousel.index = new_index
+        # self.__patch_for_first_not_getting_called_by_on_current_slide(index=new_index)
         spinner_layout.remove()
     # ====================================================================
     #               IMAGE INFO POPUP
@@ -431,36 +442,31 @@ class FullscreenScreen(MyMDScreen):
         )
         popup.open()
 
-    def update_images(self,index=None):
+    # def update_images(self,index=None):
+    def load_images(self,index=None):
         """Rebuild carousel anytime wallpapers change."""
-        self.carousel.unbind(current_slide=self.on_current_slide)
         self.carousel_has_images = False
-        gallery_screen = self.manager.gallery_screen
-        self.carousel.clear_widgets()
-
         # for hot_reload
         # self.data = ["/home/fabian/Pictures/test.jpg"]
         # for p in self.data:
-        for p in gallery_screen.wallpapers:
-            # print("thumbnail_path_for(p)", str(thumbnail_path_for(p)))
-            img = AsyncImage(
-                source=str(thumbnail_path_for(p)),  # p,
-                # allow_stretch=True,
-                # keep_ratio=True,
-                fit_mode="contain",
-                # on_load=self.set_side_by_side1
-            )
-            img.higher_format = p
-            self.carousel_has_images = True
-            self.carousel.add_widget(img)
-        self.carousel.bind(current_slide=self.on_current_slide)
-
-        # Setting data when entering Carousel From first slide because self.carousel.bind(current_slide=self.on_current_slide) isn't called
-        self.__patch_for_first_not_getting_called_by_on_current_slide(index)
-
-    def __patch_for_first_not_getting_called_by_on_current_slide(self,index):
-        if index == 0:
-            self.on_current_slide(self.carousel,0)
+        tabs = [GalleryTabs.BOTH.value, GalleryTabs.DAY.value, GalleryTabs.NOON.value ]
+        data = self.images_data
+        self.tabs_carousel_widgets={}
+        for each_tab in tabs:
+            wallpapers=data[each_tab]
+            carousel = MyCarousel(direction="right", loop=True,
+                                   size_hint=self.original_carousel_size_hint,
+                                   pos_hint=self.original_carousel_pos_hint)
+            for p in wallpapers:
+                img = AsyncImage(
+                    source=p,
+                    fit_mode="contain",
+                )
+                img.higher_format = p
+                carousel.add_widget(img)
+                # carousel.bind(current_slide=self.on_current_slide)
+                self.carousel_has_images = True
+            self.tabs_carousel_widgets[each_tab] = carousel
 
     def update_header_texts(self,image_path):
         self.header_title.text = os.path.basename(image_path)
@@ -478,64 +484,57 @@ class FullscreenScreen(MyMDScreen):
             self.day_noon_both_button.set_day_nd_noon_image()
 
     def on_current_slide(self, carousel, index): # type: ignore
-        """Using on_current_slide instead of on_index to prevent multiple Calls"""
-        # print("self.carousel_has_images",self.carousel_has_images)
-        if not self.carousel_has_images or not carousel.current_slide: # From self.carousel.clear_widgets() changes current_slide Carousel.clear_widgets.remove_widget
-            return None
-
         current_slide = carousel.current_slide
-
-        if hasattr(self.carousel.current_slide,"higher_format"):
-            self.current_image = self.carousel.current_slide.higher_format
-        # print('there',self.carousel.current_slide.higher_format, current_slide.higher_format, self.clock_for_side_by_side,self.clock_for_higher_format)
-
-        if self.clock_for_side_by_side:
-            self.clock_for_side_by_side.cancel()
-            self.clock_for_side_by_side = None
-        if self.clock_for_higher_format:
-            self.clock_for_higher_format.cancel()
-            self.clock_for_higher_format = None
-
-        def change_img(_):
-            current_slide.source = str(current_slide.higher_format)
-
-        self.update_header_texts(current_slide.higher_format)
-        self.clock_for_higher_format = Clock.schedule_once(change_img, 1)
-        self.clock_for_side_by_side = Clock.schedule_once(self.set_side_by_side, 1.5)
-        return None
-
-    def set_side_by_side(self, *_):
-        """
-        Set High res img for left and right side.
-        """
-        # AsyncImage(on_load=self.set_side_by_side) not calling right
-        # print(str(self.carousel.current_slide.higher_format) != str(self.carousel.current_slide.source))
-
-        if str(self.carousel.current_slide.higher_format) != str(self.carousel.current_slide.source):
-            # Not setting for high format image, so return
+        if not current_slide: # this method gets called when using remove_widget to remove slide
+            print("no slide")
+            self.manager.go_to_thumbs()
             return None
-
-        current_slide_index = self.carousel.index
-        first_img = self.carousel.slides[0]
-        last_img = self.carousel.slides[-1]
-
-        left_side_img = self.carousel.slides[current_slide_index - 1] if current_slide_index - 1 >= 0 else last_img
-        right_side_img = self.carousel.slides[current_slide_index + 1] if current_slide_index + 1 < len(
-            self.carousel.slides) else first_img
-
-        # print("left_side_img source:", os.path.basename(left_side_img.source), "left_side_img hf:",
-        #       os.path.basename(left_side_img.higher_format))
-        if left_side_img and left_side_img.source != str(left_side_img.higher_format):
-                # print('left...')
-                proxyImage = Loader.image(str(left_side_img.higher_format))
-                proxyImage.bind(on_load= lambda proxy_image, image_object=left_side_img: patch_resolution(proxy_image,image_object))
-                # left_side_img.source = str(left_side_img.higher_format)
-
-        if right_side_img and right_side_img.source != str(right_side_img.higher_format):
-                proxyImage = Loader.image(str(right_side_img.higher_format))
-                proxyImage.bind(on_load=lambda proxy_image, image_object=right_side_img: patch_resolution(proxy_image, image_object))
-                # right_side_img.source = str(right_side_img.higher_format)
+        img_src=current_slide.higher_format
+        self.current_image = img_src
+        # print("self.current_image",self.current_image)
+        self.update_header_texts(img_src)
+        print()
         return None
+
+
+    def on_leave(self, *args):
+        self.index=-1
+        carousel = self.carousel_container.children[0]
+        carousel.unbind(current_slide=self.on_current_slide)
+
+    def on_index(self,widget,value):
+        current_tab=self.manager.gallery_screen.current_tab
+        self.carousel_container.clear_widgets()
+        self.carousel_container.add_widget(self.tabs_carousel_widgets[current_tab])
+        carousel = self.tabs_carousel_widgets[current_tab]
+        carousel.bind(current_slide=self.on_current_slide)
+        if carousel.slides:
+            carousel.index = value
+            if value == 0:
+                self.on_current_slide(carousel,0)
+    def remove_image_in_tab_carousel(self,img_src,tab_name=None): # tab_name args for when i add multiselect feature to gallery screen
+        tab_name=tab_name or self.manager.gallery_screen.current_tab
+        carousel = self.tabs_carousel_widgets[tab_name] # same location in memory with current carousel if displaying so no need for calling self.carousel_container.children[0]
+        index=0
+        slides=carousel.slides
+        for slide in slides:
+            if slide.source==img_src:
+                # print("found:", os.path.basename(img_src))
+                carousel.remove_widget(slide)
+                return slide
+            index+=1
+
+        app_logger.error(f"slide not found for path: {img_src}, tab_name: {tab_name}")
+        # if slides and index+1 < len(slides): # if not empty
+        #     self.update_header_texts(img_src)
+        return None
+
+    def add_image_to_tab_carousel(self,image_widget,tab_name):
+        carousel = self.tabs_carousel_widgets[tab_name]
+        print('adding...',image_widget,tab_name,carousel.children,carousel.slides)
+        if carousel._index is None:
+            carousel._index = 0
+        carousel.add_widget(image_widget,len(carousel.slides))
 
 
 def patch_resolution(proxy_image, image_object):
