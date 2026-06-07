@@ -24,6 +24,9 @@ from ui.widgets.layouts import MyPopUp, MyMDScreen, get_dimensions, LoadingLayou
 from utils.image_operations import thumbnail_path_for, get_image_info, share_image_to_other_app
 from utils.helper import appFolder, change_wallpaper
 from utils.config_manager import ConfigManager
+from android_notify.config import on_android_platform
+from android_notify.internal.java_classes import autoclass
+from jnius import PythonJavaClass, java_method
 # from utils.constants import DEV
 from utils.model import get_app, GalleryTabs
 from kivy.loader import  Loader
@@ -31,6 +34,29 @@ from utils.logger import app_logger
 
 
 my_config=ConfigManager()
+
+
+if on_android_platform():
+    View = autoclass("android.view.View")
+
+    class _SystemUiRunnable(PythonJavaClass):
+        __javainterfaces__ = ['java/lang/Runnable']
+        __javacontext__ = 'app'
+
+        def __init__(self, flags):
+            super().__init__()
+            self.flags = flags
+
+        @java_method('()V')
+        def run(self):
+            PythonActivity = autoclass("org.kivy.android.PythonActivity")
+            activity = PythonActivity.mActivity
+            decor = activity.getWindow().getDecorView()
+            decor.setSystemUiVisibility(self.flags)
+
+    def _set_system_ui_visibility(flags):
+        activity = autoclass("org.kivy.android.PythonActivity").mActivity
+        activity.runOnUiThread(_SystemUiRunnable(flags))
 
 
 class BorderMDBoxLayout(MDBoxLayout):
@@ -73,7 +99,8 @@ class MyMDIconButton(MDIconButton):
         self.bg_color = 'black'
         self.theme_text_color = 'Custom'
         self.text_color = 'white'
-
+    def on_disabled(self, instance, value) -> None:
+        self.opacity=0 if value else 1
 
 class PictureButton(ButtonBehavior,MDRelativeLayout):
     app_src = ''#'/home/fabian/Documents/Laner/mobile/app_src/'
@@ -234,11 +261,13 @@ class FullscreenScreen(MyMDScreen):
         self.header_title.text_color = 'white'
         self.header_file_size.text_color = [.6,.6,.6,1]
 
-        self.share_btn = MyMDIconButton(icon="share", style="tonal",on_release=lambda x: share_image_to_other_app(self.current_image))
+        self.share_btn = MyMDIconButton(icon="share", style="tonal",on_release=lambda x: share_image_to_other_app(self.current_image),theme_text_color="Custom",disabled_color=[0,0,0,0])
+
         self.original_carousel_pos_hint = {'x': 0, 'y': 0.125}
         self.original_carousel_size_hint = (1, 1 - .25)
-        self.carousel=None
-        self.carousel_container=BoxLayout()
+        # self.carousel=None
+        self.carousel_container=MDBoxLayout(size_hint=self.original_carousel_size_hint,
+                                   pos_hint=self.original_carousel_pos_hint)
 
         # self.carousel.bind(index=self.on_index)
 
@@ -321,15 +350,19 @@ class FullscreenScreen(MyMDScreen):
     def toggle_fullscreen(self, *_):
         # print(self.carousel.children[0].children)
         self.is_fullscreen = True
+        carousel = self.carousel_container.children[0]  # carousel is only child
 
-        self.carousel.size_hint = (1, 1)
-        self.carousel.pos_hint = {'center_x': .5, 'center_y': .5}
+        self.carousel_container.size_hint = (1, 1)
+        self.carousel_container.pos_hint = {'center_x': .5, 'center_y': .5}
+        carousel.size_hint = (1, 1)
+        carousel.pos_hint = {'center_x': .5, 'center_y': .5}
         self.header_layout.md_bg_color = [0, 0, 0, 0]
         self.header_title.text_color = [0, 0, 0, 0]
         self.header_layout.bg_color_instr.a = 0
         self.header_file_size.text_color = [0, 0, 0, 0]
         self.header_file_size.md_bg_color = [0, 0, 0, 0]
 
+        self.share_btn.disabled=1
         self.btn_toggle.text_color = [1, 1, 1, .9]
         self.btn_toggle.style = "outlined"
 
@@ -337,21 +370,33 @@ class FullscreenScreen(MyMDScreen):
         # self.btn_layout.disabled = True
 
         self.btn_toggle.icon = "close"
-        for img in self.carousel.slides:
+        for img in carousel.slides:
             img.fit_mode = "cover"
 
         self.layout.do_layout()
 
+        if on_android_platform():
+            _set_system_ui_visibility(
+                View.SYSTEM_UI_FLAG_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            )
+
     def toggle_top_button(self, *_):
         # If in fullscreen mode → restore controls
+        carousel = self.carousel_container.children[0]  # carousel is only child
+
         if self.btn_toggle.icon == "close":
-            self.carousel.size_hint = self.original_carousel_size_hint
-            self.carousel.pos_hint = self.original_carousel_pos_hint
+            self.carousel_container.size_hint = self.original_carousel_size_hint
+            self.carousel_container.pos_hint = self.original_carousel_pos_hint
+            carousel.size_hint = self.original_carousel_size_hint
+            carousel.pos_hint = self.original_carousel_pos_hint
             self.header_layout.pos_hint = {'center_x': .5, 'top': .97}
             self.header_title.text_color = [1, 1, 1, 1]
             self.header_layout.bg_color_instr.a = .8
             self.header_file_size.md_bg_color = [1, 1, 1, .2]
             self.header_file_size.text_color = [.6, .6, .6, 1]
+            self.share_btn.disabled = 0
 
             self.btm_btn_layout_root.pos_hint = {"y": 0}
 
@@ -362,7 +407,10 @@ class FullscreenScreen(MyMDScreen):
             self.btn_toggle.text_color = [1, 1, 1, 1]
             self.is_fullscreen = False
 
-            for img in self.carousel.slides:
+            if on_android_platform():
+                _set_system_ui_visibility(0)
+
+            for img in carousel.slides:
                 img.fit_mode = "contain"
 
         # If not fullscreen → go back to thumbnails screen
@@ -374,7 +422,8 @@ class FullscreenScreen(MyMDScreen):
         spinner_layout = LoadingLayout()
         def remove_spinner(dt):
             spinner_layout.remove()
-        threading.Thread(target=change_wallpaper, args=[self.carousel.current_slide.higher_format, remove_spinner]).start()
+        carousel = self.carousel_container.children[0]  # carousel is only child
+        threading.Thread(target=change_wallpaper, args=[carousel.current_slide.source, remove_spinner]).start()
         
     def delete_current(self, *_):
         spinner_layout = LoadingLayout()
@@ -426,12 +475,13 @@ class FullscreenScreen(MyMDScreen):
     #               IMAGE INFO POPUP
     # ====================================================================
     def show_info(self, *_):
+        carousel = self.carousel_container.children[0]  # carousel is only child
         gallery_screen = self.manager.gallery_screen
 
         if not gallery_screen.wallpapers:
             return
 
-        idx = self.carousel.index
+        idx = carousel.index
         path = gallery_screen.wallpapers[idx]
 
         popup = MyPopUp(
@@ -446,12 +496,15 @@ class FullscreenScreen(MyMDScreen):
     def load_images(self,index=None):
         """Rebuild carousel anytime wallpapers change."""
         self.carousel_has_images = False
-        # for hot_reload
-        # self.data = ["/home/fabian/Pictures/test.jpg"]
-        # for p in self.data:
+
         tabs = [GalleryTabs.BOTH.value, GalleryTabs.DAY.value, GalleryTabs.NOON.value ]
         data = self.images_data
         self.tabs_carousel_widgets={}
+        # for hot_reload
+        # data = {"Both":["/home/fabian/Pictures/test.jpg"]}
+        # for p in data:
+        #     each_tab="Both"
+
         for each_tab in tabs:
             wallpapers=data[each_tab]
             carousel = MyCarousel(direction="right", loop=True,
@@ -496,7 +549,6 @@ class FullscreenScreen(MyMDScreen):
         print()
         return None
 
-
     def on_leave(self, *args):
         self.index=-1
         carousel = self.carousel_container.children[0]
@@ -512,6 +564,7 @@ class FullscreenScreen(MyMDScreen):
             carousel.index = value
             if value == 0:
                 self.on_current_slide(carousel,0)
+
     def remove_image_in_tab_carousel(self,img_src,tab_name=None): # tab_name args for when i add multiselect feature to gallery screen
         tab_name=tab_name or self.manager.gallery_screen.current_tab
         carousel = self.tabs_carousel_widgets[tab_name] # same location in memory with current carousel if displaying so no need for calling self.carousel_container.children[0]

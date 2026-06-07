@@ -1,3 +1,4 @@
+# DEBUG=1 python3 hot_reload.py
 import os
 from kaki.app import App
 from kivy.factory import Factory
@@ -74,7 +75,7 @@ class MDLive(App,MDApp):
 
     def build_app(self, *args):
         # return Factory.MyPopUp()
-        return Factory.GalleryScreen()
+        return Factory.FullscreenScreen()
 
     def on_start(self):
         # self.theme_cls.theme_style = "Light"
