@@ -22,7 +22,7 @@ source.exclude_dirs = bin, venv,lab, worked, __pycache__, .idea, dist, for-downl
 
 
 requirements = python3,kivy,https://github.com/kivymd/KivyMD/archive/master.zip,python-osc,https://github.com/kivy/plyer/archive/master.zip,materialyoucolor,asynckivy,asyncgui,pyjnius, docutils,netifaces,filetype,requests_toolbelt,websockets,android-widgets, https://github.com/Fector101/android_notify/archive/main.zip
-services = Wallpapercarousel:./android/services/wallpaper.py:foreground
+services = Wallpapercarousel:./android/services/wallpaper.py:foreground:foregroundServiceType=specialUse
 # Shorttask:./android/services/shorttask.py
 
 osx.python_version = 3
