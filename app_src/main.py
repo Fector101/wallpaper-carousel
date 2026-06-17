@@ -51,16 +51,18 @@ class WallpaperCarouselApp(MDApp):
         self.sm = None
         self.bottom_bar = None
 
-    def build(self):
-        self.root_layout = MDNavigationLayout()
+    def build_ui(self):
+        root_layout = MDNavigationLayout()
         # self.root_layout = MDRelativeLayout()
 
         self.sm = ScreenManager()
-        self.root_layout.add_widget(self.sm)
+        root_layout.add_widget(self.sm)
 
         self.bottom_bar = BottomNavigationBar(
             on_camera=self.sm.go_to_thumbs,
             on_settings=self.sm.go_to_settings,
+            on_double_click_camera = self.sm.scroll_to_to_thumbs,
+            on_double_click_settings = self.sm.scroll_to_to_settings
         )
 
         is_fullscreen = self.sm.current in ["welcome", "fullscreen", "logs", "update_screen"]
@@ -69,13 +71,17 @@ class WallpaperCarouselApp(MDApp):
         elif self.bottom_bar:
             self.bottom_bar.show()
 
-        self.root_layout.add_widget(self.bottom_bar)
+        root_layout.add_widget(self.bottom_bar)
         self.bottom_bar.bind_change()  # needs theme from monitor_dark_and_light_device_change
 
         # get_number_of_cols()
         self.btm_sheet = MyBtmSheet(change_number_or_cols=self.sm.gallery_screen.change_amount_of_columns)
-        self.root_layout.add_widget(self.btm_sheet)
+        root_layout.add_widget(self.btm_sheet)
 
+        return root_layout
+
+    def build(self):
+        self.root_layout = self.build_ui()
         self.file_operation = ImageOperation(load_saved=self.sm.gallery_screen.initialize_tabs)
         self.bind_plyer_fix()
         self.file_operation.setup_share_from_others_to_app_listener()
