@@ -1,8 +1,10 @@
+import time
+
 from kivy.clock import Clock
 from kivy.graphics import Color, RoundedRectangle
 from kivy.graphics.boxshadow import BoxShadow
 from kivy.metrics import dp
-from kivy.properties import ListProperty, BooleanProperty
+from kivy.properties import ListProperty, BooleanProperty, ObjectProperty
 
 from kivy.uix.button import Button
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -70,12 +72,49 @@ class MyRoundButton(Button):
         self.rect1.pos = self.pos
         self.rect1.size = self.size
 
+class MyMDIconButton(MDIconButton):
+    _active_instance = None  # class-level tracker
+    on_double_click = ObjectProperty()
+    def __init__(self, on_double_click,**kwargs):
+        super().__init__(**kwargs)
+        self.time_of_first_release = 0
+        self.time_of_second_release = 0
+        self.on_double_click= on_double_click
+
+    def on_release(self):
+        # If some other instance is waiting for a second click, cancel it
+        if MyMDIconButton._active_instance is not None and MyMDIconButton._active_instance is not self:
+            MyMDIconButton._active_instance.cancel_double_click()
+
+        if not self.time_of_first_release:
+            self.time_of_first_release = time.time()
+            MyMDIconButton._active_instance = self
+            Clock.schedule_once(self._on_double_click_timeout, 1)
+        elif not self.time_of_second_release:
+            self.time_of_second_release = time.time()
+            if self.time_of_second_release - self.time_of_first_release < 1:
+                print(f"double_clicked: {self.icon}")
+                if self.on_double_click:
+                    self.on_double_click()
+            self.cancel_double_click()
+
+
+    def cancel_double_click(self):
+        self.time_of_first_release = 0
+        self.time_of_second_release = 0
+        if MyMDIconButton._active_instance is self:
+            MyMDIconButton._active_instance = None
+
+    def _on_double_click_timeout(self, dt):
+        if MyMDIconButton._active_instance is self:
+            MyMDIconButton._active_instance = None
+        self.time_of_first_release = 0
 
 class BottomNavigationBar(MDNavigationDrawer):
     """Floating bottom bar with two buttons with centered icons only."""
     pass_width = BooleanProperty(False)
 
-    def __init__(self, on_camera=None, on_settings=None, **kwargs):
+    def __init__(self, on_camera=None, on_settings=None, on_double_click_camera = None,on_double_click_settings = None, **kwargs):
         super().__init__(**kwargs)
         self.set_state('open')
         self.drawer_type='standard'
@@ -108,23 +147,25 @@ class BottomNavigationBar(MDNavigationDrawer):
 
         size = [dp(80), dp(45)]
 
-        self.btn_camera = MDIconButton(
+        self.btn_camera = MyMDIconButton(
             icon="image-multiple",
             style="tonal",
             theme_text_color="Custom",
             theme_bg_color="Custom",
             on_release=self._camera_pressed,
+            on_double_click=on_double_click_camera
         )
         self.btn_camera.size_hint = [None, None]
         self.btn_camera.size = size
         self.btn_camera.radius = [radius, 0, 0, radius]
 
-        self.btn_settings = MDIconButton(
+        self.btn_settings = MyMDIconButton(
             icon="cog",
             style="tonal",
             theme_text_color="Custom",
             theme_bg_color="Custom",
             on_release=self._settings_pressed,
+            on_double_click = on_double_click_settings
         )
         self.btn_settings.size_hint = [None, None]
         self.btn_settings.size = size

@@ -31,14 +31,14 @@ class ScreenManager(MDScreenManager):
         self.full_screen = FullscreenScreen()
         self.settings_screen = SettingsScreen()
         self.log_screen = LogsScreen()
-        self.download_apk_screen = DownloadApkScreen()
+        # self.download_apk_screen = DownloadApkScreen()
 
         self.add_widget(self.gallery_screen)
         self.add_widget(self.full_screen)
         self.add_widget(self.settings_screen)
         self.add_widget(self.welcome_screen)
         self.add_widget(self.log_screen)
-        self.add_widget(self.download_apk_screen)
+        # self.add_widget(self.download_apk_screen)
         self.__register_rotate_listener()
         # self.__run_rotate_method_for_each_screen("BOTTOM")
 
@@ -81,6 +81,12 @@ class ScreenManager(MDScreenManager):
     def go_to_thumbs(self, _=None):
         self.transition = SlideTransition(direction="right")
         self.current = "thumbs"
+
+    def scroll_to_to_thumbs(self):
+        self.gallery_screen.ids.thumbnails_scroll_view_widget.scroll_y = 1
+
+    def scroll_to_to_settings(self):
+        self.settings_screen.ids.settings_scroll_view_widget.scroll_y = 1
 
     def open_image_in_full_screen(self, index):
         self.transition = NoTransition()
