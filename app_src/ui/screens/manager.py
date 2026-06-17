@@ -31,14 +31,14 @@ class ScreenManager(MDScreenManager):
         self.full_screen = FullscreenScreen()
         self.settings_screen = SettingsScreen()
         self.log_screen = LogsScreen()
-        # self.download_apk_screen = DownloadApkScreen()
+        self.download_apk_screen = DownloadApkScreen()
 
         self.add_widget(self.gallery_screen)
         self.add_widget(self.full_screen)
         self.add_widget(self.settings_screen)
         self.add_widget(self.welcome_screen)
         self.add_widget(self.log_screen)
-        # self.add_widget(self.download_apk_screen)
+        self.add_widget(self.download_apk_screen)
         self.__register_rotate_listener()
         # self.__run_rotate_method_for_each_screen("BOTTOM")
 
