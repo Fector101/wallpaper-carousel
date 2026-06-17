@@ -437,6 +437,11 @@ def check_update(download_apk_screen__show,download_apk_screen__do_not_show=None
             apk_size = get_apk_size(data)
             Clock.schedule_once(go_to_update_screen)
         else:
+            try:
+                find_and_delete_unused_apks(latest_version)
+            except Exception as delete_logic_fail:
+                app_logger.exception(delete_logic_fail)
+                traceback.print_exc()
             Clock.schedule_once(lambda dt: do_not_go_to_update_screen("Already up to date."))
 
     except requests.exceptions.ReadTimeout:
@@ -498,6 +503,18 @@ def apk_is_valid(path, expected_size):
     # os.remove(path)
     return None
 
+def find_and_delete_unused_apks(latest_version):
+    def safe_del(path):
+        if os.path.exists(path):
+            os.remove(path)
+            print(f"deleted: {path}")
+    abs_apk_path = get_apk_path(latest_version)
+    safe_del(abs_apk_path)
+
+    versions_with_no_delete_logic = ["1.0.7","1.0.6","1.0.5","1.0.4"]
+    for each_version in versions_with_no_delete_logic:
+        abs_apk_path = get_apk_path(each_version)
+        safe_del(abs_apk_path)
 DEFAULT_RELEASE_NOTE = """[b]New Update Available[/b]
 
 • Performance improvements
