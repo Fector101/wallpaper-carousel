@@ -7,3 +7,7 @@ config.json
 wallpaper.txt
 port.txt
 ui_port.txt
+.buildozer
+*.apk
+test.*
+test1.*
