@@ -70,12 +70,12 @@ def after_apk_build(toolchain: ToolchainCL):
 
         }
 
-    manifest_file_content = inject_foreground_service_types(
-        manifest_text=manifest_file_content,
-        package=package,
-        spec_file_path=spec_file_path,
-        services=services,
-    )
+    #manifest_file_content = inject_foreground_service_types(
+        #manifest_text=manifest_file_content,
+        #package=package,
+        #spec_file_path=spec_file_path,
+        #services=services,
+    #)
     manifest_file_content = manifest_file_content.replace(
     'android:screenOrientation="unspecified"',
     'android:screenOrientation="fullSensor"'

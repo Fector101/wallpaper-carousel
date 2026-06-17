@@ -22,7 +22,7 @@ source.exclude_dirs = bin, venv,lab, worked, __pycache__, .idea, dist, for-downl
 
 
 requirements = python3,kivy,https://github.com/kivymd/KivyMD/archive/master.zip,python-osc,https://github.com/kivy/plyer/archive/master.zip,materialyoucolor,asynckivy,asyncgui,pyjnius, docutils,netifaces,filetype,requests_toolbelt,websockets,android-widgets, https://github.com/Fector101/android_notify/archive/main.zip
-services = Wallpapercarousel:./android/services/wallpaper.py:foreground
+services = Wallpapercarousel:./android/services/wallpaper.py:foreground:foregroundServiceType=specialUse
 # Shorttask:./android/services/shorttask.py
 
 osx.python_version = 3
@@ -35,7 +35,9 @@ android.permissions = RECEIVE_BOOT_COMPLETED, INTERNET, VIBRATE, USE_EXACT_ALARM
 #android.permissions = RECEIVE_BOOT_COMPLETED, INTERNET, VIBRATE, USE_EXACT_ALARM, SCHEDULE_EXACT_ALARM, FOREGROUND_SERVICE, FOREGROUND_SERVICE_DATA_SYNC, POST_NOTIFICATIONS, SET_WALLPAPER, READ_MEDIA_IMAGES, (name=android.permission.READ_EXTERNAL_STORAGE;maxSdkVersion=32), (name=android.permission.WRITE_EXTERNAL_STORAGE;maxSdkVersion=28)
 android.add_src = %(source.dir)s/android/src
 android.add_resources = %(source.dir)s/android/res
+#android.gradle_dependencies = androidx.core:core:1.12.0, com.google.android.material:material:1.12.0
 android.gradle_dependencies = androidx.core:core-ktx:1.12.0, com.google.android.material:material:1.12.0
+
 #android.gradle_dependencies = com.google.android.material:material:1.6.0, androidx.core:core-ktx:1.15.0, androidx.core:core:1.6.0, androidx.work:work-runtime:2.9.0
 android.enable_androidx = True
 p4a.hook = %(source.dir)s/android/p4a/hook.py
