@@ -115,6 +115,7 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
         self.i = self.i + 1 if self.i < len(self.images) - 1 else 0
         new_tab = self.get_tab_from_index(self.i)
 
+        app_logger.info(f"FS_CYCLE: i={self.i} old_tab={old_tab} new_tab={new_tab} current_image={current_image}")
         self._update_image()
         self.__change_tab_from_wallpaper_storage(current_image=current_image,old_tab=old_tab,new_tab=new_tab)
 
@@ -133,6 +134,7 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
             return None
 
         gallery_screen.add_wallpaper_to_thumbnails(image_widget=image_widget,tab=new_tab)
+        app_logger.info(f"FS_CYCLE: done cycle {old_tab} -> {new_tab}")
         return None
 
     @staticmethod
