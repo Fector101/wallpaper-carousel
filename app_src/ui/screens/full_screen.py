@@ -194,6 +194,7 @@ class FullscreenScreen(MyMDScreen):
             md_bg_color=[0.8, 0.8, 0.8, 1] if self.app.device_theme == "light" else [.1, .1,.1, 1])
         self.add_widget(self.generic_status_bar_spacer)
 
+        dialog_popup = DialogScreen(ok_callback = self.delete_current)
         # Main layout container
         self.layout = MDFloatLayout(md_bg_color=[0, 0, 0, 1])
         self.layout.pos_hint ={"top":1}
@@ -306,7 +307,7 @@ class FullscreenScreen(MyMDScreen):
         self.layout.add_widget(self.btm_btn_layout_root)
 
         # Bind events
-        self.btn_delete.bind(on_release=self.show_delete_dialog_box)
+        self.btn_delete.bind(on_release=lambda x:dialog_popup.show(img_texture=self.carousel.current_slide.texture))
         self.btn_info.bind(on_release=self.show_info)
         self.btn_fullscreen.bind(on_release=self.toggle_fullscreen)
 
@@ -435,12 +436,6 @@ class FullscreenScreen(MyMDScreen):
             # size_hint=(0.8, 0.4)
         )
         popup.open()
-
-    def show_delete_dialog_box(self, _):
-        dialog_popup = DialogScreen(ok_callback = self.delete_current)
-        img_texture = self.carousel.current_slide.texture
-
-        dialog_popup.show(img_texture=img_texture)
 
     def update_images(self,index=None):
         """Rebuild carousel anytime wallpapers change."""
