@@ -43,6 +43,9 @@ class MyScreenManagerModel:
     current: Literal["thumbs", "fullscreen", "settings", "welcome", "logs"]
 
     # public API
+    def __init__(self):
+        self.current_screen = None
+
     def open_image_in_full_screen(self, index: int) -> None: ...
 
 

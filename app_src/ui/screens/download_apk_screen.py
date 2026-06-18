@@ -147,12 +147,15 @@ class TextButton(MDButton):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.elevation_level = 1
         self.txt = MDButtonText(text=self.text,
                                 theme_text_color='Custom',
                                 pos_hint={"center_x": .5, "center_y": .5})
+        self.size_hint_x=None
+        self.txt.bind(width=self.fix_text_out_of_bounds_width_on_android)
         self.set_text_color(self, self.text_color)
         self.bind(text=self.set_val, text_color=self.set_text_color)
-        Clock.schedule_once(self.fix_width,2)
+        # Clock.schedule_once(self.fix_width,2)
         Clock.schedule_once(self.add_text_widget)
 
     def add_text_widget(self, dt=None):
@@ -165,6 +168,8 @@ class TextButton(MDButton):
         if not value:
             return
         self.txt.text_color = value
+    def fix_text_out_of_bounds_width_on_android(self,*_):
+        self.width = self.txt.texture_size[0] + 10
 
     def fix_width(self, *_):
         self.adjust_width()

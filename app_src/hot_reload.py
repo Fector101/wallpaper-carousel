@@ -66,6 +66,7 @@ class MDLive(App,MDApp):
         "WelcomeScreen": "ui.screens.welcome_screen",
         # "MyRoundButton": "ui.widgets.buttons",
         "BottomNavigationBar": "ui.widgets.buttons",
+        "DialogScreen": "ui.widgets.modals",
         "LoadingLayout": "ui.widgets.layouts",
     }
     AUTORELOADER_PATHS = [
@@ -74,7 +75,7 @@ class MDLive(App,MDApp):
 
     def build_app(self, *args):
         # return Factory.MyPopUp()
-        return Factory.GalleryScreen()
+        return Factory.DialogScreen(ok_callback=None)
 
     def on_start(self):
         # self.theme_cls.theme_style = "Light"

@@ -20,12 +20,12 @@ from kivymd.uix.fitimage import FitImage
 from kivymd.uix.label import MDLabel
 from kivymd.uix.selectioncontrol import MDSwitch
 
-from android_notify.config import get_python_activity_context, autoclass, on_android_platform
+from android_notify.config import get_python_activity_context, autoclass
 from android_notify.internal.java_classes import PendingIntent, Intent
 from ui.screens.download_apk_screen import thread_check_for_update
 from ui.screens.full_screen import BorderMDBoxLayout
 from ui.widgets.android import toast
-from ui.widgets.layouts import LoadingLayout, Column, get_dimensions, MyMDScreen
+from ui.widgets.layouts import LoadingLayout, Column, MyMDScreen, AdaptiveLabel
 from ui.widgets.layouts import Row
 from utils.config_manager import ConfigManager
 from utils.constants import DEV, THEME_PRIMARY_COLOR, THEME_SECONDARY_COLOR
@@ -195,34 +195,6 @@ def get_current_wallpaper():
     return path or "assets/icons/icon.png"
 
 
-class TextButton(MDButton):
-    text = StringProperty("")
-    text_color = ListProperty("")
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.radius = [5]
-        self.txt = MDButtonText(text=self.text,
-                                theme_text_color='Custom'
-                                )
-        self.bind(text=self.set_val, text_color=self.set_text_color)
-        Clock.schedule_once(self.fix_width)
-        Clock.schedule_once(self.add_text_widget)
-
-    def add_text_widget(self, dt=None):
-        self.add_widget(self.txt)
-
-    def set_val(self, instance, value):
-        self.txt.text = value
-
-    def set_text_color(self, instance, value):
-        self.txt.text_color = value
-        print("self.txt.text_color = value", self.txt.text_color)
-
-    def fix_width(self, *_):
-        self.adjust_width()
-
-
 class ToggleButton(MDIconButton):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -359,15 +331,6 @@ class QuickSetButton(MDButton):
             traceback.print_exc()
 
         return mins_text
-
-
-class AdaptiveLabel(Label):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # self.font_name = "RobotoMono"
-        # self.font_size = "14sp"
-
-        self.bind(texture_size=self.setter("size"))
 
 
 class BorderInput(BorderMDBoxLayout):

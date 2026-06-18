@@ -1,5 +1,6 @@
 import traceback
 
+from kivy.uix.label import Label
 # from kivy.uix.floatlayout import FloatLayout
 from kivymd.uix.widget import MDWidget
 
@@ -165,6 +166,8 @@ def get_status_bar_height(bypass_android_version=False):
 
 # For header use In python file self.status_bar_height. In kv file root.status_bar_height
 # each subclass should implement set_widget_left_and_right_padding
+class PlaceOnMainScreen:
+    pass
 class MyMDScreen(MDScreen):
     navigation_buttons_box = ObjectProperty()
     screen_content = ObjectProperty()
@@ -188,9 +191,9 @@ class MyMDScreen(MDScreen):
             )
             super().add_widget(self.screen_content)
 
-        if self.screen_content and not isinstance(widget,LoadingLayout):
+        if self.screen_content and not (isinstance(widget,LoadingLayout) or isinstance(widget,PlaceOnMainScreen)):
             self.screen_content.add_widget(widget, *args, **kwargs)
-        elif isinstance(widget,LoadingLayout):
+        elif isinstance(widget,LoadingLayout) or isinstance(widget,PlaceOnMainScreen):
             super().add_widget(widget)
 
     def on_window_resize(self, _, size):
@@ -384,3 +387,12 @@ class LoadingLayout(MDRelativeLayout):
     def remove(self,dt=None):
         if self.parent:
             self.parent.remove_widget(self)  # Hides the spinner by removing it
+
+
+class AdaptiveLabel(Label):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # self.font_name = "RobotoMono"
+        # self.font_size = "14sp"
+
+        self.bind(texture_size=self.setter("size"))
