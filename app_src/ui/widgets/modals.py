@@ -1,6 +1,8 @@
 from kivy.clock import Clock
 from kivy.metrics import dp
+from kivy.properties import ListProperty, StringProperty
 from kivy.uix.floatlayout import FloatLayout
+from kivymd.uix.button import MDButtonText, MDButton
 from kivymd.uix.fitimage import FitImage
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.label import MDLabel
@@ -16,11 +18,14 @@ load_kv_file(py_file_absolute_path=__file__)
 #     Builder.load_string(kv_file.read(), filename="MyBtmSheet.kv")
 
 # class
+
+
 class MyDialogBox(Column):
     # source = StringProperty()
     # ok_callback = ObjectProperty()
     def __init__(self,ok_callback, **kwargs):
         super().__init__(**kwargs)
+        self.app = get_app()
         self.md_bg_color=(0.984, 0.984, 0.984, 1.0)
         self.ok_callback=ok_callback
         self.adaptive_height=1
@@ -33,21 +38,21 @@ class MyDialogBox(Column):
         self.padding=[p,dp(50),p,dp(30)]
         self.spacing=dp(15)
         self.radius=10
-        sub_text = "This wallpaper will be permanently removed from Apps Storage"
+        sub_text = "This wallpaper will be permanently removed from App Storage"
         # self.img = AsyncImage(source="/home/fabian/Pictures/1065154.jpg",size=[100,100],size_hint=[None,None],mipmap=True,pos_hint={"center_x":0.5})
-        self.img = FitImage(source="/home/fabian/Pictures/1065154.jpg",size=[dp(120),dp(80)],size_hint=[None,None],mipmap=True,pos_hint={"center_x":0.5},radius=10)
+        self.img = FitImage(size=[dp(120),dp(80)],size_hint=[None,None],mipmap=True,pos_hint={"center_x":0.5},radius=10)
 
         self.add_widget(self.img)
-        title_widget = MDLabel(text="Delete Image?",adaptive_width=1,adaptive_height=1,theme_font_name="Custom",font_name="RobotoMono",bold=True,pos_hint={"center_x":0.5,"center_y":0.5})
-        title_widget.font_size="19sp"
-        # title_widget.md_bg_color=[1,0,1,1]
+        self.title_widget = MDLabel(text="Delete Image?",adaptive_width=1,adaptive_height=1,theme_font_name="Custom",font_name="RobotoMono",bold=True,pos_hint={"center_x":0.5,"center_y":0.5})
+        self.title_widget.font_size="19sp"
+        # self.title_widget.md_bg_color=[1,0,1,1]
 
         # subtext_layout = Column(
         #     adaptive_height=1,
         #     spacing=dp(1),
         #     pos_hint={"center_y": .5}
         # )
-        self.subtext = AdaptiveLabel(text="This wallpaper will be permanently removed from Apps Storage",font_name="RobotoMono",size_hint=[None, None])
+        self.subtext = AdaptiveLabel(text=sub_text,font_name="RobotoMono",size_hint=[None, None])
         self.subtext.font_size="13sp"
         self.subtext.pos_hint={"center_x":0.5,"center_y":0.5}
         self.subtext.color = (0.302, 0.278, 0.278, 1.0)
@@ -55,7 +60,7 @@ class MyDialogBox(Column):
         self.subtext.halign="center"
         self.bind(width=self.wrap_text_width)
         # self.subtext.size_hint=[None, None]
-        self.add_widget(title_widget)
+        self.add_widget(self.title_widget)
         self.add_widget(self.subtext)
         # subtext_layout.add_widget(self.subtext)
         # self.add_widget(subtext_layout)
@@ -63,19 +68,37 @@ class MyDialogBox(Column):
         # self.subtext.md_bg_color=[1,1,0,1]
         # self.subtext.adaptive_height=1
 
-        buttons_box = Row(spacing=10,padding=[0,10,0,0],pos_hint={"right":1},adaptive_size=1)
+        buttons_box = Row(spacing=dp(10),padding=[0,10,0,0],pos_hint={"right":1},adaptive_size=1)
         # buttons_box.md_bg_color=[1,0,0,1]
-        cancel_btn = TextButton(text="Cancel",md_bg_color=(0.851, 0.851, 0.851, 1.0),theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.close)
+        self.cancel_btn = TextButton(text="Cancel",md_bg_color=(0.851, 0.851, 0.851, 1.0),theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.close)
 
-        buttons_box.add_widget(cancel_btn)
-        ok_btn = TextButton(text="Yes, Delete",md_bg_color=(1.0, 0.063, 0.063, 1.0),theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.ok)
-        buttons_box.add_widget(ok_btn)
+        buttons_box.add_widget(self.cancel_btn)
+        self.ok_btn = TextButton(text="Yes, Delete",md_bg_color=(1.0, 0.063, 0.063, 1.0),theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.ok)
+        buttons_box.add_widget(self.ok_btn)
         self.add_widget(buttons_box)
+        self.app.bind(device_theme=self.set_theme)
+        self.set_theme(None, self.app.device_theme)
         Clock.schedule_once(lambda dt:self.wrap_text_width(0,0),0)
 
     def wrap_text_width(self, i, v):
         # print(f"self.text_layout {self.text_layout.width}, dp:{dp(self.text_layout.width)}") # self.text_layout 470.0, dp:940.0
         self.subtext.text_size = [self.width, None]
+
+    def set_theme(self, _, theme):
+        if theme == "light":
+            self.md_bg_color = (0.984, 0.984, 0.984, 1.0)
+            self.title_widget.text_color = [0, 0, 0, 1]
+            self.subtext.color = (0.302, 0.278, 0.278, 1.0)
+            self.cancel_btn.md_bg_color = (0.851, 0.851, 0.851, 1.0)
+            self.cancel_btn.text_color = [0, 0, 0, 1]
+            self.ok_btn.text_color = [0, 0, 0, 1]
+        else:
+            self.md_bg_color = [0.1, 0.1, 0.1, 1]
+            self.title_widget.text_color = [1, 1, 1, 1]
+            self.subtext.color = [0.7, 0.7, 0.7, 1.0]
+            self.cancel_btn.md_bg_color = [0.2, 0.2, 0.2, 1]
+            self.cancel_btn.text_color = [1, 1, 1, 1]
+            self.ok_btn.text_color = [1, 1, 1, 1]
 
     def close(self,*_):
         self.parent.close()
@@ -83,6 +106,7 @@ class MyDialogBox(Column):
     def ok(self,*_):
         self.ok_callback()
         self.close()
+
 
 class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
     def __init__(self, ok_callback, **kwargs):
@@ -93,7 +117,7 @@ class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
         self.bind(width=self.fix_child_width)
         self.add_widget(self.dialog_box)
     def fix_child_width(self,_,value):
-        print(_,value)
+        # print(_,value)
         self.dialog_box.width=value-70
 
     def show(self,img_texture):
