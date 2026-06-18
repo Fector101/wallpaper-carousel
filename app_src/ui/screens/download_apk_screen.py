@@ -140,7 +140,6 @@ def do_android_install(apk_path):
         except Exception as e1:
             print("install_apk failed:", e1)
 
-
 class TextButton(MDButton):
     text = StringProperty("")
     text_color = ListProperty("")
@@ -155,7 +154,7 @@ class TextButton(MDButton):
         self.txt.bind(width=self.fix_text_out_of_bounds_width_on_android)
         self.set_text_color(self, self.text_color)
         self.bind(text=self.set_val, text_color=self.set_text_color)
-        # Clock.schedule_once(self.fix_width,2)
+        Clock.schedule_once(self.fix_width,2)
         Clock.schedule_once(self.add_text_widget)
 
     def add_text_widget(self, dt=None):
@@ -168,9 +167,13 @@ class TextButton(MDButton):
         if not value:
             return
         self.txt.text_color = value
-    def fix_text_out_of_bounds_width_on_android(self,*_):
-        self.width = self.txt.texture_size[0] + 10
+    def fix_text_out_of_bounds_width_on_android(self,_,v):
+        self.width = dp(v+10)
 
+        print(self.txt.texture_size[0] + 10,v,"used")
+
+    def adjust_width(self,*gg):
+        pass
     def fix_width(self, *_):
         self.adjust_width()
 
