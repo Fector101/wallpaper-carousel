@@ -1,6 +1,6 @@
 from kivy.clock import Clock
 from kivy.metrics import dp
-from kivy.properties import ListProperty, StringProperty
+from kivy.properties import ListProperty, StringProperty, BooleanProperty, DictProperty
 from kivy.uix.floatlayout import FloatLayout
 from kivymd.uix.button import MDButtonText, MDButton
 from kivymd.uix.fitimage import FitImage
@@ -19,6 +19,55 @@ load_kv_file(py_file_absolute_path=__file__)
 
 # class
 
+class MyTextButton(MDButton):
+    text = StringProperty("")
+    text_color = ListProperty("")
+    adaptive_size = BooleanProperty(False)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.elevation_level = 1
+        self.theme_width = "Custom"
+        self.theme_height = "Custom"
+        self.txt = MDButtonText(text=self.text,
+                                theme_text_color='Custom',
+                                pos_hint={"center_x": .5, "center_y": .5})
+
+        print(self.adaptive_size)
+        if self.adaptive_size:
+            self.txt.bind(width=self.fix_text_out_of_bounds_width_on_android)
+        else:
+            Clock.schedule_once(self.set_width_to_parent_width, 1)
+
+        self.set_text_color(self, self.text_color)
+        self.bind(text=self.set_val, text_color=self.set_text_color)
+        # Clock.schedule_once(self.fix_width,2)
+        Clock.schedule_once(self.add_text_widget)
+
+    def set_width_to_parent_width(self,*_):
+        # self.height = self.parent.height
+        padding = self.parent.spacing#10
+        available_width = self.parent.width - padding
+        # print(f"available_width: {available_width}")
+        self.width = int(available_width/2)
+    def add_text_widget(self, dt=None):
+        self.add_widget(self.txt)
+
+    def set_val(self, instance, value):
+        self.txt.text = value
+
+    def set_text_color(self, instance, value):
+        if not value:
+            return
+        self.txt.text_color = value
+    def fix_text_out_of_bounds_width_on_android(self,_,v):
+        self.width = dp(v+10)
+
+        print(self.txt.texture_size[0] + 10,v,"used")
+
+    def adjust_width(self,*gg):
+        pass
+    def fix_width(self, *_):
+        self.adjust_width()
 
 class MyDialogBox(Column):
     # source = StringProperty()
@@ -68,14 +117,17 @@ class MyDialogBox(Column):
         # self.subtext.md_bg_color=[1,1,0,1]
         # self.subtext.adaptive_height=1
 
-        buttons_box = Row(spacing=dp(10),padding=[0,10,0,0],pos_hint={"right":1},adaptive_size=1)
-        # buttons_box.md_bg_color=[1,0,0,1]
-        self.cancel_btn = TextButton(text="Cancel",md_bg_color=(0.851, 0.851, 0.851, 1.0),theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.close)
+        self.buttons_box = Row(spacing=dp(10),padding=[0,10,0,0],pos_hint={"center_x":.5},size_hint_x=.8,adaptive_height=1)
+        # self.buttons_box.md_bg_color=[0,0,1,1]
+        self.cancel_btn = MyTextButton(text="Cancel",md_bg_color=(0.851, 0.851, 0.851, 1.0),theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.close)
 
-        buttons_box.add_widget(self.cancel_btn)
-        self.ok_btn = TextButton(text="Yes, Remove",md_bg_color=(1.0, 0.063, 0.063, 1.0),theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.ok)
-        buttons_box.add_widget(self.ok_btn)
-        self.add_widget(buttons_box)
+        self.buttons_box.add_widget(self.cancel_btn)
+        self.ok_btn = MyTextButton(text="Yes, Remove",md_bg_color=(1.0, 0.063, 0.063, 1.0),theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.ok)
+        self.ok_btn.pos_hint = {"right":1}
+        # self.ok_btn.# TextButton(text="Yes, Remove",md_bg_color=(1.0, 0.063, 0.063, 1.0),theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.ok)
+        self.buttons_box.add_widget(self.ok_btn)
+        self.add_widget(self.buttons_box)
+        self.buttons_box.bind(width=self.fix_buttons_width)
         self.app.bind(device_theme=self.set_theme)
         self.set_theme(None, self.app.device_theme)
         Clock.schedule_once(lambda dt:self.wrap_text_width(0,0),0)
@@ -107,6 +159,9 @@ class MyDialogBox(Column):
         self.ok_callback()
         self.close()
 
+    def fix_buttons_width(self,*_):
+        self.cancel_btn.set_width_to_parent_width()
+        self.ok_btn.set_width_to_parent_width()
 
 class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
     def __init__(self, ok_callback, **kwargs):
