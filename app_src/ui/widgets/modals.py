@@ -43,7 +43,7 @@ class MyDialogBox(Column):
         self.img = FitImage(size=[dp(120),dp(80)],size_hint=[None,None],mipmap=True,pos_hint={"center_x":0.5},radius=10)
 
         self.add_widget(self.img)
-        self.title_widget = MDLabel(text="Delete Image?",adaptive_width=1,adaptive_height=1,theme_font_name="Custom",font_name="RobotoMono",bold=True,pos_hint={"center_x":0.5,"center_y":0.5})
+        self.title_widget = MDLabel(text="Remove Image?",adaptive_width=1,adaptive_height=1,theme_font_name="Custom",font_name="RobotoMono",bold=True,pos_hint={"center_x":0.5,"center_y":0.5})
         self.title_widget.font_size="19sp"
         # self.title_widget.md_bg_color=[1,0,1,1]
 
@@ -73,7 +73,7 @@ class MyDialogBox(Column):
         self.cancel_btn = TextButton(text="Cancel",md_bg_color=(0.851, 0.851, 0.851, 1.0),theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.close)
 
         buttons_box.add_widget(self.cancel_btn)
-        self.ok_btn = TextButton(text="Yes, Delete",md_bg_color=(1.0, 0.063, 0.063, 1.0),theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.ok)
+        self.ok_btn = TextButton(text="Yes, Remove",md_bg_color=(1.0, 0.063, 0.063, 1.0),theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.ok)
         buttons_box.add_widget(self.ok_btn)
         self.add_widget(buttons_box)
         self.app.bind(device_theme=self.set_theme)
