@@ -21,7 +21,7 @@ from ui.screens.logs_screen import LogsScreen
 from ui.screens.download_apk_screen import DownloadApkScreen
 
 
-DEV = 0
+DEV = os.path.exists("/home/fabian")
 class ScreenManager(MDScreenManager):
 
     def __init__(self, **kwargs):
