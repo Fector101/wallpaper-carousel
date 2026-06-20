@@ -153,7 +153,7 @@ class PreviewImage(ButtonBehavior,MDRelativeLayout):
         """Ensure the image widget fills the parent layout."""
         if self.image_widget:
             self.image_widget.size = v#[100.5, 100.5]
-            print("fix_image_size:", v)
+            # print("fix_image_size:", v)
 
 class MyMDGridLayout(MDGridLayout):
     icon_active = StringProperty()
@@ -396,6 +396,7 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
     gallery_screen = ObjectProperty()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.app = get_app()
 
         self.multi_select_top=MultiselectTop(gallery_screen=self.gallery_screen,hide=self.hide)
         self.multi_select_bottom=MultiselectBottom()
@@ -406,10 +407,25 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
         if not self.parent:
             self.gallery_screen.add_widget(self)
 
+        if self.gallery_screen and hasattr(self.gallery_screen.ids, "select_mode_button"):
+            self.gallery_screen.ids.select_mode_button.opacity = 0
+            self.gallery_screen.ids.select_mode_button.disabled = True
+
+        if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
+            self.app.bottom_bar.hide(animation=False)
+
     def hide(self, *args):
         self.multi_select_top.select_all_ = False
         if self.parent:
             self.parent.remove_widget(self)
+
+        if self.gallery_screen and hasattr(self.gallery_screen.ids, "select_mode_button"):
+            self.gallery_screen.ids.select_mode_button.opacity = 1
+            self.gallery_screen.ids.select_mode_button.disabled = False
+
+        if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
+            self.app.bottom_bar.show(animation=False)
+
 class MultiselectTop(MDFloatLayout):
     status_bar_height = NumericProperty(get_status_bar_height())
     gallery_screen = ObjectProperty()  # will be set by GalleryScreen when creating this manager
