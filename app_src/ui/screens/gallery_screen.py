@@ -5,25 +5,30 @@ from pathlib import Path
 from android_notify.config import on_android_platform
 from kivy.clock import Clock
 from kivy.core.window import Window
+from kivy.graphics import Color, Rectangle
 from kivy.metrics import dp, sp
 from kivy.properties import StringProperty, NumericProperty, ListProperty, BooleanProperty, ObjectProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.button import Button
+from kivy.uix.widget import Widget
 from kivy.uix.image import AsyncImage
 from kivy.uix.recyclegridlayout import RecycleGridLayout
 from kivy.uix.tabbedpanel import TabbedPanel
 
 from kivymd.app import MDApp
-from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.button import MDIconButton
+from kivymd.uix.boxlayout import BoxLayout, MDBoxLayout
+from kivymd.uix.button import MDButton, MDButtonIcon, MDButtonText, MDIconButton
+from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.label import MDLabel
 from kivymd.uix.relativelayout import MDRelativeLayout
+from kivymd.uix.widget import MDWidget
 
 from plyer import filechooser
 
 from utils.logger import app_logger
-from ui.widgets.layouts import MyMDScreen, Column, Row, get_nav_bar_height, get_status_bar_height  # used in .kv file
+from ui.widgets.layouts import MyMDScreen, Column, Row, get_nav_bar_height, get_status_bar_height, \
+    PlaceOnMainScreen, GenericStatusBarSpacer  # used in .kv file
 from utils.config_manager import ConfigManager
 from utils.helper import appFolder, load_kv_file  # type
 from utils.image_operations import get_or_create_thumbnail
@@ -74,17 +79,80 @@ def get_number_of_cols():
     return cols
 
 
-class PreviewImage(ButtonBehavior, AsyncImage):
+class PreviewImage(ButtonBehavior,MDRelativeLayout):
     high_resolution_path = StringProperty()
-    # theme_cls = StringProperty()
+    selected = BooleanProperty(False)
+    selection_mode = BooleanProperty(False)
+    source = StringProperty()
 
     def __init__(self, **kwargs):
+        source = kwargs.get("source")
         super().__init__(**kwargs)
-        self.fit_mode = "cover"
-        self.mipmap = True
-    # def remove_from_thumbnails_display(self):
-    #     self.parent.remove_widget(self)
+        self.md_bg_color=[1,1,0,1]
+        self.checkmark_widget = None
+        self.image_widget = AsyncImage(
+            source=source,
+            fit_mode="cover",
+            mipmap=True,
+            
+            # allow_stretch=True,
+        )
+        self.image_widget.size_hint=(None,None)
+        self.add_widget(self.image_widget)
+        self.bind(
+            selected=self.on_selected, selection_mode=self.on_selection_mode_changed,
+            size=self.fix_image_size)
+        # self._show_checkmark()
+    def on_selected(self, instance, value):
+        """Update visual feedback when selected state changes."""
+        self._update_selection_display()
 
+    def on_selection_mode_changed(self, instance, value):
+        """Update when selection mode is toggled."""
+        self._update_selection_display()
+
+    def _update_selection_display(self):
+        """Show/hide checkmark based on selection state."""
+        if self.selected:
+            self._show_checkmark()
+            print("Selected1:", self.high_resolution_path)
+        else:
+            self._hide_checkmark()
+
+    def _show_checkmark(self):
+        """Show selection checkmark."""
+        if not self.checkmark_widget:
+            from kivymd.uix.label import MDIcon
+            self.checkmark_widget = MDIcon(
+                icon="check-circle",
+                theme_icon_color="Custom",
+                icon_color=[0.2, 1, 0.2, 1],
+                size_hint=(None, None),
+                size=(dp(28), dp(28)),
+                pos_hint={"right": 1, "top": 1},
+            )
+            self.add_widget(self.checkmark_widget)
+
+    def _hide_checkmark(self):
+        """Hide selection checkmark."""
+        if self.checkmark_widget and self.checkmark_widget in self.children:
+            self.remove_widget(self.checkmark_widget)
+            self.checkmark_widget = None
+
+    def on_touch_down(self, touch):
+        if not self.collide_point(*touch.pos):
+            return False
+
+        if self.selection_mode:
+            self.selected = not self.selected
+            return True
+        return super().on_touch_down(touch)
+
+    def fix_image_size(self, i,v):
+        """Ensure the image widget fills the parent layout."""
+        if self.image_widget:
+            self.image_widget.size = v#[100.5, 100.5]
+            print("fix_image_size:", v)
 
 class MyMDGridLayout(MDGridLayout):
     icon_active = StringProperty()
@@ -130,7 +198,7 @@ class DateGroupLayout(Column):
         self.bind(cols=self.change_preview_img_size)
 
         # self.md_bg_color=[.1,1,.3,1]
-
+        self.turn_on_selection_mode()
     def build_grid(self, *args):
         app_logger.info(f"DGL_BUILD: starting batch_len={len(self.batch)} parent={self.parent}")
         header_layout = MDRelativeLayout(
@@ -300,6 +368,179 @@ class DateGroupLayout(Column):
         return None
         # self.doing_cols_change=False
 
+    def turn_on_selection_mode(self):
+        """Enable selection mode for all preview images in this group."""
+        for child in self.walk():
+            if isinstance(child, PreviewImage):
+                child.selection_mode = True
+                child.bind(selected=self._on_image_selection_changed)
+    
+    def _on_image_selection_changed(self, instance, value):
+        """Called when any preview image's selection state changes."""
+        self.parent.parent.update_selection_count()
+    
+    def get_selected_images(self):
+        """Return list of selected PreviewImage widgets in this group."""
+        selected = []
+        for child in self.walk():
+            if isinstance(child, PreviewImage) and child.selected:
+                selected.append(child)
+        return selected
+    
+    def clear_selection(self):
+        """Deselect all images in this group."""
+        for child in self.walk():
+            if isinstance(child, PreviewImage):
+                child.selected = False
+class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
+    gallery_screen = ObjectProperty()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.multi_select_top=MultiselectTop(gallery_screen=self.gallery_screen,hide=self.hide)
+        self.multi_select_bottom=MultiselectBottom()
+        self.add_widget(self.multi_select_top)
+        self.add_widget(self.multi_select_bottom)
+
+    def hide(self, *args):
+        self.multi_select_top.select_all_ = False
+        if self.parent:
+            self.parent.remove_widget(self)
+class MultiselectTop(MDFloatLayout):
+    status_bar_height = NumericProperty(get_status_bar_height())
+    gallery_screen = ObjectProperty()  # will be set by GalleryScreen when creating this manager
+    hide = ObjectProperty()
+    select_all_=BooleanProperty(False)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.md_bg_color=[.1, .1, .1, 1]
+        self.size_hint_y = .25
+        self.pos_hint={"top":1}
+        self.root_layout = Column(adaptive_height=True,pos_hint={"top":1}, padding=[10,0,10,10],spacing=dp(10))
+        self.generic_status_bar_spacer = GenericStatusBarSpacer(
+            status_bar_height=self.status_bar_height,
+            md_bg_color=[.1, .1, .1, 1])
+        self.root_layout.add_widget(self.generic_status_bar_spacer)
+        
+        # use a horizontal box with a flexible spacer to place icons left and right
+        btn_box = Row(orientation="horizontal", pos_hint={"top":1}, adaptive_height=True)
+        # btn_box.md_bg_color=[1,0,0,1]
+        self.cancel_selection_mode_btn = MDIconButton(icon="close", theme_icon_color="Custom", icon_color=[.8, .8, .8, 1])
+        self.toggle_select_all_btn = MDIconButton(icon="playlist-check", theme_icon_color="Custom", icon_color=[.8, .8, .8, 1])
+        
+        self.cancel_selection_mode_btn.bind(on_release=self.hide)
+        self.toggle_select_all_btn.bind(on_release=lambda _: setattr(self, "select_all_", not self.select_all_))
+        btn_box.add_widget(self.cancel_selection_mode_btn)
+        btn_box.add_widget(Widget())
+        btn_box.add_widget(self.toggle_select_all_btn)
+        self.root_layout.add_widget(btn_box)
+        self.title_widget = MDLabel(
+            text="0 items selected",
+            theme_text_color="Custom",
+            text_color=[.8, .8, .8, 1],adaptive_size=True,
+            font_size=sp(24),
+            theme_font_size="Custom",bold=1,
+            theme_font_name="Custom",font_name="RobotoMono"
+            )
+        self.title_widget.padding=[10,0,0,0]
+        self.root_layout.add_widget(self.title_widget)
+        self.add_widget(self.root_layout)
+        self.bind(select_all_=self.on_select_all_changed)
+        # self.gallery_screen = get_app().sm.get_screen("thumbs")
+    # def cancel_selection_mode_btn(self, *args):
+    def on_select_all_changed(self, _,v):
+        if v:
+            self.select_all()
+        else:
+            self.deselect_all()
+    
+    
+    def update_selection_count(self):
+        """Update the displayed selection count."""
+        if not self.gallery_screen:
+            return
+        
+        count = 0
+        for tab_name, tab_data in self.gallery_screen.tab_instances.items():
+            for key, value in tab_data.items():
+                if isinstance(value, DateGroupLayout):
+                    count += len(value.get_selected_images())
+        
+        txt = "item" if count == 1 else "items"
+        self.title_widget.text = f"{count} {txt} selected"
+    
+    def select_all(self, *args):
+        """Select all images in current tab."""
+        if not self.gallery_screen:
+            return
+        
+        current_tab = self.gallery_screen.current_tab
+        tab_data = self.gallery_screen.tab_instances.get(current_tab)
+        
+        if tab_data:
+            for key, value in tab_data.items():
+                if isinstance(value, DateGroupLayout):
+                    for child in value.walk():
+                        if isinstance(child, PreviewImage):
+                            # print("Selecting:", child.high_resolution_path)
+                            child.selected = True
+        
+        self.update_selection_count()
+    
+    def deselect_all(self, *args):
+        """Deselect all images."""
+        if not self.gallery_screen:
+            return
+        
+        for tab_name, tab_data in self.gallery_screen.tab_instances.items():
+            for key, value in tab_data.items():
+                if isinstance(value, DateGroupLayout):
+                    value.clear_selection()
+        
+        self.update_selection_count()
+
+class IconTextButton(MDButton):
+    def __init__(self, icon:str, text:str, **kwargs):
+        super().__init__(**kwargs)
+        # self.theme_bg_color="Custom"
+        # self.md_bg_color=[1,0,0,1]
+        self.style="text"
+        self.text = text
+        self.icon = icon
+        self.icon_widget = MDButtonIcon(icon=icon, theme_icon_color="Custom", icon_color=[.8, .8, .8, 1])
+        self.text_widget = MDButtonText(text=text, theme_text_color="Custom", text_color=[.8, .8, .8, 1])
+        self.add_widget(self.icon_widget)
+        self.add_widget(self.text_widget)
+    
+    def adjust_width(self, *args):
+        pass
+class MultiselectBottom(MDFloatLayout):
+    nav_bar_height = NumericProperty(get_nav_bar_height())
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        c=.11
+        self.md_bg_color=[c, c, c, 1]
+        self.adaptive_height=True
+        self.pos_hint={"bottom":1}
+        self.btn_box = Row(orientation="horizontal", pos_hint={"top":1}, adaptive_height=True)
+        # self.btn_box.md_bg_color=[1,0,0,1]
+        self.btn_box.padding = 10
+        
+        delete_btn = IconTextButton(icon="delete", text="Delete")
+        share_btn = IconTextButton(icon="share", text="Share")
+        info_btn = IconTextButton(icon="information", text="Info")
+
+        self.btn_box.add_widget(Widget())
+        self.btn_box.add_widget(delete_btn)
+        self.btn_box.add_widget(Widget())
+        self.btn_box.add_widget(share_btn)
+        self.btn_box.add_widget(Widget())
+        self.btn_box.add_widget(info_btn)
+        self.btn_box.add_widget(Widget())
+
+        self.add_widget(self.btn_box)
+        self.btn_box.bind(minimum_height=self.setter("height"))
 
 class GalleryScreen(MyMDScreen):
     current_tab = StringProperty(GalleryTabs.BOTH.value)
@@ -340,7 +581,8 @@ class GalleryScreen(MyMDScreen):
         # self.btm_sheet = MyBtmSheet()
         # self.add_widget(self.btm_sheet)
         # self.load_saved()
-
+        multi_select_manager = MultiSelectManager(gallery_screen=self)
+        self.add_widget(multi_select_manager)
     def initialize_tabs(self, no_clock=False, has_files=True):
         if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
             self.app.bottom_bar.show(animation=False)
