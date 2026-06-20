@@ -391,7 +391,7 @@ class DateGroupLayout(Column):
         for child in self.walk():
             if isinstance(child, PreviewImage):
                 child.selected = False
-class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
+class MultiSelectManager(MDFloatLayout):
     gallery_screen = ObjectProperty()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
