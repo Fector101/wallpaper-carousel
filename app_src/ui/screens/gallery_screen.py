@@ -21,6 +21,7 @@ from kivymd.uix.button import MDButton, MDButtonIcon, MDButtonText, MDIconButton
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.label import MDLabel
+from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.relativelayout import MDRelativeLayout
 from kivymd.uix.widget import MDWidget
 
@@ -198,7 +199,6 @@ class DateGroupLayout(Column):
         self.bind(cols=self.change_preview_img_size)
 
         # self.md_bg_color=[.1,1,.3,1]
-        self.turn_on_selection_mode()
     def build_grid(self, *args):
         app_logger.info(f"DGL_BUILD: starting batch_len={len(self.batch)} parent={self.parent}")
         header_layout = MDRelativeLayout(
@@ -402,6 +402,10 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
         self.add_widget(self.multi_select_top)
         self.add_widget(self.multi_select_bottom)
 
+    def show(self):
+        if not self.parent:
+            self.gallery_screen.add_widget(self)
+
     def hide(self, *args):
         self.multi_select_top.select_all_ = False
         if self.parent:
@@ -581,8 +585,31 @@ class GalleryScreen(MyMDScreen):
         # self.btm_sheet = MyBtmSheet()
         # self.add_widget(self.btm_sheet)
         # self.load_saved()
-        multi_select_manager = MultiSelectManager(gallery_screen=self)
-        self.add_widget(multi_select_manager)
+        
+        self.multi_select_manager = MultiSelectManager(gallery_screen=self)
+        menu_items = [
+                {
+                    # 'viewclass': 'OneLineListItem',
+                    'text': 'Enter select mode',
+                    'on_release': self.enter_select_mode,
+                    "leading_icon": "check-all",
+                    # "trailing_icon":"arrow-right",
+                },
+                
+            ]
+        self.select_menu = MDDropdownMenu(
+                    caller=self.ids.select_mode_button,
+                    items=menu_items,
+                    width_mult=4,
+                )
+
+    def open_select_mode_menu(self, *args):
+        self.select_menu.open()
+
+    def enter_select_mode(self,*args):
+        self.multi_select_manager.show()
+        self.select_menu.dismiss()
+
     def initialize_tabs(self, no_clock=False, has_files=True):
         if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
             self.app.bottom_bar.show(animation=False)

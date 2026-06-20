@@ -132,6 +132,12 @@
                         icon_color: [.8,.8,.8,1]
                         on_release: app.btm_sheet.show()
                     MDIconButton:
+                        id: select_mode_button
+                        icon: "checkbox-multiple-blank-outline"
+                        theme_icon_color:"Custom"
+                        icon_color: [.8,.8,.8,1]
+                        on_release: root.open_select_mode_menu()
+                    MDIconButton:
                         icon: "dots-vertical"
                         theme_icon_color:"Custom"
                         icon_color: [.8,.8,.8,1]
