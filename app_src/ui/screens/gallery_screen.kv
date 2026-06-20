@@ -132,6 +132,7 @@
                         icon_color: [.8,.8,.8,1]
                         on_release: app.btm_sheet.show()
                     MDIconButton:
+                        id:select_mode_button
                         icon: "dots-vertical"
                         theme_icon_color:"Custom"
                         icon_color: [.8,.8,.8,1]
@@ -252,7 +253,7 @@
 
 
         MDFabButton:
-            id: select_mode_button
+            id: chooser_btn
             icon:"plus"
             on_release: root.open_file_chooser()
             pos_hint: {"right": .9,"center_y":.15}

@@ -116,7 +116,7 @@ class PreviewImage(ButtonBehavior,MDRelativeLayout):
         """Show/hide checkmark based on selection state."""
         if self.selected:
             self._show_checkmark()
-            print("Selected1:", self.high_resolution_path)
+            # print("Selected1:", self.high_resolution_path)
         else:
             self._hide_checkmark()
 
@@ -154,7 +154,6 @@ class PreviewImage(ButtonBehavior,MDRelativeLayout):
         if self.image_widget:
             self.image_widget.size = v#[100.5, 100.5]
             # print("fix_image_size:", v)
-
 class MyMDGridLayout(MDGridLayout):
     icon_active = StringProperty()
     icon_inactive_color = StringProperty()
@@ -407,9 +406,9 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
         if not self.parent:
             self.gallery_screen.add_widget(self)
 
-        if self.gallery_screen and hasattr(self.gallery_screen.ids, "select_mode_button"):
-            self.gallery_screen.ids.select_mode_button.opacity = 0
-            self.gallery_screen.ids.select_mode_button.disabled = True
+        if self.gallery_screen and hasattr(self.gallery_screen.ids, "chooser_btn"):
+            self.gallery_screen.ids.chooser_btn.opacity = 0
+            self.gallery_screen.ids.chooser_btn.disabled = True
 
         if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
             self.app.bottom_bar.hide(animation=False)
@@ -419,9 +418,9 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
         if self.parent:
             self.parent.remove_widget(self)
 
-        if self.gallery_screen and hasattr(self.gallery_screen.ids, "select_mode_button"):
-            self.gallery_screen.ids.select_mode_button.opacity = 1
-            self.gallery_screen.ids.select_mode_button.disabled = False
+        if self.gallery_screen and hasattr(self.gallery_screen.ids, "chooser_btn"):
+            self.gallery_screen.ids.chooser_btn.opacity = 1
+            self.gallery_screen.ids.chooser_btn.disabled = False
 
         if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
             self.app.bottom_bar.show(animation=False)
@@ -618,6 +617,7 @@ class GalleryScreen(MyMDScreen):
                     items=menu_items,
                     width_mult=4,
                 )
+        
 
     def open_select_mode_menu(self, *args):
         self.select_menu.open()
