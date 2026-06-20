@@ -132,15 +132,10 @@
                         icon_color: [.8,.8,.8,1]
                         on_release: app.btm_sheet.show()
                     MDIconButton:
-                        id: select_mode_button
-                        icon: "checkbox-multiple-blank-outline"
-                        theme_icon_color:"Custom"
-                        icon_color: [.8,.8,.8,1]
-                        on_release: root.open_select_mode_menu()
-                    MDIconButton:
                         icon: "dots-vertical"
                         theme_icon_color:"Custom"
                         icon_color: [.8,.8,.8,1]
+                        on_release: root.open_select_mode_menu()
                 Column:
                     spacing:10
                     padding: [dp(20), 0, dp(20), dp(10)]
@@ -257,6 +252,7 @@
 
 
         MDFabButton:
+            id: select_mode_button
             icon:"plus"
             on_release: root.open_file_chooser()
             pos_hint: {"right": .9,"center_y":.15}
