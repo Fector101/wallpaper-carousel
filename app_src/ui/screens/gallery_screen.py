@@ -391,6 +391,7 @@ class DateGroupLayout(Column):
         for child in self.walk():
             if isinstance(child, PreviewImage):
                 child.selected = False
+
 class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
     gallery_screen = ObjectProperty()
     def __init__(self, **kwargs):
@@ -435,12 +436,12 @@ class MultiselectTop(MDFloatLayout):
         self.md_bg_color=[.1, .1, .1, 1]
         self.size_hint_y = .25
         self.pos_hint={"top":1}
-        self.root_layout = Column(adaptive_height=True,pos_hint={"top":1}, padding=[10,0,10,10],spacing=dp(10))
+        x_padding=15
+        self.root_layout = Column(adaptive_height=True,pos_hint={"top":1}, padding=[x_padding,0,x_padding,10],spacing=dp(10))
         self.generic_status_bar_spacer = GenericStatusBarSpacer(
             status_bar_height=self.status_bar_height,
             md_bg_color=[.1, .1, .1, 1])
         self.root_layout.add_widget(self.generic_status_bar_spacer)
-        
         # use a horizontal box with a flexible spacer to place icons left and right
         btn_box = Row(orientation="horizontal", pos_hint={"top":1}, adaptive_height=True)
         # btn_box.md_bg_color=[1,0,0,1]
@@ -461,7 +462,7 @@ class MultiselectTop(MDFloatLayout):
             theme_font_size="Custom",bold=1,
             theme_font_name="Custom",font_name="RobotoMono"
             )
-        self.title_widget.padding=[10,0,0,0]
+        self.title_widget.padding=[20,0,0,0]
         self.root_layout.add_widget(self.title_widget)
         self.add_widget(self.root_layout)
         self.bind(select_all_=self.on_select_all_changed)
@@ -472,7 +473,6 @@ class MultiselectTop(MDFloatLayout):
             self.select_all()
         else:
             self.deselect_all()
-    
     
     def update_selection_count(self):
         """Update the displayed selection count."""
@@ -528,38 +528,38 @@ class IconTextButton(MDButton):
         self.icon = icon
         self.icon_widget = MDButtonIcon(icon=icon, theme_icon_color="Custom", icon_color=[.8, .8, .8, 1])
         self.text_widget = MDButtonText(text=text, theme_text_color="Custom", text_color=[.8, .8, .8, 1])
+        # self.text_widget.md_bg_color=[1,1,0,1]
+        self.icon_widget.theme_bg_color="Custom"
+        self.icon_widget.md_bg_color=[1,1,0,1]
         self.add_widget(self.icon_widget)
         self.add_widget(self.text_widget)
-    
-    def adjust_width(self, *args):
-        pass
-class MultiselectBottom(MDFloatLayout):
-    nav_bar_height = NumericProperty(get_nav_bar_height())
+        self.theme_bg_color="Custom"
+        # self.md_bg_color=[1,0,0,1]
+        Clock.schedule_once(self.adjust_width,5)
 
+
+class MultiselectBottom(Row):
+    nav_bar_height = NumericProperty(get_nav_bar_height())
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         c=.11
         self.md_bg_color=[c, c, c, 1]
+        self.padding = [10,10,10,self.nav_bar_height+10]
         self.adaptive_height=True
         self.pos_hint={"bottom":1}
-        self.btn_box = Row(orientation="horizontal", pos_hint={"top":1}, adaptive_height=True)
-        # self.btn_box.md_bg_color=[1,0,0,1]
-        self.btn_box.padding = 10
-        
+
         delete_btn = IconTextButton(icon="delete", text="Delete")
         share_btn = IconTextButton(icon="share", text="Share")
         info_btn = IconTextButton(icon="information", text="Info")
 
-        self.btn_box.add_widget(Widget())
-        self.btn_box.add_widget(delete_btn)
-        self.btn_box.add_widget(Widget())
-        self.btn_box.add_widget(share_btn)
-        self.btn_box.add_widget(Widget())
-        self.btn_box.add_widget(info_btn)
-        self.btn_box.add_widget(Widget())
+        self.add_widget(Widget())
+        self.add_widget(delete_btn)
+        self.add_widget(Widget())
+        self.add_widget(share_btn)
+        self.add_widget(Widget())
+        self.add_widget(info_btn)
+        self.add_widget(Widget())
 
-        self.add_widget(self.btn_box)
-        self.btn_box.bind(minimum_height=self.setter("height"))
 
 class GalleryScreen(MyMDScreen):
     current_tab = StringProperty(GalleryTabs.BOTH.value)
@@ -617,6 +617,7 @@ class GalleryScreen(MyMDScreen):
                     items=menu_items,
                     width_mult=4,
                 )
+        # self.enter_select_mode()
         
 
     def open_select_mode_menu(self, *args):
@@ -942,7 +943,7 @@ class GalleryScreen(MyMDScreen):
             root_container.orientation="vertical"
             self.ids.tab_buttons_box.orientation="horizontal"
             self.ids.head_section.size_hint_x=1
-            self.ids.head_section.padding= [dp(0), dp(self.status_bar_height), dp(10), dp(0)]
+            self.ids.head_section.padding= [0, self.status_bar_height, 10, 0]
 
     def change_amount_of_columns(self,chosen_cols):
         for each_tab,data in self.tab_instances.items():

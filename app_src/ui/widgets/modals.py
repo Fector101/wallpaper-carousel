@@ -49,6 +49,7 @@ class MyTextButton(MDButton):
         available_width = self.parent.width - padding
         # print(f"available_width: {available_width}")
         self.width = int(available_width/2)
+
     def add_text_widget(self, dt=None):
         self.add_widget(self.txt)
 
@@ -59,13 +60,15 @@ class MyTextButton(MDButton):
         if not value:
             return
         self.txt.text_color = value
+
     def fix_text_out_of_bounds_width_on_android(self,_,v):
         self.width = dp(v+10)
 
-        print(self.txt.texture_size[0] + 10,v,"used")
+        # print(self.txt.texture_size[0] + 10,v,"used")
 
     def adjust_width(self,*gg):
         pass
+
     def fix_width(self, *_):
         self.adjust_width()
 
