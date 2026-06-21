@@ -642,8 +642,9 @@ class MultiselectBottom(Row):
             if not path:
                 continue
 
-            for tab_name in [GalleryTabs.BOTH.value, GalleryTabs.DAY.value, GalleryTabs.NOON.value]:
-                gallery_screen.remove_wallpaper_from_thumbnails(path, tab=tab_name)
+            # for tab_name in [GalleryTabs.BOTH.value, GalleryTabs.DAY.value, GalleryTabs.NOON.value]:
+            tab_name = gallery_screen.current_tab
+            gallery_screen.remove_wallpaper_from_thumbnails(path, tab=tab_name)
 
             if os.path.exists(path):
                 os.remove(path)
@@ -663,9 +664,6 @@ class MultiselectBottom(Row):
                 my_config.remove_wallpaper_to_from("noon_wallpapers", path)
             except Exception as error_removing_data1:
                 app_logger.exception(error_removing_data1)
-
-        if self.hide:
-            self.hide()
 
 
     def _share_selected(self, *args):
