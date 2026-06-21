@@ -33,7 +33,9 @@ from ui.widgets.layouts import MyMDScreen, Column, Row, get_nav_bar_height, get_
     PlaceOnMainScreen, GenericStatusBarSpacer  # used in .kv file
 from utils.config_manager import ConfigManager
 from utils.helper import appFolder, load_kv_file  # type
-from utils.image_operations import get_or_create_thumbnail
+from utils.image_operations import get_or_create_thumbnail, get_image_info, share_image_to_other_app, share_images_to_other_app
+from ui.widgets.modals import DialogScreen
+from ui.widgets.layouts import MyPopUp
 from utils.logger import app_logger
 from utils.model import get_app, GalleryTabs
 
@@ -432,7 +434,7 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
         self.app = get_app()
 
         self.multi_select_top=MultiselectTop(gallery_screen=self.gallery_screen,hide=self.hide)
-        self.multi_select_bottom=MultiselectBottom()
+        self.multi_select_bottom=MultiselectBottom(gallery_screen=self.gallery_screen,hide=self.hide)
         self.add_widget(self.multi_select_top)
         self.add_widget(self.multi_select_bottom)
 
@@ -482,6 +484,7 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
 
     def update_selection_count(self):
         self.multi_select_top.update_selection_count()
+
 
 
 class MultiselectTop(MDFloatLayout):
@@ -579,6 +582,8 @@ class MultiselectTop(MDFloatLayout):
 
 class MultiselectBottom(Row):
     nav_bar_height = NumericProperty(get_nav_bar_height())
+    gallery_screen = ObjectProperty()
+    hide = ObjectProperty()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         c=.11
@@ -591,6 +596,10 @@ class MultiselectBottom(Row):
         share_btn = IconTextButton(icon="share", text="Share")
         info_btn = IconTextButton(icon="information", text="Info")
 
+        delete_btn.bind(on_release=self._delete_selected)
+        share_btn.bind(on_release=self._share_selected)
+        info_btn.bind(on_release=self._info_selected)
+
         self.add_widget(Widget())
         self.add_widget(delete_btn)
         self.add_widget(Widget())
@@ -598,6 +607,84 @@ class MultiselectBottom(Row):
         self.add_widget(Widget())
         self.add_widget(info_btn)
         self.add_widget(Widget())
+
+    def _get_selected_images(self):
+        """Return list of unique selected PreviewImage widgets from the current tab."""
+        if not self.gallery_screen:
+            return []
+        current_tab = self.gallery_screen.current_tab
+        tab_data = self.gallery_screen.tab_instances.get(current_tab, {})
+        seen = set()
+        selected = []
+        for key, value in tab_data.items():
+            if isinstance(value, DateGroupLayout):
+                for img in value.get_selected_images():
+                    p = img.high_resolution_path
+                    if p and p not in seen:
+                        seen.add(p)
+                        selected.append(img)
+        return selected
+
+    def _delete_selected(self, *args):
+        selected = self._get_selected_images()
+        if not selected:
+            return
+        paths = [img.high_resolution_path for img in selected]
+        dialog = DialogScreen(ok_callback=lambda: self._do_delete(paths))
+        dialog.show(img_texture=None)
+
+    def _do_delete(self, paths):
+        gallery_screen = self.gallery_screen
+        if not gallery_screen:
+            return
+
+        for path in paths:
+            if not path:
+                continue
+
+            for tab_name in [GalleryTabs.BOTH.value, GalleryTabs.DAY.value, GalleryTabs.NOON.value]:
+                gallery_screen.remove_wallpaper_from_thumbnails(path, tab=tab_name)
+
+            if os.path.exists(path):
+                os.remove(path)
+                try:
+                    thumb = Path(path).parent / "thumbs" / f"{Path(path).stem}_thumb.jpg"
+                    if thumb.exists():
+                        thumb.unlink()
+                except Exception as error_unlinking_thumb:
+                    app_logger.exception(error_unlinking_thumb)
+
+            my_config.remove_wallpaper(path)
+            try:
+                my_config.remove_wallpaper_to_from("day_wallpapers", path)
+            except Exception as error_removing_data:
+                app_logger.exception(error_removing_data)
+            try:
+                my_config.remove_wallpaper_to_from("noon_wallpapers", path)
+            except Exception as error_removing_data1:
+                app_logger.exception(error_removing_data1)
+
+        if self.hide:
+            self.hide()
+
+
+    def _share_selected(self, *args):
+        selected = self._get_selected_images()
+        if not selected:
+            return
+        paths = [img.high_resolution_path for img in selected]
+        if len(paths) == 1:
+            share_image_to_other_app(paths[0])
+        else:
+            share_images_to_other_app(paths)
+
+    def _info_selected(self, *args):
+        selected = self._get_selected_images()
+        if not selected:
+            return
+        path = selected[0].high_resolution_path
+        popup = MyPopUp(info=get_image_info(path))
+        popup.open()
 
 
 class GalleryScreen(MyMDScreen):
