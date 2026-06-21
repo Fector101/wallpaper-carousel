@@ -114,7 +114,7 @@ class PreviewImage(ButtonBehavior,MDRelativeLayout):
     def __init__(self, **kwargs):
         source = kwargs.get("source")
         super().__init__(**kwargs)
-        self.md_bg_color=[1,1,0,1]
+        # self.md_bg_color=[1,1,0,1]
         self.checkmark_widget = None
         self.image_widget = AsyncImage(
             source=source,
@@ -568,7 +568,7 @@ class MultiselectTop(MDFloatLayout):
                     # Don't use .walk() a weird ghost widget is created even just on app start up
                     for child in value.images_container.children:
                         if isinstance(child, PreviewImage):
-                            f+=1
+                            # f+=1
                             # print(f"id={id(child)} parent={type(child.parent).__name__}.{id(child.parent)} path={child.high_resolution_path}")
                             child.selected = True
         # print('f',f)
