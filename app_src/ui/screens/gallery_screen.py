@@ -440,6 +440,7 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
         if not self.parent:
             self.gallery_screen.add_widget(self)
 
+        self.gallery_screen.ids.head_section.disabled = True
         if self.gallery_screen and hasattr(self.gallery_screen.ids, "chooser_btn"):
             self.gallery_screen.ids.chooser_btn.opacity = 0
             self.gallery_screen.ids.chooser_btn.disabled = True
@@ -460,6 +461,10 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
         if self.parent:
             self.parent.remove_widget(self)
 
+        if hasattr(self.gallery_screen.ids,"head_section"):
+            self.gallery_screen.ids.head_section.disabled = False
+        else:
+            app_logger.warning("Users can click through multiselect top")
         if self.gallery_screen and hasattr(self.gallery_screen.ids, "chooser_btn"):
             self.gallery_screen.ids.chooser_btn.opacity = 1
             self.gallery_screen.ids.chooser_btn.disabled = False
@@ -474,6 +479,7 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
             for key, value in tab_data.items():
                 if isinstance(value, DateGroupLayout):
                     value.set_selection_mode(0)
+
     def update_selection_count(self):
         self.multi_select_top.update_selection_count()
 
