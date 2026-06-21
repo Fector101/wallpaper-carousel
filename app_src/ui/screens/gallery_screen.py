@@ -310,7 +310,7 @@ class DateGroupLayout(Column):
             self.images_container.cols = cols
             total_spacing = spacing * (cols - 1)
             thumb_size = (available_width - total_spacing) / cols
-            for each_child in self.walk():
+            for each_child in self.images_container.children:
                 if isinstance(each_child, PreviewImage):
                     each_child.size=(thumb_size, thumb_size)
         else:
@@ -415,14 +415,14 @@ class DateGroupLayout(Column):
     def get_selected_images(self):
         """Return list of selected PreviewImage widgets in this group."""
         selected = []
-        for child in self.walk():
+        for child in self.images_container.children:
             if isinstance(child, PreviewImage) and child.selected:
                 selected.append(child)
         return selected
     
     def clear_selection(self):
         """Deselect all images in this group."""
-        for child in self.walk():
+        for child in self.images_container.children:
             if isinstance(child, PreviewImage):
                 child.selected = False
 
@@ -484,7 +484,6 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
 
     def update_selection_count(self):
         self.multi_select_top.update_selection_count()
-
 
 
 class MultiselectTop(MDFloatLayout):
@@ -556,15 +555,23 @@ class MultiselectTop(MDFloatLayout):
         
         current_tab = self.gallery_screen.current_tab
         tab_data = self.gallery_screen.tab_instances.get(current_tab)
-        
+
+        # f=0
         if tab_data:
             for key, value in tab_data.items():
                 if isinstance(value, DateGroupLayout):
-                    for child in value.walk():
+                    # print(f"\nDateGroupLayout key='{key}' id={id(value)}")
+                    # print(f"  images_container.children ({len(value.images_container.children)}):")
+                    # for c in value.images_container.children:
+                        # print(f"{id(c)} -> {c.high_resolution_path}")
+                    # print(f"walk() PreviewImages:")
+                    # Don't use .walk() a weird ghost widget is created even just on app start up
+                    for child in value.images_container.children:
                         if isinstance(child, PreviewImage):
-                            # print("Selecting:", child.high_resolution_path)
+                            f+=1
+                            # print(f"id={id(child)} parent={type(child.parent).__name__}.{id(child.parent)} path={child.high_resolution_path}")
                             child.selected = True
-        
+        # print('f',f)
         self.update_selection_count()
     
     def deselect_all(self, *args):
@@ -664,7 +671,9 @@ class MultiselectBottom(Row):
                 my_config.remove_wallpaper_to_from("noon_wallpapers", path)
             except Exception as error_removing_data1:
                 app_logger.exception(error_removing_data1)
-
+        
+        if self.hide:
+            self.hide()
 
     def _share_selected(self, *args):
         selected = self._get_selected_images()
