@@ -1,11 +1,11 @@
 # V1.0.8
 
 ## New
-- Multi-Select Mode: tap the ⋮ button, then tap images to
-  select them. Delete, share, or view combined info
+- Multi-Select Mode: tap the 3-dot button, then tap images
+  to select them. Delete, share, or view combined info
   (size, resolution, type) for multiple images at once
-- Double-tap the gallery tab → scroll to top of gallery
-- Double-tap the settings tab → scroll to top of settings
+- Double-tap the gallery tab -> scroll to top of gallery
+- Double-tap the settings tab -> scroll to top of settings
 - Delete confirmation dialog in fullscreen viewer
 - Export app logs to Downloads folder
 

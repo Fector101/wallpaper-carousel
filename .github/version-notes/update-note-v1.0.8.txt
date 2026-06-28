@@ -1,8 +1,8 @@
 [color=#4CAF50][b]New[/b][/color]
-• Multi-Select: tap ⋮ then tap images to select.
-  Delete, share, or view info on multiple at once
-• Double-tap gallery tab → scroll to top
-• Double-tap settings tab → scroll to top
+• Multi-Select: tap the 3-dot button then tap images
+  to select. Delete, share, or view info on multiple
+• Double-tap gallery tab -> scroll to top
+• Double-tap settings tab -> scroll to top
 • Delete confirmation before removing wallpapers
 • Export app logs from Logs screen to Downloads
 
