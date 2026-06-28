@@ -244,7 +244,7 @@ class BottomNavigationBar(MDNavigationDrawer):
         self.color_tab_buttons(screen=self.app.sm.current)
 
     def color_tab_buttons(self, _=None, screen=None):
-        theme = self.app.monitor_dark_and_light_device_change()
+        theme = self.app.device_theme
 
         if screen == "settings":
             self.btn_settings.text_color = [0, 0, 0, 1] if theme == "light" else [1, 1, 1, 1]
