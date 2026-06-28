@@ -1,21 +1,14 @@
 # V1.0.8
 
 ## New
-- Multi-Select Mode: tap the 3-dot button, then tap images
-  to select them. Delete, share, or view combined info
-  (size, resolution, type) for multiple images at once
+- Multi-Select: select multiple images to delete, share,
+  or view combined info (size, MP, type)
 - Double-tap the gallery tab -> scroll to top of gallery
 - Double-tap the settings tab -> scroll to top of settings
 - Delete confirmation dialog in fullscreen viewer
 - Export app logs to Downloads folder
 
 ## Improvements
-- Dialog popups redesigned with configurable icons, headers,
-  and dark/light theme support
-- In-app carousel performance: per-tab carousels avoid full
-  rebuild when switching tabs in fullscreen
-- Full-screen mode uses Android immersive sticky mode; action
-  buttons properly disable when controls are hidden
 - Auto-cleanup: old APK files removed after update
 - Smoother gallery scrolling (ghost widget fix, thread safety)
 - Settings screen consolidated (duplicate classes removed)

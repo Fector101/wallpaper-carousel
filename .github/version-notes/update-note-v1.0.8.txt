@@ -1,15 +1,12 @@
 [color=#4CAF50][b]New[/b][/color]
-• Multi-Select: tap the 3-dot button then tap images
-  to select. Delete, share, or view info on multiple
+• Multi-Select: select multiple images to delete,
+  share, or view combined info (size, MP, type)
 • Double-tap gallery tab -> scroll to top
 • Double-tap settings tab -> scroll to top
 • Delete confirmation before removing wallpapers
 • Export app logs from Logs screen to Downloads
 
 [color=#4CAF50][b]Improvements[/b][/color]
-• Redesigned dialogs with icons & dark theme support
-• Smoother fullscreen carousel (faster tab switching)
-• Immersive fullscreen mode on Android
 • Old APK files auto-cleaned after update
 • Faster gallery scrolling & thread safety fixes
 • Consolidated settings screen
