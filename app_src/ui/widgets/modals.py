@@ -1,15 +1,16 @@
 from kivy.clock import Clock
 from kivy.metrics import dp
-from kivy.properties import ListProperty, StringProperty, BooleanProperty, DictProperty
+from kivy.properties import ListProperty, StringProperty, BooleanProperty, DictProperty,ObjectProperty
 from kivy.uix.floatlayout import FloatLayout
 from kivymd.uix.button import MDButtonText, MDButton
 from kivymd.uix.fitimage import FitImage
 from kivymd.uix.floatlayout import MDFloatLayout
-from kivymd.uix.label import MDLabel
+from kivymd.uix.label import MDLabel, MDIcon
 
 from ui.screens.download_apk_screen import TextButton
 from ui.widgets.layouts import Column, AdaptiveLabel, Row, PlaceOnMainScreen
 from utils.helper import load_kv_file  # type
+from utils.logger import app_logger
 
 from utils.model import get_app
 
@@ -75,6 +76,9 @@ class MyTextButton(MDButton):
 class MyDialogBox(Column):
     # source = StringProperty()
     # ok_callback = ObjectProperty()
+    icon_name=StringProperty("")
+    header_text=StringProperty("_")
+    subtitle_text=StringProperty("_")
     def __init__(self,ok_callback, **kwargs):
         super().__init__(**kwargs)
         self.app = get_app()
@@ -92,10 +96,26 @@ class MyDialogBox(Column):
         self.radius=10
         sub_text = "This wallpaper will be permanently removed from App Storage"
         # self.img = AsyncImage(source="/home/fabian/Pictures/1065154.jpg",size=[100,100],size_hint=[None,None],mipmap=True,pos_hint={"center_x":0.5})
-        self.img = FitImage(size=[dp(120),dp(80)],size_hint=[None,None],mipmap=True,pos_hint={"center_x":0.5},radius=10)
+        # self.icon_name="trash-can-outline"
+        # self.header_text = "Remove Image?"
+        # self.subtitle_text = sub_text
+        print("self.icon_name",self.icon_name)
+        if self.icon_name:
+            self.img = MDIcon(
+                icon=self.icon_name,#,
+                theme_text_color="Custom",
+                text_color=[1,1,1,1],
+                font_size = "64sp",
+                theme_font_size="Custom",
+                pos_hint={"center_x":.5}
+            )
+            self.bind(icon_name=lambda _,v: setattr(self.img,"icon",v))
+        else:
+            self.img = FitImage(size=[dp(120),dp(80)],size_hint=[None,None],mipmap=True,pos_hint={"center_x":0.5},radius=10)
 
         self.add_widget(self.img)
-        self.title_widget = MDLabel(text="Remove Image?",adaptive_width=1,adaptive_height=1,theme_font_name="Custom",font_name="RobotoMono",bold=True,pos_hint={"center_x":0.5,"center_y":0.5})
+        self.title_widget = MDLabel(text=self.header_text,adaptive_width=1,adaptive_height=1,theme_font_name="Custom",font_name="RobotoMono",bold=True,pos_hint={"center_x":0.5,"center_y":0.5})
+        self.bind(header_text=lambda _,v: setattr(self.title_widget,"text",v))
         self.title_widget.font_size="19sp"
         # self.title_widget.md_bg_color=[1,0,1,1]
 
@@ -104,7 +124,8 @@ class MyDialogBox(Column):
         #     spacing=dp(1),
         #     pos_hint={"center_y": .5}
         # )
-        self.subtext = AdaptiveLabel(text=sub_text,font_name="RobotoMono",size_hint=[None, None])
+        self.subtext = AdaptiveLabel(text=self.subtitle_text,font_name="RobotoMono",size_hint=[None, None])
+        self.bind(subtitle_text=lambda _,v: setattr(self.subtext,"text",v))
         self.subtext.font_size="13sp"
         self.subtext.pos_hint={"center_x":0.5,"center_y":0.5}
         self.subtext.color = (0.302, 0.278, 0.278, 1.0)
@@ -167,20 +188,36 @@ class MyDialogBox(Column):
         self.ok_btn.set_width_to_parent_width()
 
 class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
-    def __init__(self, ok_callback, **kwargs):
+    icon_name=StringProperty("")
+    header_text=StringProperty("_")
+    subtitle_text=StringProperty("_")
+    ok_callback=ObjectProperty(None)
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.app = get_app()
         self.md_bg_color=[0,0,0,0.6]
-        self.dialog_box = MyDialogBox(ok_callback=ok_callback)
-        self.bind(width=self.fix_child_width)
+        self.dialog_box = MyDialogBox(icon_name=self.icon_name, header_text=self.header_text, subtitle_text=self.subtitle_text, ok_callback=self.ok_callback)
+
+        self.bind(width=self.fix_child_width,
+                # icon_name=lambda _,v: setattr(self.dialog_box,"icon_name",v),
+                header_text=lambda _,v: setattr(self.dialog_box,"header_text",v),
+                subtitle_text=lambda _,v: setattr(self.dialog_box,"subtitle_text",v),
+                ok_callback=lambda _,v: setattr(self.dialog_box,"ok_callback",v)
+                    
+                  )
         self.add_widget(self.dialog_box)
     def fix_child_width(self,_,value):
         # print(_,value)
         self.dialog_box.width=value-70
 
     def show(self,img_texture):
-        current_screen = self.app.sm.current_screen
-        self.dialog_box.img.texture = img_texture
+        if hasattr(self.app,"sm"):
+            current_screen =self.app.sm.current_screen
+        else:
+            app_logger.warning(f"This only calls when on hot reload")
+            return
+        if not self.dialog_box.icon_name:
+            self.dialog_box.img.texture = img_texture
         # print(current_screen)
         current_screen.add_widget(self)
         # self.disabled=1

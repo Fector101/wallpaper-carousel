@@ -598,6 +598,7 @@ class MultiselectBottom(Row):
         self.padding = [10,dp(10),10,self.nav_bar_height+dp(10)]
         self.adaptive_height=True
         self.pos_hint={"bottom":1}
+        self.dialog = DialogScreen(icon_name="trash-can-outline")
 
         delete_btn = IconTextButton(icon="delete", text="Delete")
         share_btn = IconTextButton(icon="share", text="Share")
@@ -614,6 +615,7 @@ class MultiselectBottom(Row):
         self.add_widget(Widget())
         self.add_widget(info_btn)
         self.add_widget(Widget())
+        # self.gallery_screen.add_widget(self.dialog)# hot reload
 
     def _get_selected_images(self):
         """Return list of unique selected PreviewImage widgets from the current tab."""
@@ -637,8 +639,11 @@ class MultiselectBottom(Row):
         if not selected:
             return
         paths = [img.high_resolution_path for img in selected]
-        dialog = DialogScreen(ok_callback=lambda: self._do_delete(paths))
-        dialog.show(img_texture=None)
+        count = len(paths)
+        self.dialog.ok_callback=lambda: self._do_delete(paths)
+        self.dialog.header_text=f"Remove {count} {"Image" if count == 1 else "Images"}?"
+        self.dialog.subtitle_text="This wallpapers will be permanently removed from App Storage"
+        self.dialog.show(img_texture=None)
 
     def _do_delete(self, paths):
         gallery_screen = self.gallery_screen
