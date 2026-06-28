@@ -7,7 +7,6 @@ from kivymd.uix.fitimage import FitImage
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.label import MDLabel, MDIcon
 
-from ui.screens.download_apk_screen import TextButton
 from ui.widgets.layouts import Column, AdaptiveLabel, Row, PlaceOnMainScreen
 from utils.helper import load_kv_file  # type
 from utils.logger import app_logger

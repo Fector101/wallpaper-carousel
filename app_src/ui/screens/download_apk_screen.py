@@ -150,7 +150,7 @@ class TextButton(MDButton):
         self.txt = MDButtonText(text=self.text,
                                 theme_text_color='Custom',
                                 pos_hint={"center_x": .5, "center_y": .5})
-        self.size_hint_x=None
+        # self.size_hint_x=None
         self.txt.bind(width=self.fix_text_out_of_bounds_width_on_android)
         self.set_text_color(self, self.text_color)
         self.bind(text=self.set_val, text_color=self.set_text_color)
