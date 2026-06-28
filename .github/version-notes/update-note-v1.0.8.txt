@@ -1,0 +1,21 @@
+[color=#4CAF50][b]New[/b][/color]
+• Multi-Select: tap ⋮ then tap images to select.
+  Delete, share, or view info on multiple at once
+• Double-tap gallery tab → scroll to top
+• Double-tap settings tab → scroll to top
+• Delete confirmation before removing wallpapers
+• Export app logs from Logs screen to Downloads
+
+[color=#4CAF50][b]Improvements[/b][/color]
+• Redesigned dialogs with icons & dark theme support
+• Smoother fullscreen carousel (faster tab switching)
+• Immersive fullscreen mode on Android
+• Old APK files auto-cleaned after update
+• Faster gallery scrolling & thread safety fixes
+• Consolidated settings screen
+
+[color=#4CAF50][b]Fixes[/b][/color]
+• Fixed theme toggle getting stuck in a loop
+• Fixed phantom image icons in gallery grids
+• Fixed button text cut off on some screens
+• Fixed wallpaper count showing wrong numbers
