@@ -119,7 +119,7 @@
 #                adaptive_size:True
 #                size_hint_x:1
 #                md_bg_color:[1,0,1,1]
-                padding: [dp(0), dp(root.status_bar_height), dp(10), dp(0)]
+                padding: [0, root.status_bar_height, 10, 0]
                 Row:
                     id: tools_section
                     pos_hint:{"right":1}
@@ -131,10 +131,12 @@
                         theme_icon_color:"Custom"
                         icon_color: [.8,.8,.8,1]
                         on_release: app.btm_sheet.show()
-        #            MDIconButton:
-        #                icon: "dots-vertical"
-        #                theme_icon_color:"Custom"
-        #                icon_color: [.8,.8,.8,1]
+                    MDIconButton:
+                        id:select_mode_button
+                        icon: "dots-vertical"
+                        theme_icon_color:"Custom"
+                        icon_color: [.8,.8,.8,1]
+                        on_release: root.open_select_mode_menu()
                 Column:
                     spacing:10
                     padding: [dp(20), 0, dp(20), dp(10)]
@@ -251,6 +253,7 @@
 
 
         MDFabButton:
+            id: chooser_btn
             icon:"plus"
             on_release: root.open_file_chooser()
             pos_hint: {"right": .9,"center_y":.15}

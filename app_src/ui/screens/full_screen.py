@@ -193,8 +193,9 @@ class FullscreenScreen(MyMDScreen):
             status_bar_height=self.status_bar_height,
             md_bg_color=[0.8, 0.8, 0.8, 1] if self.app.device_theme == "light" else [.1, .1,.1, 1])
         self.add_widget(self.generic_status_bar_spacer)
-
-        dialog_popup = DialogScreen(ok_callback = self.delete_current)
+        sub_text = "This wallpaper will be permanently removed from App Storage"
+        header_text = "Remove Image?"
+        dialog_popup = DialogScreen(header_text=header_text, subtitle_text=sub_text, ok_callback = self.delete_current)
         # Main layout container
         self.layout = MDFloatLayout(md_bg_color=[0, 0, 0, 1])
         self.layout.pos_hint ={"top":1}

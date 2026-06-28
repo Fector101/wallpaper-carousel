@@ -577,6 +577,48 @@ def share_image_to_other_app(image_absolute_path):
         traceback.print_exc()
 
 
+def share_images_to_other_app(image_paths):
+    if not on_android_platform():
+        app_logger.warning("Can't share to Another App, Not on Android.")
+        return None
+    try:
+        from jnius import autoclass, cast
+
+        PythonActivity = autoclass('org.kivy.android.PythonActivity')
+        File = autoclass('java.io.File')
+        FileProvider = autoclass('androidx.core.content.FileProvider')
+        ArrayList = autoclass('java.util.ArrayList')
+        ClipData = autoclass('android.content.ClipData')
+
+        context = PythonActivity.mActivity
+
+        uris = ArrayList()
+        for path in image_paths:
+            file = File(path)
+            uri = FileProvider.getUriForFile(
+                context,
+                context.getPackageName() + ".fileprovider",
+                file
+            )
+            uris.add(uri)
+
+        intent = Intent(Intent.ACTION_SEND_MULTIPLE)
+        intent.setType("*/*")
+        intent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+        clip = ClipData.newUri(context.getContentResolver(), String("Image"), uris.get(0))
+        intent.setClipData(clip)
+
+        chooser = Intent.createChooser(intent, String("Share Images"))
+        context.startActivity(chooser)
+        app_logger.info(f"Sharing {len(image_paths)} images to other app")
+
+    except Exception as error_from_trying_to_share_images_to_other_apps:
+        print("error_from_trying_to_share_images_to_other_apps", error_from_trying_to_share_images_to_other_apps)
+        traceback.print_exc()
+
+
 def get_file_name_from_uri(uri):
     try:
         # PythonActivity = autoclass("org.kivy.android.PythonActivity")
