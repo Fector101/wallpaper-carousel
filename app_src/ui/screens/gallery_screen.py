@@ -97,7 +97,7 @@ class IconTextButton(MDButton):
         self.text_widget = MDButtonText(text=text, theme_text_color="Custom", text_color=[.8, .8, .8, 1])
         # self.text_widget.md_bg_color=[1,1,0,1]
         self.icon_widget.theme_bg_color="Custom"
-        self.icon_widget.md_bg_color=[1,1,0,1]
+        # self.icon_widget.md_bg_color=[1,1,0,1]
         self.add_widget(self.icon_widget)
         self.add_widget(self.text_widget)
         self.theme_bg_color="Custom"
