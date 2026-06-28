@@ -79,6 +79,7 @@ class MyDialogBox(Column):
     icon_name=StringProperty("")
     header_text=StringProperty("_")
     subtitle_text=StringProperty("_")
+    show_ok_button=BooleanProperty(True)
     def __init__(self,ok_callback, **kwargs):
         super().__init__(**kwargs)
         self.app = get_app()
@@ -143,13 +144,13 @@ class MyDialogBox(Column):
 
         self.buttons_box = Row(spacing=dp(10),padding=[0,10,0,0],pos_hint={"center_x":.5},size_hint_x=.8,adaptive_height=1)
         # self.buttons_box.md_bg_color=[0,0,1,1]
-        self.cancel_btn = MyTextButton(text="Cancel",md_bg_color=(0.851, 0.851, 0.851, 1.0),theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.close)
+        self.cancel_btn = MyTextButton(text="Dismiss" if not self.show_ok_button else "Cancel",md_bg_color=(0.851, 0.851, 0.851, 1.0),theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.close)
 
         self.buttons_box.add_widget(self.cancel_btn)
-        self.ok_btn = MyTextButton(text="Yes, Remove",md_bg_color=(1.0, 0.063, 0.063, 1.0),theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.ok)
-        self.ok_btn.pos_hint = {"right":1}
-        # self.ok_btn.# TextButton(text="Yes, Remove",md_bg_color=(1.0, 0.063, 0.063, 1.0),theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.ok)
-        self.buttons_box.add_widget(self.ok_btn)
+        if self.show_ok_button:
+            self.ok_btn = MyTextButton(text="Yes, Remove",md_bg_color=(1.0, 0.063, 0.063, 1.0),theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.ok)
+            self.ok_btn.pos_hint = {"right":1}
+            self.buttons_box.add_widget(self.ok_btn)
         self.add_widget(self.buttons_box)
         self.buttons_box.bind(width=self.fix_buttons_width)
         self.app.bind(device_theme=self.set_theme)
@@ -167,14 +168,16 @@ class MyDialogBox(Column):
             self.subtext.color = (0.302, 0.278, 0.278, 1.0)
             self.cancel_btn.md_bg_color = (0.851, 0.851, 0.851, 1.0)
             self.cancel_btn.text_color = [0, 0, 0, 1]
-            self.ok_btn.text_color = [0, 0, 0, 1]
+            if self.show_ok_button:
+                self.ok_btn.text_color = [0, 0, 0, 1]
         else:
             self.md_bg_color = [0.1, 0.1, 0.1, 1]
             self.title_widget.text_color = [1, 1, 1, 1]
             self.subtext.color = [0.7, 0.7, 0.7, 1.0]
             self.cancel_btn.md_bg_color = [0.2, 0.2, 0.2, 1]
             self.cancel_btn.text_color = [1, 1, 1, 1]
-            self.ok_btn.text_color = [1, 1, 1, 1]
+            if self.show_ok_button:
+                self.ok_btn.text_color = [1, 1, 1, 1]
 
     def close(self,*_):
         self.parent.close()
@@ -185,25 +188,27 @@ class MyDialogBox(Column):
 
     def fix_buttons_width(self,*_):
         self.cancel_btn.set_width_to_parent_width()
-        self.ok_btn.set_width_to_parent_width()
+        if self.show_ok_button:
+            self.ok_btn.set_width_to_parent_width()
 
 class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
     icon_name=StringProperty("")
     header_text=StringProperty("_")
     subtitle_text=StringProperty("_")
     ok_callback=ObjectProperty(None)
+    show_ok_button=BooleanProperty(True)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.app = get_app()
         self.md_bg_color=[0,0,0,0.6]
-        self.dialog_box = MyDialogBox(icon_name=self.icon_name, header_text=self.header_text, subtitle_text=self.subtitle_text, ok_callback=self.ok_callback)
+        self.dialog_box = MyDialogBox(icon_name=self.icon_name, header_text=self.header_text, subtitle_text=self.subtitle_text, ok_callback=self.ok_callback, show_ok_button=self.show_ok_button)
 
         self.bind(width=self.fix_child_width,
                 # icon_name=lambda _,v: setattr(self.dialog_box,"icon_name",v),
                 header_text=lambda _,v: setattr(self.dialog_box,"header_text",v),
                 subtitle_text=lambda _,v: setattr(self.dialog_box,"subtitle_text",v),
-                ok_callback=lambda _,v: setattr(self.dialog_box,"ok_callback",v)
-                    
+                ok_callback=lambda _,v: setattr(self.dialog_box,"ok_callback",v),
+                show_ok_button=lambda _,v: setattr(self.dialog_box,"show_ok_button",v)
                   )
         self.add_widget(self.dialog_box)
     def fix_child_width(self,_,value):

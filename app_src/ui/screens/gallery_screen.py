@@ -599,6 +599,7 @@ class MultiselectBottom(Row):
         self.adaptive_height=True
         self.pos_hint={"bottom":1}
         self.dialog = DialogScreen(icon_name="trash-can-outline")
+        self.info_dialog = DialogScreen(icon_name="information-outline", show_ok_button=False)
 
         delete_btn = IconTextButton(icon="delete", text="Delete")
         share_btn = IconTextButton(icon="share", text="Share")
@@ -694,9 +695,38 @@ class MultiselectBottom(Row):
         selected = self._get_selected_images()
         if not selected:
             return
-        path = selected[0].high_resolution_path
-        popup = MyPopUp(info=get_image_info(path))
-        popup.open()
+        paths = [img.high_resolution_path for img in selected
+                 if img.high_resolution_path and os.path.exists(img.high_resolution_path)]
+        count = len(paths)
+
+        total_bytes = sum(os.path.getsize(p) for p in paths)
+        total_mp = 0.0
+        mime_types = set()
+        for p in paths:
+            info = get_image_info(p)
+            mp_str = info.get("Megapixels", "0 MP").rstrip(" MP")
+            try:
+                total_mp += float(mp_str)
+            except ValueError:
+                pass
+            mime_types.add(info.get("MIME", "").split("/")[-1].upper())
+
+        if total_bytes < 1024:
+            size_str = f"{total_bytes} B"
+        elif total_bytes < 1024 * 1024:
+            size_str = f"{total_bytes / 1024:.1f} KB"
+        else:
+            size_str = f"{total_bytes / (1024 * 1024):.2f} MB"
+
+        mime_str = ", ".join(sorted(mime_types)) if mime_types else "Various"
+
+        self.info_dialog.header_text = f"{count} {"Image" if count == 1 else "Images"} Selected"
+        self.info_dialog.subtitle_text = (
+            f"Total Size: {size_str}\n"
+            f"Total MP: {total_mp:.1f} MP\n"
+            f"Types: {mime_str}"
+        )
+        self.info_dialog.show(img_texture=None)
 
 
 class GalleryScreen(MyMDScreen):
