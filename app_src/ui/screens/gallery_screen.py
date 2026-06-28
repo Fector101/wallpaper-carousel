@@ -772,23 +772,44 @@ class GalleryScreen(MyMDScreen):
         # self.load_saved()
         
         self.multi_select_manager = MultiSelectManager(gallery_screen=self)
-        menu_items = [
+        self._menu_items_data = [
                 {
-                    # 'viewclass': 'OneLineListItem',
                     'text': 'Enter select mode',
                     'on_release': self.enter_select_mode,
                     "leading_icon": "check-all",
-                    # "trailing_icon":"arrow-right",
+                    "theme_text_color": "Custom",
+                    "theme_bg_color": "Custom",
                 },
-                
             ]
         self.select_menu = MDDropdownMenu(
                     caller=self.ids.select_mode_button,
-                    items=menu_items,
+                    items=self._menu_items_data,
                     width_mult=4,
+                    theme_bg_color="Custom",
                 )
-        # Clock.schedule_once(self.enter_select_mode,2) # hot reload
+        self._update_menu_theme(None, self.app.device_theme)
+        self.app.bind(device_theme=self._update_menu_theme)
 
+
+    def _update_menu_theme(self, _, theme):
+        is_dark = theme == "dark"
+        text_color = [1,1,1,1] if is_dark else [0,0,0,1]
+        bg_color = [.15,.15,.15,1] if is_dark else [1,1,1,1]
+
+        self._menu_items_data = [
+            {
+                "text": "Enter select mode",
+                "on_release": self.enter_select_mode,
+                "leading_icon": "check-all",
+                "theme_text_color": "Custom",
+                "theme_bg_color": "Custom",
+                "text_color": text_color,
+                "leading_icon_color": text_color,
+                "md_bg_color": bg_color,
+            },
+        ]
+        self.select_menu.md_bg_color = bg_color
+        self.select_menu.items = self._menu_items_data
 
     def open_select_mode_menu(self, *args):
         self.select_menu.open()

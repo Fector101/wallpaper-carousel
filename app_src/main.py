@@ -155,7 +155,7 @@ class WallpaperCarouselApp(MDApp):
 
     def monitor_dark_and_light_device_change(self):
         self.device_theme = is_device_on_light_mode()
-        # self.device_theme='light'
+        # self.device_theme='dark' if self.device_theme=='light' else "light"
         return self.device_theme
 
 
