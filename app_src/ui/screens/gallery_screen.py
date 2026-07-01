@@ -459,7 +459,8 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
                     value.set_selection_mode(1)
 
     def hide(self, *args):
-        self.multi_select_top.select_all_ = False
+        # self.multi_select_top.select_all_ = False
+        self.multi_select_top.deselect_all()
         if self.parent:
             self.parent.remove_widget(self)
 
