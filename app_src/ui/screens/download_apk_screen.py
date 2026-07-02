@@ -39,7 +39,7 @@ def download_apk(url, filename="waller.apk", progress_callback=None):
     """Download APK with resume support"""
     try:
         sent_percent = 0
-        print("Entered download apk:", url)
+       #p("Entered download apk:", url)
 
         files_dir = get_apk_directory()
         apk_path = os.path.join(files_dir, filename)
@@ -48,7 +48,7 @@ def download_apk(url, filename="waller.apk", progress_callback=None):
         existing_size = 0
         if os.path.exists(apk_path):
             existing_size = os.path.getsize(apk_path)
-            print("Resuming download from:", existing_size)
+           #p("Resuming download from:", existing_size)
 
         headers = {}
         if existing_size > 0:
@@ -79,7 +79,7 @@ def download_apk(url, filename="waller.apk", progress_callback=None):
         return apk_path
 
     except Exception as e:
-        print("Download failed:", e)
+        app_logger.exception(f"Download failed: {e}")
         traceback.print_exc()
         return None
 
@@ -90,7 +90,7 @@ def install_apk15(apk_path):
     from android import mActivity #type: ignore
 
     if not os.path.exists(apk_path):
-        print("APK not found:", apk_path)
+       #p("APK not found:", apk_path)
         return
 
     context = mActivity.getApplicationContext()
@@ -115,7 +115,7 @@ def install_apk(apk_path):
     from android import mActivity#type: ignore
 
     if not os.path.exists(apk_path):
-        print("APK not found:", apk_path)
+       #p("APK not found:", apk_path)
         return
 
     Intent = autoclass('android.content.Intent')
@@ -130,15 +130,15 @@ def install_apk(apk_path):
     mActivity.startActivity(intent)
 
 def do_android_install(apk_path):
-    print("Called do_android_install")
+   #p("Called do_android_install")
     try:
         install_apk15(apk_path)
     except Exception as e:
-        print("install_apk15 failed:", e)
+        app_logger.exception("install_apk15 failed: {e}")
         try:
             install_apk(apk_path)
         except Exception as e1:
-            print("install_apk failed:", e1)
+            app_logger.exception(f"install_apk failed: {e1}")
 
 class TextButton(MDButton):
     text = StringProperty("")
@@ -170,7 +170,7 @@ class TextButton(MDButton):
     def fix_text_out_of_bounds_width_on_android(self,_,v):
         self.width = dp(v+10)
 
-        print(self.txt.texture_size[0] + 10,v,"used")
+       #p(self.txt.texture_size[0] + 10,v,"used")
 
     def adjust_width(self,*gg):
         pass
@@ -228,7 +228,7 @@ class ProgressButton(MDBoxLayout):
             per = self.width * (percent / 100)
 
         self.rect.size = [self.width - per, self.height]
-        # print(f"time 2 {percent}")
+        ##p(f"time 2 {percent}")
 
 class DownloadApkScreen(MyMDScreen):
 
@@ -332,7 +332,7 @@ class DownloadApkScreen(MyMDScreen):
         self.new_stuff_container.add_widget(rst_widget)
 
     def start_download(self,widget=None):
-        print("Clicked start download...")
+       #p("Clicked start download...")
 
         if self.update_button.clicked:
             app_logger.warning("Already Clicked Download.")
@@ -363,14 +363,14 @@ class DownloadApkScreen(MyMDScreen):
 
     def start_install(self,widget):
         apk_path=get_apk_path(self.new_version)
-        print(f"Clicked start install...:{apk_path}")
+       #p(f"Clicked start install...:{apk_path}")
         do_android_install(apk_path)
 
     def change_download_btn_to_install(self,apk_path,text="Install Update"):
         app_logger.info(f"Called change btn to install: {apk_path}")
         if self.clock_for_progress_update:
             self.clock_for_progress_update.cancel()
-        # print("time 1",self.update_button.streak.txt.text)
+        ##p("time 1",self.update_button.streak.txt.text)
         Clock.schedule_once(lambda x: setattr(self.update_button.streak, "text", text), 1)
         # self.update_button.streak.txt.text = text
 
@@ -431,13 +431,13 @@ def check_update(download_apk_screen__show,download_apk_screen__do_not_show=None
         if download_apk_screen__do_not_show:
             download_apk_screen__do_not_show(msg=msg)
     try:
-        print("Checking for latest release version...")
+       #p("Checking for latest release version...")
         r = requests.get(api_url, timeout=10)
         r.raise_for_status()
         data = r.json()
-        print("Here's data:", data)
+       #p("Here's data:", data)
         latest_version = data["tag_name"].lstrip("v")  # strip v prefix if any
-        print("Current version:", VERSION, "Latest version:", latest_version)
+       #p("Current version:", VERSION, "Latest version:", latest_version)
 
         if latest_version != VERSION:
             Clock.schedule_once(lambda dt: toast("Update available!"))
@@ -455,7 +455,7 @@ def check_update(download_apk_screen__show,download_apk_screen__do_not_show=None
     except requests.exceptions.ReadTimeout:
         msg_ = "Timeout Error, Slow internet Connection"
         Clock.schedule_once(lambda dt: do_not_go_to_update_screen(msg_))
-        print(msg_)
+       #p(msg_)
 
     except Exception as e:
         traceback.print_exc()
@@ -470,7 +470,7 @@ def get_release_note_txt(data,latest_version):
         if asset["name"] == file_name:
             found_note = True
             url = asset["browser_download_url"]
-            print("Downloading release notes:", url)
+           #p("Downloading release notes:", url)
             try:
                 for attempt in range(3):
                     try:
@@ -515,7 +515,7 @@ def find_and_delete_unused_apks(latest_version):
     def safe_del(path):
         if os.path.exists(path):
             os.remove(path)
-            print(f"deleted: {path}")
+           #p(f"deleted: {path}")
     abs_apk_path = get_apk_path(latest_version)
     safe_del(abs_apk_path)
 

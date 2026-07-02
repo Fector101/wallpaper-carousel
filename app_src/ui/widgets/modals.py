@@ -32,7 +32,7 @@ class MyTextButton(MDButton):
                                 theme_text_color='Custom',
                                 pos_hint={"center_x": .5, "center_y": .5})
 
-        print(self.adaptive_size)
+        # p(self.adaptive_size)
         if self.adaptive_size:
             self.txt.bind(width=self.fix_text_out_of_bounds_width_on_android)
         else:
@@ -47,7 +47,7 @@ class MyTextButton(MDButton):
         # self.height = self.parent.height
         padding = self.parent.spacing#10
         available_width = self.parent.width - padding
-        # print(f"available_width: {available_width}")
+        # p(f"available_width: {available_width}")
         self.width = int(available_width/2)
 
     def add_text_widget(self, dt=None):
@@ -64,7 +64,7 @@ class MyTextButton(MDButton):
     def fix_text_out_of_bounds_width_on_android(self,_,v):
         self.width = dp(v+10)
 
-        # print(self.txt.texture_size[0] + 10,v,"used")
+        # p(self.txt.texture_size[0] + 10,v,"used")
 
     def adjust_width(self,*gg):
         pass
@@ -99,7 +99,7 @@ class MyDialogBox(Column):
         # self.icon_name="trash-can-outline"
         # self.header_text = "Remove Image?"
         # self.subtitle_text = sub_text
-        print("self.icon_name",self.icon_name)
+        # p("self.icon_name",self.icon_name)
         if self.icon_name:
             self.img = MDIcon(
                 icon=self.icon_name,#,
@@ -157,7 +157,7 @@ class MyDialogBox(Column):
         Clock.schedule_once(lambda dt:self.wrap_text_width(0,0),0)
 
     def wrap_text_width(self, i, v):
-        # print(f"self.text_layout {self.text_layout.width}, dp:{dp(self.text_layout.width)}") # self.text_layout 470.0, dp:940.0
+        # p(f"self.text_layout {self.text_layout.width}, dp:{dp(self.text_layout.width)}") # self.text_layout 470.0, dp:940.0
         self.subtext.text_size = [self.width, None]
 
     def set_theme(self, _, theme):
@@ -211,7 +211,7 @@ class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
                   )
         self.add_widget(self.dialog_box)
     def fix_child_width(self,_,value):
-        # print(_,value)
+        # p(_,value)
         self.dialog_box.width=value-70
 
     def show(self,img_texture):
@@ -222,7 +222,7 @@ class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
             return
         if not self.dialog_box.icon_name:
             self.dialog_box.img.texture = img_texture
-        # print(current_screen)
+        # p(current_screen)
         current_screen.add_widget(self)
         # self.disabled=1
     def close(self,*_):
@@ -235,8 +235,8 @@ class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
         dialog_box_x = db.pos[0]
         dialog_box_y = db.pos[1]
 
-        # print(dialog_box_x,dialog_box_y,touch)
-        # print(touch_y,dialog_box_y, db.height)
+        # p(dialog_box_x,dialog_box_y,touch)
+        # p(touch_y,dialog_box_y, db.height)
         in_y_range = touch_y < dialog_box_y + db.height and touch_y > dialog_box_y
         in_x_range = touch_x < dialog_box_x + db.width and touch_x > dialog_box_x
 

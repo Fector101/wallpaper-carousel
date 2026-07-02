@@ -65,7 +65,7 @@ class ScreenManager(MDScreenManager):
                 # self.activity = get_python_activity_context()
                 # self.activity.registerComponentCallbacks(self.listener)
             except Exception as error_registering_rotate_listener:
-                print(error_registering_rotate_listener)
+                app_logger.exception(error_registering_rotate_listener)
                 traceback.print_exc()
 
     def on_current(self,*args):
@@ -114,10 +114,10 @@ class ScreenManager(MDScreenManager):
                     try:
                         self.app.btm_sheet.adjust_padding(rotation)
                     except Exception as error:
-                        print(error)
+                        app_logger.exception(error)
                     # MyBtmSheet
                 except Exception as e:
-                    print(e)
+                    app_logger.exception(e)
             else:
                 app_logger.error("Impossible stuff")
 

@@ -31,6 +31,7 @@ from utils.config_manager import ConfigManager
 from utils.constants import DEV, THEME_PRIMARY_COLOR, THEME_SECONDARY_COLOR
 from utils.helper import Service, appFolder, smart_convert_minutes
 from utils.helper import load_kv_file  # type
+from utils.logger import app_logger
 from utils.model import get_app
 
 load_kv_file(py_file_absolute_path=__file__)
@@ -85,7 +86,7 @@ value__ = 100
 
 def schedule_alarm():
     time_in_secs = value__ * 60
-    print("time_in_secs", time_in_secs)
+    ##p("time_in_secs", time_in_secs)
     from android_notify.internal.java_classes import String
     Context = autoclass('android.content.Context')
     AlarmManager = autoclass('android.app.AlarmManager')
@@ -106,7 +107,7 @@ def schedule_alarm():
 
 def my_with_callback():
     def android_print(text):
-        print(text)
+       print(text)
 
     try:
 
@@ -115,14 +116,14 @@ def my_with_callback():
             for each in args:
                 android_print(str(each))
 
-        print("got here")
+        ##p("got here")
         from android_notify.internal.permissions import my_ask_with_callback
-        print("got here1")
+        ##p("got here1")
         my_ask_with_callback(the_caller)
-        print("got here2")
+        ##p("got here2")
 
     except Exception as e:
-        print('Notify error:', e)
+        app_logger.exception('Notify error:', e)
 
 
 def show_home_screen_widget_popup1():
@@ -168,7 +169,7 @@ def show_home_screen_widget_popup1():
                 successCallback
             )
     except Exception as error_from_my_way:
-        print("error_from_my_way", error_from_my_way)
+        app_logger.exception("error_from_my_way", error_from_my_way)
         traceback.print_exc()
 
 
@@ -314,7 +315,7 @@ class QuickSetButton(MDButton):
         settings_screen.ids.interval_input_con.disabled = False
         settings_screen.ids.interval_input.text = settings_screen.interval
         settings_screen.ids.save_btn_text.text = "Save"
-        # print("self.clicked_bg_color", self.clicked_bg_color)
+        # p("self.clicked_bg_color", self.clicked_bg_color)
         settings_screen.ids.interval_input.text = self.__get_mins()
 
     def __get_mins(self):
@@ -327,7 +328,7 @@ class QuickSetButton(MDButton):
 
 
         except Exception as error_getting_mins_text_from_quick_add:
-            print(error_getting_mins_text_from_quick_add)
+            app_logger.exception(error_getting_mins_text_from_quick_add)
             traceback.print_exc()
 
         return mins_text
@@ -412,7 +413,7 @@ class ToggleSliderRow(Row):
             instance.from_user = False
 
     def wrap_text_width(self, i, v):
-        # print(f"self.text_layout {self.text_layout.width}, dp:{dp(self.text_layout.width)}") # self.text_layout 470.0, dp:940.0
+        # p(f"self.text_layout {self.text_layout.width}, dp:{dp(self.text_layout.width)}") # self.text_layout 470.0, dp:940.0
         self.sub_text_widget.text_size = [self.text_layout.width, None]
 
     def on_title_text(self, widget, value):
@@ -538,11 +539,11 @@ class SettingsScreen(MyMDScreen):
             toast("Stop failed", e)
 
     def save_interval(self, widget):
-        # print("saving interval")
+        ##p("saving interval")
         # app = MDApp.get_running_app()
         # # app.device_theme = "dark"
         # app.device_theme = "light" if app.device_theme == "dark" else "dark"
-        # print(app.device_theme)
+        ##p(app.device_theme)
         what_to_do = self.ids.save_btn_text.text
         if what_to_do == "Edit":
             self.ids.interval_input_con.disabled = False
@@ -559,7 +560,7 @@ class SettingsScreen(MyMDScreen):
         try:
             new_val = float(self.interval_input.text)
         except Exception as error_changing_input_to_float:
-            print(error_changing_input_to_float)
+           #p(error_changing_input_to_float)
             traceback.print_exc()
             toast("Enter a valid number")
             return
@@ -590,7 +591,7 @@ class SettingsScreen(MyMDScreen):
                 # Service(name="Wallpapercarousel").start()
                 toast("Service boosted!")
             except Exception as error_starting_service:
-                print(error_starting_service)
+               #p(error_starting_service)
                 traceback.print_exc()
                 toast("Start failed")
 
@@ -599,7 +600,7 @@ class SettingsScreen(MyMDScreen):
             Service(name="Wallpapercarousel").stop()
             Clock.schedule_once(after_stop, 1.2)
         except Exception as error_stoping_service:
-            print(error_stoping_service)
+           #p(error_stoping_service)
             traceback.print_exc()
             toast("Stop failed")
 
@@ -683,7 +684,7 @@ class SettingsScreen(MyMDScreen):
                     exported_uris.append(dest_path)
 
                 except Exception as e:
-                    print("Pre-29 export error:", e)
+                   app_logger.exception("Pre-29 export error:", e)
 
                 continue
 
@@ -726,10 +727,10 @@ class SettingsScreen(MyMDScreen):
                 exported_uris.append(str(uri))
 
             except Exception as e:
-                print("MediaStore export error:", e)
+               #p("MediaStore export error:", e)
                 resolver.delete(uri, None, None)
 
-        print("exported_uris:", exported_uris)
+       #p("exported_uris:", exported_uris)
         toast("Exported: To Pictures/Waller")
         return exported_uris
 
@@ -741,17 +742,17 @@ class SettingsScreen(MyMDScreen):
         self.status_bar_bg = [0.45, 0.45, 0.45, 1] if value == "light" else [0.23, 0.23, 0.23, 1]
 
     def set_using_on_wake_config(self, instance, value, from_user):
-        # print("instance.title_text",instance, value)
-        # print('onrelease value',value,instance)
+        ##p("instance.title_text",instance, value)
+        ##p('onrelease value',value,instance)
         if not from_user:
             return
-        # print(f'{instance.title_text} from_user')
+        ##p(f'{instance.title_text} from_user')
         if instance.title_text == "Use On-wake":
             ConfigManager.set_on_wake_state(value)
             self.is_using_on_wake = value
             if value:
                 self.app.ui_messenger_to_service.tell_service_server_to_use_on_wake()
-                # print(self.ids.countdown_label.text,111)
+                ##p(self.ids.countdown_label.text,111)
                 self.ids.countdown_label.text = "OnNext Wake" if self.ids.countdown_label.text != "Paused" else self.ids.countdown_label.text
             else:
                 self.app.ui_messenger_to_service.tell_service_server_to_use_interval_loop()
@@ -763,7 +764,7 @@ class SettingsScreen(MyMDScreen):
                 self.app.ui_messenger_to_service.tell_service_server_to_use_interval_loop()
             else:
                 self.app.ui_messenger_to_service.tell_service_server_to_use_on_wake()
-                # print(self.ids.countdown_label.text,22)
+                ##p(self.ids.countdown_label.text,22)
                 self.ids.countdown_label.text = "OnNext Wake" if self.ids.countdown_label.text != "Paused" else self.ids.countdown_label.text
 
     def check_for_update(self, *args):
@@ -809,11 +810,11 @@ class SettingsScreen(MyMDScreen):
 #                 if chunk:
 #                     f.write(chunk)
 #
-#         print("APK saved to:", apk_path)
+#        #p("APK saved to:", apk_path)
 #         return apk_path
 #
 #     except Exception as e:
-#         print("Download failed:", e)
+#        #p("Download failed:", e)
 #         traceback.print_exc()
 #         return None
 #
@@ -824,7 +825,7 @@ class SettingsScreen(MyMDScreen):
 #     from android import mActivity
 #
 #     if not os.path.exists(apk_path):
-#         print("APK not found:", apk_path)
+#        #p("APK not found:", apk_path)
 #         return
 #
 #     context = mActivity.getApplicationContext()
@@ -850,7 +851,7 @@ class SettingsScreen(MyMDScreen):
 #     from android import mActivity
 #
 #     if not os.path.exists(apk_path):
-#         print("APK not found:", apk_path)
+#        #p("APK not found:", apk_path)
 #         return
 #
 #     Intent = autoclass('android.content.Intent')
@@ -873,12 +874,12 @@ class SettingsScreen(MyMDScreen):
 #         r = requests.get(api_url, timeout=10)
 #         r.raise_for_status()
 #         data = r.json()
-#         print("Here's data:",data)
+#        #p("Here's data:",data)
 #         latest_version = data["tag_name"].lstrip("v")  # strip v prefix if any
-#         print("latest_version:", latest_version)
+#        #p("latest_version:", latest_version)
 #         # apk_url = data["assets"][0]["browser_download_url"]
 #         apk_url = "https://github.com/Fector101/wallpaper-carousel/releases/latest/download/waller.apk"
-#         print("Current version:", VERSION, "Latest version:", latest_version)
+#        #p("Current version:", VERSION, "Latest version:", latest_version)
 #
 #         if latest_version != VERSION:
 #             toast("Update available!")
@@ -887,14 +888,14 @@ class SettingsScreen(MyMDScreen):
 #                 try:
 #                     install_apk15(apk_path)
 #                 except Exception as e:
-#                     print("install_apk15 failed:", e)
+#                    #p("install_apk15 failed:", e)
 #                     try:
 #                         install_apk(apk_path)
 #                     except Exception as e1:
-#                         print("install_apk failed:", e1)
+#                        #p("install_apk failed:", e1)
 #         else:
 #             toast("Already up to date.")
 #
 #     except Exception as e:
-#         print("Failed to check updates:", e)
+#        #p("Failed to check updates:", e)
 #         traceback.print_exc()

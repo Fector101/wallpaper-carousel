@@ -224,13 +224,13 @@ class MyBtmSheet(MDBottomSheet):
                 if drop_down_pos_x <= touch_x <= drop_down_pos_x + each.width and drop_down_pos_y <= touch_y <= drop_down_pos_y + each.height:
                     each.on_release()
 
-        # print("touch.pos[1]", touch.pos[1])
-        # print(f"y: {self.y}, height: {self.height}")
-        # print(f"x:{x}, y:{y}")
+        ##p("touch.pos[1]", touch.pos[1])
+        ##p(f"y: {self.y}, height: {self.height}")
+        ##p(f"x:{x}, y:{y}")
 
         # self.y starts at 0 then going down it becoming negative value of self.height
         is_at_half_of_height = self.y*-1 >= max(1,self.height) / 2
-        # print(is_at_half_of_height,f"y: {self.y}, height: {self.height}, half:{ max(1,self.height) / 2}")
+        ##p(is_at_half_of_height,f"y: {self.y}, height: {self.height}, half:{ max(1,self.height) / 2}")
         if self.status in ["opened","closing_with_swipe"]:
             if is_at_half_of_height:
                 self.hide()
@@ -262,7 +262,7 @@ class MyBtmSheet(MDBottomSheet):
                 clickable_item_ids =clickable_item.ids#["icon"]
                 clickable_item_ids.icon_widget.icon = ""
                 if clickable_item.cols_int == my_config.get_cols():
-                    # print(clickable_item, clickable_item_ids, clickable_item.cols_int)
+                    ##p(clickable_item, clickable_item_ids, clickable_item.cols_int)
                     clickable_item_ids.icon_widget.icon = "check"
 
     def __change_number_of_columns_in_store(self, caller,text):

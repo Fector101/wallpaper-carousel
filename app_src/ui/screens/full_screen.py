@@ -314,11 +314,11 @@ class FullscreenScreen(MyMDScreen):
 
         # self.set_wallpaper_btn.bind(on_release=lambda x: change_wallpaper(self.carousel.current_slide.higher_format))
         self.set_wallpaper_btn.bind(on_release=self.set_as_wallpaper)
-        # print("using hot reload stuff")
+        # p("using hot reload stuff")
         # self.update_images(0)  # for hot_reload
 
     def toggle_fullscreen(self, *_):
-        # print(self.carousel.children[0].children)
+        # p(self.carousel.children[0].children)
         self.is_fullscreen = True
 
         self.carousel.size_hint = (1, 1)
@@ -444,12 +444,12 @@ class FullscreenScreen(MyMDScreen):
         self.carousel_has_images = False
         gallery_screen = self.manager.gallery_screen
         self.carousel.clear_widgets()
-
+        
         # for hot_reload
         # self.data = ["/home/fabian/Pictures/test.jpg"]
         # for p in self.data:
         for p in gallery_screen.wallpapers:
-            # print("thumbnail_path_for(p)", str(thumbnail_path_for(p)))
+            # p("thumbnail_path_for(p)", str(thumbnail_path_for(p)))
             img = AsyncImage(
                 source=str(thumbnail_path_for(p)),  # p,
                 # allow_stretch=True,
@@ -486,7 +486,7 @@ class FullscreenScreen(MyMDScreen):
 
     def on_current_slide(self, carousel, index): # type: ignore
         """Using on_current_slide instead of on_index to prevent multiple Calls"""
-        # print("self.carousel_has_images",self.carousel_has_images)
+        # p("self.carousel_has_images",self.carousel_has_images)
         if not self.carousel_has_images or not carousel.current_slide: # From self.carousel.clear_widgets() changes current_slide Carousel.clear_widgets.remove_widget
             return None
 
@@ -494,7 +494,7 @@ class FullscreenScreen(MyMDScreen):
 
         if hasattr(self.carousel.current_slide,"higher_format"):
             self.current_image = self.carousel.current_slide.higher_format
-        # print('there',self.carousel.current_slide.higher_format, current_slide.higher_format, self.clock_for_side_by_side,self.clock_for_higher_format)
+        # p('there',self.carousel.current_slide.higher_format, current_slide.higher_format, self.clock_for_side_by_side,self.clock_for_higher_format)
 
         if self.clock_for_side_by_side:
             self.clock_for_side_by_side.cancel()
@@ -516,7 +516,7 @@ class FullscreenScreen(MyMDScreen):
         Set High res img for left and right side.
         """
         # AsyncImage(on_load=self.set_side_by_side) not calling right
-        # print(str(self.carousel.current_slide.higher_format) != str(self.carousel.current_slide.source))
+        # p(str(self.carousel.current_slide.higher_format) != str(self.carousel.current_slide.source))
 
         if str(self.carousel.current_slide.higher_format) != str(self.carousel.current_slide.source):
             # Not setting for high format image, so return
@@ -530,10 +530,10 @@ class FullscreenScreen(MyMDScreen):
         right_side_img = self.carousel.slides[current_slide_index + 1] if current_slide_index + 1 < len(
             self.carousel.slides) else first_img
 
-        # print("left_side_img source:", os.path.basename(left_side_img.source), "left_side_img hf:",
+        # p("left_side_img source:", os.path.basename(left_side_img.source), "left_side_img hf:",
         #       os.path.basename(left_side_img.higher_format))
         if left_side_img and left_side_img.source != str(left_side_img.higher_format):
-                # print('left...')
+                # p('left...')
                 proxyImage = Loader.image(str(left_side_img.higher_format))
                 proxyImage.bind(on_load= lambda proxy_image, image_object=left_side_img: patch_resolution(proxy_image,image_object))
                 # left_side_img.source = str(left_side_img.higher_format)
