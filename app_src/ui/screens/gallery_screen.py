@@ -187,6 +187,7 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
                 # Long press already ran. Swallow the finger-up so it does not
                 # also open the image through the normal on_release callback.
                 self._long_press_triggered = False
+                self._cancel_long_press()
             if self.selection_mode:
                 self.selected = not self.selected
                 return True
@@ -205,7 +206,12 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
     def fix_image_size(self, i,v):
         """Ensure the image widget fills the parent layout."""
         if self.image_widget:
+            Animation.cancel_all(self.image_widget, "pos", "size", "opacity")
+            self._normal_image_pos = None
+            self._normal_image_size = None
+            self.image_widget.pos = (0, 0)
             self.image_widget.size = v#[100.5, 100.5]
+            self.image_widget.opacity = 1
             # p("fix_image_size:", v)
 
     def on_press(self):
