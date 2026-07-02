@@ -105,7 +105,9 @@ class IconTextButton(MDButton):
         Clock.schedule_once(self.adjust_width,5)
 
 
-class PreviewImage(ButtonBehavior,MDRelativeLayout):
+class PreviewImage(ButtonBehavior, MDRelativeLayout):
+    __events__ = ("on_long_press",)
+
     high_resolution_path = StringProperty()
     selected = BooleanProperty(False)
     selection_mode = BooleanProperty(False)
@@ -114,6 +116,8 @@ class PreviewImage(ButtonBehavior,MDRelativeLayout):
     def __init__(self, **kwargs):
         source = kwargs.get("source")
         super().__init__(**kwargs)
+        self._long_press = None
+        self._long_press_triggered = False
         # self.md_bg_color=[1,1,0,1]
         self.checkmark_widget = None
         self.image_widget = AsyncImage(
@@ -164,16 +168,59 @@ class PreviewImage(ButtonBehavior,MDRelativeLayout):
         if not self.collide_point(*touch.pos):
             return False
 
+        self._long_press_triggered = False
         if self.selection_mode:
             self.selected = not self.selected
             return True
-        return super().on_touch_down(touch)
+        touch.grab(self)
+        self.dispatch("on_press")
+        return True
+
+    def on_touch_up(self, touch):
+        if touch.grab_current is self:
+            touch.ungrab(self)
+            if self._long_press_triggered:
+                self._long_press_triggered = False
+                return True
+
+            self._cancel_long_press()
+            self.dispatch("on_release")
+            return True
+
+        if not self.collide_point(*touch.pos):
+            self._cancel_long_press()
+            return False
+
+        return super().on_touch_up(touch)
 
     def fix_image_size(self, i,v):
         """Ensure the image widget fills the parent layout."""
         if self.image_widget:
             self.image_widget.size = v#[100.5, 100.5]
             # p("fix_image_size:", v)
+
+    def on_press(self):
+        self._cancel_long_press()
+        self._long_press = Clock.schedule_once(self._dispatch_long_press, 2)
+
+    def on_release(self):
+        self._cancel_long_press()
+        return True
+
+    def _cancel_long_press(self):
+        if self._long_press:
+            self._long_press.cancel()
+            self._long_press = None
+
+    def _dispatch_long_press(self, dt):
+        self._long_press = None
+        self._long_press_triggered = True
+        self.on_release()
+        self.dispatch("on_long_press")
+
+    def on_long_press(self):
+        print("long press function called")
+        pass
 
 
 class MyMDGridLayout(MDGridLayout):
@@ -299,6 +346,7 @@ class DateGroupLayout(Column):
         self.add_widget(line)
         app_logger.info(f"DGL_BUILD: done self.children={len(self.children)} parent={self.parent}")
         return None
+
 
     def on_size(self,_,size):
         if self.cols == 1:
@@ -937,6 +985,7 @@ class GalleryScreen(MyMDScreen):
         app_logger.info(f"GENERATE_TAB: tab={tab_name} wallpapers={len(sorted_wallpapers)} list_id={id(sorted_wallpapers)} swp_id={id(self.wallpapers)} batches={list(data_of_batch_dict_of_lists.keys())} widget_children={len(tab_container.children)}")
 
     def open_fullscreen_for_image(self, wallpaper_path = None, wallpaper_index = -1):
+        print('child')
         try:
             index = self.wallpapers.index(wallpaper_path)
         except Exception as error_getting_index:
