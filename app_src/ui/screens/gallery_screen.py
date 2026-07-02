@@ -127,7 +127,7 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
             source=source,
             fit_mode="cover",
             mipmap=True,
-            
+
             # allow_stretch=True,
         )
         self.image_widget.size_hint=(None,None)
@@ -170,11 +170,8 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
     def on_touch_down(self, touch):
         if not self.collide_point(*touch.pos):
             return False
-
+        self._play_press_down_effect()#on_complete=self._play_press_up_effect)
         self._long_press_triggered = False
-        if self.selection_mode:
-            self.selected = not self.selected
-            return True
 
         # Own this touch sequence so ButtonBehavior does not dispatch a
         # normal release after a long press has already been handled.
@@ -183,12 +180,15 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
         return True
 
     def on_touch_up(self, touch):
+        self._play_press_up_effect()
         if touch.grab_current is self:
             touch.ungrab(self)
             if self._long_press_triggered:
                 # Long press already ran. Swallow the finger-up so it does not
                 # also open the image through the normal on_release callback.
                 self._long_press_triggered = False
+            if self.selection_mode:
+                self.selected = not self.selected
                 return True
 
             # Released before the long-press timer finished: treat as a tap.
@@ -210,7 +210,7 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
 
     def on_press(self):
         self._cancel_long_press()
-        self._play_press_down_effect()
+        # self._play_press_down_effect()
         self._long_press = Clock.schedule_once(self._dispatch_long_press, 0.6)
 
     def on_release(self):
@@ -226,10 +226,10 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
         # Mark this touch as handled before dispatching the public event.
         # on_touch_up will use this flag to suppress the normal tap release.
         self._long_press_triggered = True
-        self._cancel_long_press()
-        self._play_press_up_effect(self._finish_long_press)
+        self._finish_long_press()
+        # self._play_press_up_effect(self._finish_long_press)
 
-    def _play_press_down_effect(self):
+    def _play_press_down_effect(self,on_complete=None):
         Animation.cancel_all(self.image_widget, "pos", "size", "opacity")
         self._normal_image_pos = self.image_widget.pos[:]
         self._normal_image_size = self.image_widget.size[:]
@@ -240,14 +240,18 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
             max(0, self._normal_image_size[1] - (inset * 2)),
         ]
 
-        Animation(pos=pressed_pos, size=pressed_size, opacity=.75, duration=.06).start(self.image_widget)
+        effect = Animation(pos=pressed_pos, size=pressed_size, opacity=.75, duration=.06)
+        if on_complete:
+            effect.bind(on_complete=lambda *_: on_complete())
+        effect.start(self.image_widget)
 
-    def _play_press_up_effect(self, on_complete):
+    def _play_press_up_effect(self, on_complete=None):
         Animation.cancel_all(self.image_widget, "pos", "size", "opacity")
         normal_pos = self._normal_image_pos or [0, 0]
         normal_size = self._normal_image_size or self.size[:]
         effect = Animation(pos=normal_pos, size=normal_size, opacity=1, duration=.08)
-        effect.bind(on_complete=lambda *_: on_complete())
+        if on_complete:
+            effect.bind(on_complete=lambda *_: on_complete())
         effect.start(self.image_widget)
 
     def _finish_long_press(self):
@@ -898,11 +902,11 @@ class GalleryScreen(MyMDScreen):
         self.select_menu.open()
 
     def enter_select_mode(self, *args):
-        selected_image = args[0] if args and isinstance(args[0], PreviewImage) else None
+        # selected_image = args[0] if args and isinstance(args[0], PreviewImage) else None
         self.multi_select_manager.show()
-        if selected_image:
-            selected_image.selected = True
-            self.multi_select_manager.update_selection_count()
+        # if selected_image:
+        #     selected_image.selected = True
+        #     self.multi_select_manager.update_selection_count()
         self.select_menu.dismiss()
 
     def initialize_tabs(self, no_clock=False, has_files=True):
