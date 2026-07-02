@@ -98,7 +98,6 @@ class MyMDIconButton(MDIconButton):
                     self.on_double_click()
             self.cancel_double_click()
 
-
     def cancel_double_click(self):
         self.time_of_first_release = 0
         self.time_of_second_release = 0
@@ -193,7 +192,7 @@ class BottomNavigationBar(MDNavigationDrawer):
             self.pass_width = False
             return
 
-        # print("on_size",args)
+        # p("on_size",args)
         self.width = self.minimum_width
         self.adaptive_width = True
         self.pass_width=True
@@ -203,7 +202,7 @@ class BottomNavigationBar(MDNavigationDrawer):
             self.pass_width = False
             return
 
-        # print("width",args)
+        # p("width",args)
         self.width = self.minimum_width
         self.adaptive_width = True
         self.pass_width=True

@@ -95,7 +95,7 @@ class MyPopUp(Popup):
         ])
 
     def add_widget(self, widget, *args, **kwargs):
-        # print(999,widget, *args, **kwargs)
+        # p(999,widget, *args, **kwargs)
         super().add_widget(widget, *args, **kwargs)
 
     def adjust_height(self,widget,height):
@@ -132,7 +132,7 @@ def get_dimensions(bypass_android_version=False):
                 WindowInsetsType.navigationBars()
             ).bottom
     except Exception as Error_using_first_method_to_get_Status_Bar_and_Nav_Bar_Height:
-        print(Error_using_first_method_to_get_Status_Bar_and_Nav_Bar_Height)
+        app_logger.exception(Error_using_first_method_to_get_Status_Bar_and_Nav_Bar_Height)
 
 
     # This Block is a fallback when user is using Gestures
@@ -142,7 +142,7 @@ def get_dimensions(bypass_android_version=False):
             status_id = resources.getIdentifier("status_bar_height", "dimen", "android")
             status_bar_height = resources.getDimensionPixelSize(status_id)
         except Exception as Error_using_second_method_to_get_status_bar_height:
-            print(Error_using_second_method_to_get_status_bar_height)
+            app_logger.exception(Error_using_second_method_to_get_status_bar_height)
 
     if not nav_bar_height:
         try:
@@ -150,7 +150,7 @@ def get_dimensions(bypass_android_version=False):
             nav_id = resources.getIdentifier("navigation_bar_height", "dimen", "android")
             nav_bar_height = resources.getDimensionPixelSize(nav_id)
         except Exception as Error_using_second_method_to_get_nav_bar_height:
-            print(Error_using_second_method_to_get_nav_bar_height)
+            app_logger.exception(Error_using_second_method_to_get_nav_bar_height)
 
     return [status_bar_height, nav_bar_height]
 
@@ -229,7 +229,7 @@ class MyMDScreen(MDScreen):
 
     def set_widget_left_and_right_padding(self,left_padding, right_padding,rotation):
         pass
-        # print("Mad Bread",left_padding,right_padding)
+        # p("Mad Bread",left_padding,right_padding)
         # self.ids.main_container.padding=[dp(left_padding+25), dp(25), dp(right_padding+25), dp(0)]
 
     @staticmethod
@@ -256,14 +256,14 @@ class MyMDScreen(MDScreen):
         Surface = autoclass('android.view.Surface')
         rotation = self.__get_rotation()
 
-        print("rotation:", rotation)
+        # p("rotation:", rotation)
         # Using status bar position
         # "TOP (Portrait)", "RIGHT (Landscape)", "BOTTOM (Upside Down)""
         if rotation in [Surface.ROTATION_0,Surface.ROTATION_90,Surface.ROTATION_180]:
-            print(rotation)
+            # p(rotation)
             return default
         elif rotation == Surface.ROTATION_270: # "LEFT (Landscape)"
-            print("Rotation: 270")
+            # p("Rotation: 270")
             return self.nav_bar_height,self.status_bar_height
         else:
             app_logger.error(f"Unknown rotation: {rotation}")
@@ -375,7 +375,7 @@ class LoadingLayout(MDRelativeLayout):
             # skip=1
             # for r in current_screen.walk():
             #     if isinstance(r,FloatLayout):
-            #         print('r',r)
+            #         p('r',r)
             #         if not skip:
             current_screen.add_widget(self)
         else:
