@@ -17,7 +17,7 @@ from kivy.uix.tabbedpanel import TabbedPanel
 from kivy.utils import get_color_from_hex
 
 from kivymd.app import MDApp
-from kivymd.uix.boxlayout import BoxLayout, MDBoxLayout
+from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDButton, MDButtonIcon, MDButtonText, MDIconButton
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.gridlayout import MDGridLayout
@@ -80,7 +80,7 @@ def get_number_of_cols():
     # my_config = ConfigManager()
     cols = my_config.get_cols()
 
-    print("get_number_of_cols", type(cols), cols)
+    # p("get_number_of_cols", type(cols), cols)
     return cols
 
 
@@ -160,7 +160,6 @@ class PreviewImage(ButtonBehavior,MDRelativeLayout):
             self.checkmark_widget.icon = "checkbox-blank-circle-outline"
             self.checkmark_widget.icon_color=[0.7, 0.7, 0.7, 1]
 
-
     def on_touch_down(self, touch):
         if not self.collide_point(*touch.pos):
             return False
@@ -174,7 +173,7 @@ class PreviewImage(ButtonBehavior,MDRelativeLayout):
         """Ensure the image widget fills the parent layout."""
         if self.image_widget:
             self.image_widget.size = v#[100.5, 100.5]
-            # print("fix_image_size:", v)
+            # p("fix_image_size:", v)
 
 
 class MyMDGridLayout(MDGridLayout):
@@ -282,6 +281,7 @@ class DateGroupLayout(Column):
                     on_release=each_data["release_function"],
                     high_resolution_path=each_data["high_resolution_path"],
                     source=each_data["thumbnail_path"],
+                    on_long_press=self.app.sm.gallery_screen.enter_select_mode
                 )
             elif isinstance(each_data, PreviewImage):
                 thumbnailWidget = each_data
@@ -561,18 +561,18 @@ class MultiselectTop(MDFloatLayout):
         if tab_data:
             for key, value in tab_data.items():
                 if isinstance(value, DateGroupLayout):
-                    # print(f"\nDateGroupLayout key='{key}' id={id(value)}")
-                    # print(f"  images_container.children ({len(value.images_container.children)}):")
+                    # p(f"\nDateGroupLayout key='{key}' id={id(value)}")
+                    # p(f"  images_container.children ({len(value.images_container.children)}):")
                     # for c in value.images_container.children:
-                        # print(f"{id(c)} -> {c.high_resolution_path}")
-                    # print(f"walk() PreviewImages:")
+                        # p(f"{id(c)} -> {c.high_resolution_path}")
+                    # p(f"walk() PreviewImages:")
                     # Don't use .walk() a weird ghost widget is created even just on app start up
                     for child in value.images_container.children:
                         if isinstance(child, PreviewImage):
                             # f+=1
-                            # print(f"id={id(child)} parent={type(child.parent).__name__}.{id(child.parent)} path={child.high_resolution_path}")
+                            # p(f"id={id(child)} parent={type(child.parent).__name__}.{id(child.parent)} path={child.high_resolution_path}")
                             child.selected = True
-        # print('f',f)
+        # p('f',f)
         self.update_selection_count()
     
     def deselect_all(self, *args):
@@ -747,7 +747,7 @@ class GalleryScreen(MyMDScreen):
         self.wallpapers_dir = self.app_dir / "wallpapers"
 
         self.tab_instances = {}
-        # print("hot reload stuff in gallery screen")
+        # p("hot reload stuff in gallery screen")
         # from ui.widgets.buttons import BottomNavigationBar
         #
         # self.bottom_bar = BottomNavigationBar(
@@ -843,17 +843,17 @@ class GalleryScreen(MyMDScreen):
         #     from android import activity # type: ignore
         #     def test(activity_id,some_int,intent):
         #         try:
-        #             print('must be before chooser callback')
-        #             print('see intent', intent,bool(intent))
+        #             p('must be before chooser callback')
+        #             p('see intent', intent,bool(intent))
         #             if intent:
         #                 file_operation.intent = intent
         #                 # try:
-        #                 #     print("intent data", intent.getData()) # crashes app when no files are picked
-        #                 #     print("intent data str", intent.getData().toString())
+        #                 #     p("intent data", intent.getData()) # crashes app when no files are picked
+        #                 #     p("intent data str", intent.getData().toString())
         #                 # except Exception as weird_thing:
-        #                 #     print("weird_thing",weird_thing)
+        #                 #     p("weird_thing",weird_thing)
         #         except Exception as error_getting_path:
-        #             print("error_getting_path",error_getting_path)
+        #             p("error_getting_path",error_getting_path)
         #
         #     activity.bind(on_activity_result=test) # handling image with no permission
         self.app.file_operation.show_spinner()
@@ -874,7 +874,7 @@ class GalleryScreen(MyMDScreen):
         # from jnius import autoclass, cast
         # from android import activity
         # def test(activity_id,some_int,data):
-        #     print("args", data)
+        #     p("args", data)
         # activity.bind(on_activity_result=test)
 
         # def open_file_picker():
@@ -890,7 +890,7 @@ class GalleryScreen(MyMDScreen):
         # try:
         #     open_file_picker()
         # except Exception as error_testing_picker:
-        #     print("error_testing_picker", error_testing_picker)
+        #     p("error_testing_picker", error_testing_picker)
 
     def generate_tab_widgets(self, tab_name, wallpapers, dt=None):
         sorted_wallpapers = sorted(
@@ -938,12 +938,11 @@ class GalleryScreen(MyMDScreen):
 
     def open_fullscreen_for_image(self, wallpaper_path = None, wallpaper_index = -1):
         try:
-
             index = self.wallpapers.index(wallpaper_path)
         except Exception as error_getting_index:
-            # print("self.wallpapers", self.wallpapers)
-            for each in self.wallpapers:
-                print(each)
+            # p("self.wallpapers", self.wallpapers)
+            # for each in self.wallpapers:
+            #     p(each)
             app_logger.error(f"error_getting_index: {error_getting_index}")
 
             return
@@ -978,13 +977,13 @@ class GalleryScreen(MyMDScreen):
         self.current_tab = GalleryTabs.BOTH.value
         # ---------------------------------
         # peek = [str(p) for p in self.wallpapers_dir.glob("*") if True]
-        # print("Peek:", peek,self.wallpapers_dir)
+        # p("Peek:", peek,self.wallpapers_dir)
 
         # self.wallpapers = [
         #     str(p) for p in self.wallpapers_dir.glob("*")
         #     if p.suffix.lower() in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"]
         # ]
-        # print("Loaded wallpapers:", len(self.wallpapers))
+        # p("Loaded wallpapers:", len(self.wallpapers))
         # -------------------------------
         # wallpapers = my_config.get_wallpapers()
         # self.wallpapers = self._filter_existing_paths(wallpapers)
@@ -1013,11 +1012,11 @@ class GalleryScreen(MyMDScreen):
         # scroll_view_main_column = self.ids.wallpapers_container
         # wallpapers_on_display = scroll_view_main_column.wallpapers_on_display
         #
-        # print("wallpapers",wallpapers)
+        # p("wallpapers",wallpapers)
         # for each_img in wallpapers_on_display:
-        #     print(each_img.high_resolution_path)
+        #     p(each_img.high_resolution_path)
         #     if each_img.high_resolution_path not in wallpapers:
-        #         print("removed:",each_img.high_resolution_path)
+        #         p("removed:",each_img.high_resolution_path)
         #         wallpapers_on_display.remove(each_img)
         #         each_img.parent.remove_widget(each_img)
         #         # scroll_view_main_column.remove_widget(each_img)
