@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 
 from android_notify.config import on_android_platform
+from kivy.animation import Animation
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
@@ -118,6 +119,8 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
         super().__init__(**kwargs)
         self._long_press = None
         self._long_press_triggered = False
+        self._normal_image_pos = None
+        self._normal_image_size = None
         # self.md_bg_color=[1,1,0,1]
         self.checkmark_widget = None
         self.image_widget = AsyncImage(
@@ -190,7 +193,7 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
 
             # Released before the long-press timer finished: treat as a tap.
             self._cancel_long_press()
-            self.dispatch("on_release")
+            self._play_press_up_effect(lambda: self.dispatch("on_release"))
             return True
 
         if not self.collide_point(*touch.pos):
@@ -207,7 +210,8 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
 
     def on_press(self):
         self._cancel_long_press()
-        self._long_press = Clock.schedule_once(self._dispatch_long_press, 1)
+        self._play_press_down_effect()
+        self._long_press = Clock.schedule_once(self._dispatch_long_press, 0.6)
 
     def on_release(self):
         self._cancel_long_press()
@@ -223,10 +227,33 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
         # on_touch_up will use this flag to suppress the normal tap release.
         self._long_press_triggered = True
         self._cancel_long_press()
+        self._play_press_up_effect(self._finish_long_press)
+
+    def _play_press_down_effect(self):
+        Animation.cancel_all(self.image_widget, "pos", "size", "opacity")
+        self._normal_image_pos = self.image_widget.pos[:]
+        self._normal_image_size = self.image_widget.size[:]
+        inset = dp(3)
+        pressed_pos = [self._normal_image_pos[0] + inset, self._normal_image_pos[1] + inset]
+        pressed_size = [
+            max(0, self._normal_image_size[0] - (inset * 2)),
+            max(0, self._normal_image_size[1] - (inset * 2)),
+        ]
+
+        Animation(pos=pressed_pos, size=pressed_size, opacity=.75, duration=.06).start(self.image_widget)
+
+    def _play_press_up_effect(self, on_complete):
+        Animation.cancel_all(self.image_widget, "pos", "size", "opacity")
+        normal_pos = self._normal_image_pos or [0, 0]
+        normal_size = self._normal_image_size or self.size[:]
+        effect = Animation(pos=normal_pos, size=normal_size, opacity=1, duration=.08)
+        effect.bind(on_complete=lambda *_: on_complete())
+        effect.start(self.image_widget)
+
+    def _finish_long_press(self):
         self.dispatch("on_long_press")
 
     def on_long_press(self):
-        print("long press function called")
         pass
 
 
@@ -996,7 +1023,6 @@ class GalleryScreen(MyMDScreen):
         app_logger.info(f"GENERATE_TAB: tab={tab_name} wallpapers={len(sorted_wallpapers)} list_id={id(sorted_wallpapers)} swp_id={id(self.wallpapers)} batches={list(data_of_batch_dict_of_lists.keys())} widget_children={len(tab_container.children)}")
 
     def open_fullscreen_for_image(self, wallpaper_path = None, wallpaper_index = -1):
-        print('child')
         try:
             index = self.wallpapers.index(wallpaper_path)
         except Exception as error_getting_index:
