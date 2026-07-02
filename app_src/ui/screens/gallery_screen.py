@@ -172,6 +172,9 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
         if self.selection_mode:
             self.selected = not self.selected
             return True
+
+        # Own this touch sequence so ButtonBehavior does not dispatch a
+        # normal release after a long press has already been handled.
         touch.grab(self)
         self.dispatch("on_press")
         return True
@@ -180,9 +183,12 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
         if touch.grab_current is self:
             touch.ungrab(self)
             if self._long_press_triggered:
+                # Long press already ran. Swallow the finger-up so it does not
+                # also open the image through the normal on_release callback.
                 self._long_press_triggered = False
                 return True
 
+            # Released before the long-press timer finished: treat as a tap.
             self._cancel_long_press()
             self.dispatch("on_release")
             return True
@@ -213,9 +219,10 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
             self._long_press = None
 
     def _dispatch_long_press(self, dt):
-        self._long_press = None
+        # Mark this touch as handled before dispatching the public event.
+        # on_touch_up will use this flag to suppress the normal tap release.
         self._long_press_triggered = True
-        self.on_release()
+        self._cancel_long_press()
         self.dispatch("on_long_press")
 
     def on_long_press(self):
@@ -863,8 +870,12 @@ class GalleryScreen(MyMDScreen):
     def open_select_mode_menu(self, *args):
         self.select_menu.open()
 
-    def enter_select_mode(self,*args):
+    def enter_select_mode(self, *args):
+        selected_image = args[0] if args and isinstance(args[0], PreviewImage) else None
         self.multi_select_manager.show()
+        if selected_image:
+            selected_image.selected = True
+            self.multi_select_manager.update_selection_count()
         self.select_menu.dismiss()
 
     def initialize_tabs(self, no_clock=False, has_files=True):
