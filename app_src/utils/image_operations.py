@@ -269,7 +269,8 @@ def create_thumbnail(src, destination_dir=None, size=(320, 320), quality=60):
                 print("error_using_android_classes_to_create_thumbnail",error_using_android_classes_to_create_thumbnail)
                 traceback.print_exc()
         return str(destination)
-
+    except OSError as e:
+        app_logger.exception(f"OSError creating thumbnail for {src}")
     except Exception as error_making_thumbnail:
         print(f"Error creating thumbnail for: {error_making_thumbnail}", src)
         traceback.print_exc()
