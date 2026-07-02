@@ -256,7 +256,8 @@
             id: chooser_btn
             icon:"plus"
             on_release: root.open_file_chooser()
-            pos_hint: {"right": .9,"center_y":.15}
+            x: root.width * .9 - self.width
+            y: (root.height * .1) + dp(22.5) + dp(25)
             theme_font_size: "Custom"
             font_size: sp(30)
             theme_bg_color: "Custom"
