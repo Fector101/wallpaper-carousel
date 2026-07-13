@@ -72,7 +72,7 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
                         context,
                         appWidgetId,
                         intent,
-                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
                 );
 
                 Log.d(TAG, "PendingIntent created");
