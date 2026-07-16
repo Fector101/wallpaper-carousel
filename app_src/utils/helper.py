@@ -380,3 +380,19 @@ def get_current_wallpaper():
     except FileNotFoundError:
         path = "assets/icons/icon.png"
     return path or "assets/icons/icon.png"
+
+
+def is_running_debug_build():
+    if not on_android_platform():
+        return True
+    ApplicationInfo = autoclass("android.content.pm.ApplicationInfo")
+    PythonActivity = autoclass("org.kivy.android.PythonActivity")
+    try:
+        context = PythonActivity.mActivity
+        return (
+            context.getApplicationInfo().flags &
+            ApplicationInfo.FLAG_DEBUGGABLE
+        ) != 0
+    except Exception as e:
+        print(f"Error checking debuggable status: {e}")
+        return False
