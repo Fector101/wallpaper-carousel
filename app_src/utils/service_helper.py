@@ -551,7 +551,7 @@ class WallpaperServerReceiver:
 
 
 receivedDataFromUI = ReceivedDataFromUI()
-client = udp_client.SimpleUDPClient("0.0.0.0", receivedDataFromUI.ui_port)
+client = udp_client.SimpleUDPClient("127.0.0.1", receivedDataFromUI.ui_port)
 server = None
 
 
