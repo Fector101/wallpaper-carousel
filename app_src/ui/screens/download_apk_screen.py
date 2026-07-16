@@ -8,20 +8,20 @@ from android_notify.config import on_android_platform
 from kivy.clock import Clock
 from kivy.graphics import RoundedRectangle, Color
 from kivy.metrics import dp, sp
-from kivy.properties import StringProperty, ListProperty, ObjectProperty, BooleanProperty
+from kivy.properties import StringProperty, ListProperty, BooleanProperty
 from kivy.utils import get_color_from_hex
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDButtonText, MDButton
 from kivymd.uix.fitimage import FitImage
 from kivymd.uix.label import MDLabel
-# from kivymd.uix.relativelayout import MDRelativeLayout
 from kivymd.uix.scrollview import MDScrollView
 
 from ui.widgets.android import toast
 from ui.widgets.layouts import MyMDScreen, Column, Row
 from utils.constants import VERSION
 from utils.logger import app_logger
+from utils.helper import is_running_debug_build
 
 def get_apk_path(version):
     folder = get_apk_directory()
@@ -310,7 +310,8 @@ class DownloadApkScreen(MyMDScreen):
         root.add_widget(bottom_container)
         self.add_widget(root)
 
-        Clock.schedule_once(lambda dt: thread_check_for_update(dt, self.show),3)
+        if not is_running_debug_build():
+            Clock.schedule_once(lambda dt: thread_check_for_update(dt, self.show),3)
         # Clock.schedule_once(lambda dt: self.dev())
 
     def dev(self):

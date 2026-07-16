@@ -6,6 +6,7 @@
 #:import add_home_screen_widget utils.android.add_home_screen_widget
 #:import toInt utils.helper.toInt
 #:import ConfigManager utils.config_manager.ConfigManager
+#:import is_running_debug_build utils.helper.is_running_debug_build
 
 
 
@@ -337,7 +338,7 @@
                             theme_text_color:"Custom"
                             text_color: "black" if app.device_theme == "light" else "white"
                 Button:
-                    text: f"v{VERSION}"
+                    text: f'v{VERSION}{ "-debug" if is_running_debug_build() else ""}'
                     pos_hint: {"right":1}
                     background_color:[0,0,0,0]
                     size_hint: [None, None]
