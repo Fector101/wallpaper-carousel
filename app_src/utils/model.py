@@ -11,10 +11,12 @@ class BottomButtonBarModel:
     # callbacks provided from outside
     on_camera: Callable[..., Any] | None
     on_settings: Callable[..., Any] | None
+    on_marketplace: Callable[..., Any] | None
 
     # inner widgets
     button_box: "MDBoxLayout"
     btn_camera: "MDIconButton"
+    btn_marketplace: "MDIconButton"
     btn_settings: "MDIconButton"
 
     # public API
@@ -24,8 +26,9 @@ class BottomButtonBarModel:
 
     # internal handlers (still useful for autocomplete sometimes)
     def _camera_pressed(self, *args) -> None: ...
+    def _marketplace_pressed(self, *args) -> None: ...
     def _settings_pressed(self, *args) -> None: ...
-    def color_tab_buttons(self, current: Literal["thumbs", "fullscreen", "settings", "welcome", "logs"]) -> None: ...
+    def color_tab_buttons(self, current: Literal["thumbs", "fullscreen", "settings", "welcome", "logs", "marketplace"]) -> None: ...
 
 class MyScreenManagerModel:
     # screens
@@ -34,13 +37,15 @@ class MyScreenManagerModel:
     settings_screen: "SettingsScreen"
     welcome_screen: "WelcomeScreen"
     log_screen: "LogsScreen"
+    marketplace_screen: "MarketplaceScreen"
 
     # navigation helpers (functions assigned in real class)
     go_to_settings: Callable
     go_to_thumbs: Callable
+    go_to_marketplace: Callable
 
     # kivy ScreenManager state
-    current: Literal["thumbs", "fullscreen", "settings", "welcome", "logs"]
+    current: Literal["thumbs", "fullscreen", "settings", "welcome", "logs", "marketplace"]
 
     # public API
     def __init__(self):

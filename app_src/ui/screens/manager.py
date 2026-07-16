@@ -19,6 +19,7 @@ from ui.screens.full_screen import FullscreenScreen
 from ui.screens.welcome_screen import WelcomeScreen
 from ui.screens.logs_screen import LogsScreen
 from ui.screens.download_apk_screen import DownloadApkScreen
+from ui.screens.marketplace_screen import MarketplaceScreen
 
 
 DEV = os.path.exists("/home/fabian")
@@ -32,6 +33,7 @@ class ScreenManager(MDScreenManager):
         self.full_screen = FullscreenScreen()
         self.settings_screen = SettingsScreen()
         self.log_screen = LogsScreen()
+        self.marketplace_screen = MarketplaceScreen()
         if not DEV:
             self.download_apk_screen = DownloadApkScreen()
 
@@ -40,6 +42,7 @@ class ScreenManager(MDScreenManager):
         self.add_widget(self.settings_screen)
         self.add_widget(self.welcome_screen)
         self.add_widget(self.log_screen)
+        self.add_widget(self.marketplace_screen)
         if not DEV:
             self.add_widget(self.download_apk_screen)
         self.__register_rotate_listener()
@@ -84,6 +87,10 @@ class ScreenManager(MDScreenManager):
     def go_to_thumbs(self, _=None):
         self.transition = SlideTransition(direction="right")
         self.current = "thumbs"
+
+    def go_to_marketplace(self, _=None):
+        self.transition = SlideTransition(direction="left")
+        self.current = "marketplace"
 
     def scroll_to_to_thumbs(self):
         self.gallery_screen.ids.thumbnails_scroll_view_widget.scroll_y = 1

@@ -110,10 +110,10 @@ class MyMDIconButton(MDIconButton):
         self.time_of_first_release = 0
 
 class BottomNavigationBar(MDNavigationDrawer):
-    """Floating bottom bar with two buttons with centered icons only."""
+    """Floating bottom bar with three buttons with centered icons only."""
     pass_width = BooleanProperty(False)
 
-    def __init__(self, on_camera=None, on_settings=None, on_double_click_camera = None,on_double_click_settings = None, **kwargs):
+    def __init__(self, on_camera=None, on_settings=None, on_marketplace=None, on_double_click_camera=None, on_double_click_settings=None, **kwargs):
         super().__init__(**kwargs)
         self.set_state('open')
         self.drawer_type='standard'
@@ -122,16 +122,14 @@ class BottomNavigationBar(MDNavigationDrawer):
         self.md_bg_color=[0,0,0,0]
         self.old_setting_btn_color = None
         self.old_gallery_btn_color = None
+        self.old_marketplace_btn_color = None
         self.padding=[1]
         self.on_camera = on_camera
         self.on_settings = on_settings
-        # self.size_hint = (None, None)
+        self.on_marketplace = on_marketplace
         self.size_hint_x = None
         self.adaptive_height = 1
         self.width = self.minimum_width
-        # android_nav_bar_height = get_dimensions()[1]
-        # self.size = [self.minimum_width,dp(android_nav_bar_height * 2) or dp(140)]
-        # self.md_bg_color = [1,1,0,1]
 
         # Button container
         radius = dp(12)
@@ -144,7 +142,7 @@ class BottomNavigationBar(MDNavigationDrawer):
             radius=radius,
         )
 
-        size = [dp(80), dp(45)]
+        size = [dp(70), dp(45)]
 
         self.btn_camera = MyMDIconButton(
             icon="image-multiple",
@@ -157,6 +155,18 @@ class BottomNavigationBar(MDNavigationDrawer):
         self.btn_camera.size_hint = [None, None]
         self.btn_camera.size = size
         self.btn_camera.radius = [radius, 0, 0, radius]
+
+        self.btn_marketplace = MyMDIconButton(
+            icon="store",
+            style="tonal",
+            theme_text_color="Custom",
+            theme_bg_color="Custom",
+            on_release=self._marketplace_pressed,
+            on_double_click=None
+        )
+        self.btn_marketplace.size_hint = [None, None]
+        self.btn_marketplace.size = size
+        self.btn_marketplace.radius = [0, 0, 0, 0]
 
         self.btn_settings = MyMDIconButton(
             icon="cog",
@@ -171,11 +181,10 @@ class BottomNavigationBar(MDNavigationDrawer):
         self.btn_settings.radius = [0, radius, radius, 0]
 
         self.button_box.add_widget(self.btn_camera)
+        self.button_box.add_widget(self.btn_marketplace)
         self.button_box.add_widget(self.btn_settings)
 
         self.button_box.adaptive_size = True
-        # self.button_box.bind(minimum_width=self.button_box.setter("width"))
-        # self.button_box.bind(minimum_height=self.button_box.setter("height"))
 
         self.add_widget(self.button_box)
 
@@ -183,7 +192,6 @@ class BottomNavigationBar(MDNavigationDrawer):
         self.changeBottomBtnsTheme(None, self.app.device_theme)
         if not NotificationHandler.has_permission():
             self.hide()
-        # self.color_tab_buttons("thumbs")
         self.on_size()
         Clock.schedule_once(self.on_size, 5)
 
@@ -219,6 +227,7 @@ class BottomNavigationBar(MDNavigationDrawer):
         dark_theme_bg = [a / 255, c / 255, c / 255, 1]  # get_color_from_hex("#1A1B1B")
         light_theme_bg = [1, 1, 1, 1]
         self.btn_camera.md_bg_color = light_theme_bg if theme == "light" else dark_theme_bg
+        self.btn_marketplace.md_bg_color = light_theme_bg if theme == "light" else dark_theme_bg
         self.btn_settings.md_bg_color = light_theme_bg if theme == "light" else dark_theme_bg
         self.button_box.md_bg_color = self.btn_camera.md_bg_color
 
@@ -234,6 +243,10 @@ class BottomNavigationBar(MDNavigationDrawer):
         if callable(self.on_camera):
             self.on_camera(*args)
 
+    def _marketplace_pressed(self, *args):
+        if callable(self.on_marketplace):
+            self.on_marketplace(*args)
+
     def _settings_pressed(self, *args):
         if callable(self.on_settings):
             self.on_settings(*args)
@@ -248,6 +261,12 @@ class BottomNavigationBar(MDNavigationDrawer):
         if screen == "settings":
             self.btn_settings.text_color = [0, 0, 0, 1] if theme == "light" else [1, 1, 1, 1]
             self.btn_camera.text_color = [.4, .4, .4, 1]
+            self.btn_marketplace.text_color = [.4, .4, .4, 1]
         elif screen == "thumbs":
             self.btn_camera.text_color = [0, 0, 0, 1] if theme == "light" else [1, 1, 1, 1]
+            self.btn_settings.text_color = [.4, .4, .4, 1]
+            self.btn_marketplace.text_color = [.4, .4, .4, 1]
+        elif screen == "marketplace":
+            self.btn_marketplace.text_color = [0, 0, 0, 1] if theme == "light" else [1, 1, 1, 1]
+            self.btn_camera.text_color = [.4, .4, .4, 1]
             self.btn_settings.text_color = [.4, .4, .4, 1]

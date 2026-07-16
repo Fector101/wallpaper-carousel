@@ -61,6 +61,7 @@ class WallpaperCarouselApp(MDApp):
         self.bottom_bar = BottomNavigationBar(
             on_camera=self.sm.go_to_thumbs,
             on_settings=self.sm.go_to_settings,
+            on_marketplace=self.sm.go_to_marketplace,
             on_double_click_camera = self.sm.scroll_to_to_thumbs,
             on_double_click_settings = self.sm.scroll_to_to_settings
         )
