@@ -1,0 +1,9 @@
+kivy
+https://github.com/kivymd/KivyMD/archive/master.zip
+materialyoucolor
+asynckivy
+pyjnius
+android-notify
+python-osc
+android-widgets
+git+https://github.com/kivy/plyer.git
