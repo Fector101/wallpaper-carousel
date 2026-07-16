@@ -68,12 +68,11 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
                 intent.putExtra("from_widget", true);
                 Log.d(TAG, "Extra 'from_widget' added");
 
-                PendingIntent pendingIntent = PendingIntent.getActivity(
-                        context,
-                        appWidgetId,
-                        intent,
-                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
-                );
+                int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+    flags |= PendingIntent.FLAG_IMMUTABLE;
+}
+PendingIntent pendingIntent = PendingIntent.getActivity(context, appWidgetId, intent, flags);
 
                 Log.d(TAG, "PendingIntent created");
 
