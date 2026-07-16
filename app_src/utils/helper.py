@@ -44,7 +44,7 @@ def makeFolder(my_folder):
     return my_folder
 
 
-def appFolder() -> str | bytes:
+def appFolder() -> str:
     """Creates (if needed) and returns the Laner download folder path."""
 
     if on_android_platform():
