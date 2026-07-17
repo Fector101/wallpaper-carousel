@@ -42,10 +42,6 @@ class ScreenManager(MDScreenManager):
         self.__register_rotate_listener()
         # self.__run_rotate_method_for_each_screen("BOTTOM")
 
-        if not NotificationHandler.has_permission():
-            self.current = "welcome"
-        else:
-            self.current = "thumbs"
         # self.current = "update_screen"
     def __register_rotate_listener(self):
         if on_android_platform():
@@ -67,12 +63,15 @@ class ScreenManager(MDScreenManager):
 
     def on_current(self,*args):
         screen_name = args[1]
-        is_fullscreen = screen_name in ["welcome","fullscreen","logs","update_screen"]
+        self.btm_nav_patch(screen_name)
+        super().on_current(instance=args[0],value=args[1])
+
+    def btm_nav_patch(self, screen_name):
+        is_fullscreen = screen_name in ["welcome", "fullscreen", "logs", "update_screen"]
         if is_fullscreen and self.app.bottom_bar:
-            self.app.bottom_bar.hide(animation=False,hidden_by=self)
+            self.app.bottom_bar.hide(animation=False, hidden_by=self)
         elif self.app.bottom_bar:
             self.app.bottom_bar.show(hidden_by=self)
-        super().on_current(instance=args[0],value=args[1])
 
     def go_to_settings(self, _=None):
         self.transition = SlideTransition(direction="left")

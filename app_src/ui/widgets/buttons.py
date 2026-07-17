@@ -184,8 +184,6 @@ class BottomNavigationBar(MDNavigationDrawer):
 
         self.app.bind(device_theme=self.changeBottomBtnsTheme)
         self.changeBottomBtnsTheme(None, self.app.device_theme)
-        if not NotificationHandler.has_permission():
-            self.hide()
         # self.color_tab_buttons("thumbs")
         self.on_size()
         Clock.schedule_once(self.on_size, 5)

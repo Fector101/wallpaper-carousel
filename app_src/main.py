@@ -65,11 +65,10 @@ class WallpaperCarouselApp(MDApp):
             on_double_click_settings = self.sm.scroll_to_to_settings
         )
 
-        is_fullscreen = self.sm.current in ["welcome", "fullscreen", "logs", "update_screen"]
-        if is_fullscreen:
-            self.bottom_bar.hide(animation=False,hidden_by=self)
-        elif self.bottom_bar:
-            self.bottom_bar.show(hidden_by=self)
+        if not NotificationHandler.has_permission():
+            self.sm.current = "welcome"
+        else:
+            self.sm.current = "thumbs"
 
         root_layout.add_widget(self.bottom_bar)
         self.bottom_bar.bind_change()  # needs theme from monitor_dark_and_light_device_change
