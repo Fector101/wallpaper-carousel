@@ -9,7 +9,7 @@ from kivy.utils import get_color_from_hex
 from android_notify import NotificationHandler
 from kivy.clock import Clock
 from kivy.graphics import PushMatrix, PopMatrix, Rotate
-from kivy.properties import ListProperty, BooleanProperty
+from kivy.properties import ListProperty, BooleanProperty, ObjectProperty
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.fitimage import FitImage
@@ -95,6 +95,7 @@ class NotificationRequestLayout(MDGridLayout):
     text_color_primary_dark = get_color_from_hex("#FFFFFF")
     text_color_secondary_light = ListProperty([88 / 255, 85 / 255, 85 / 255, 1])
     text_color_secondary_dark = get_color_from_hex("#F2F2F2")
+    answer_callback = ObjectProperty()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -103,19 +104,9 @@ class NotificationRequestLayout(MDGridLayout):
     def enable_notifications(self, *_):
         print("Enable notifications pressed")
 
-        def change_screen(_):
-            try:
-                self.app.sm.current = "thumbs"
-            except Exception as e:
-                print(e)
-                traceback.print_exc()
-
         def callback_func(state):
-            Clock.schedule_once(change_screen)
-            if state:
-                toast("Notifications enabled")
-            else:
-                toast("Notifications disabled")
+            Clock.schedule_once(self.answer_callback)
+            toast(f"Notifications {'enabled' if state else 'disabled'}")
 
         try:
             NotificationHandler.asks_permission(callback_func)
@@ -124,7 +115,7 @@ class NotificationRequestLayout(MDGridLayout):
             traceback.print_exc()
 
     def skip_feature(self, *_):
-        self.app.sm.current = "thumbs"
+        self.answer_callback()
         print("Skip feature pressed")
 
 
@@ -139,4 +130,8 @@ class WelcomeScreen(MyMDScreen):
         md_bg_color=[0.8, 0.8, 0.8, 1] if self.app.device_theme == "light" else[.1, .1, .1, 1]
         )
         self.add_widget(self.generic_status_bar_spacer)
-        self.add_widget(NotificationRequestLayout())
+        self.add_widget(NotificationRequestLayout(answer_callback=self.handle_going_back))
+
+    def handle_going_back(self, *_):
+        self.app.sm.current = "thumbs"
+        self.app.bottom_bar.show(hidden_by="notify_permission")

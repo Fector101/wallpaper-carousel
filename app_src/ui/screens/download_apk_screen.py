@@ -18,7 +18,7 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.scrollview import MDScrollView
 
 from ui.widgets.android import toast
-from ui.widgets.layouts import MyMDScreen, Column, Row
+from ui.widgets.layouts import MyMDScreen, Column, Row, GenericStatusBarSpacer
 from utils.constants import VERSION
 from utils.logger import app_logger
 from utils.helper import is_running_debug_build
@@ -242,6 +242,9 @@ class DownloadApkScreen(MyMDScreen):
         self.name = "update_screen"
 
         root = Column(padding=[dp(20), dp(10)])
+        self.generic_status_bar_spacer = GenericStatusBarSpacer(
+            status_bar_height=self.status_bar_height,
+            md_bg_color=[.1, .1, .1, 1])
 
         # Top App Bar
         top_app_bar = Row(
@@ -299,12 +302,13 @@ class DownloadApkScreen(MyMDScreen):
             md_bg_color=self.md_bg_color,
             theme_text_color="Custom",
             text_color=[.5, .5, .5, 1],
-            on_release=lambda x: self.go_to_gallery_screen()
+            on_release=lambda x: self.handle_going_back()
         )
 
         bottom_container.add_widget(self.update_button)
         bottom_container.add_widget(self.later_button)
 
+        root.add_widget(self.generic_status_bar_spacer)
         root.add_widget(top_app_bar)
         root.add_widget(body_content)
         root.add_widget(bottom_container)
@@ -387,7 +391,7 @@ class DownloadApkScreen(MyMDScreen):
         self.update_button.streak.unbind(on_release = self.start_install)
         # self.update_button.function = lambda x:do_android_install(apk_path)
 
-    def go_to_gallery_screen(self):
+    def handle_going_back(self):
         manager = self.manager
         if manager:
             self.manager.current = "thumbs"
