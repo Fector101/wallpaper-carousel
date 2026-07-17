@@ -14,6 +14,7 @@ from kivymd.uix.relativelayout import MDRelativeLayout
 from android_notify import NotificationHandler
 
 from ui.widgets.layouts import get_dimensions
+from utils.logger import app_logger
 from utils.model import get_app
 
 
@@ -115,6 +116,8 @@ class BottomNavigationBar(MDNavigationDrawer):
 
     def __init__(self, on_camera=None, on_settings=None, on_double_click_camera = None,on_double_click_settings = None, **kwargs):
         super().__init__(**kwargs)
+        self.hidden = False
+        self.hidden_by = None
         self.set_state('open')
         self.drawer_type='standard'
         self.app = get_app()
@@ -222,13 +225,29 @@ class BottomNavigationBar(MDNavigationDrawer):
         self.btn_settings.md_bg_color = light_theme_bg if theme == "light" else dark_theme_bg
         self.button_box.md_bg_color = self.btn_camera.md_bg_color
 
-    def hide(self,animation=True):
+    def hide(self,animation=True, hidden_by=None):
+        if self.hidden:
+            return None # so hidden_by doesn't get overwritten by another widget or text key e.g "pic"
+        # p(f"hidden_by {hidden_by}")
+        self.hidden_by = hidden_by
+        self.hidden=True
         self.set_state('close', animation=animation)
         self.button_box.pos_hint = {"center_x": 0.5, "y": -1}
+        return None
 
-    def show(self,animation=True):
-        self.set_state('open', animation=animation)
-        self.button_box.pos_hint = {"center_x": 0.5, "center_y": 0.5}
+    def show(self,animation=True, hidden_by=None):
+        if not self.hidden:
+            return None
+        # p(f"shown by {hidden_by}")
+        if hidden_by != self.hidden_by:
+            app_logger.warning(f"Didn't show navbar it was hidden by {self.hidden_by}, can't be shown by {hidden_by}")
+            return None
+        def ui_thing(*args):
+            self.set_state('open', animation=animation)
+            self.button_box.pos_hint = {"center_x": 0.5, "center_y": 0.5}
+        Clock.schedule_once(ui_thing)
+        self.hidden=False
+        return None
 
     def _camera_pressed(self, *args):
         if callable(self.on_camera):

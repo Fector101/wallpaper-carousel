@@ -540,7 +540,7 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
             self.gallery_screen.ids.chooser_btn.disabled = True
 
         if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
-            self.app.bottom_bar.hide(animation=False)
+            self.app.bottom_bar.hide(animation=False,hidden_by=self)
 
         current_tab = self.gallery_screen.current_tab
         tab_data = self.gallery_screen.tab_instances.get(current_tab)
@@ -565,7 +565,7 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
             self.gallery_screen.ids.chooser_btn.disabled = False
 
         if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
-            self.app.bottom_bar.show(animation=False)
+            self.app.bottom_bar.show(animation=False,hidden_by=self)
 
         current_tab = self.gallery_screen.current_tab
         tab_data = self.gallery_screen.tab_instances.get(current_tab)
@@ -917,7 +917,7 @@ class GalleryScreen(MyMDScreen):
 
     def initialize_tabs(self, no_clock=False, has_files=True):
         if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
-            self.app.bottom_bar.show(animation=False)
+            self.app.bottom_bar.show(animation=False,hidden_by="pic") #'pic' tag is used by share from other apps and file chooser
         if not has_files:
             return
 
@@ -953,7 +953,7 @@ class GalleryScreen(MyMDScreen):
         #
         #     activity.bind(on_activity_result=test) # handling image with no permission
         self.app.file_operation.show_spinner()
-
+        self.app.bottom_bar.hide(animation=False, hidden_by="pic")
 
         def show_chooser(dt=None):
             filechooser.open_file(

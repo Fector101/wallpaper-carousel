@@ -7,6 +7,7 @@ from pathlib import Path
 from android_notify.internal.java_classes import String, autoclass, cast, Intent
 from kivy.clock import Clock
 from android_notify.config import on_android_platform, get_python_activity_context
+from kivymd.app import MDApp
 
 from ui.widgets.layouts import LoadingLayout
 from utils.helper import appFolder
@@ -17,6 +18,8 @@ my_config = ConfigManager()
 
 class ImageOperation:
     def __init__(self,load_saved):
+        self.app = MDApp.get_running_app()
+
         self.showing_loading_screen = False # To fix when no image chosen from Half Popup
         self.spinner_layout = None
         self.app_dir = Path(appFolder())
@@ -138,6 +141,10 @@ class ImageOperation:
 
         return uris
 
+    def hide_nav_btns(self):
+        def ui_thing(*a):
+            self.app.bottom_bar.hide(animation=False, hidden_by="pic")
+        Clock.schedule_once(ui_thing)
     def handle_image_sharing_from_others_app(self, intent):
         tag="handle_image_sharing_from_others_app"
         if intent is None:
@@ -156,6 +163,7 @@ class ImageOperation:
                     uri = intent.getData()
 
                 if uri and is_image_uri(uri):
+                    self.hide_nav_btns()
                     self.show_spinner()
                     def start_thread(_):
                         threading.Thread(target=self._process_single_image,args=(uri,),daemon=True).start()
@@ -166,6 +174,7 @@ class ImageOperation:
                 uris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)
                 image_uris = [u for u in uris if is_image_uri(u)]
                 if image_uris:
+                    self.hide_nav_btns()
                     self.show_spinner()
                     def start_thread(_):
                         threading.Thread(target=self._process_multiple_images,args=(image_uris,),daemon=True).start()
@@ -178,6 +187,7 @@ class ImageOperation:
 
         except Exception as error_handle_image_sharing_from_others_app:
             print(f"error_{tag}",error_handle_image_sharing_from_others_app)
+            traceback.print_exc()
 
 
     def setup_share_from_others_to_app_listener(self):
