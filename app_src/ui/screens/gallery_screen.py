@@ -917,7 +917,7 @@ class GalleryScreen(MyMDScreen):
 
     def initialize_tabs(self, no_clock=False, has_files=True):
         if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
-            self.app.bottom_bar.show(animation=False,hidden_by="pic")
+            self.app.bottom_bar.show(animation=False,hidden_by="pic") #'pic' tag is used by share from other apps and file chooser
         if not has_files:
             return
 
