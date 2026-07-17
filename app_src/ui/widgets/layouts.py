@@ -172,19 +172,19 @@ class PlaceOnMainScreen:
         pass
 
     def show(self,*_):
-        Window.bind(on_keyboard=self.handle_back_btn)
+        Window.bind(on_keyboard=self.handle_esc_key)
 
-    def handle_back_btn(self,_, key, *__):
+    def handle_esc_key(self,_, key, *__):
         if key == 27:
-            self.hide(frm_back_btn=True, key=key)
+            self.hide(frm_esc_key=True, key=key)
         return True # "don't close app"
 
-    def hide(self,frm_back_btn=False,key=None,*_):
-        # p(f"values: frm_back_btn={frm_back_btn}, key={key}")
-        if frm_back_btn and key != 27:
+    def hide(self,frm_esc_key=False,key=None,*_):
+        # p(f"values: frm_esc_key={frm_esc_key}, key={key}")
+        if frm_esc_key and key != 27:
             return None
-        elif frm_back_btn and key == 27:
-            Window.unbind(on_keyboard=self.handle_back_btn)
+        elif frm_esc_key and key == 27:
+            Window.unbind(on_keyboard=self.handle_esc_key)
 
         parent = self.parent
         if parent:
@@ -292,6 +292,7 @@ class MyMDScreen(MDScreen):
         else:
             app_logger.error(f"Unknown rotation: {rotation}")
             return default
+
 
 class GenericStatusBarSpacer(MDWidget):
     status_bar_height=NumericProperty(0)

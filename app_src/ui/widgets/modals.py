@@ -228,8 +228,8 @@ class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
         # self.disabled=1
         super().show()
 
-    def hide(self, frm_back_btn=False, key=None, *_):
-        super().hide(frm_back_btn=frm_back_btn, key=key)
+    def hide(self, frm_esc_key=False, key=None, *_):
+        super().hide(frm_esc_key=frm_esc_key, key=key)
 
     def on_touch_down(self, touch):
         touch_x,touch_y=touch.pos
