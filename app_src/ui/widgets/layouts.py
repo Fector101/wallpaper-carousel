@@ -164,10 +164,34 @@ def get_status_bar_height(bypass_android_version=False):
     dimensions = get_dimensions(bypass_android_version)
     return dimensions[0]
 
-# For header use In python file self.status_bar_height. In kv file root.status_bar_height
+# For header use In Python file self.status_bar_height. In kv file root.status_bar_height
 # each subclass should implement set_widget_left_and_right_padding
 class PlaceOnMainScreen:
-    pass
+    parent = None # added by child kivy widget, this line is just for PyCharm lint it doesn't override anything
+    def __init__(self):
+        pass
+
+    def show(self,*_):
+        Window.bind(on_keyboard=self.handle_back_btn)
+
+    def handle_back_btn(self,_, key, *__):
+        if key == 27:
+            self.hide(frm_back_btn=True, key=key)
+        return True # "don't close app"
+
+    def hide(self,frm_back_btn=False,key=None,*_):
+        # p(f"values: frm_back_btn={frm_back_btn}, key={key}")
+        if frm_back_btn and key != 27:
+            return None
+        elif frm_back_btn and key == 27:
+            Window.unbind(on_keyboard=self.handle_back_btn)
+
+        parent = self.parent
+        if parent:
+            parent.remove_widget(self)
+        return None
+
+
 class MyMDScreen(MDScreen):
     navigation_buttons_box = ObjectProperty()
     screen_content = ObjectProperty()

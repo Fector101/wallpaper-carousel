@@ -533,6 +533,7 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
     def show(self):
         if not self.parent:
             self.gallery_screen.add_widget(self)
+        super().show()
 
         self.gallery_screen.ids.head_section.disabled = True
         if self.gallery_screen and hasattr(self.gallery_screen.ids, "chooser_btn"):
@@ -550,12 +551,10 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
                 if isinstance(value, DateGroupLayout):
                     value.set_selection_mode(1)
 
-    def hide(self, *args):
+    def hide(self,frm_back_btn=False,key=None,*_):
+        super().hide(frm_back_btn=frm_back_btn, key=key)
         self.multi_select_top.select_all_ = False
         self.multi_select_top.deselect_all()
-        if self.parent:
-            self.parent.remove_widget(self)
-
         if hasattr(self.gallery_screen.ids,"head_section"):
             self.gallery_screen.ids.head_section.disabled = False
         else:
