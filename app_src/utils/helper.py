@@ -7,7 +7,7 @@ import sys
 import traceback
 from datetime import datetime
 
-from android_notify.config import get_python_activity_context, from_service_file, on_android_platform
+from android_notify.config import get_python_activity_context, from_service_file, on_android_platform, on_pydroid_app
 from android_notify.internal.java_classes import BuildVersion, BitmapFactory, autoclass, cast
 
 from ui.widgets.android import toast
@@ -47,11 +47,12 @@ def makeFolder(my_folder):
 def appFolder() -> str:
     """Creates (if needed) and returns the Laner download folder path."""
 
-    if on_android_platform():
+    if on_pydroid_app():
+        folder_path = os.getcwd()
+    elif on_android_platform():
         from android.storage import app_storage_path  # type: ignore # , primary_external_storage_path
         # folder_path = os.path.join(primary_external_storage_path(), 'Pictures', 'Waller')
-        folder_path = os.path.join(app_storage_path())
-
+        folder_path = str(os.path.join(app_storage_path()))
     else:
         folder_path = os.getcwd()
 
@@ -119,7 +120,7 @@ class Service:
             from android import mActivity  # type: ignore
         except (ModuleNotFoundError, ImportError):
             mActivity = None
-        self.mActivity = mActivity
+        self.mActivity = mActivity if not on_pydroid_app() else None
         self.args_str = args_str
         self.name = name
         self.service = autoclass(self.get_name()) if self.mActivity else None

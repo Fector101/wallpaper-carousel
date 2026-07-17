@@ -9,7 +9,7 @@ from kivymd.app import MDApp
 from kivymd.uix.navigationdrawer import MDNavigationLayout
 
 from android_notify import NotificationHandler, logger as android_notify_logger
-from android_notify.config import on_android_platform
+from android_notify.config import on_android_platform, on_pydroid_app
 
 from ui.screens.manager import ScreenManager
 from ui.widgets.android import toast
@@ -33,7 +33,7 @@ register_fonts()
 
 if platform == 'linux':
     Window.size = (390, 740)
-elif on_android_platform():
+elif on_android_platform() and not on_pydroid_app():
     ask_permission_to_images()
 
 
@@ -134,7 +134,7 @@ class WallpaperCarouselApp(MDApp):
             self.sm.current = "thumbs"
 
     def bind_plyer_fix(self):
-        if on_android_platform():
+        if on_android_platform() and not on_pydroid_app():
             from android import activity  # type: ignore
             def set_intent_for_file_operation_class(activity_id, some_int, intent):
                 if self.file_operation.showing_loading_screen and not some_int:

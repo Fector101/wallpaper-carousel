@@ -6,7 +6,7 @@ from pathlib import Path
 
 from android_notify.internal.java_classes import String, autoclass, cast, Intent
 from kivy.clock import Clock
-from android_notify.config import on_android_platform, get_python_activity_context
+from android_notify.config import on_android_platform, get_python_activity_context, on_pydroid_app
 from kivymd.app import MDApp
 
 from ui.widgets.layouts import LoadingLayout
@@ -193,6 +193,9 @@ class ImageOperation:
     def setup_share_from_others_to_app_listener(self):
         if not on_android_platform():
             app_logger.warning("Can't Share Image to App, You're not on Android")
+            return
+        elif on_pydroid_app():
+            app_logger.warning("NewIntentListener proxy can't be created on pydroid3")
             return
         try:
             from android import activity  # type: ignore
