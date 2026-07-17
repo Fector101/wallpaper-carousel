@@ -178,7 +178,7 @@ class MyDialogBox(Column,PlaceOnMainScreen):
                 self.ok_btn.text_color = [1, 1, 1, 1]
 
     def close(self,*_):
-        self.parent.close()
+        self.parent.hide()
 
     def ok(self,*_):
         self.ok_callback()
@@ -227,8 +227,8 @@ class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
         # self.disabled=1
         super().show()
 
-    def hide(self, frm_esc_key=False, key=None, *_):
-        super().hide(frm_esc_key=frm_esc_key, key=key)
+    def hide(self, *_):
+        super().hide()
 
     def on_touch_down(self, touch):
         touch_x,touch_y=touch.pos

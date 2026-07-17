@@ -176,16 +176,11 @@ class PlaceOnMainScreen:
 
     def handle_esc_key(self,_, key, *__):
         if key == 27:
-            self.hide(frm_esc_key=True, key=key)
+            self.hide()
         return True # "don't close app"
 
-    def hide(self,frm_esc_key=False,key=None,*_):
-        # p(f"values: frm_esc_key={frm_esc_key}, key={key}")
-        if frm_esc_key and key != 27:
-            return None
-        elif frm_esc_key and key == 27:
-            Window.unbind(on_keyboard=self.handle_esc_key)
-
+    def hide(self,*_):
+        Window.unbind(on_keyboard=self.handle_esc_key)
         parent = self.parent
         if parent:
             parent.remove_widget(self)

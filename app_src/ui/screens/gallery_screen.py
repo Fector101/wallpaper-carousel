@@ -550,8 +550,8 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
                 if isinstance(value, DateGroupLayout):
                     value.set_selection_mode(1)
 
-    def hide(self,frm_esc_key=False,key=None,*_):
-        super().hide(frm_esc_key=frm_esc_key, key=key)
+    def hide(self, *_):
+        super().hide()
         self.multi_select_top.select_all_ = False
         self.multi_select_top.deselect_all()
         if hasattr(self.gallery_screen.ids,"head_section"):
