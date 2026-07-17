@@ -67,9 +67,9 @@ class WallpaperCarouselApp(MDApp):
 
         is_fullscreen = self.sm.current in ["welcome", "fullscreen", "logs", "update_screen"]
         if is_fullscreen:
-            self.bottom_bar.hide(animation=False)
+            self.bottom_bar.hide(animation=False,hidden_by=self)
         elif self.bottom_bar:
-            self.bottom_bar.show()
+            self.bottom_bar.show(hidden_by=self)
 
         root_layout.add_widget(self.bottom_bar)
         self.bottom_bar.bind_change()  # needs theme from monitor_dark_and_light_device_change
@@ -142,6 +142,7 @@ class WallpaperCarouselApp(MDApp):
                     # Fix for Half Screen Popup When no file is picked.
                     # some_int is usually -1 when a file is chosen and 0 when no file is chosen
                     self.file_operation.hide_spinner()
+                    self.bottom_bar.show(hidden_by="pic")
                 try:
                     print("intent must be before chooser callback",activity_id,some_int,intent)
                     if intent:
