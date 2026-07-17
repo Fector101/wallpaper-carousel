@@ -11,7 +11,6 @@ from utils.helper import load_kv_file  # type
 from utils.logger import app_logger
 
 from utils.model import get_app
-from kivy.core.window import Window
 
 load_kv_file(py_file_absolute_path=__file__)
 # with open(os.path.join(appFolder(),"ui","components","templates.kv"), encoding="utf-8") as kv_file:

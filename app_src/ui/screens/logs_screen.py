@@ -14,7 +14,6 @@ from kivy.uix.screenmanager import NoTransition
 from ui.widgets.android import toast
 
 from ui.widgets.layouts import MyMDScreen, GenericStatusBarSpacer
-from kivy.core.window import Window
 
 # ---------- CONFIG ----------
 LOG_HORIZONTAL_PADDING = dp(10)

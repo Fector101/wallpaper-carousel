@@ -295,7 +295,7 @@ class MyMDScreen(MDScreen):
             return default
 
     def handle_going_back(self,*_):
-        """Implement by children"""
+        """Implemented by children"""
 
     def handle_esc_key(self, _, key, *__):
         if key == 27:
