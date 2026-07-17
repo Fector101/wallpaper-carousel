@@ -20,6 +20,8 @@ import android.view.View;
 import android.util.TypedValue;
 import android.graphics.Color;
 
+import android.content.ComponentName;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -50,37 +52,33 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
                     R.layout.carousel_widget
             );
 
-            // WIDGET CLICK → APP LAUNCH
-            Log.d(TAG, "Resolving launch intent");
+            // WIDGET CLICK → APP LAUNCH (explicit intent works even when app is force-stopped)
+            // Intent intent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
 
-            Intent intent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
+            // if (intent == null) {
+            //     Log.e(TAG, "Launch intent is NULL – app has no LAUNCHER activity");
+            // } else {
+            //     Log.d(TAG, "Launch intent resolved: " + intent.getComponent());
+            // }
 
-            if (intent == null) {
-                Log.e(TAG, "Launch intent is NULL – app has no LAUNCHER activity");
-            } else {
-                Log.d(TAG, "Launch intent resolved: " + intent.getComponent());
+            Intent intent = new Intent(Intent.ACTION_MAIN);
+            intent.setComponent(new ComponentName(context, "org.kivy.android.PythonActivity"));
+            intent.addCategory(Intent.CATEGORY_LAUNCHER);
+            intent.setFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK |
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP
+            );
+            intent.putExtra("from_widget", true);
 
-                intent.setFlags(
-                        Intent.FLAG_ACTIVITY_NEW_TASK |
-                        Intent.FLAG_ACTIVITY_CLEAR_TOP
-                );
-
-                intent.putExtra("from_widget", true);
-                Log.d(TAG, "Extra 'from_widget' added");
-
-                PendingIntent pendingIntent = PendingIntent.getActivity(
-                        context,
-                        appWidgetId,
-                        intent,
-                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-                );
-
-                Log.d(TAG, "PendingIntent created");
-
-                views.setOnClickPendingIntent(R.id.widget_root, pendingIntent);
-                views.setOnClickPendingIntent(R.id.test_image, pendingIntent);
-                Log.d(TAG, "PendingIntent attached to R.id.test_image and widget");
+            int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                flags |= PendingIntent.FLAG_IMMUTABLE;
             }
+            PendingIntent pendingIntent = PendingIntent.getActivity(context, appWidgetId, intent, flags);
+
+            views.setOnClickPendingIntent(R.id.widget_root, pendingIntent);
+            views.setOnClickPendingIntent(R.id.test_image, pendingIntent);
+            Log.d(TAG, "PendingIntent set for widgetId=" + appWidgetId);
 
             File txtFile = new File(
                     context.getFilesDir().getAbsolutePath() + "/wallpaper.txt"
