@@ -226,19 +226,26 @@ class BottomNavigationBar(MDNavigationDrawer):
         self.button_box.md_bg_color = self.btn_camera.md_bg_color
 
     def hide(self,animation=True, hidden_by=None):
+        if self.hidden:
+            return None # so hidden_by doesn't get overwritten by another widget or text key e.g "pic"
+        # p(f"hidden_by {hidden_by}")
         self.hidden_by = hidden_by
         self.hidden=True
         self.set_state('close', animation=animation)
         self.button_box.pos_hint = {"center_x": 0.5, "y": -1}
+        return None
 
     def show(self,animation=True, hidden_by=None):
         if not self.hidden:
             return None
+        # p(f"shown by {hidden_by}")
         if hidden_by != self.hidden_by:
             app_logger.warning(f"Didn't show navbar it was hidden by {self.hidden_by}, can't be shown by {hidden_by}")
             return None
-        self.set_state('open', animation=animation)
-        self.button_box.pos_hint = {"center_x": 0.5, "center_y": 0.5}
+        def ui_thing(*args):
+            self.set_state('open', animation=animation)
+            self.button_box.pos_hint = {"center_x": 0.5, "center_y": 0.5}
+        Clock.schedule_once(ui_thing)
         self.hidden=False
         return None
 
