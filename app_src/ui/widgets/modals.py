@@ -1,7 +1,6 @@
 from kivy.clock import Clock
 from kivy.metrics import dp
-from kivy.properties import ListProperty, StringProperty, BooleanProperty, DictProperty,ObjectProperty
-from kivy.uix.floatlayout import FloatLayout
+from kivy.properties import ListProperty, StringProperty, BooleanProperty, ObjectProperty
 from kivymd.uix.button import MDButtonText, MDButton
 from kivymd.uix.fitimage import FitImage
 from kivymd.uix.floatlayout import MDFloatLayout
@@ -50,13 +49,13 @@ class MyTextButton(MDButton):
         # p(f"available_width: {available_width}")
         self.width = int(available_width/2)
 
-    def add_text_widget(self, dt=None):
+    def add_text_widget(self, _=None):
         self.add_widget(self.txt)
 
-    def set_val(self, instance, value):
+    def set_val(self, _, value):
         self.txt.text = value
 
-    def set_text_color(self, instance, value):
+    def set_text_color(self, _, value):
         if not value:
             return
         self.txt.text_color = value
@@ -72,7 +71,7 @@ class MyTextButton(MDButton):
     def fix_width(self, *_):
         self.adjust_width()
 
-class MyDialogBox(Column):
+class MyDialogBox(Column,PlaceOnMainScreen):
     # source = StringProperty()
     # ok_callback = ObjectProperty()
     icon_name=StringProperty("")
@@ -210,6 +209,7 @@ class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
                 show_ok_button=lambda _,v: setattr(self.dialog_box,"show_ok_button",v)
                   )
         self.add_widget(self.dialog_box)
+
     def fix_child_width(self,_,value):
         # p(_,value)
         self.dialog_box.width=value-70
@@ -225,10 +225,11 @@ class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
         # p(current_screen)
         current_screen.add_widget(self)
         # self.disabled=1
-    def close(self,*_):
-        parent = self.parent
-        if parent:
-            parent.remove_widget(self)
+        super().show()
+
+    def hide(self, frm_esc_key=False, key=None, *_):
+        super().hide(frm_esc_key=frm_esc_key, key=key)
+
     def on_touch_down(self, touch):
         touch_x,touch_y=touch.pos
         db = self.dialog_box

@@ -5,7 +5,6 @@ from pathlib import Path
 from android_notify.config import on_android_platform
 from kivy.animation import Animation
 from kivy.clock import Clock
-from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
 from kivy.metrics import dp, sp
 from kivy.properties import StringProperty, NumericProperty, ListProperty, BooleanProperty, ObjectProperty
@@ -533,6 +532,7 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
     def show(self):
         if not self.parent:
             self.gallery_screen.add_widget(self)
+        super().show()
 
         self.gallery_screen.ids.head_section.disabled = True
         if self.gallery_screen and hasattr(self.gallery_screen.ids, "chooser_btn"):
@@ -550,12 +550,10 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
                 if isinstance(value, DateGroupLayout):
                     value.set_selection_mode(1)
 
-    def hide(self, *args):
+    def hide(self,frm_esc_key=False,key=None,*_):
+        super().hide(frm_esc_key=frm_esc_key, key=key)
         self.multi_select_top.select_all_ = False
         self.multi_select_top.deselect_all()
-        if self.parent:
-            self.parent.remove_widget(self)
-
         if hasattr(self.gallery_screen.ids,"head_section"):
             self.gallery_screen.ids.head_section.disabled = False
         else:
@@ -827,11 +825,11 @@ class GalleryScreen(MyMDScreen):
     wallpapers = ListProperty([])
 
     def __init__(self, **kwargs):
-
         super().__init__(**kwargs)
         global gs
         gs=self
         self.app = get_app()
+        self.do_not_leave_app=False # not back btn feature from class MyMDScreen
         # self.app.device_theme = "light"
         self.app.device_theme = "dark"
         self.name = "thumbs"
@@ -882,7 +880,6 @@ class GalleryScreen(MyMDScreen):
                 )
         self._update_menu_theme(None, self.app.device_theme)
         self.app.bind(device_theme=self._update_menu_theme)
-
 
     def _update_menu_theme(self, _, theme):
         is_dark = theme == "dark"

@@ -164,10 +164,34 @@ def get_status_bar_height(bypass_android_version=False):
     dimensions = get_dimensions(bypass_android_version)
     return dimensions[0]
 
-# For header use In python file self.status_bar_height. In kv file root.status_bar_height
+# For header use In Python file self.status_bar_height. In kv file root.status_bar_height
 # each subclass should implement set_widget_left_and_right_padding
 class PlaceOnMainScreen:
-    pass
+    parent = None # added by child kivy widget, this line is just for PyCharm lint it doesn't override anything
+    def __init__(self):
+        pass
+
+    def show(self,*_):
+        Window.bind(on_keyboard=self.handle_esc_key)
+
+    def handle_esc_key(self,_, key, *__):
+        if key == 27:
+            self.hide(frm_esc_key=True, key=key)
+        return True # "don't close app"
+
+    def hide(self,frm_esc_key=False,key=None,*_):
+        # p(f"values: frm_esc_key={frm_esc_key}, key={key}")
+        if frm_esc_key and key != 27:
+            return None
+        elif frm_esc_key and key == 27:
+            Window.unbind(on_keyboard=self.handle_esc_key)
+
+        parent = self.parent
+        if parent:
+            parent.remove_widget(self)
+        return None
+
+
 class MyMDScreen(MDScreen):
     navigation_buttons_box = ObjectProperty()
     screen_content = ObjectProperty()
@@ -179,6 +203,7 @@ class MyMDScreen(MDScreen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.do_not_leave_app = True
         self.change_layout_orientation_clock = None
         Window.bind(size=self.on_window_resize)
         self.on_window_resize(Window, (Window.width, Window.height))
@@ -268,6 +293,21 @@ class MyMDScreen(MDScreen):
         else:
             app_logger.error(f"Unknown rotation: {rotation}")
             return default
+
+    def handle_going_back(self,*_):
+        """Implemented by children"""
+
+    def handle_esc_key(self, _, key, *__):
+        if key == 27:
+            self.handle_going_back()
+        return self.do_not_leave_app  # "don't close app"
+
+    def on_enter(self, *args):
+        Window.bind(on_keyboard=self.handle_esc_key)
+
+    def on_leave(self, *args):
+        Window.unbind(on_keyboard=self.handle_esc_key)
+
 
 class GenericStatusBarSpacer(MDWidget):
     status_bar_height=NumericProperty(0)
