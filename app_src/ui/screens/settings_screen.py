@@ -784,6 +784,10 @@ class SettingsScreen(MyMDScreen):
     def set_widget_left_and_right_padding(self,left_padding, right_padding,rotation):
         self.ids.main_container.padding=[dp(left_padding+25), dp(25), dp(right_padding+25), dp(100)]
         self.ids.title_text_case.padding=[dp(left_padding+25), dp(self.status_bar_height-20 if self.status_bar_height>20 else self.status_bar_height+20 ), dp(0), dp(20)]
+
+    def handle_going_back(self,*_):
+        self.manager.go_to_thumbs()
+
 #
 #
 # import requests

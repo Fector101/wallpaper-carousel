@@ -62,7 +62,7 @@ class LogsScreen(MyMDScreen):
         start_btn.bind(on_release=self.start_loading)
 
         back_btn = Button(text="Go Back", size_hint_x=None, width=dp(70),font_size=sp(13))
-        back_btn.bind(on_release=self.back_to_settings_screen)
+        back_btn.bind(on_release=self.handle_going_back)
 
         top_bar.add_widget(start_btn)
         top_bar.add_widget(back_btn )
@@ -103,7 +103,7 @@ class LogsScreen(MyMDScreen):
             Window.size = (370, 700)
             return os.getcwd()
 
-    def back_to_settings_screen(self,*_):
+    def handle_going_back(self,*_):
         self.manager.transition = NoTransition()
         self.manager.current = "settings"
 
@@ -271,17 +271,6 @@ class LogsScreen(MyMDScreen):
             self.load_logs_from_file()
             Clock.schedule_interval(self._update_logs, UPDATE_INTERVAL)
             self._auto_update_started = True
-
-    def handle_esc_key(self, _, key, *__):
-        if key == 27:
-            self.back_to_settings_screen()
-        return True  # "don't close app"
-
-    def on_enter(self, *args):
-        Window.bind(on_keyboard=self.handle_esc_key)
-
-    def on_leave(self, *args):
-        Window.unbind(on_keyboard=self.handle_esc_key)
 
 if __name__ == "__main__":
     from kivymd.app import MDApp

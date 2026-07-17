@@ -203,6 +203,7 @@ class MyMDScreen(MDScreen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.do_not_leave_app = True
         self.change_layout_orientation_clock = None
         Window.bind(size=self.on_window_resize)
         self.on_window_resize(Window, (Window.width, Window.height))
@@ -292,6 +293,20 @@ class MyMDScreen(MDScreen):
         else:
             app_logger.error(f"Unknown rotation: {rotation}")
             return default
+
+    def handle_going_back(self,*_):
+        """Implement by children"""
+
+    def handle_esc_key(self, _, key, *__):
+        if key == 27:
+            self.handle_going_back()
+        return self.do_not_leave_app  # "don't close app"
+
+    def on_enter(self, *args):
+        Window.bind(on_keyboard=self.handle_esc_key)
+
+    def on_leave(self, *args):
+        Window.unbind(on_keyboard=self.handle_esc_key)
 
 
 class GenericStatusBarSpacer(MDWidget):

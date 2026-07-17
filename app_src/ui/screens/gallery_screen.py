@@ -5,7 +5,6 @@ from pathlib import Path
 from android_notify.config import on_android_platform
 from kivy.animation import Animation
 from kivy.clock import Clock
-from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
 from kivy.metrics import dp, sp
 from kivy.properties import StringProperty, NumericProperty, ListProperty, BooleanProperty, ObjectProperty
@@ -826,11 +825,11 @@ class GalleryScreen(MyMDScreen):
     wallpapers = ListProperty([])
 
     def __init__(self, **kwargs):
-
         super().__init__(**kwargs)
         global gs
         gs=self
         self.app = get_app()
+        self.do_not_leave_app=False # not back btn feature from class MyMDScreen
         # self.app.device_theme = "light"
         self.app.device_theme = "dark"
         self.name = "thumbs"
@@ -881,7 +880,6 @@ class GalleryScreen(MyMDScreen):
                 )
         self._update_menu_theme(None, self.app.device_theme)
         self.app.bind(device_theme=self._update_menu_theme)
-
 
     def _update_menu_theme(self, _, theme):
         is_dark = theme == "dark"

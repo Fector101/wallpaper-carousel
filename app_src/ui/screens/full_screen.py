@@ -217,7 +217,7 @@ class FullscreenScreen(MyMDScreen):
             pos_hint={'center_y': 0.5},
             theme_text_color='Custom',
             text_color=[1, 1, 1, 1],
-            on_release=self.toggle_top_button
+            on_release=self.handle_going_back
         )
 
         self.btn_toggle.theme_bg_color = 'Custom'
@@ -342,30 +342,11 @@ class FullscreenScreen(MyMDScreen):
 
         self.layout.do_layout()
 
-    def toggle_top_button(self, *_):
+    def handle_going_back(self, *_):
         # If in fullscreen mode → restore controls
         if self.btn_toggle.icon == "close":
-            self.carousel.size_hint = self.original_carousel_size_hint
-            self.carousel.pos_hint = self.original_carousel_pos_hint
-            self.header_layout.pos_hint = {'center_x': .5, 'top': .97}
-            self.header_title.text_color = [1, 1, 1, 1]
-            self.header_layout.bg_color_instr.a = .8
-            self.header_file_size.md_bg_color = [1, 1, 1, .2]
-            self.header_file_size.text_color = [.6, .6, .6, 1]
-
-            self.btm_btn_layout_root.pos_hint = {"y": 0}
-
-            self.header_layout.md_bg_color = self.btn_toggle.md_bg_color
-            self.btn_toggle.icon = "chevron-left"
-            self.btn_toggle.style = "standard"
-            self.btn_toggle.theme_text_color = 'Custom'
-            self.btn_toggle.text_color = [1, 1, 1, 1]
-            self.is_fullscreen = False
-
-            for img in self.carousel.slides:
-                img.fit_mode = "contain"
-
-        # If not fullscreen → go back to thumbnails screen
+            self.leave_preview_mode()
+        # If not in preview mode → go back to thumbnails screen
         else:
             self.back_to_gallery_screen()
     
@@ -544,20 +525,31 @@ class FullscreenScreen(MyMDScreen):
                 # right_side_img.source = str(right_side_img.higher_format)
         return None
 
+    def leave_preview_mode(self,*_):
+        self.carousel.size_hint = self.original_carousel_size_hint
+        self.carousel.pos_hint = self.original_carousel_pos_hint
+        self.header_layout.pos_hint = {'center_x': .5, 'top': .97}
+        self.header_title.text_color = [1, 1, 1, 1]
+        self.header_layout.bg_color_instr.a = .8
+        self.header_file_size.md_bg_color = [1, 1, 1, .2]
+        self.header_file_size.text_color = [.6, .6, .6, 1]
+
+        self.btm_btn_layout_root.pos_hint = {"y": 0}
+
+        self.header_layout.md_bg_color = self.btn_toggle.md_bg_color
+        self.btn_toggle.icon = "chevron-left"
+        self.btn_toggle.style = "standard"
+        self.btn_toggle.theme_text_color = 'Custom'
+        self.btn_toggle.text_color = [1, 1, 1, 1]
+        self.is_fullscreen = False
+
+        for img in self.carousel.slides:
+            img.fit_mode = "contain"
+
     def back_to_gallery_screen(self,*_):
         self.app.sm.gallery_screen.refresh_gallery_screen()
         self.manager.current = "thumbs"
 
-    def handle_esc_key(self, _, key, *__):
-        if key == 27:
-            self.back_to_gallery_screen()
-        return True  # "don't close app"
-
-    def on_enter(self, *args):
-        Window.bind(on_keyboard=self.handle_esc_key)
-
-    def on_leave(self, *args):
-        Window.unbind(on_keyboard=self.handle_esc_key)
 
 def patch_resolution(proxy_image, image_object):
     image_object.texture = proxy_image.image.texture
