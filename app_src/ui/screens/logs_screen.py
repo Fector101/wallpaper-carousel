@@ -14,6 +14,7 @@ from kivy.uix.screenmanager import NoTransition
 from ui.widgets.android import toast
 
 from ui.widgets.layouts import MyMDScreen, GenericStatusBarSpacer
+from kivy.core.window import Window
 
 # ---------- CONFIG ----------
 LOG_HORIZONTAL_PADDING = dp(10)
@@ -271,7 +272,16 @@ class LogsScreen(MyMDScreen):
             Clock.schedule_interval(self._update_logs, UPDATE_INTERVAL)
             self._auto_update_started = True
 
+    def handle_esc_key(self, _, key, *__):
+        if key == 27:
+            self.back_to_settings_screen()
+        return True  # "don't close app"
 
+    def on_enter(self, *args):
+        Window.bind(on_keyboard=self.handle_esc_key)
+
+    def on_leave(self, *args):
+        Window.unbind(on_keyboard=self.handle_esc_key)
 
 if __name__ == "__main__":
     from kivymd.app import MDApp

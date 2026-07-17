@@ -29,6 +29,7 @@ from utils.config_manager import ConfigManager
 from utils.model import get_app, GalleryTabs
 from kivy.loader import  Loader
 from utils.logger import app_logger
+from kivy.core.window import Window
 
 
 my_config=ConfigManager()
@@ -366,8 +367,7 @@ class FullscreenScreen(MyMDScreen):
 
         # If not fullscreen → go back to thumbnails screen
         else:
-            self.app.sm.gallery_screen.refresh_gallery_screen()
-            self.manager.current = "thumbs"
+            self.back_to_gallery_screen()
     
     def set_as_wallpaper(self, *args):
         spinner_layout = LoadingLayout()
@@ -544,6 +544,20 @@ class FullscreenScreen(MyMDScreen):
                 # right_side_img.source = str(right_side_img.higher_format)
         return None
 
+    def back_to_gallery_screen(self,*_):
+        self.app.sm.gallery_screen.refresh_gallery_screen()
+        self.manager.current = "thumbs"
+
+    def handle_esc_key(self, _, key, *__):
+        if key == 27:
+            self.back_to_gallery_screen()
+        return True  # "don't close app"
+
+    def on_enter(self, *args):
+        Window.bind(on_keyboard=self.handle_esc_key)
+
+    def on_leave(self, *args):
+        Window.unbind(on_keyboard=self.handle_esc_key)
 
 def patch_resolution(proxy_image, image_object):
     image_object.texture = proxy_image.image.texture
