@@ -45,6 +45,7 @@ LabelBase.register(
 
 class MDLive(App,MDApp):
     device_theme = StringProperty("dark")
+    theme_preference = StringProperty("dark")
     theme_widgets = []
     KV_FILES=[
         "ui.screens.welcome_screen".replace(".","/") + ".kv",
@@ -76,7 +77,7 @@ class MDLive(App,MDApp):
     def build_app(self, *args):
         # return Factory.MyPopUp()
         # return Factory.DialogScreen(ok_callback=None)
-        return Factory.GalleryScreen()
+        return Factory.SettingsScreen()
 
     def on_start(self):
         # self.theme_cls.theme_style = "Light"

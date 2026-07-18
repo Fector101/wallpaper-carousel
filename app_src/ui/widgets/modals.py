@@ -101,7 +101,7 @@ class MyDialogBox(Column,PlaceOnMainScreen):
         # p("self.icon_name",self.icon_name)
         if self.icon_name:
             self.img = MDIcon(
-                icon=self.icon_name,#,
+                icon=self.icon_name,
                 theme_text_color="Custom",
                 text_color=[1,1,1,1],
                 font_size = "64sp",
@@ -168,6 +168,8 @@ class MyDialogBox(Column,PlaceOnMainScreen):
             self.cancel_btn.text_color = [0, 0, 0, 1]
             if self.show_ok_button:
                 self.ok_btn.text_color = [0, 0, 0, 1]
+            if self.icon_name:
+                self.img.text_color = [0, 0, 0, 1]
         else:
             self.md_bg_color = [0.1, 0.1, 0.1, 1]
             self.title_widget.text_color = [1, 1, 1, 1]
@@ -176,6 +178,8 @@ class MyDialogBox(Column,PlaceOnMainScreen):
             self.cancel_btn.text_color = [1, 1, 1, 1]
             if self.show_ok_button:
                 self.ok_btn.text_color = [1, 1, 1, 1]
+            if self.icon_name:
+                self.img.text_color = [1, 1, 1, 1]
 
     def close(self,*_):
         self.parent.hide()

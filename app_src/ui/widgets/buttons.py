@@ -138,12 +138,15 @@ class BottomNavigationBar(MDNavigationDrawer):
 
         # Button container
         radius = dp(12)
+        app = get_app()
+        is_dark = app.device_theme == "dark" if hasattr(app, "device_theme") else True
+        init_btn_bg = [.216, .216, .216, 1] if is_dark else [1, 1, 1, 1]
         self.button_box = MDBoxLayout(
             orientation="horizontal",
             spacing=0,
             size_hint=(None, None),
             pos_hint={"center_x": 0.5, "center_y": 0.5},
-            md_bg_color=[1, 1, 1, 1],
+            md_bg_color=init_btn_bg,
             radius=radius,
         )
 
@@ -261,10 +264,11 @@ class BottomNavigationBar(MDNavigationDrawer):
 
     def color_tab_buttons(self, _=None, screen=None):
         theme = self.app.device_theme
+        inactive_color = [.4, .4, .4, 1] if theme == "dark" else [.6, .6, .6, 1]
 
         if screen == "settings":
             self.btn_settings.text_color = [0, 0, 0, 1] if theme == "light" else [1, 1, 1, 1]
-            self.btn_camera.text_color = [.4, .4, .4, 1]
+            self.btn_camera.text_color = inactive_color
         elif screen == "thumbs":
             self.btn_camera.text_color = [0, 0, 0, 1] if theme == "light" else [1, 1, 1, 1]
-            self.btn_settings.text_color = [.4, .4, .4, 1]
+            self.btn_settings.text_color = inactive_color

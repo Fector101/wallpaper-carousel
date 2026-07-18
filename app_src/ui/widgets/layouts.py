@@ -21,10 +21,10 @@ from kivymd.app import MDApp
 from kivy.clock import Clock
 from kivy.graphics import Color, Line, Rotate
 from kivy.uix.widget import Widget
-from kivy.utils import get_color_from_hex
 
 from android_notify.internal.java_classes import BuildVersion
 from utils.logger import app_logger
+from utils.constants import theme_colors
 
 # Add this before creating your main widget or in your build method
 Window.softinput_mode = 'below_target' # or 'pan'
@@ -89,9 +89,13 @@ class MyPopUp(Popup):
         self.pos_hint = {"center_x": .5, "center_y": .5}
 
     def __get_item(self,name):
+        from kivymd.app import MDApp
+        app = MDApp.get_running_app()
+        is_dark = app.device_theme == "dark" if hasattr(app, "device_theme") else True
         return Column(adaptive_height=True,my_widgets=[
             MDLabel(text=name, adaptive_height=True, theme_text_color="Custom", text_color="grey"),
-            MDLabel(text=self.info[name], adaptive_height=True, theme_text_color="Custom", text_color="white")
+            MDLabel(text=self.info[name], adaptive_height=True, theme_text_color="Custom",
+                    text_color="white" if is_dark else "black")
         ])
 
     def add_widget(self, widget, *args, **kwargs):
@@ -367,7 +371,7 @@ class SpinningArcWidget(Widget):
             # Create a rotation instruction; note the origin will be updated as the widget size changes
             self.rotation = Rotate(angle=0, origin=self.center)
             # Set a visible color; here white is typical for many spinners, but you can adjust as needed.
-            Color(*get_color_from_hex("#98F1DD"))
+            Color(*theme_colors.PRIMARY)
             # Draw an arc: (center_x, center_y, radius, start_angle, end_angle)
             # A partial circle (e.g. 270°) gives a "spinner" look.
             self.arc = Line(circle=(self.center_x, self.center_y, 40, 0, 270), width=4)
@@ -391,7 +395,9 @@ class LoadingLayout(MDRelativeLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.disabled=True
-        c = .1
+        app = MDApp.get_running_app()
+        is_dark = app.device_theme == "dark" if hasattr(app, "device_theme") else True
+        c = .1 if is_dark else .8
         self.md_bg_color = [c, c, c, .5]
         # self.size_hint = [1, 1]
         self.size_hint = [None, None]

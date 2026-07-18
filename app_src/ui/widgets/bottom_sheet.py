@@ -89,26 +89,13 @@ class MyBtmSheet(MDBottomSheet):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # super(MyBtmSheet,self).__init__(**kwargs)
-        self.md_bg_color=[.14,.14,.14,1]
+        app = MDApp.get_running_app()
+        self.md_bg_color = [.14, .14, .14, 1]
         self.adaptive_height=1
-        # self.size_hint_y = None
-        # self.height = dp(410)
         self.padding=[0,0,0, get_nav_bar_height()*2.5]
         self.drag_sheet = MDBottomSheetDragHandle(
-            # drag_handle_color= "grey"
-            # md_bg_color=[1,1,0,1],
             drag_handle_color = [.7, .7, .7, 1],
-
-
         )
-        # with self.drag_sheet.canvas.after:
-        #     self.bg_color_instr = Color(1,0,0,1)
-        #     self.rect = RoundedRectangle(radius=[5, 0, 0, 5], size=[100, 100])
-        #     self.rect.pos = self.drag_sheet.pos
-
-        # self.drag_sheet.bind(pos = lambda _,x:setattr(self.rect,"pos",x), size = lambda _,x:setattr(self.rect,"size",x))
-
 
         self.sheet_title = MDBottomSheetDragHandleTitle(
             text="Display Settings",
@@ -118,34 +105,29 @@ class MyBtmSheet(MDBottomSheet):
             shorten=True,
             theme_text_color= "Custom",
             text_color="white",
-
         )
         self.drag_sheet.add_widget(self.sheet_title)
-        self.drag_sheet.add_widget(
-            MDBottomSheetDragHandleButton(
+        self.close_btn = MDBottomSheetDragHandleButton(
                 icon="close",
                 ripple_effect=False,
                 on_release=lambda x: self.set_state("close"),
                 theme_text_color="Custom",
-                text_color="white"
-
+                text_color="white",
             )
-        )
+        self.drag_sheet.add_widget(self.close_btn)
 
         self.content = MDBoxLayout(padding=[0, 0, 0, 0], orientation="vertical",spacing=dp(10))
-        # self.content.md_bg_color = [1, 0, 0, 1]
         self.content.adaptive_height=1
         self.add_widget(self.drag_sheet)
         self.add_widget(self.content)
         self.enable_swiping = 0
-        c=.3
+        c = .3
         self.items=[{
             "header_title": "Grouped",
             "icon": "search",
             "function": print,
-
         }]
-        self.content.add_widget(MDLabel(text="View",adaptive_size=1,theme_text_color="Custom",text_color=[0.7, 0.7, 0.9, 1.0],padding=[dp(15),0,0,0]))#,pos_hint={"center_x":.1}))
+        self.content.add_widget(MDLabel(text="View",adaptive_size=1,theme_text_color="Custom",text_color=[0.7, 0.7, 0.9, 1.0],padding=[dp(15),0,0,0]))
         self.content.add_widget(
             TypeMapElementOptions(
                 title="Layout",
@@ -214,7 +196,18 @@ class MyBtmSheet(MDBottomSheet):
         #         )
         #     )
         # self.set_state("open")
+        app.bind(device_theme=self._set_theme)
 
+    def _set_theme(self, _, theme):
+        is_dark = theme == "dark"
+        self.md_bg_color = [.14, .14, .14, 1] if is_dark else [.95, .95, .95, 1]
+        self.drag_sheet.drag_handle_color = [.7, .7, .7, 1] if is_dark else [.4, .4, .4, 1]
+        self.sheet_title.text_color = "white" if is_dark else "black"
+        self.close_btn.text_color = "white" if is_dark else "black"
+        c = .3 if is_dark else .7
+        for child in self.content.children:
+            if hasattr(child, 'md_bg_color') and hasattr(child, 'cols_int'):
+                child.md_bg_color = [c, c, c, .3]
 
     def on_touch_up(self,touch):
         touch_x,touch_y=touch.pos

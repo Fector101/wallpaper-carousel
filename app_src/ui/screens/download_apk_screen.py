@@ -9,7 +9,6 @@ from kivy.clock import Clock
 from kivy.graphics import RoundedRectangle, Color
 from kivy.metrics import dp, sp
 from kivy.properties import StringProperty, ListProperty, BooleanProperty
-from kivy.utils import get_color_from_hex
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDButtonText, MDButton
@@ -19,7 +18,7 @@ from kivymd.uix.scrollview import MDScrollView
 
 from ui.widgets.android import toast
 from ui.widgets.layouts import MyMDScreen, Column, Row, GenericStatusBarSpacer
-from utils.constants import VERSION
+from utils.constants import VERSION, theme_colors
 from utils.logger import app_logger
 from utils.helper import is_running_debug_build
 
@@ -191,9 +190,9 @@ class ProgressButton(MDBoxLayout):
             text="Download APK for Upgrade",
             pos_hint={"center_x": .5},
             theme_bg_color="Custom",
-            md_bg_color=get_color_from_hex("#98F1DD"),
+            md_bg_color=theme_colors.PRIMARY,
             theme_text_color="Custom",
-            text_color=get_color_from_hex("#262C3A"),
+            text_color=theme_colors.SECONDARY,
             radius=[dp(10)],
 
             size_hint=[1, 1],
@@ -242,9 +241,11 @@ class DownloadApkScreen(MyMDScreen):
         self.name = "update_screen"
 
         root = Column(padding=[dp(20), dp(10)])
+        sb_bg = [0.9, 0.9, 0.9, 1] if app.device_theme == "light" else [.1, .1, .1, 1]
         self.generic_status_bar_spacer = GenericStatusBarSpacer(
             status_bar_height=self.status_bar_height,
-            md_bg_color=[.1, .1, .1, 1])
+            md_bg_color=sb_bg)
+        app.bind(device_theme=self._set_theme)
 
         # Top App Bar
         top_app_bar = Row(
@@ -316,7 +317,11 @@ class DownloadApkScreen(MyMDScreen):
 
         if not is_running_debug_build():
             Clock.schedule_once(lambda dt: thread_check_for_update(dt, self.show),3)
-        # Clock.schedule_once(lambda dt: self.dev())
+
+    def _set_theme(self, _, theme):
+        is_dark = theme == "dark"
+        self.md_bg_color = [0.9, 0.9, 0.9, 1] if not is_dark else [.1, .1, .1, 1]
+        self.generic_status_bar_spacer.md_bg_color = [0.9, 0.9, 0.9, 1] if not is_dark else [.1, .1, .1, 1]
 
     def dev(self):
         print("Using hot reload...")
