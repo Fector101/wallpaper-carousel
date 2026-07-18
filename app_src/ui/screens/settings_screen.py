@@ -12,7 +12,6 @@ from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 # from kivy.uix.switch import Switch
-from kivy.utils import get_color_from_hex
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDButtonText, MDButton, MDIconButton, MDButtonIcon
@@ -28,7 +27,7 @@ from ui.widgets.android import toast
 from ui.widgets.layouts import LoadingLayout, Column, MyMDScreen, AdaptiveLabel
 from ui.widgets.layouts import Row
 from utils.config_manager import ConfigManager
-from utils.constants import DEV, THEME_PRIMARY_COLOR, THEME_SECONDARY_COLOR, TEXT_COLOR_PRIMARY_LIGHT, TEXT_COLOR_PRIMARY_DARK, BUTTON_BG_LIGHT, BUTTON_BG_DARK, CARD_BG_LIGHT
+from utils.constants import DEV, theme_colors
 from utils.helper import Service, appFolder, smart_convert_minutes
 from utils.helper import load_kv_file  # type
 from utils.logger import app_logger
@@ -223,10 +222,10 @@ class HomeScreenImageDisplay(MDBoxLayout):
         title_label.font_size = sp(14)
         title_label.theme_text_color = "Custom"
         # title_label.text_color = 'white'
-        title_label.color = get_color_from_hex("#98F1DD")
+        title_label.color = theme_colors.PRIMARY
         title_label.padding = [dp(5), dp(2)]
         title_label.radius = [dp(5)]
-        title_label.md_bg_color = get_color_from_hex("#262C3A")
+        title_label.md_bg_color = theme_colors.SECONDARY
         self.image = FitImage(
             source=self.source,
             size_hint=(1, 1),
@@ -367,7 +366,7 @@ class BorderInput(BorderMDBoxLayout):
 
     def doing_focus(self, _, state):
         if state:
-            self.bg_color_instr.rgba = get_color_from_hex("#98F1DD")
+            self.bg_color_instr.rgba = theme_colors.INPUT_FOCUS_BORDER
         else:
             theme = self.app.device_theme if hasattr(self.app, "device_theme") else "dark"
             is_dark = theme == "dark"
@@ -404,8 +403,8 @@ class ToggleSliderRow(Row):
         self.text_layout.add_widget(title_widget)
         self.add_widget(self.text_layout)
 
-        self.switch = MDSwitch(pos_hint={"center_y": .5}, track_color_active=THEME_PRIMARY_COLOR,
-                               thumb_color_active=THEME_SECONDARY_COLOR, on_active=self.do_thing,
+        self.switch = MDSwitch(pos_hint={"center_y": .5}, track_color_active=theme_colors.PRIMARY,
+                               thumb_color_active=theme_colors.SECONDARY, on_active=self.do_thing,
                                on_release=self.set_from_user_key)
         self.switch.title_text = self.title_text
         self.add_widget(self.switch)
@@ -553,8 +552,8 @@ class SettingsScreen(MyMDScreen):
         # self.save_interval()
         btn = Button(text="Check For New Version", on_release=self.check_for_update, size_hint_y=None, height=dp(50))
         btn.background_normal = ''
-        btn.background_color = BUTTON_BG_DARK
-        btn.color = TEXT_COLOR_PRIMARY_DARK
+        btn.background_color = theme_colors.BUTTON_BG
+        btn.color = theme_colors.TEXT_PRIMARY
         self._check_update_btn = btn
         self.app.bind(device_theme=self._set_check_update_btn_theme)
         self.ids.main_container.add_widget(btn)
@@ -792,8 +791,8 @@ class SettingsScreen(MyMDScreen):
 
     def _set_check_update_btn_theme(self, _, theme):
         is_dark = theme == "dark"
-        self._check_update_btn.background_color = BUTTON_BG_DARK if is_dark else BUTTON_BG_LIGHT
-        self._check_update_btn.color = TEXT_COLOR_PRIMARY_DARK if is_dark else TEXT_COLOR_PRIMARY_LIGHT
+        self._check_update_btn.background_color = theme_colors.BUTTON_BG
+        self._check_update_btn.color = theme_colors.TEXT_PRIMARY
 
     def set_using_on_wake_config(self, instance, value, from_user):
         ##p("instance.title_text",instance, value)

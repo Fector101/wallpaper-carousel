@@ -45,6 +45,7 @@ LabelBase.register(
 
 class MDLive(App,MDApp):
     device_theme = StringProperty("dark")
+    theme_preference = StringProperty("dark")
     theme_widgets = []
     KV_FILES=[
         "ui.screens.welcome_screen".replace(".","/") + ".kv",

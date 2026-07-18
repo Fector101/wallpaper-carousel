@@ -9,7 +9,6 @@ from kivy.clock import Clock
 from kivy.graphics import RoundedRectangle, Color
 from kivy.metrics import dp, sp
 from kivy.properties import StringProperty, ListProperty, BooleanProperty
-from kivy.utils import get_color_from_hex
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDButtonText, MDButton
@@ -19,7 +18,7 @@ from kivymd.uix.scrollview import MDScrollView
 
 from ui.widgets.android import toast
 from ui.widgets.layouts import MyMDScreen, Column, Row, GenericStatusBarSpacer
-from utils.constants import VERSION
+from utils.constants import VERSION, theme_colors
 from utils.logger import app_logger
 from utils.helper import is_running_debug_build
 
@@ -191,9 +190,9 @@ class ProgressButton(MDBoxLayout):
             text="Download APK for Upgrade",
             pos_hint={"center_x": .5},
             theme_bg_color="Custom",
-            md_bg_color=get_color_from_hex("#98F1DD"),
+            md_bg_color=theme_colors.PRIMARY,
             theme_text_color="Custom",
-            text_color=get_color_from_hex("#262C3A"),
+            text_color=theme_colors.SECONDARY,
             radius=[dp(10)],
 
             size_hint=[1, 1],

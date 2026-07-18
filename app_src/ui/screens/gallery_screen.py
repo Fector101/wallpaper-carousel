@@ -14,7 +14,6 @@ from kivy.uix.widget import Widget
 from kivy.uix.image import AsyncImage
 from kivy.uix.recyclegridlayout import RecycleGridLayout
 from kivy.uix.tabbedpanel import TabbedPanel
-from kivy.utils import get_color_from_hex
 
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -38,6 +37,7 @@ from ui.widgets.modals import DialogScreen
 from ui.widgets.layouts import MyPopUp
 from utils.logger import app_logger
 from utils.model import get_app, GalleryTabs
+from utils.constants import theme_colors
 
 my_config = ConfigManager()
 gs=None # hot reload
@@ -165,7 +165,7 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
         """Show/hide checkmark based on selection state."""
         if self.selected:
             self.checkmark_widget.icon = "check-circle"
-            self.checkmark_widget.icon_color=get_color_from_hex("98F1DD")
+            self.checkmark_widget.icon_color=theme_colors.CHECKBOX_SELECTED
         else:
             self.checkmark_widget.icon = "checkbox-blank-circle-outline"
             self.checkmark_widget.icon_color=[0.7, 0.7, 0.7, 1]

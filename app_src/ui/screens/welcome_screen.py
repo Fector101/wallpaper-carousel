@@ -4,7 +4,6 @@ import traceback
 from kivy.core.window import Window
 from kivy.metrics import dp, sp
 from kivy.uix.image import Image
-from kivy.utils import get_color_from_hex
 
 from android_notify import NotificationHandler
 from kivy.clock import Clock
@@ -22,6 +21,7 @@ from ui.widgets.layouts import MyMDScreen,GenericStatusBarSpacer
 from ui.widgets.buttons import MyRoundButton
 from ui.widgets.android import toast
 from utils.helper import load_kv_file, appFolder
+from utils.constants import theme_colors
 
 from utils.model import get_app
 
@@ -92,9 +92,9 @@ class MyLabel(MDLabel):
 
 class NotificationRequestLayout(MDGridLayout):
     text_color_primary_light = ListProperty([0, 0, 0, 1])
-    text_color_primary_dark = get_color_from_hex("#FFFFFF")
+    text_color_primary_dark = theme_colors.TEXT_PRIMARY
     text_color_secondary_light = ListProperty([88 / 255, 85 / 255, 85 / 255, 1])
-    text_color_secondary_dark = get_color_from_hex("#F2F2F2")
+    text_color_secondary_dark = theme_colors.TEXT_SECONDARY
     answer_callback = ObjectProperty()
 
     def __init__(self, **kwargs):
@@ -127,7 +127,7 @@ class WelcomeScreen(MyMDScreen):
         self.name = "welcome"
         self.generic_status_bar_spacer = GenericStatusBarSpacer(
             status_bar_height=self.status_bar_height,
-        md_bg_color=[0.9, 0.9, 0.9, 1] if self.app.device_theme == "light" else[.1, .1, .1, 1]
+        md_bg_color=theme_colors.BG
         )
         self.add_widget(self.generic_status_bar_spacer)
         self.add_widget(NotificationRequestLayout(answer_callback=self.handle_going_back))

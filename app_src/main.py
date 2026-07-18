@@ -3,7 +3,7 @@ import traceback
 
 from kivy.clock import Clock
 from kivy.core.window import Window
-from kivy.properties import StringProperty
+from kivy.properties import StringProperty, ObjectProperty
 from kivy.utils import platform
 from kivymd.app import MDApp
 from kivymd.uix.navigationdrawer import MDNavigationLayout
@@ -18,7 +18,7 @@ from ui.widgets.bottom_sheet import MyBtmSheet
 
 from utils.android import is_device_on_light_mode
 from utils.config_manager import ConfigManager
-from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY
+from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, theme_colors as _theme_colors
 from utils.helper import Service, write_logs_to_file, get_free_port, register_fonts, fix_input_on_linux, \
     get_stored_running_ui_server_port, get_stored_running_service_server_port
 from utils.image_operations import ImageOperation
@@ -41,6 +41,7 @@ elif on_android_platform():
 class WallpaperCarouselApp(MDApp):
     device_theme = StringProperty("dark")
     theme_preference = StringProperty(ConfigManager.get_theme_preference())
+    theme_colors = ObjectProperty(_theme_colors)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -95,6 +96,8 @@ class WallpaperCarouselApp(MDApp):
         return root_layout
 
     def build(self):
+        self.bind(device_theme=self._sync_theme_colors)
+        self._sync_theme_colors()
         self.root_layout = self.build_ui()
         self.file_operation = ImageOperation(load_saved=self.sm.gallery_screen.initialize_tabs)
         self.bind_plyer_fix()
@@ -182,6 +185,9 @@ class WallpaperCarouselApp(MDApp):
             self.device_theme = is_device_on_light_mode()
         else:
             self.device_theme = preference
+
+    def _sync_theme_colors(self, *args):
+        _theme_colors.theme = self.device_theme
 
 
 if __name__ == '__main__':

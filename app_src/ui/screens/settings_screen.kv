@@ -1,20 +1,9 @@
-#:import TEXT_COLOR_PRIMARY_LIGHT utils.constants.TEXT_COLOR_PRIMARY_LIGHT
-#:import TEXT_COLOR_PRIMARY_DARK utils.constants.TEXT_COLOR_PRIMARY_DARK
-#:import BUTTON_BG_DARK utils.constants.BUTTON_BG_DARK
-#:import BUTTON_BG_LIGHT utils.constants.BUTTON_BG_LIGHT
-#:import CARD_BG_LIGHT utils.constants.CARD_BG_LIGHT
-#:import CARD_BG_DARK utils.constants.CARD_BG_DARK
 #:import VERSION utils.constants.VERSION
-#:import get_color_from_hex kivy.utils.get_color_from_hex
 #:import add_home_screen_widget utils.android.add_home_screen_widget
 #:import toInt utils.helper.toInt
 #:import ConfigManager utils.config_manager.ConfigManager
 #:import is_running_debug_build utils.helper.is_running_debug_build
 #:import ButtonBehavior kivy.uix.behaviors.ButtonBehavior
-
-#:set THEME_SELECTOR_ACCENT get_color_from_hex("#98F1DD")
-#:set THEME_SELECTOR_INACTIVE_LIGHT [0.82, 0.82, 0.82, 1]
-#:set THEME_SELECTOR_INACTIVE_DARK [0.2, 0.2, 0.2, 1]
 
 
 
@@ -28,18 +17,18 @@
     spacing: dp(4)
     padding: dp(12), dp(10)
     radius: [12]
-    md_bg_color: THEME_SELECTOR_ACCENT if root.active else (THEME_SELECTOR_INACTIVE_LIGHT if app.device_theme == "light" else THEME_SELECTOR_INACTIVE_DARK)
+    md_bg_color: app.theme_colors.THEME_SELECTOR_ACCENT if root.active else app.theme_colors.THEME_SELECTOR_INACTIVE
     size_hint: None, None
     width: dp(90)
     height: self.minimum_height
     canvas.after:
         Color:
-            rgba: THEME_SELECTOR_ACCENT if root.active else (0, 0, 0, 0)
+            rgba: app.theme_colors.THEME_SELECTOR_ACCENT if root.active else (0, 0, 0, 0)
         Line:
             rounded_rectangle: [self.x, self.y, self.width, self.height, 12]
             width: dp(1.5)
 
-    MDIconButton:
+    MDIcon:
         icon: root.icon
         pos_hint: {"center_x": 0.5}
         theme_text_color: "Custom"
@@ -61,7 +50,7 @@
 
 <MyMDButton@MDButton>:
     theme_bg_color:"Custom"
-    md_bg_color: BUTTON_BG_LIGHT if app.device_theme == "light" else BUTTON_BG_DARK
+    md_bg_color: app.theme_colors.BUTTON_BG
 
 <CarouselTools@Column>:
     spacing: dp(15)
@@ -86,7 +75,7 @@
                 text_color: "black" if app.device_theme == "light" else "white"
         MyMDButton:
             theme_bg_color:"Custom"
-            md_bg_color: BUTTON_BG_LIGHT if app.device_theme == "light" else BUTTON_BG_DARK
+            md_bg_color: app.theme_colors.BUTTON_BG
             radius: [5]
             pos_hint: {"center_x": 0.5}
             on_release:app.sm.get_screen("settings").terminate_carousel()
@@ -104,7 +93,7 @@
 
 <SettingsScreen>:
     name: "settings"
-    md_bg_color: [0.9, 0.9, 0.9, 1] if app.device_theme == "light" else [.1,.1,.1,1]
+    md_bg_color: app.theme_colors.BG
 #    md_bg_color: [0.9, 0.9, 0.9, 1] if app.device_theme == "light" else get_color_from_hex("#1A1B1B")
     Column:
 #        spacing: dp(25)
@@ -114,12 +103,12 @@
             padding: dp(25), dp(root.status_bar_height-20 if root.status_bar_height>20 else root.status_bar_height+20 ), dp(0), dp(20)
             size_hint_y: None
             height: self.minimum_height
-            md_bg_color: [0.82,0.82,0.82, 1] if app.device_theme == "light" else [0.23,0.23,0.23, 1]
+            md_bg_color: app.theme_colors.BG_ELEVATED
             MDLabel:
                 text: "Settings"
                 theme_text_color:"Custom"
                 bold: True
-                color: TEXT_COLOR_PRIMARY_LIGHT if app.device_theme == "light" else TEXT_COLOR_PRIMARY_DARK
+                color: app.theme_colors.TEXT_PRIMARY
                 adaptive_size: True
                 theme_font_size:"Custom"
                 font_name: "RobotoMono"
@@ -142,7 +131,7 @@
                     height: dp(30)
                     font_name: "RobotoMono"
                     font_size: sp(13)
-                    color: TEXT_COLOR_PRIMARY_LIGHT if app.device_theme == "light" else TEXT_COLOR_PRIMARY_DARK
+                    color: app.theme_colors.TEXT_PRIMARY
 
                 Row:
                     spacing: dp(10)
@@ -179,7 +168,7 @@
                         pos_hint:{"center_y":.5}
                         on_release: root.save_interval(self)
 
-                        md_bg_color: ([0.3,0.3,0.3,1] if app.device_theme == "dark" else [0.75,0.75,0.75,1]) if save_btn_text.text == "Edit" else get_color_from_hex("#98F1DD")
+                        md_bg_color: ([0.3,0.3,0.3,1] if app.device_theme == "dark" else [0.75,0.75,0.75,1]) if save_btn_text.text == "Edit" else app.theme_colors.PRIMARY
                         theme_line_color: "Custom"
                         line_color: [1,1,1,1] if app.device_theme == "dark" else [.7,.7,.7,1]
                         MDButtonText:
@@ -189,7 +178,7 @@
                             theme_text_color:"Custom"
                             height: dp(50)
                             font_name: "RobotoMono"
-                            text_color: ("black" if app.device_theme == "light" else "white") if self.text == "Edit" else get_color_from_hex("#262C3A")
+                            text_color: ("black" if app.device_theme == "light" else "white") if self.text == "Edit" else app.theme_colors.SECONDARY
                             pos_hint: {"center_x":.5,"center_y":.5}
 
                 MDGridLayout:
@@ -218,7 +207,7 @@
                     MDBoxLayout:
                         size_hint_y: None
                         height: dp(50)
-                        md_bg_color: [0.82,0.82,0.82, 1] if app.device_theme == "light" else [0.23,0.23,0.23, 1]
+                        md_bg_color: app.theme_colors.BG_ELEVATED
 #                        md_bg_color: [0.75,0.75,0.75, 1]
                         radius: [dp(10),dp(10),dp(0),0]
 #                        adaptive_width:True
@@ -230,9 +219,9 @@
                             font_size: sp(14)
                             pos_hint: {"center_y": 0.5}
                             adaptive_size:True
-                            color: TEXT_COLOR_PRIMARY_LIGHT if app.device_theme == "light" else "white"
+                            color: app.theme_colors.TEXT_PRIMARY
                     Column:
-                        md_bg_color: CARD_BG_LIGHT if app.device_theme == "light" else [.2,.2,.2,.3]
+                        md_bg_color: app.theme_colors.BG_CARD
                         adaptive_size:True
                         size_hint_x:1
                         spacing:dp(10)
@@ -264,10 +253,10 @@
                                     theme_font_size: 'Custom'
                                     font_size: sp(14)
                                     theme_text_color: 'Custom'
-                                    text_color: get_color_from_hex("#98F1DD")
+                                    text_color: app.theme_colors.PRIMARY
                                     padding: [dp(5),dp(2)]
                                     radius: [dp(5)]
-                                    md_bg_color: get_color_from_hex("#262C3A")
+                                    md_bg_color: app.theme_colors.SECONDARY
                                 FitImage:
                                     source:root.current_image_source
                                     radius:[10]
@@ -286,10 +275,10 @@
                                     theme_font_size: 'Custom'
                                     font_size: sp(14)
                                     theme_text_color: 'Custom'
-                                    text_color: get_color_from_hex("#98F1DD")
+                                    text_color: app.theme_colors.PRIMARY
                                     padding: [dp(5),dp(2)]
                                     radius: [dp(5)]
-                                    md_bg_color: get_color_from_hex("#262C3A")
+                                    md_bg_color: app.theme_colors.SECONDARY
                                 FitImage:
                                     source:root.next_image_source
                                     radius:[10]
@@ -329,7 +318,7 @@
                                 on_release: root.toggle_home_screen_widget_loop(self)
                             MyMDButton:
                                 theme_bg_color:"Custom"
-                                md_bg_color: BUTTON_BG_LIGHT if app.device_theme == "light" else BUTTON_BG_DARK
+                                md_bg_color: app.theme_colors.BUTTON_BG
                                 radius: [5]
                                 on_release:add_home_screen_widget()
                                 MDButtonIcon:
@@ -394,7 +383,7 @@
                     title_text: "Uninstalling?"
                     MyMDButton:
                         theme_bg_color:"Custom"
-                        md_bg_color: BUTTON_BG_LIGHT if app.device_theme == "light" else BUTTON_BG_DARK
+                        md_bg_color: app.theme_colors.BUTTON_BG
                         radius: [5]
                         pos_hint: {"center_x": 0.5}
                         on_release: app.sm.get_screen("settings").export_waller_folder()

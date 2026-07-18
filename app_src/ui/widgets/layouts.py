@@ -21,10 +21,10 @@ from kivymd.app import MDApp
 from kivy.clock import Clock
 from kivy.graphics import Color, Line, Rotate
 from kivy.uix.widget import Widget
-from kivy.utils import get_color_from_hex
 
 from android_notify.internal.java_classes import BuildVersion
 from utils.logger import app_logger
+from utils.constants import theme_colors
 
 # Add this before creating your main widget or in your build method
 Window.softinput_mode = 'below_target' # or 'pan'
@@ -371,7 +371,7 @@ class SpinningArcWidget(Widget):
             # Create a rotation instruction; note the origin will be updated as the widget size changes
             self.rotation = Rotate(angle=0, origin=self.center)
             # Set a visible color; here white is typical for many spinners, but you can adjust as needed.
-            Color(*get_color_from_hex("#98F1DD"))
+            Color(*theme_colors.PRIMARY)
             # Draw an arc: (center_x, center_y, radius, start_angle, end_angle)
             # A partial circle (e.g. 270°) gives a "spinner" look.
             self.arc = Line(circle=(self.center_x, self.center_y, 40, 0, 270), width=4)

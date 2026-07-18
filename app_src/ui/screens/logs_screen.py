@@ -8,12 +8,12 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.button import Button
 from kivy.metrics import dp, sp
-from kivy.utils import get_color_from_hex
 from kivy.core.clipboard import Clipboard
 from kivy.uix.screenmanager import NoTransition
 from ui.widgets.android import toast
 
 from ui.widgets.layouts import MyMDScreen, GenericStatusBarSpacer
+from utils.constants import theme_colors
 
 # ---------- CONFIG ----------
 LOG_HORIZONTAL_PADDING = dp(10)
@@ -22,10 +22,9 @@ CHUNK_SIZE = 25
 UPDATE_INTERVAL = 1.0
 
 COLORS = {
-    "ERROR": get_color_from_hex("#FF5252"),
-    "WARN":  get_color_from_hex("#FFB300"),
-    "INFO":  get_color_from_hex("#E0E0E0"),
-    # "INFO":  get_color_from_hex("#A8E4A0"), # GREEN
+    "ERROR": theme_colors.LOG_ERROR,
+    "WARN":  theme_colors.LOG_WARN,
+    "INFO":  theme_colors.LOG_INFO,
 }
 
 
