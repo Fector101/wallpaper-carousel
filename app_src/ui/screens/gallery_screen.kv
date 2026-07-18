@@ -1,6 +1,8 @@
 #:import get_color_from_hex kivy.utils.get_color_from_hex
 #:import TEXT_COLOR_PRIMARY_DARK utils.constants.TEXT_COLOR_PRIMARY_DARK
 #:import BUTTON_BG_DARK utils.constants.BUTTON_BG_DARK
+#:import ICON_COLOR_DARK utils.constants.ICON_COLOR_DARK
+#:import ICON_COLOR_LIGHT utils.constants.ICON_COLOR_LIGHT
 #:import THEME_PRIMARY_COLOR utils.constants.THEME_PRIMARY_COLOR
 #:import GalleryTabs utils.model.GalleryTabs
 
@@ -24,9 +26,6 @@
             text: root.title
             theme_text_color:"Custom"
             text_color:"black" if app.device_theme == "light" else "white"
-            theme_text_color: "Custom"
-#            text_color: "#EDF1F9" if not root.selected else app.theme_cls.primaryColor
-#            text_color: get_color_from_hex(THEME_PRIMARY_COLOR) if root.selected else (0.65, 0.65, 0.65, 1)
             bold: False
 
         MDListItemTrailingIcon:
@@ -73,13 +72,13 @@
                 text: "grouped"
                 adaptive_size: 1
                 theme_text_color:"Custom"
-                text_color: [ .8,.8,.8,1]
+                text_color: ICON_COLOR_LIGHT if app.device_theme == "light" else ICON_COLOR_DARK
     #                pos_hint: {"center_x": .5}
             MDListItemTrailingIcon:
                 id: icon
                 icon: root.icon
                 theme_icon_color:"Custom"
-                icon_color: [ .6,.6,.6,1]
+                icon_color: ICON_COLOR_LIGHT if app.device_theme == "light" else [.6,.6,.6,1]
 
 #
 #        Row:
@@ -101,7 +100,7 @@
 #                icon_color: [ .6,.6,.6,1]
 
 <GalleryScreen>:
-    md_bg_color:  [0.8,0.8, 0.8, 1] if app.device_theme == "light" else [.1,.1,.1,1]
+    md_bg_color:  [0.9,0.9, 0.9, 1] if app.device_theme == "light" else [.1,.1,.1,1]
 
     MDFloatLayout:
         Column:
@@ -129,13 +128,13 @@
                     MDIconButton:
                         icon: "view-dashboard-outline"
                         theme_icon_color:"Custom"
-                        icon_color: [.8,.8,.8,1]
+                        icon_color: ICON_COLOR_LIGHT if app.device_theme == "light" else ICON_COLOR_DARK
                         on_release: app.btm_sheet.show()
                     MDIconButton:
                         id:select_mode_button
                         icon: "dots-vertical"
                         theme_icon_color:"Custom"
-                        icon_color: [.8,.8,.8,1]
+                        icon_color: ICON_COLOR_LIGHT if app.device_theme == "light" else ICON_COLOR_DARK
                         on_release: root.open_select_mode_menu()
                 Column:
                     spacing:10

@@ -34,13 +34,15 @@ class LogsScreen(MyMDScreen):
         super().__init__(**kwargs)
 
         self.name = "logs"
+        from kivymd.app import MDApp
+        app = MDApp.get_running_app()
         self.md_bg_color = [0.1, 0.1, 0.1, 1]
         self._file_pos = 0
         self._line_count = 0
         self._auto_update_started = False
         self.generic_status_bar_spacer = GenericStatusBarSpacer(
             status_bar_height=self.status_bar_height,
-            md_bg_color= [.1, .1, .1, 1])
+            md_bg_color=[.1, .1, .1, 1])
         self.add_widget(self.generic_status_bar_spacer)
         # ---------- LOG FILE SETUP ----------
 
@@ -53,9 +55,9 @@ class LogsScreen(MyMDScreen):
 
         # Top bar with Start button
         top_bar = BoxLayout(size_hint_y=None, height=dp(40))
-        title = Label(text="Application Logs", color=(1,1,1,1))
-        top_bar.add_widget(title)
-        title.font_name = "RobotoMono"
+        self.title_label = Label(text="Application Logs", color=(1,1,1,1))
+        top_bar.add_widget(self.title_label)
+        self.title_label.font_name = "RobotoMono"
 
         start_btn = Button(text="Start Loading", size_hint_x=None, width=dp(90),font_size=sp(13))
         start_btn.bind(on_release=self.start_loading)
@@ -90,6 +92,13 @@ class LogsScreen(MyMDScreen):
 
         # Pending lines buffer
         self._pending_lines = []
+        app.bind(device_theme=self._set_theme)
+
+    def _set_theme(self, _, theme):
+        is_dark = theme == "dark"
+        self.md_bg_color = [0.1, 0.1, 0.1, 1] if is_dark else [0.9, 0.9, 0.9, 1]
+        self.generic_status_bar_spacer.md_bg_color = [0.1, 0.1, 0.1, 1] if is_dark else [0.9, 0.9, 0.9, 1]
+        self.title_label.color = (1,1,1,1) if is_dark else (0,0,0,1)
 
     @property
     def logs_dir(self):

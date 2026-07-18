@@ -28,7 +28,7 @@ from ui.widgets.android import toast
 from ui.widgets.layouts import LoadingLayout, Column, MyMDScreen, AdaptiveLabel
 from ui.widgets.layouts import Row
 from utils.config_manager import ConfigManager
-from utils.constants import DEV, THEME_PRIMARY_COLOR, THEME_SECONDARY_COLOR
+from utils.constants import DEV, THEME_PRIMARY_COLOR, THEME_SECONDARY_COLOR, TEXT_COLOR_PRIMARY_LIGHT, TEXT_COLOR_PRIMARY_DARK, BUTTON_BG_LIGHT, BUTTON_BG_DARK, CARD_BG_LIGHT
 from utils.helper import Service, appFolder, smart_convert_minutes
 from utils.helper import load_kv_file  # type
 from utils.logger import app_logger
@@ -247,19 +247,25 @@ class IconTextButton(MDButton):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.app = get_app()
         self.theme_bg_color = "Custom"
         self.md_bg_color = kwargs["md_bg_color"] if "md_bg_color" in kwargs else [.2, .2, .2, 1]
         self.radius = [5]
-        self.icon_object = MDButtonIcon(icon=self.icon,
-                                        # theme_text_color='Custom', text_color='white'
-                                        )
+        self.icon_object = MDButtonIcon(icon=self.icon)
         self.add_widget(self.icon_object)
         self.text_object = MDButtonText(text="self.text",
-                                        theme_text_color='Custom', text_color='white'
+                                        theme_text_color='Custom',
+                                        text_color='white'
                                         )
         self.add_widget(self.text_object)
+        self.app.bind(device_theme=self._set_theme_color)
 
         Clock.schedule_once(self.fix_width)
+
+    def _set_theme_color(self, _, theme):
+        is_dark = theme == "dark"
+        self.md_bg_color = [.2, .2, .2, 1] if is_dark else [.85, .85, .85, 1]
+        self.text_object.text_color = 'white' if is_dark else 'black'
 
     def fix_width(self, *_):
         self.adjust_width()
@@ -277,6 +283,7 @@ class QuickSetButton(MDButton):
         self.theme_bg_color = "Custom"
         self.theme_height = "Custom"
         self.theme_width = "Custom"
+        self.line_color = [.25, .25, .25, 1]
         self.clicked_bg_color = [.15, .15, .15, 1]
         self.un_clicked_bg_color = [.1, .1, .1, 1]
         self.md_bg_color = self.un_clicked_bg_color
@@ -301,8 +308,11 @@ class QuickSetButton(MDButton):
         self.add_widget(self.text_widget)
 
     def set_theme_color(self, *args):
-        # self.md_bg_color=TEXT_COLOR_PRIMARY_DARK if self.app.device_theme == "light" else BUTTON_BG_DARK
-        self.text_widget.text_color = "black" if self.app.device_theme == "light" else "white"
+        is_dark = self.app.device_theme == "dark"
+        self.text_widget.text_color = "black" if not is_dark else "white"
+        self.clicked_bg_color = [.15, .15, .15, 1] if is_dark else [.75, .75, .75, 1]
+        self.un_clicked_bg_color = [.1, .1, .1, 1] if is_dark else [.85, .85, .85, 1]
+        self.md_bg_color = self.un_clicked_bg_color
 
     def set_text(self, instance, value):
         self.text_widget.text = value
@@ -341,8 +351,16 @@ class BorderInput(BorderMDBoxLayout):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.app = get_app()
         self.radius = dp(20)
-        # self.md_bg_color=[1,1,0,1]
+        self.disabled_color = [1, 1, 1, .3]
+        self.app.bind(device_theme=self._set_theme_color)
+
+    def _set_theme_color(self, _, theme):
+        is_dark = theme == "dark"
+        self.disabled_color = [1, 1, 1, .3] if is_dark else [.5, .5, .5, .5]
+        if self.input and not self.input.focus:
+            self.bg_color_instr.rgba = [.7, .7, .7, .6] if not is_dark else [.5, .5, .5, .8]
 
     def on_disabled(self, instance, value):
         self.bg_color_instr.rgba = self.disabled_color
@@ -351,7 +369,9 @@ class BorderInput(BorderMDBoxLayout):
         if state:
             self.bg_color_instr.rgba = get_color_from_hex("#98F1DD")
         else:
-            self.bg_color_instr.rgba = [.5, .5, .5, .8]
+            theme = self.app.device_theme if hasattr(self.app, "device_theme") else "dark"
+            is_dark = theme == "dark"
+            self.bg_color_instr.rgba = [.5, .5, .5, .8] if is_dark else [.7, .7, .7, .6]
 
     def add_widget(self, widget, *args, **kwargs):
         self.input = widget
@@ -368,6 +388,7 @@ class ToggleSliderRow(Row):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.app = get_app()
         self.sub_text_widget = None
         self.adaptive_height = True
         self.spacing = dp(3)
@@ -377,8 +398,9 @@ class ToggleSliderRow(Row):
             adaptive_height=1,
             spacing=dp(1),
             pos_hint={"center_y": .5})  # ,md_bg_color=[1,0,0,.5])
-        title_widget = AdaptiveLabel(text=self.title_text, size_hint=[None, None])
+        title_widget = AdaptiveLabel(text=self.title_text, size_hint=[None, None], color=[1, 1, 1, 1])
 
+        self.title_widget_ref = title_widget
         self.text_layout.add_widget(title_widget)
         self.add_widget(self.text_layout)
 
@@ -391,6 +413,7 @@ class ToggleSliderRow(Row):
         # self.switch.bind(on_active=self.on_active)
 
         self.bind(sub_title_text=self.add_subtitle, title_text=title_widget.setter("text"))
+        self.app.bind(device_theme=self._set_theme_color)
         # self.bind(title_text=title_widget.setter("text"))
 
     #
@@ -405,6 +428,11 @@ class ToggleSliderRow(Row):
 
     def set_from_user_key(self, instance):
         instance.from_user = True
+
+    def _set_theme_color(self, _, theme):
+        is_dark = theme == "dark"
+        if hasattr(self, 'title_widget_ref'):
+            self.title_widget_ref.color = [1, 1, 1, 1] if is_dark else [0, 0, 0, 1]
 
     def do_thing(self, instance, *args):
         if self.change_function:
@@ -429,20 +457,25 @@ class SettingsSection(Column):
         self.adaptive_height = True
         self.padding = [0, dp(10)]
         self.spacing = dp(5)
-        self.title_widget = AdaptiveLabel(text=self.title_text, size_hint=[None, None], color=[0.7, 0.7, 0.9, 1.0],
+        app = get_app()
+        is_dark = app.device_theme == "dark" if hasattr(app, "device_theme") else True
+        tc = [0.7, 0.7, 0.9, 1.0] if is_dark else [0.3, 0.3, 0.5, 1.0]
+        c = .67 if is_dark else .85
+        ca = .1 if is_dark else .35
+        self.title_widget = AdaptiveLabel(text=self.title_text, size_hint=[None, None], color=tc,
                                           pos_hint={"left": 1})
         self.title_widget.main_container = True
         self.bind(title_text=self.title_widget.setter("text"))
         self.add_widget(self.title_widget)
 
-        c = .67  # .35
         self.content_layout = Column(
-            md_bg_color=[c, c, c, .1], radius=dp(5),
+            md_bg_color=[c, c, c, ca], radius=dp(5),
             adaptive_height=1, padding=[dp(10), dp(15)],
             spacing=dp(30))
         self.content_layout.main_container = True
         self.add_widget(self.content_layout)
         self.bind(minimum_height=self.setter("height"))
+        app.bind(device_theme=self._set_theme)
 
         # ToggleSliderRow
         # interval = my_config.get_interval()
@@ -461,6 +494,14 @@ class SettingsSection(Column):
         elif self.content_layout:
             self.content_layout.add_widget(widget)
 
+    def _set_theme(self, _, theme):
+        is_dark = theme == "dark"
+        tc = [0.7, 0.7, 0.9, 1.0] if is_dark else [0.3, 0.3, 0.5, 1.0]
+        c = .67 if is_dark else .85
+        ca = .1 if is_dark else .35
+        self.title_widget.color = tc
+        self.content_layout.md_bg_color = [c, c, c, ca]
+
 
 class SettingsScreen(MyMDScreen):
     current_image_source = StringProperty()
@@ -474,7 +515,7 @@ class SettingsScreen(MyMDScreen):
         self.interval_input = None
         self.name = "settings"
         self.app = MDApp.get_running_app()
-        self.status_bar_bg = [0.45, 0.45, 0.45, 1] if self.app.device_theme == "light" else [0.23, 0.23, 0.23, 1]
+        self.status_bar_bg = [0.82, 0.82, 0.82, 1] if self.app.device_theme == "light" else [0.23, 0.23, 0.23, 1]
         self.app.bind(device_theme=self.set_theme_color)
 
         # b=.1
@@ -510,8 +551,13 @@ class SettingsScreen(MyMDScreen):
 
         # self.add_widget(root) for auto reload
         # self.save_interval()
-        self.ids.main_container.add_widget(
-            Button(text="Check For New Version", on_release=self.check_for_update, size_hint_y=None, height=dp(50)))
+        btn = Button(text="Check For New Version", on_release=self.check_for_update, size_hint_y=None, height=dp(50))
+        btn.background_normal = ''
+        btn.background_color = BUTTON_BG_DARK
+        btn.color = TEXT_COLOR_PRIMARY_DARK
+        self._check_update_btn = btn
+        self.app.bind(device_theme=self._set_check_update_btn_theme)
+        self.ids.main_container.add_widget(btn)
         self.current_image_source = get_current_wallpaper()
         self.next_image_source = "assets/icons/icon.png"
 
@@ -739,7 +785,15 @@ class SettingsScreen(MyMDScreen):
         self.next_image_source = next_wallpaper or self.next_image_source
 
     def set_theme_color(self, _, value):
-        self.status_bar_bg = [0.45, 0.45, 0.45, 1] if value == "light" else [0.23, 0.23, 0.23, 1]
+        self.status_bar_bg = [0.82, 0.82, 0.82, 1] if value == "light" else [0.23, 0.23, 0.23, 1]
+
+    def set_theme_preference(self, preference):
+        self.app.set_theme_preference(preference)
+
+    def _set_check_update_btn_theme(self, _, theme):
+        is_dark = theme == "dark"
+        self._check_update_btn.background_color = BUTTON_BG_DARK if is_dark else BUTTON_BG_LIGHT
+        self._check_update_btn.color = TEXT_COLOR_PRIMARY_DARK if is_dark else TEXT_COLOR_PRIMARY_LIGHT
 
     def set_using_on_wake_config(self, instance, value, from_user):
         ##p("instance.title_text",instance, value)

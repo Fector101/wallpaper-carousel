@@ -127,7 +127,7 @@ class WelcomeScreen(MyMDScreen):
         self.name = "welcome"
         self.generic_status_bar_spacer = GenericStatusBarSpacer(
             status_bar_height=self.status_bar_height,
-        md_bg_color=[0.8, 0.8, 0.8, 1] if self.app.device_theme == "light" else[.1, .1, .1, 1]
+        md_bg_color=[0.9, 0.9, 0.9, 1] if self.app.device_theme == "light" else[.1, .1, .1, 1]
         )
         self.add_widget(self.generic_status_bar_spacer)
         self.add_widget(NotificationRequestLayout(answer_callback=self.handle_going_back))

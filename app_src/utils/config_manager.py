@@ -26,6 +26,7 @@ class ConfigManager:
         "day_wallpapers":[],
         "use_on_wake": False,
         "use_group_by_date": True,
+        "theme_preference": "dark",
 
     }
 
@@ -160,3 +161,14 @@ class ConfigManager:
         data = self._read()
         data["use_group_by_date"] = state
         self._write(data)
+
+    # ---------- THEME PREFERENCE ----------
+    @classmethod
+    def get_theme_preference(cls):
+        return cls._read().get("theme_preference", "adaptive")
+
+    @classmethod
+    def set_theme_preference(cls, preference: str):
+        data = cls._read()
+        data["theme_preference"] = preference
+        cls._write(data)

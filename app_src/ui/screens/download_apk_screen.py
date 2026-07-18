@@ -242,9 +242,11 @@ class DownloadApkScreen(MyMDScreen):
         self.name = "update_screen"
 
         root = Column(padding=[dp(20), dp(10)])
+        sb_bg = [0.9, 0.9, 0.9, 1] if app.device_theme == "light" else [.1, .1, .1, 1]
         self.generic_status_bar_spacer = GenericStatusBarSpacer(
             status_bar_height=self.status_bar_height,
-            md_bg_color=[.1, .1, .1, 1])
+            md_bg_color=sb_bg)
+        app.bind(device_theme=self._set_theme)
 
         # Top App Bar
         top_app_bar = Row(
@@ -316,7 +318,11 @@ class DownloadApkScreen(MyMDScreen):
 
         if not is_running_debug_build():
             Clock.schedule_once(lambda dt: thread_check_for_update(dt, self.show),3)
-        # Clock.schedule_once(lambda dt: self.dev())
+
+    def _set_theme(self, _, theme):
+        is_dark = theme == "dark"
+        self.md_bg_color = [0.9, 0.9, 0.9, 1] if not is_dark else [.1, .1, .1, 1]
+        self.generic_status_bar_spacer.md_bg_color = [0.9, 0.9, 0.9, 1] if not is_dark else [.1, .1, .1, 1]
 
     def dev(self):
         print("Using hot reload...")

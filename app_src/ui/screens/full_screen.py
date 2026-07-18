@@ -87,6 +87,7 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.app = get_app()
+        self.elevation = 0
         self.img = AsyncImage()
         self.img.mipmap=True
         self.i = 0
@@ -192,7 +193,7 @@ class FullscreenScreen(MyMDScreen):
 
         self.generic_status_bar_spacer=GenericStatusBarSpacer(
             status_bar_height=self.status_bar_height,
-            md_bg_color=[0.8, 0.8, 0.8, 1] if self.app.device_theme == "light" else [.1, .1,.1, 1])
+            md_bg_color=[.1, .1, .1, 1])
         self.add_widget(self.generic_status_bar_spacer)
         sub_text = "This wallpaper will be permanently removed from App Storage"
         header_text = "Remove Image?"
@@ -200,7 +201,6 @@ class FullscreenScreen(MyMDScreen):
         # Main layout container
         self.layout = MDFloatLayout(md_bg_color=[0, 0, 0, 1])
         self.layout.pos_hint ={"top":1}
-        # self.layout.orientation="vertical"
 
         self.header_layout = BorderMDBoxLayout(
             orientation="horizontal", radius=[25],
@@ -208,8 +208,8 @@ class FullscreenScreen(MyMDScreen):
             pos_hint={'center_x': .5, 'top': .98},
             padding=[dp(10), dp(10)], spacing=dp(8))
         self.header_layout.y = get_dimensions()[0]
-        # self.header_layout.y=Window.height - dp(110)
         self.header_layout.md_bg_color = [.1, .1, .1, 1]
+        self.app.bind(device_theme=self._set_theme_color)
         self.btn_toggle = MDIconButton(
             icon="chevron-left",
             style="standard",
@@ -221,9 +221,8 @@ class FullscreenScreen(MyMDScreen):
         )
 
         self.btn_toggle.theme_bg_color = 'Custom'
-        self.btn_toggle.md_bg_color = self.header_layout.md_bg_color
+        self.btn_toggle.md_bg_color = [.1, .1, .1, 1]
         self.text_container = MDBoxLayout(orientation="vertical")
-        # self.text_container.md_bg_color=[.1, 1, 0, 1]
         self.header_title = MDLabel(text="", pos_hint={'center_y': .48})
         self.header_file_size = MDLabel(text=" ", pos_hint={'center_y': .46},adaptive_size=True,padding=[dp(4),dp(1)])
 
@@ -235,29 +234,24 @@ class FullscreenScreen(MyMDScreen):
         self.header_title.text_color = 'white'
         self.header_file_size.text_color = [.6,.6,.6,1]
 
-        self.share_btn = MyMDIconButton(icon="share", style="tonal",on_release=lambda x: share_image_to_other_app(self.current_image))
+        self.share_btn = MyMDIconButton(icon="share", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1], on_release=lambda x: share_image_to_other_app(self.current_image))
         self.original_carousel_pos_hint = {'x': 0, 'y': 0.125}
         self.original_carousel_size_hint = (1, 1 - .25)
         self.carousel = MyCarousel(direction="right", loop=True,
                                    size_hint=self.original_carousel_size_hint,
                                    pos_hint=self.original_carousel_pos_hint)
-        # self.carousel.bind(index=self.on_index)
 
         self.btm_btn_layout_root = MDRelativeLayout(
             size_hint=(1, self.bottom_height),
-            # md_bg_color=[.1, .1, .12, 1],
             pos_hint={"y": 0}
         )
         self.btn_layout = BorderMDBoxLayout(
-            # orientation='horizontal',
-            # size_hint=(1, self.bottom_height),
             pos_hint={'center_x': .5, 'center_y': .55},
             spacing=dp(20),
             padding=[dp(20), dp(5)],
             adaptive_size=True,
             radius=[25],
             md_bg_color=[.1, .1, .1, 1],
-            # md_bg_color=[bg, bg, bg, 1]
         )
         left_btm_box = BorderMDBoxLayout(
             pos_hint={'center_x': .1, 'center_y': .549},
@@ -266,21 +260,16 @@ class FullscreenScreen(MyMDScreen):
             radius=[25],
             md_bg_color=[.1, .1, .1, 1],
         )
-        self.set_wallpaper_btn = MyMDIconButton(icon="wall", style="tonal")
+        self.set_wallpaper_btn = MyMDIconButton(icon="wall", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
         left_btm_box.add_widget(self.set_wallpaper_btn)
-        self.btn_delete = MyMDIconButton(icon="trash-can", style="tonal", )  # ext="Delete")
-        self.btn_info = MyMDIconButton(icon="information-outline", style="tonal", )  # Button(text="Info")
-        self.btn_fullscreen = MyMDIconButton(icon="fullscreen", style="tonal")
+        self.btn_delete = MyMDIconButton(icon="trash-can-outline", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
+        self.btn_info = MyMDIconButton(icon="information-outline", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
+        self.btn_fullscreen = MyMDIconButton(icon="fullscreen", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
         right_btm_box= MDBoxLayout(
-            # orientation='horizontal',
-            # size_hint=(1, self.bottom_height),
             pos_hint={'center_x': .9, 'center_y': .549},
-            # spacing=dp(20),
             adaptive_size=True,
             radius=[25],
             md_bg_color=[.1, .1, .1, 1],
-            # size_hint=[1,1]
-            # md_bg_color=[bg, bg, bg, 1]
         )
 
         self.day_noon_both_button=PictureButton(screen_color=self.md_bg_color,fullscreen=self)
@@ -318,6 +307,23 @@ class FullscreenScreen(MyMDScreen):
         # p("using hot reload stuff")
         # self.update_images(0)  # for hot_reload
 
+    def _set_theme_color(self, _, theme):
+        is_dark = theme == "dark"
+        sb_bg = [.1, .1, .1, 1] if is_dark else [0.8, 0.8, 0.8, 1]
+        header_bg = [.1, .1, .1, 1] if is_dark else [.9, .9, .9, 1]
+        tc = [1, 1, 1, 1] if is_dark else [0, 0, 0, 1]
+        self.generic_status_bar_spacer.md_bg_color = sb_bg
+        self.header_layout.md_bg_color = header_bg
+        self.btn_toggle.md_bg_color = header_bg
+        self.btn_layout.md_bg_color = header_bg
+        self.btn_toggle.text_color = tc
+        self.header_title.text_color = tc
+        self.set_wallpaper_btn.icon_color = tc
+        self.btn_delete.icon_color = tc
+        self.btn_info.icon_color = tc
+        self.btn_fullscreen.icon_color = tc
+        self.share_btn.icon_color = tc
+
     def toggle_fullscreen(self, *_):
         # p(self.carousel.children[0].children)
         self.is_fullscreen = True
@@ -330,7 +336,8 @@ class FullscreenScreen(MyMDScreen):
         self.header_file_size.text_color = [0, 0, 0, 0]
         self.header_file_size.md_bg_color = [0, 0, 0, 0]
 
-        self.btn_toggle.text_color = [1, 1, 1, .9]
+        is_dark = self.app.device_theme == "dark"
+        self.btn_toggle.text_color = [1, 1, 1, .9] if is_dark else [0, 0, 0, .9]
         self.btn_toggle.style = "outlined"
 
         self.btm_btn_layout_root.pos_hint = {"y": -2}
@@ -529,18 +536,28 @@ class FullscreenScreen(MyMDScreen):
         self.carousel.size_hint = self.original_carousel_size_hint
         self.carousel.pos_hint = self.original_carousel_pos_hint
         self.header_layout.pos_hint = {'center_x': .5, 'top': .97}
-        self.header_title.text_color = [1, 1, 1, 1]
+        is_dark = self.app.device_theme == "dark"
+        header_bg = [.1, .1, .1, 1] if is_dark else [.9, .9, .9, 1]
+        tc = [1, 1, 1, 1] if is_dark else [0, 0, 0, 1]
+        self.header_title.text_color = tc
         self.header_layout.bg_color_instr.a = .8
-        self.header_file_size.md_bg_color = [1, 1, 1, .2]
-        self.header_file_size.text_color = [.6, .6, .6, 1]
+        self.header_file_size.md_bg_color = [1, 1, 1, .2] if is_dark else [0, 0, 0, .1]
+        self.header_file_size.text_color = [.6, .6, .6, 1] if is_dark else [.3, .3, .3, 1]
 
         self.btm_btn_layout_root.pos_hint = {"y": 0}
 
-        self.header_layout.md_bg_color = self.btn_toggle.md_bg_color
+        self.header_layout.md_bg_color = header_bg
+        self.btn_toggle.md_bg_color = header_bg
         self.btn_toggle.icon = "chevron-left"
         self.btn_toggle.style = "standard"
         self.btn_toggle.theme_text_color = 'Custom'
-        self.btn_toggle.text_color = [1, 1, 1, 1]
+        self.btn_toggle.text_color = tc
+        self.btn_layout.md_bg_color = header_bg
+        self.set_wallpaper_btn.icon_color = tc
+        self.btn_delete.icon_color = tc
+        self.btn_info.icon_color = tc
+        self.btn_fullscreen.icon_color = tc
+        self.share_btn.icon_color = tc
         self.is_fullscreen = False
 
         for img in self.carousel.slides:

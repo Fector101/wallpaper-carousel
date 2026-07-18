@@ -89,9 +89,13 @@ class MyPopUp(Popup):
         self.pos_hint = {"center_x": .5, "center_y": .5}
 
     def __get_item(self,name):
+        from kivymd.app import MDApp
+        app = MDApp.get_running_app()
+        is_dark = app.device_theme == "dark" if hasattr(app, "device_theme") else True
         return Column(adaptive_height=True,my_widgets=[
             MDLabel(text=name, adaptive_height=True, theme_text_color="Custom", text_color="grey"),
-            MDLabel(text=self.info[name], adaptive_height=True, theme_text_color="Custom", text_color="white")
+            MDLabel(text=self.info[name], adaptive_height=True, theme_text_color="Custom",
+                    text_color="white" if is_dark else "black")
         ])
 
     def add_widget(self, widget, *args, **kwargs):
@@ -391,7 +395,9 @@ class LoadingLayout(MDRelativeLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.disabled=True
-        c = .1
+        app = MDApp.get_running_app()
+        is_dark = app.device_theme == "dark" if hasattr(app, "device_theme") else True
+        c = .1 if is_dark else .8
         self.md_bg_color = [c, c, c, .5]
         # self.size_hint = [1, 1]
         self.size_hint = [None, None]

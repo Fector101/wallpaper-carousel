@@ -17,6 +17,7 @@ from ui.widgets.buttons import BottomNavigationBar
 from ui.widgets.bottom_sheet import MyBtmSheet
 
 from utils.android import is_device_on_light_mode
+from utils.config_manager import ConfigManager
 from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY
 from utils.helper import Service, write_logs_to_file, get_free_port, register_fonts, fix_input_on_linux, \
     get_stored_running_ui_server_port, get_stored_running_service_server_port
@@ -39,6 +40,7 @@ elif on_android_platform():
 
 class WallpaperCarouselApp(MDApp):
     device_theme = StringProperty("dark")
+    theme_preference = StringProperty(ConfigManager.get_theme_preference())
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -52,6 +54,19 @@ class WallpaperCarouselApp(MDApp):
         self.bottom_bar = None
 
     def build_ui(self):
+        from kivy.lang import Builder
+        Builder.load_string("""
+<MDButton>:
+    theme_elevation_level: "Custom"
+    elevation_level: 0
+    theme_shadow_softness: "Custom"
+    shadow_softness: 0
+<MDIconButton>:
+    theme_elevation_level: "Custom"
+    elevation_level: 0
+    theme_shadow_softness: "Custom"
+    shadow_softness: 0
+""")
         root_layout = MDNavigationLayout()
         # self.root_layout = MDRelativeLayout()
 
@@ -154,9 +169,19 @@ class WallpaperCarouselApp(MDApp):
                 on_activity_result=set_intent_for_file_operation_class)
 
     def monitor_dark_and_light_device_change(self):
-        self.device_theme = is_device_on_light_mode()
-        # self.device_theme='dark' if self.device_theme=='light' else "light"
+        if self.theme_preference == "adaptive":
+            self.device_theme = is_device_on_light_mode()
+        else:
+            self.device_theme = self.theme_preference
         return self.device_theme
+
+    def set_theme_preference(self, preference):
+        self.theme_preference = preference
+        ConfigManager.set_theme_preference(preference)
+        if preference == "adaptive":
+            self.device_theme = is_device_on_light_mode()
+        else:
+            self.device_theme = preference
 
 
 if __name__ == '__main__':

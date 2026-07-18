@@ -88,21 +88,25 @@ def get_number_of_cols():
 class IconTextButton(MDButton):
     def __init__(self, icon:str, text:str, **kwargs):
         super().__init__(**kwargs)
-        # self.theme_bg_color="Custom"
-        # self.md_bg_color=[1,0,0,1]
         self.style="text"
         self.text = text
         self.icon = icon
-        self.icon_widget = MDButtonIcon(icon=icon, theme_icon_color="Custom", icon_color=[.8, .8, .8, 1])
-        self.text_widget = MDButtonText(text=text, theme_text_color="Custom", text_color=[.8, .8, .8, 1])
-        # self.text_widget.md_bg_color=[1,1,0,1]
+        app = get_app()
+        is_dark = app.device_theme == "dark" if hasattr(app, "device_theme") else True
+        ic = [.3, .3, .3, 1] if not is_dark else [.8, .8, .8, 1]
+        self.icon_widget = MDButtonIcon(icon=icon, theme_icon_color="Custom", icon_color=ic)
+        self.text_widget = MDButtonText(text=text, theme_text_color="Custom", text_color=ic)
         self.icon_widget.theme_bg_color="Custom"
-        # self.icon_widget.md_bg_color=[1,1,0,1]
         self.add_widget(self.icon_widget)
         self.add_widget(self.text_widget)
         self.theme_bg_color="Custom"
-        # self.md_bg_color=[1,0,0,1]
+        app.bind(device_theme=self._set_theme)
         Clock.schedule_once(self.adjust_width,5)
+
+    def _set_theme(self, _, theme):
+        ic = [.3, .3, .3, 1] if theme == "light" else [.8, .8, .8, 1]
+        self.icon_widget.icon_color = ic
+        self.text_widget.text_color = ic
 
 
 class PreviewImage(ButtonBehavior, MDRelativeLayout):
@@ -319,7 +323,6 @@ class DateGroupLayout(Column):
             size_hint_x=1,
         )
         header_content_color = (.65, .65, .65, 1)
-        # header_content_color = (.8, .8, 1, 1)
 
         self.title_text_widget = MDLabel(
             text=self.title,
@@ -347,7 +350,6 @@ class DateGroupLayout(Column):
         self.add_widget(header_layout)
 
         self.images_container = MyMDGridLayout(
-            # md_bg_color=[0,1,0,1],
             adaptive_width = True
         )
 
@@ -384,11 +386,23 @@ class DateGroupLayout(Column):
             self.images_container.add_widget(thumbnailWidget)
 
         self.add_widget(self.images_container)
-        line = MDBoxLayout(size_hint=[1, None], height=dp(0.5), md_bg_color=[.3, .3, .3, .8])
+        sep_color = [.3, .3, .3, .8]
+        line = MDBoxLayout(size_hint=[1, None], height=dp(0.5), md_bg_color=sep_color)
 
         self.add_widget(line)
+        self.app.bind(device_theme=self._set_theme)
         app_logger.info(f"DGL_BUILD: done self.children={len(self.children)} parent={self.parent}")
         return None
+
+    def _set_theme(self, _, theme):
+        is_dark = theme == "dark"
+        hc = (.65, .65, .65, 1) if is_dark else (.35, .35, .35, 1)
+        self.title_text_widget.text_color = hc
+        self.toggle_drop_btn.icon_color = hc
+        sep_color = [.3, .3, .3, .8] if is_dark else [.7, .7, .7, .8]
+        for child in self.children:
+            if isinstance(child, MDBoxLayout) and child.size_hint_y is not None and child.height < dp(1):
+                child.md_bg_color = sep_color
 
 
     def on_size(self,_,size):
@@ -584,21 +598,22 @@ class MultiselectTop(MDFloatLayout):
     select_all_=BooleanProperty(False)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.md_bg_color=[.1, .1, .1, 1]
+        app = get_app()
+        is_dark = app.device_theme == "dark" if hasattr(app, "device_theme") else True
+        bg = [.1, .1, .1, 1] if is_dark else [.9, .9, .9, 1]
+        tc = [.8, .8, .8, 1] if is_dark else [.2, .2, .2, 1]
+        self.md_bg_color = bg
         self.size_hint_y = .25
         self.pos_hint={"top":1}
         x_padding=15
         self.root_layout = Column(adaptive_height=True,pos_hint={"top":1}, padding=[x_padding,0,x_padding,10],spacing=dp(10))
         self.generic_status_bar_spacer = GenericStatusBarSpacer(
             status_bar_height=self.status_bar_height,
-            md_bg_color=[.1, .1, .1, 1])
+            md_bg_color=bg)
         self.root_layout.add_widget(self.generic_status_bar_spacer)
-        # use a horizontal box with a flexible spacer to place icons left and right
         btn_box = Row(orientation="horizontal", pos_hint={"top":1}, adaptive_height=True)
-        # btn_box.md_bg_color=[1,0,0,1]
-        self.cancel_selection_mode_btn = MDIconButton(icon="close", theme_icon_color="Custom", icon_color=[.8, .8, .8, 1])
-        self.toggle_select_all_btn = MDIconButton(icon="playlist-check", theme_icon_color="Custom", icon_color=[.8, .8, .8, 1])
-        
+        self.cancel_selection_mode_btn = MDIconButton(icon="close", theme_icon_color="Custom", icon_color=tc)
+        self.toggle_select_all_btn = MDIconButton(icon="playlist-check", theme_icon_color="Custom", icon_color=tc)
         self.cancel_selection_mode_btn.bind(on_release=self.hide)
         self.toggle_select_all_btn.bind(on_release=lambda _: setattr(self, "select_all_", not self.select_all_))
         btn_box.add_widget(self.cancel_selection_mode_btn)
@@ -608,15 +623,26 @@ class MultiselectTop(MDFloatLayout):
         self.title_widget = MDLabel(
             text="0 items selected",
             theme_text_color="Custom",
-            text_color=[.8, .8, .8, 1],adaptive_size=True,
+            text_color=tc, adaptive_size=True,
             font_size=sp(24),
-            theme_font_size="Custom",bold=1,
-            theme_font_name="Custom",font_name="RobotoMono"
+            theme_font_size="Custom", bold=1,
+            theme_font_name="Custom", font_name="RobotoMono"
             )
         self.title_widget.padding=[20,0,0,0]
         self.root_layout.add_widget(self.title_widget)
         self.add_widget(self.root_layout)
+        app.bind(device_theme=self._set_theme)
         self.bind(select_all_=self.on_select_all_changed)
+
+    def _set_theme(self, _, theme):
+        is_dark = theme == "dark"
+        bg = [.1, .1, .1, 1] if is_dark else [.9, .9, .9, 1]
+        tc = [.8, .8, .8, 1] if is_dark else [.2, .2, .2, 1]
+        self.md_bg_color = bg
+        self.generic_status_bar_spacer.md_bg_color = bg
+        self.cancel_selection_mode_btn.icon_color = tc
+        self.toggle_select_all_btn.icon_color = tc
+        self.title_widget.text_color = tc
         # self.gallery_screen = get_app().sm.get_screen("thumbs")
     # def cancel_selection_mode_btn(self, *args):
     def on_select_all_changed(self, _,v):
@@ -684,13 +710,15 @@ class MultiselectBottom(Row):
     hide = ObjectProperty()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        c=.11
-        self.md_bg_color=[c, c, c, 1]
+        app = get_app()
+        is_dark = app.device_theme == "dark" if hasattr(app, "device_theme") else True
+        self.md_bg_color = [.11, .11, .11, 1] if is_dark else [.88, .88, .88, 1]
         self.padding = [10,dp(10),10,self.nav_bar_height+dp(10)]
         self.adaptive_height=True
         self.pos_hint={"bottom":1}
         self.dialog = DialogScreen(icon_name="trash-can-outline")
         self.info_dialog = DialogScreen(icon_name="information-outline", show_ok_button=False)
+        app.bind(device_theme=self._set_theme)
 
         delete_btn = IconTextButton(icon="delete", text="Delete")
         share_btn = IconTextButton(icon="share", text="Share")
@@ -708,6 +736,10 @@ class MultiselectBottom(Row):
         self.add_widget(info_btn)
         self.add_widget(Widget())
         # self.gallery_screen.add_widget(self.dialog)# hot reload
+
+    def _set_theme(self, _, theme):
+        is_dark = theme == "dark"
+        self.md_bg_color = [.11, .11, .11, 1] if is_dark else [.88, .88, .88, 1]
 
     def _get_selected_images(self):
         """Return list of unique selected PreviewImage widgets from the current tab."""
@@ -830,8 +862,6 @@ class GalleryScreen(MyMDScreen):
         gs=self
         self.app = get_app()
         self.do_not_leave_app=False # not back btn feature from class MyMDScreen
-        # self.app.device_theme = "light"
-        self.app.device_theme = "dark"
         self.name = "thumbs"
         self.app_dir = Path(appFolder())
         self.wallpapers_dir = self.app_dir / "wallpapers"
