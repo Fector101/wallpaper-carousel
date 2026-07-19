@@ -344,12 +344,18 @@
                         change_function: lambda instance, value, is_from_user: root.set_using_on_wake_config(instance, value,is_from_user)
 #                        change_function: lambda x : ConfigManager.set_on_wake_state(not x)
                     CarouselTools:
-#                SettingsSection:
-#                    title_text: "Start Carousel"
-#                    ToggleSliderRow:
-#                        title_text: "On App Start"
-#                    ToggleSliderRow:
-#                        title_text: "On Phone Restart"
+                SettingsSection:
+                    title_text: "Auto Start"
+                    ToggleSliderRow:
+                        title_text: "On App Launch"
+                        sub_title_text: "Automatically start the carousel when you open the app."
+                        active: root.start_on_app_launch
+                        change_function: lambda instance, value, is_from_user: root.set_start_on_app_launch_config(instance, value, is_from_user)
+                    ToggleSliderRow:
+                        title_text: "On Restart"
+                        sub_title_text: "Automatically start the carousel when your phone restarts."
+                        active: root.start_on_boot
+                        change_function: lambda instance, value, is_from_user: root.set_start_on_boot_config(instance, value, is_from_user)
 
                 SettingsSection:
                     title_text: "Theme"

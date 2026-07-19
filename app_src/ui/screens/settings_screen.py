@@ -508,6 +508,8 @@ class SettingsScreen(MyMDScreen):
     interval = StringProperty()
     displayed_interval_value = StringProperty()  # "2 mins"
     is_using_on_wake = BooleanProperty(ConfigManager.get_on_wake_state())
+    start_on_app_launch = BooleanProperty(ConfigManager.get_start_on_app_launch())
+    start_on_boot = BooleanProperty(ConfigManager.get_start_on_boot())
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -819,6 +821,18 @@ class SettingsScreen(MyMDScreen):
                 self.app.ui_messenger_to_service.tell_service_server_to_use_on_wake()
                 ##p(self.ids.countdown_label.text,22)
                 self.ids.countdown_label.text = "OnNext Wake" if self.ids.countdown_label.text != "Paused" else self.ids.countdown_label.text
+
+    def set_start_on_app_launch_config(self, instance, value, from_user):
+        if not from_user:
+            return
+        ConfigManager.set_start_on_app_launch(value)
+        self.start_on_app_launch = value
+
+    def set_start_on_boot_config(self, instance, value, from_user):
+        if not from_user:
+            return
+        ConfigManager.set_start_on_boot(value)
+        self.start_on_boot = value
 
     def check_for_update(self, *args):
         spinner_layout = LoadingLayout()

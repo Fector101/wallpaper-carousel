@@ -134,7 +134,8 @@ class WallpaperCarouselApp(MDApp):
         self.ui_service_listener.start()
         self.ui_service_listener.on_countdown_change = self.sm.settings_screen.update_label
         self.ui_service_listener.on_changed_homescreen_widget = self.sm.settings_screen.on_changed_homescreen_widget
-        self.start_service()
+        if ConfigManager.get_start_on_app_launch():
+            self.start_service()
 
     def start_service(self):
 

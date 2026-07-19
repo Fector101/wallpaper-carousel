@@ -27,7 +27,8 @@ class ConfigManager:
         "use_on_wake": False,
         "use_group_by_date": True,
         "theme_preference": "dark",
-
+        "start_on_app_launch": True,
+        "start_on_boot": True,
     }
 
     def __init__(self):
@@ -172,3 +173,27 @@ class ConfigManager:
         data = cls._read()
         data["theme_preference"] = preference
         cls._write(data)
+
+    # ---------- START PREFERENCES ----------
+    @classmethod
+    def get_start_on_app_launch(cls):
+        return cls._read().get("start_on_app_launch", True)
+
+    @classmethod
+    def set_start_on_app_launch(cls, state: bool):
+        data = cls._read()
+        data["start_on_app_launch"] = state
+        cls._write(data)
+
+    @classmethod
+    def get_start_on_boot(cls):
+        return cls._read().get("start_on_boot", True)
+
+    @classmethod
+    def set_start_on_boot(cls, state: bool):
+        data = cls._read()
+        data["start_on_boot"] = state
+        cls._write(data)
+        boot_flag = Path(cls.config_dir) / "start_on_boot.txt"
+        with open(boot_flag, "w") as f:
+            f.write("true" if state else "false")

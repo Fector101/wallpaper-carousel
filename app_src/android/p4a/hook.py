@@ -47,10 +47,10 @@ def generate_receivers(package_: str = None) -> str:
         #     actions=["ALARM_ACTION"]
         # ),
         #
-        # Receiver(
-        #     name="BootReceiver",
-        #     actions=["android.intent.action.BOOT_COMPLETED"]
-        # )
+        Receiver(
+            name="BootReceiver",
+            actions=["android.intent.action.BOOT_COMPLETED"]
+        )
 
     ]
 
