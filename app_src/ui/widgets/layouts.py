@@ -1,3 +1,4 @@
+import time
 import traceback
 
 from kivy.uix.label import Label
@@ -172,28 +173,86 @@ def get_status_bar_height(bypass_android_version=False):
 # each subclass should implement set_widget_left_and_right_padding
 class PlaceOnMainScreen:
     parent = None # added by child kivy widget, this line is just for PyCharm lint it doesn't override anything
+    BACK_PRESS_THRESHOLD = 0.4
+    SAFETY_TIMEOUT = 2.0
+
     def __init__(self):
-        pass
+        self._back_key_down_time = 0
+        self._back_key_pending = False
+        self._back_key_had_duplicate = False
+        self._back_key_scheduled = None
 
     def show(self,*_):
-        Window.bind(on_keyboard=self.handle_esc_key)
+        Window.bind(on_key_down=self._on_key_down)
+        Window.bind(on_key_up=self._on_key_up)
+        # app_logger.info("[BackKey] PlaceOnMainScreen.show() -> bound on_key_down + on_key_up")
 
-    def handle_esc_key(self,_, key, *__):
-        if key == 27:
+    def _on_key_down(self, _, key, *__):
+        if key != 27:
+            return True
+        now = time.monotonic()
+        if not self._back_key_pending:
+            self._back_key_pending = True
+            self._back_key_had_duplicate = False
+            self._back_key_down_time = now
+            self._back_key_scheduled = Clock.schedule_once(self._on_safety_timeout, self.SAFETY_TIMEOUT)
+            # app_logger.info(f"[BackKey] PlaceOnMainScreen DOWN -> pending=True, timestamp={now:.3f}")
+        else:
+            self._back_key_had_duplicate = True
+            # app_logger.info(f"[BackKey] PlaceOnMainScreen DOWN -> spurious duplicate detected, had_spurious=True")
+        return True
+
+    def _on_key_up(self, _, key, *__):
+        if key != 27:
+            return True
+        now = time.monotonic()
+        if not self._back_key_pending:
+            # app_logger.info(f"[BackKey] PlaceOnMainScreen UP -> ignored (no pending key_down)")
+            return True
+        if self._back_key_had_duplicate:
+            # app_logger.info(f"[BackKey] PlaceOnMainScreen UP -> spurious key_up, clearing state (no action)")
+            self._clear_back_state()
+            return True
+        duration = now - self._back_key_down_time
+        self._clear_back_state()
+        if duration < self.BACK_PRESS_THRESHOLD:
+            # app_logger.info(f"[BackKey] PlaceOnMainScreen UP -> SHORT press ({duration:.3f}s) -> hiding overlay")
             self.hide()
-        return True # "don't close app"
+        # else:
+            # app_logger.info(f"[BackKey] PlaceOnMainScreen UP -> LONG press ({duration:.3f}s) -> ignored (system screenshot)")
+        return True
+
+    def _on_safety_timeout(self, _dt):
+        if self._back_key_pending:
+            # app_logger.info("[BackKey] PlaceOnMainScreen safety timeout -> clearing stale pending state")
+            self._back_key_pending = False
+            self._back_key_had_duplicate = False
+            self._back_key_scheduled = None
+
+    def _clear_back_state(self):
+        self._back_key_pending = False
+        self._back_key_had_duplicate = False
+        if self._back_key_scheduled:
+            self._back_key_scheduled.cancel()
+            self._back_key_scheduled = None
 
     def hide(self,*_):
-        Window.unbind(on_keyboard=self.handle_esc_key)
+        self._clear_back_state()
+        Window.unbind(on_key_down=self._on_key_down)
+        Window.unbind(on_key_up=self._on_key_up)
+        # app_logger.info("[BackKey] PlaceOnMainScreen.hide() -> unbound on_key_down + on_key_up")
         parent = self.parent
         if parent:
             parent.remove_widget(self)
         return None
 
+# implement handle_going_back or do_not_leave_app
 
 class MyMDScreen(MDScreen):
     navigation_buttons_box = ObjectProperty()
     screen_content = ObjectProperty()
+    BACK_PRESS_THRESHOLD = 0.4
+    SAFETY_TIMEOUT = 2.0
 
     dimensions = get_dimensions()
     status_bar_height = NumericProperty(get_status_bar_height())
@@ -202,8 +261,12 @@ class MyMDScreen(MDScreen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.do_not_leave_app = True
+        self.do_not_leave_app = True # If false app closes on back btn
         self.change_layout_orientation_clock = None
+        self._back_key_down_time = 0
+        self._back_key_pending = False
+        self._back_key_had_duplicate = False
+        self._back_key_scheduled = None
         Window.bind(size=self.on_window_resize)
         self.on_window_resize(Window, (Window.width, Window.height))
 
@@ -296,16 +359,65 @@ class MyMDScreen(MDScreen):
     def handle_going_back(self,*_):
         """Implemented by children"""
 
-    def handle_esc_key(self, _, key, *__):
-        if key == 27:
+    def _on_key_down(self, _, key, *__):
+        if key != 27:
+            return self.do_not_leave_app
+        now = time.monotonic()
+        if not self._back_key_pending:
+            self._back_key_pending = True
+            self._back_key_had_duplicate = False
+            self._back_key_down_time = now
+            self._back_key_scheduled = Clock.schedule_once(self._on_safety_timeout, self.SAFETY_TIMEOUT)
+            # app_logger.info(f"[BackKey] MyMDScreen DOWN screen='{self.name}' -> pending=True, timestamp={now:.3f}")
+        else:
+            self._back_key_had_duplicate = True
+            # app_logger.info(f"[BackKey] MyMDScreen DOWN screen='{self.name}' -> spurious duplicate detected, had_spurious=True")
+        return self.do_not_leave_app
+
+    def _on_key_up(self, _, key, *__):
+        if key != 27:
+            return self.do_not_leave_app
+        now = time.monotonic()
+        if not self._back_key_pending:
+            # app_logger.info(f"[BackKey] MyMDScreen UP screen='{self.name}' -> ignored (no pending key_down)")
+            return self.do_not_leave_app
+        if self._back_key_had_duplicate:
+            # app_logger.info(f"[BackKey] MyMDScreen UP screen='{self.name}' -> spurious key_up, clearing state (no action)")
+            self._clear_back_state()
+            return self.do_not_leave_app
+        duration = now - self._back_key_down_time
+        self._clear_back_state()
+        if duration < self.BACK_PRESS_THRESHOLD:
+            # app_logger.info(f"[BackKey] MyMDScreen UP screen='{self.name}' -> SHORT press ({duration:.3f}s) -> calling handle_going_back")
             self.handle_going_back()
-        return self.do_not_leave_app  # "don't close app"
+        # else:
+            # app_logger.info(f"[BackKey] MyMDScreen UP screen='{self.name}' -> LONG press ({duration:.3f}s) -> ignored (system screenshot)")
+        return self.do_not_leave_app
+
+    def _on_safety_timeout(self, _dt):
+        if self._back_key_pending:
+            # app_logger.info(f"[BackKey] MyMDScreen safety timeout screen='{self.name}' -> clearing stale pending state")
+            self._back_key_pending = False
+            self._back_key_had_duplicate = False
+            self._back_key_scheduled = None
+
+    def _clear_back_state(self):
+        self._back_key_pending = False
+        self._back_key_had_duplicate = False
+        if self._back_key_scheduled:
+            self._back_key_scheduled.cancel()
+            self._back_key_scheduled = None
 
     def on_enter(self, *args):
-        Window.bind(on_keyboard=self.handle_esc_key)
+        Window.bind(on_key_down=self._on_key_down)
+        Window.bind(on_key_up=self._on_key_up)
+        # app_logger.info(f"[BackKey] MyMDScreen.on_enter screen='{self.name}' -> bound on_key_down + on_key_up")
 
     def on_leave(self, *args):
-        Window.unbind(on_keyboard=self.handle_esc_key)
+        self._clear_back_state()
+        Window.unbind(on_key_down=self._on_key_down)
+        Window.unbind(on_key_up=self._on_key_up)
+        # app_logger.info(f"[BackKey] MyMDScreen.on_leave screen='{self.name}' -> unbound on_key_down + on_key_up")
 
 
 class GenericStatusBarSpacer(MDWidget):
