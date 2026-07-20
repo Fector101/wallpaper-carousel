@@ -1,3 +1,6 @@
+from utils.helper import write_logs_to_file
+write_logs_to_file()
+
 import logging
 import traceback
 
@@ -167,7 +170,7 @@ class WallpaperCarouselApp(MDApp):
                         # Fix for permission Error when choosing from Internal Storage section Android FileExplorer
                         self.file_operation.intent = intent
                 except Exception as error_getting_path:
-                    app_logger.exception("error_getting_path", error_getting_path)
+                    app_logger.exception(f"error_getting_path: {error_getting_path}")
 
             activity.bind(
                 on_activity_result=set_intent_for_file_operation_class)
