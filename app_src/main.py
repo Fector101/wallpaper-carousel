@@ -8,6 +8,53 @@ Notification(
     title="Version",
     message=m).send()
 
+
+
+
+
+
+
+
+
+import os
+from jnius import autoclass
+from android_notify import Notification
+
+PythonActivity = autoclass("org.kivy.android.PythonActivity")
+context = PythonActivity.mActivity
+
+base = context.getFilesDir().getAbsolutePath()
+
+matches = []
+
+for root, dirs, files in os.walk(base):
+    if "materialyoucolor" in root:
+        matches.append(f"\n{root}")
+        for d in sorted(dirs):
+            matches.append(f"  📁 {d}")
+        for f in sorted(files):
+            matches.append(f"  📄 {f}")
+
+text = "\n".join(matches) if matches else "materialyoucolor not found"
+print(text)
+n=Notification(
+    title="materialyoucolor Files",
+    message="Tap to expand"
+)
+n.setBigText(text[:4000])
+n.send()
+
+
+
+
+
+
+
+
+
+
+
+
 import logging
 import traceback
 
