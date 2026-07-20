@@ -89,12 +89,21 @@ class Tee:
             Log.d("python", message)
 
 
+
+
+def app_external_storage_path():
+    PythonActivity = autoclass("org.kivy.android.PythonActivity")
+    context = PythonActivity.mActivity
+
+    ext_dir = context.getExternalFilesDir(None)
+    return ext_dir.getAbsolutePath() if ext_dir else appFolder()
+	
 def write_logs_to_file(log_folder_name="logs", file_name="all_output1.txt"):
     if DEV or not on_android_platform():
         return
     try:
 
-        log_folder = os.path.join(appFolder(), log_folder_name)
+        log_folder = os.path.join(app_external_storage_path(), log_folder_name)
         makeFolder(log_folder)
 
         # Log file path
