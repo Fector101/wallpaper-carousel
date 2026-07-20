@@ -92,8 +92,7 @@ class Tee:
 
 
 def app_external_storage_path():
-    PythonActivity = autoclass("org.kivy.android.PythonActivity")
-    context = PythonActivity.mActivity
+    context = get_python_activity_context()
 
     ext_dir = context.getExternalFilesDir(None)
     return ext_dir.getAbsolutePath() if ext_dir else appFolder()
