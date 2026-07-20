@@ -1,3 +1,6 @@
+from utils.helper import write_logs_to_file
+write_logs_to_file()
+
 import logging
 import traceback
 
