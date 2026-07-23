@@ -57,7 +57,7 @@ Wally automatically rotates your wallpapers using images you choose.
 * Images are stored inside the app’s internal directory
 * Use the Export feature before uninstalling to keep your images
 * Automatically adapts to system theme (dark mode recommended)
-
+* Updates fetched securely for GitHub releases and available for update through app or [release page](https://github.com/Fector101/wallpaper-carousel/releases)
 ---
 
 ## Screenshots
