@@ -5,6 +5,7 @@
 [![Build](https://github.com/Fector101/wallpaper-carousel/actions/workflows/android-release.yml/badge.svg)](https://github.com/Fector101/wallpaper-carousel/actions/workflows/android-release.yml)
 
 **[Download APK](https://github.com/Fector101/wallpaper-carousel/releases/download/v1.0.8/waller.apk)**
+[![GitHub downloads](https://img.shields.io/github/downloads/Fector101/wallpaper-carousel/total?label=downloads&labelColor=27303D&color=0D1117&logo=github&logoColor=FFFFFF&style=flat)](https://github.com/Fector101/wallpaper-carousel/releases)
 
 ---
 
