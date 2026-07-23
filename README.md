@@ -3,6 +3,7 @@
 **A simple, ad-free Android wallpaper carousel.**
 
 [![Build](https://github.com/Fector101/wallpaper-carousel/actions/workflows/android-release.yml/badge.svg)](https://github.com/Fector101/wallpaper-carousel/actions/workflows/android-release.yml)
+[![Downloads](https://img.shields.io/github/downloads/Fector101/wallpaper-carousel/total?style=flat)](https://github.com/Fector101/wallpaper-carousel/releases)
 
 **[Download APK](https://github.com/Fector101/wallpaper-carousel/releases/download/v1.0.8/waller.apk)**
 
