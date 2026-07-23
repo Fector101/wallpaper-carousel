@@ -361,7 +361,7 @@ class MyMDScreen(MDScreen):
 
     def _on_key_down(self, _, key, *__):
         if key != 27:
-            return self.do_not_leave_app
+            return True
         now = time.monotonic()
         if not self._back_key_pending:
             self._back_key_pending = True
@@ -372,19 +372,19 @@ class MyMDScreen(MDScreen):
         else:
             self._back_key_had_duplicate = True
             # app_logger.info(f"[BackKey] MyMDScreen DOWN screen='{self.name}' -> spurious duplicate detected, had_spurious=True")
-        return self.do_not_leave_app
+        return True
 
     def _on_key_up(self, _, key, *__):
         if key != 27:
-            return self.do_not_leave_app
+            return True
         now = time.monotonic()
         if not self._back_key_pending:
             # app_logger.info(f"[BackKey] MyMDScreen UP screen='{self.name}' -> ignored (no pending key_down)")
-            return self.do_not_leave_app
+            return True
         if self._back_key_had_duplicate:
             # app_logger.info(f"[BackKey] MyMDScreen UP screen='{self.name}' -> spurious key_up, clearing state (no action)")
             self._clear_back_state()
-            return self.do_not_leave_app
+            return True
         duration = now - self._back_key_down_time
         self._clear_back_state()
         if duration < self.BACK_PRESS_THRESHOLD:
@@ -392,7 +392,7 @@ class MyMDScreen(MDScreen):
             self.handle_going_back()
         # else:
             # app_logger.info(f"[BackKey] MyMDScreen UP screen='{self.name}' -> LONG press ({duration:.3f}s) -> ignored (system screenshot)")
-        return self.do_not_leave_app
+        return True
 
     def _on_safety_timeout(self, _dt):
         if self._back_key_pending:

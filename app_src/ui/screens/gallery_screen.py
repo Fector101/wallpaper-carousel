@@ -861,7 +861,7 @@ class GalleryScreen(MyMDScreen):
         global gs
         gs=self
         self.app = get_app()
-        self.do_not_leave_app=False # not back btn feature from class MyMDScreen
+        # self.do_not_leave_app=False # not back btn feature from class MyMDScreen
         self.name = "thumbs"
         self.app_dir = Path(appFolder())
         self.wallpapers_dir = self.app_dir / "wallpapers"
@@ -1267,6 +1267,11 @@ class GalleryScreen(MyMDScreen):
                 if isinstance(each, DateGroupLayout):
                     each.change_preview_img_size(None, chosen_cols)
 
+    def handle_going_back(self, *_):
+        if on_android_platform():
+            from jnius import autoclass
+            PythonActivity = autoclass("org.kivy.android.PythonActivity")
+            PythonActivity.mActivity.moveTaskToBack(True)
 
 if __name__ == "__main__":
     class WallpaperCarouselApp(MDApp):
