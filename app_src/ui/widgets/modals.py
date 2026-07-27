@@ -235,5 +235,5 @@ class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
         super().hide()
 
     def on_touch_down(self, touch):
-        super().on_touch_down(touch)
-        return True
+        super().on_touch_down(touch)# for the children touch
+        return True # consume the touch for self
