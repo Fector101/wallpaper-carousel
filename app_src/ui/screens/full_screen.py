@@ -217,11 +217,26 @@ class FullscreenScreen(MyMDScreen):
             pos_hint={'center_y': 0.5},
             theme_text_color='Custom',
             text_color=[1, 1, 1, 1],
-            on_release=self.handle_going_back
+            on_release=self.handle_going_back,
+            md_bg_color = [.1, .1, .1, 1],
+            theme_bg_color = 'Custom'
         )
 
-        self.btn_toggle.theme_bg_color = 'Custom'
-        self.btn_toggle.md_bg_color = [.1, .1, .1, 1]
+
+        self.btn_close = MDIconButton(
+            icon="close",
+            style="outlined",
+            size=(dp(70), dp(70)),
+            pos_hint={'x': .025, 'top': .98},
+            theme_text_color='Custom',
+            text_color=[1, 1, 1, .9],
+            opacity=0,
+            disabled=True,
+            on_release=lambda *_: self.leave_preview_mode(),
+            md_bg_color = [.1, .1, .1, 1],
+            theme_bg_color = 'Custom'
+        )
+
         self.text_container = MDBoxLayout(orientation="vertical")
         self.header_title = MDLabel(text="", pos_hint={'center_y': .48})
         self.header_file_size = MDLabel(text=" ", pos_hint={'center_y': .46},adaptive_size=True,padding=[dp(4),dp(1)])
@@ -281,12 +296,13 @@ class FullscreenScreen(MyMDScreen):
 
         self.add_widget(self.layout)
         self.layout.add_widget(self.carousel)
-        self.header_layout.add_widget(self.btn_toggle)
         self.text_container.add_widget(self.header_title)
         self.text_container.add_widget(self.header_file_size)
+        self.header_layout.add_widget(self.btn_toggle)
         self.header_layout.add_widget(self.text_container)
         self.header_layout.add_widget(self.share_btn)
         self.layout.add_widget(self.header_layout)
+        self.layout.add_widget(self.btn_close)
 
 
         self.btm_btn_layout_root.add_widget(left_btm_box)
@@ -316,6 +332,7 @@ class FullscreenScreen(MyMDScreen):
         self.header_layout.md_bg_color = header_bg
         self.btn_toggle.md_bg_color = header_bg
         self.btn_layout.md_bg_color = header_bg
+        self.btn_close.md_bg_color = header_bg
         self.btn_toggle.text_color = tc
         self.header_title.text_color = tc
         self.set_wallpaper_btn.icon_color = tc
@@ -325,35 +342,25 @@ class FullscreenScreen(MyMDScreen):
         self.share_btn.icon_color = tc
 
     def toggle_fullscreen(self, *_):
-        # p(self.carousel.children[0].children)
         self.is_fullscreen = True
 
         self.carousel.size_hint = (1, 1)
         self.carousel.pos_hint = {'center_x': .5, 'center_y': .5}
-        self.header_layout.md_bg_color = [0, 0, 0, 0]
-        self.header_title.text_color = [0, 0, 0, 0]
-        self.header_layout.bg_color_instr.a = 0
-        self.header_file_size.text_color = [0, 0, 0, 0]
-        self.header_file_size.md_bg_color = [0, 0, 0, 0]
 
-        is_dark = self.app.device_theme == "dark"
-        self.btn_toggle.text_color = [1, 1, 1, .9] if is_dark else [0, 0, 0, .9]
-        self.btn_toggle.style = "outlined"
+        self.header_layout.pos_hint = {'center_x': .5, 'top': 1.2}
+
+        self.btn_close.opacity = 1
+        self.btn_close.disabled = False
 
         self.btm_btn_layout_root.pos_hint = {"y": -2}
-        # self.btn_layout.disabled = True
-
-        self.btn_toggle.icon = "close"
         for img in self.carousel.slides:
             img.fit_mode = "cover"
 
         self.layout.do_layout()
 
     def handle_going_back(self, *_):
-        # If in fullscreen mode → restore controls
-        if self.btn_toggle.icon == "close":
+        if self.is_fullscreen:
             self.leave_preview_mode()
-        # If not in preview mode → go back to thumbnails screen
         else:
             self.back_to_gallery_screen()
     
@@ -535,29 +542,18 @@ class FullscreenScreen(MyMDScreen):
     def leave_preview_mode(self,*_):
         self.carousel.size_hint = self.original_carousel_size_hint
         self.carousel.pos_hint = self.original_carousel_pos_hint
-        self.header_layout.pos_hint = {'center_x': .5, 'top': .97}
-        is_dark = self.app.device_theme == "dark"
-        header_bg = [.1, .1, .1, 1] if is_dark else [.9, .9, .9, 1]
-        tc = [1, 1, 1, 1] if is_dark else [0, 0, 0, 1]
-        self.header_title.text_color = tc
-        self.header_layout.bg_color_instr.a = .8
-        self.header_file_size.md_bg_color = [1, 1, 1, .2] if is_dark else [0, 0, 0, .1]
-        self.header_file_size.text_color = [.6, .6, .6, 1] if is_dark else [.3, .3, .3, 1]
+        self.header_layout.pos_hint = {'center_x': .5, 'top': .98}
+
+        self.btn_close.opacity = 0
+        self.btn_close.disabled = True
 
         self.btm_btn_layout_root.pos_hint = {"y": 0}
 
-        self.header_layout.md_bg_color = header_bg
-        self.btn_toggle.md_bg_color = header_bg
-        self.btn_toggle.icon = "chevron-left"
-        self.btn_toggle.style = "standard"
-        self.btn_toggle.theme_text_color = 'Custom'
-        self.btn_toggle.text_color = tc
-        self.btn_layout.md_bg_color = header_bg
-        self.set_wallpaper_btn.icon_color = tc
-        self.btn_delete.icon_color = tc
-        self.btn_info.icon_color = tc
-        self.btn_fullscreen.icon_color = tc
-        self.share_btn.icon_color = tc
+        self.set_wallpaper_btn.icon_color = [1,1,1,1] if self.app.device_theme == "dark" else [0,0,0,1]
+        self.btn_delete.icon_color = self.set_wallpaper_btn.icon_color
+        self.btn_info.icon_color = self.set_wallpaper_btn.icon_color
+        self.btn_fullscreen.icon_color = self.set_wallpaper_btn.icon_color
+        self.share_btn.icon_color = self.set_wallpaper_btn.icon_color
         self.is_fullscreen = False
 
         for img in self.carousel.slides:
