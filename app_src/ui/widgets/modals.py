@@ -235,17 +235,5 @@ class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
         super().hide()
 
     def on_touch_down(self, touch):
-        touch_x,touch_y=touch.pos
-        db = self.dialog_box
-        dialog_box_x = db.pos[0]
-        dialog_box_y = db.pos[1]
-
-        # p(dialog_box_x,dialog_box_y,touch)
-        # p(touch_y,dialog_box_y, db.height)
-        in_y_range = touch_y < dialog_box_y + db.height and touch_y > dialog_box_y
-        in_x_range = touch_x < dialog_box_x + db.width and touch_x > dialog_box_x
-
-        if in_y_range and in_x_range:
-            return super().on_touch_down(touch)
-        else:
-            return True
+        super().on_touch_down(touch)
+        return True
