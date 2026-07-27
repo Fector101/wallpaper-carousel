@@ -1272,6 +1272,8 @@ class GalleryScreen(MyMDScreen):
             from jnius import autoclass
             PythonActivity = autoclass("org.kivy.android.PythonActivity")
             PythonActivity.mActivity.moveTaskToBack(True)
+        else:
+            self.app.stop()
 
 if __name__ == "__main__":
     class WallpaperCarouselApp(MDApp):
