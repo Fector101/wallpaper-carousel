@@ -392,7 +392,7 @@
                         md_bg_color: app.theme_colors.BUTTON_BG
                         radius: [5]
                         pos_hint: {"center_x": 0.5}
-                        on_release: app.sm.get_screen("settings").export_waller_folder()
+                        on_release: app.sm.get_screen("settings").show_export_dialog()
                         MDButtonIcon:
                             id: btn_icon
                             icon:"export-variant"

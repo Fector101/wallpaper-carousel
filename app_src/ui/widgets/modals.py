@@ -78,6 +78,8 @@ class MyDialogBox(Column,PlaceOnMainScreen):
     header_text=StringProperty("_")
     subtitle_text=StringProperty("_")
     show_ok_button=BooleanProperty(True)
+    ok_button_text=StringProperty("Yes, Remove")
+    ok_button_color=ListProperty([1.0, 0.063, 0.063, 1.0])
     def __init__(self,ok_callback, **kwargs):
         super().__init__(**kwargs)
         self.app = get_app()
@@ -146,11 +148,13 @@ class MyDialogBox(Column,PlaceOnMainScreen):
 
         self.buttons_box.add_widget(self.cancel_btn)
         if self.show_ok_button:
-            self.ok_btn = MyTextButton(text="Yes, Remove",md_bg_color=(1.0, 0.063, 0.063, 1.0),theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.ok)
+            self.ok_btn = MyTextButton(text=self.ok_button_text,md_bg_color=self.ok_button_color,theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.ok)
             self.ok_btn.pos_hint = {"right":1}
             self.buttons_box.add_widget(self.ok_btn)
         self.add_widget(self.buttons_box)
         self.buttons_box.bind(width=self.fix_buttons_width)
+        self.bind(ok_button_text=lambda _,v: setattr(self.ok_btn,"text",v) if self.show_ok_button else None)
+        self.bind(ok_button_color=lambda _,v: setattr(self.ok_btn,"md_bg_color",v) if self.show_ok_button else None)
         self.app.bind(device_theme=self.set_theme)
         self.set_theme(None, self.app.device_theme)
         Clock.schedule_once(lambda dt:self.wrap_text_width(0,0),0)
@@ -199,18 +203,22 @@ class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
     subtitle_text=StringProperty("_")
     ok_callback=ObjectProperty(None)
     show_ok_button=BooleanProperty(True)
+    ok_button_text=StringProperty("Yes, Remove")
+    ok_button_color=ListProperty([1.0, 0.063, 0.063, 1.0])
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.app = get_app()
         self.md_bg_color=[0,0,0,0.6]
-        self.dialog_box = MyDialogBox(icon_name=self.icon_name, header_text=self.header_text, subtitle_text=self.subtitle_text, ok_callback=self.ok_callback, show_ok_button=self.show_ok_button)
+        self.dialog_box = MyDialogBox(icon_name=self.icon_name, header_text=self.header_text, subtitle_text=self.subtitle_text, ok_callback=self.ok_callback, show_ok_button=self.show_ok_button, ok_button_text=self.ok_button_text, ok_button_color=self.ok_button_color)
 
         self.bind(width=self.fix_child_width,
                 # icon_name=lambda _,v: setattr(self.dialog_box,"icon_name",v),
                 header_text=lambda _,v: setattr(self.dialog_box,"header_text",v),
                 subtitle_text=lambda _,v: setattr(self.dialog_box,"subtitle_text",v),
                 ok_callback=lambda _,v: setattr(self.dialog_box,"ok_callback",v),
-                show_ok_button=lambda _,v: setattr(self.dialog_box,"show_ok_button",v)
+                show_ok_button=lambda _,v: setattr(self.dialog_box,"show_ok_button",v),
+                ok_button_text=lambda _,v: setattr(self.dialog_box,"ok_button_text",v),
+                ok_button_color=lambda _,v: setattr(self.dialog_box,"ok_button_color",v)
                   )
         self.add_widget(self.dialog_box)
 

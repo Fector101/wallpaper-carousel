@@ -26,6 +26,7 @@ from ui.screens.full_screen import BorderMDBoxLayout
 from ui.widgets.android import toast
 from ui.widgets.layouts import LoadingLayout, Column, MyMDScreen, AdaptiveLabel
 from ui.widgets.layouts import Row
+from ui.widgets.modals import DialogScreen
 from utils.config_manager import ConfigManager
 from utils.constants import DEV, theme_colors
 from utils.helper import Service, appFolder, smart_convert_minutes
@@ -561,6 +562,17 @@ class SettingsScreen(MyMDScreen):
         self.ids.main_container.add_widget(btn)
         self.current_image_source = get_current_wallpaper()
         self.next_image_source = "assets/icons/icon.png"
+        self.export_dialog = DialogScreen(
+            icon_name="export-variant",
+            header_text="Export Wallpapers?",
+            subtitle_text="All wallpapers will be copied to your public Pictures/Waller folder",
+            ok_callback=self.export_waller_folder,
+            ok_button_text="Yes, Copy",
+            ok_button_color=[0.2, 0.7, 0.3, 1.0],
+        )
+
+    def show_export_dialog(self):
+        self.export_dialog.show(img_texture=None)
 
     def toggle_home_screen_widget_loop(self, widget=None):
         widget.icon = "play" if widget.icon == "pause" else "pause"
