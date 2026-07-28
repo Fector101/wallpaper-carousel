@@ -94,7 +94,7 @@ class IconTextButton(MDButton):
         app = get_app()
         is_dark = app.device_theme == "dark" if hasattr(app, "device_theme") else True
         ic = [.3, .3, .3, 1] if not is_dark else [.8, .8, .8, 1]
-        self.icon_widget = MDButtonIcon(icon=icon, theme_icon_color="Custom", icon_color=ic)
+        self.icon_widget = MDButtonIcon(icon=icon, theme_icon_color="Custom", icon_color=ic,icon_color_disabled = [.5,.5,.5,1])
         self.text_widget = MDButtonText(text=text, theme_text_color="Custom", text_color=ic)
         self.icon_widget.theme_bg_color="Custom"
         self.add_widget(self.icon_widget)
@@ -102,11 +102,15 @@ class IconTextButton(MDButton):
         self.theme_bg_color="Custom"
         app.bind(device_theme=self._set_theme)
         Clock.schedule_once(self.adjust_width,5)
+        Clock.schedule_once(lambda _: self._apply_disabled_color(), 0)  # after widget tree is built
 
     def _set_theme(self, _, theme):
         ic = [.3, .3, .3, 1] if theme == "light" else [.8, .8, .8, 1]
         self.icon_widget.icon_color = ic
         self.text_widget.text_color = ic
+
+    def _apply_disabled_color(self):
+        self.text_widget.disabled_color = [.5,.5,.5,1]
 
 
 class PreviewImage(ButtonBehavior, MDRelativeLayout):
@@ -534,14 +538,15 @@ class DateGroupLayout(Column):
 
 class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
     gallery_screen = ObjectProperty()
+    are_items_selected=BooleanProperty(False)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.app = get_app()
-
         self.multi_select_top=MultiselectTop(gallery_screen=self.gallery_screen,hide=self.hide)
-        self.multi_select_bottom=MultiselectBottom(gallery_screen=self.gallery_screen,hide=self.hide)
+        self.multi_select_bottom=MultiselectBottom(gallery_screen=self.gallery_screen,hide=self.hide,are_items_selected_state=self.are_items_selected)
         self.add_widget(self.multi_select_top)
         self.add_widget(self.multi_select_bottom)
+        self.bind(are_items_selected=self.multi_select_bottom.setter("are_items_selected_state"))
 
     def show(self):
         if not self.parent:
@@ -588,7 +593,8 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
                     value.set_selection_mode(0)
 
     def update_selection_count(self):
-        self.multi_select_top.update_selection_count()
+        count = self.multi_select_top.update_selection_count()
+        self.are_items_selected = bool(count)
 
 
 class MultiselectTop(MDFloatLayout):
@@ -651,10 +657,10 @@ class MultiselectTop(MDFloatLayout):
         else:
             self.deselect_all()
     
-    def update_selection_count(self):
+    def update_selection_count(self) -> int:
         """Update the displayed selection count."""
         if not self.gallery_screen:
-            return
+            return 0
         
         count = 0
         for tab_name, tab_data in self.gallery_screen.tab_instances.items():
@@ -664,6 +670,7 @@ class MultiselectTop(MDFloatLayout):
         
         txt = "item" if count == 1 else "items"
         self.title_widget.text = f"{count} {txt} selected"
+        return count
     
     def select_all(self, *args):
         """Select all images in current tab."""
@@ -708,6 +715,7 @@ class MultiselectBottom(Row):
     nav_bar_height = NumericProperty(get_nav_bar_height())
     gallery_screen = ObjectProperty()
     hide = ObjectProperty()
+    are_items_selected_state = BooleanProperty(False)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         app = get_app()
@@ -720,22 +728,29 @@ class MultiselectBottom(Row):
         self.info_dialog = DialogScreen(icon_name="information-outline", show_ok_button=False)
         app.bind(device_theme=self._set_theme)
 
-        delete_btn = IconTextButton(icon="delete", text="Delete")
-        share_btn = IconTextButton(icon="share", text="Share")
-        info_btn = IconTextButton(icon="information", text="Info")
+        self.delete_btn = IconTextButton(icon="delete", text="Delete")
+        self.share_btn = IconTextButton(icon="share", text="Share")
+        self.info_btn = IconTextButton(icon="information", text="Info")
 
-        delete_btn.bind(on_release=self._delete_selected)
-        share_btn.bind(on_release=self._share_selected)
-        info_btn.bind(on_release=self._info_selected)
+        self.delete_btn.bind(on_release=self._delete_selected)
+        self.share_btn.bind(on_release=self._share_selected)
+        self.info_btn.bind(on_release=self._info_selected)
 
         self.add_widget(Widget())
-        self.add_widget(delete_btn)
+        self.add_widget(self.delete_btn)
         self.add_widget(Widget())
-        self.add_widget(share_btn)
+        self.add_widget(self.share_btn)
         self.add_widget(Widget())
-        self.add_widget(info_btn)
+        self.add_widget(self.info_btn)
         self.add_widget(Widget())
+        self.bind(are_items_selected_state = self.handle_selected_state)
+        self.handle_selected_state(None, self.are_items_selected_state)
         # self.gallery_screen.add_widget(self.dialog)# hot reload
+        # self.handle_selected_state(None,0) # hot reload
+    def handle_selected_state(self, _, is_any_selected):
+        self.delete_btn.disabled= not is_any_selected
+        self.share_btn.disabled= not is_any_selected
+        self.info_btn.disabled= not is_any_selected
 
     def _set_theme(self, _, theme):
         is_dark = theme == "dark"
@@ -910,6 +925,7 @@ class GalleryScreen(MyMDScreen):
                 )
         self._update_menu_theme(None, self.app.device_theme)
         self.app.bind(device_theme=self._update_menu_theme)
+        # Clock.schedule_once(self.enter_select_mode, 0) # hot reload
 
     def _update_menu_theme(self, _, theme):
         is_dark = theme == "dark"
