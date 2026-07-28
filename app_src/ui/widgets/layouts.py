@@ -361,7 +361,7 @@ class MyMDScreen(MDScreen):
 
     def _on_key_down(self, _, key, *__):
         if key != 27:
-            return True
+            return False
         now = time.monotonic()
         if not self._back_key_pending:
             self._back_key_pending = True
@@ -376,7 +376,7 @@ class MyMDScreen(MDScreen):
 
     def _on_key_up(self, _, key, *__):
         if key != 27:
-            return True
+            return False
         now = time.monotonic()
         if not self._back_key_pending:
             # app_logger.info(f"[BackKey] MyMDScreen UP screen='{self.name}' -> ignored (no pending key_down)")
