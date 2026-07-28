@@ -574,7 +574,7 @@ def share_image_to_other_app(image_absolute_path):
         )
 
         intent = Intent(Intent.ACTION_SEND)
-        intent.setType("*/*")
+        intent.setType("image/*")
         intent.putExtra(Intent.EXTRA_STREAM, cast('android.os.Parcelable', uri))
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
@@ -617,7 +617,7 @@ def share_images_to_other_app(image_paths):
             uris.add(uri)
 
         intent = Intent(Intent.ACTION_SEND_MULTIPLE)
-        intent.setType("*/*")
+        intent.setType("image/*")
         intent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
