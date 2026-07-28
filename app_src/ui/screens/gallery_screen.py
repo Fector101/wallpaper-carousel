@@ -1297,12 +1297,16 @@ class GalleryScreen(MyMDScreen):
                     each.change_preview_img_size(None, chosen_cols)
 
     def handle_going_back(self, *_):
+        if hasattr(self.app, 'btm_sheet') and self.app.btm_sheet and self.app.btm_sheet.status == "opened":
+            self.app.btm_sheet.set_state("close")
+            return
         if on_android_platform():
             from jnius import autoclass
             PythonActivity = autoclass("org.kivy.android.PythonActivity")
             PythonActivity.mActivity.moveTaskToBack(True)
         else:
             self.app.stop()
+
 
 if __name__ == "__main__":
     class WallpaperCarouselApp(MDApp):
