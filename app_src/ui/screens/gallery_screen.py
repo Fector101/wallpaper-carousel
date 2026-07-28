@@ -112,6 +112,11 @@ class IconTextButton(MDButton):
     def _apply_disabled_color(self):
         self.text_widget.disabled_color = [.5,.5,.5,1]
 
+    def on_touch_down(self, touch):
+        if self.collide_point(*touch.pos) and self.disabled:
+            return True
+        return super().on_touch_down(touch)
+
 
 class PreviewImage(ButtonBehavior, MDRelativeLayout):
     __events__ = ("on_long_press",)
@@ -866,6 +871,14 @@ class MultiselectBottom(Row):
         )
         self.info_dialog.show(img_texture=None)
 
+    def on_touch_down(self, touch):
+        # Let children (buttons) receive the touch first
+        if self.collide_point(*touch.pos):
+            super().on_touch_down(touch)
+            # Consume the touch so it never reaches widgets behind us
+            return True
+        # Touch is outside our bounds, pass it through to the rest of the widget tree
+        return super().on_touch_down(touch)
 
 class GalleryScreen(MyMDScreen):
     current_tab = StringProperty(GalleryTabs.BOTH.value)
