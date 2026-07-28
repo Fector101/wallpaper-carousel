@@ -572,7 +572,14 @@ class SettingsScreen(MyMDScreen):
         )
 
     def show_export_dialog(self):
+        if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
+            self.app.bottom_bar.hide(animation=False, hidden_by="export")
+        self.export_dialog.on_hide_callback = lambda: self._restore_bottom_nav()
         self.export_dialog.show(img_texture=None)
+
+    def _restore_bottom_nav(self):
+        if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
+            self.app.bottom_bar.show(animation=False, hidden_by="export")
 
     def _export_in_thread(self):
         spinner_layout = LoadingLayout()
@@ -584,6 +591,7 @@ class SettingsScreen(MyMDScreen):
                 app_logger.exception(f"Export failed: {error_exporting_wallpapers}")
             finally:
                 Clock.schedule_once(lambda dt: spinner_layout.remove())
+                Clock.schedule_once(lambda dt: self._restore_bottom_nav())
         threading.Thread(target=_run, daemon=True).start()
 
     def toggle_home_screen_widget_loop(self, widget=None):

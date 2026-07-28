@@ -205,6 +205,7 @@ class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
     show_ok_button=BooleanProperty(True)
     ok_button_text=StringProperty("Yes, Remove")
     ok_button_color=ListProperty([1.0, 0.063, 0.063, 1.0])
+    on_hide_callback=ObjectProperty(None)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.app = get_app()
@@ -240,6 +241,8 @@ class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
         super().show()
 
     def hide(self, *_):
+        if self.on_hide_callback:
+            self.on_hide_callback()
         super().hide()
 
     def on_touch_down(self, touch):
