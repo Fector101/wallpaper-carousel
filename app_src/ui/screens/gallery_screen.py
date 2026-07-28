@@ -22,6 +22,8 @@ from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.label import MDLabel, MDIcon
 from kivymd.uix.menu import MDDropdownMenu
+from kivymd.uix.menu.menu import MDDropdownLeadingIconItem
+from kivy.factory import Factory
 from kivymd.uix.relativelayout import MDRelativeLayout
 from kivymd.uix.widget import MDWidget
 
@@ -42,6 +44,25 @@ from utils.constants import theme_colors
 my_config = ConfigManager()
 gs=None # hot reload
 load_kv_file(py_file_absolute_path=__file__)
+
+
+class GalleryDropdownItem(MDDropdownLeadingIconItem):
+    def on_kv_post(self, base_widget):
+        super().on_kv_post(base_widget)
+        self.ids.label.pos_hint = {"center_y": .44}
+        Clock.schedule_once(self._hide_divider, 0)
+
+    def _hide_divider(self, *args):
+        for child in self.children:
+            if child.__class__.__name__ == "MDDivider":
+                child.opacity = 0
+                child.size_hint_y = None
+                child.height = 0
+                break
+
+
+Factory.register("GalleryDropdownItem", cls=GalleryDropdownItem)
+
 
 min_box_size = dp(80)
 spacing = dp(2)
@@ -928,6 +949,7 @@ class GalleryScreen(MyMDScreen):
                     "leading_icon": "check-all",
                     "theme_text_color": "Custom",
                     "theme_bg_color": "Custom",
+                    "viewclass": "GalleryDropdownItem",
                 },
             ]
         self.select_menu = MDDropdownMenu(
@@ -955,6 +977,7 @@ class GalleryScreen(MyMDScreen):
                 "text_color": text_color,
                 "leading_icon_color": text_color,
                 "md_bg_color": bg_color,
+                "viewclass": "GalleryDropdownItem",
             },
         ]
         self.select_menu.md_bg_color = bg_color
