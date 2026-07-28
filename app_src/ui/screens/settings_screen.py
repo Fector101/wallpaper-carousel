@@ -566,13 +566,25 @@ class SettingsScreen(MyMDScreen):
             icon_name="export-variant",
             header_text="Export Wallpapers?",
             subtitle_text="All wallpapers will be copied to your public Pictures/Waller folder",
-            ok_callback=self.export_waller_folder,
+            ok_callback=self._export_in_thread,
             ok_button_text="Yes, Copy",
             ok_button_color=[0.2, 0.7, 0.3, 1.0],
         )
 
     def show_export_dialog(self):
         self.export_dialog.show(img_texture=None)
+
+    def _export_in_thread(self):
+        spinner_layout = LoadingLayout()
+        import threading
+        def _run():
+            try:
+                self.export_waller_folder()
+            except Exception as error_exporting_wallpapers:
+                app_logger.exception(f"Export failed: {error_exporting_wallpapers}")
+            finally:
+                Clock.schedule_once(lambda dt: spinner_layout.remove())
+        threading.Thread(target=_run, daemon=True).start()
 
     def toggle_home_screen_widget_loop(self, widget=None):
         widget.icon = "play" if widget.icon == "pause" else "pause"
