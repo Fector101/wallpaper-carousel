@@ -13,6 +13,14 @@ from android_notify.internal.java_classes import BuildVersion, BitmapFactory, au
 from ui.widgets.android import toast
 from utils.constants import DEV, WALLPAPER_SERVICE_PATH
 
+if on_android_platform():
+    Log = autoclass("android.util.Log")
+    WallpaperManager = autoclass('android.app.WallpaperManager')
+    ApplicationInfo = autoclass("android.content.pm.ApplicationInfo")
+    PythonActivity = autoclass("org.kivy.android.PythonActivity")
+else:
+    WallpaperManager = None
+
 
 def is_wine():
     """
@@ -85,7 +93,7 @@ class Tee:
     @staticmethod
     def fix_log_to_terminal_on_android(message):
         if on_android_platform():
-            Log = autoclass("android.util.Log")
+
             Log.d("python", message)
 
 
@@ -261,7 +269,6 @@ def change_wallpaper(wallpaper_path, do_ui_thing=None):
             run_ui_thing()
             return False
 
-        WallpaperManager = autoclass('android.app.WallpaperManager') if on_android_platform() else None
         context = get_python_activity_context()
         wallpaper_manager = WallpaperManager.getInstance(context) if WallpaperManager else None
 
@@ -394,8 +401,7 @@ def get_current_wallpaper():
 def is_running_debug_build():
     if not on_android_platform():
         return True
-    ApplicationInfo = autoclass("android.content.pm.ApplicationInfo")
-    PythonActivity = autoclass("org.kivy.android.PythonActivity")
+
     try:
         context = PythonActivity.mActivity
         return (

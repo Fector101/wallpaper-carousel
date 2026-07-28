@@ -22,6 +22,23 @@ from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_
 from utils.helper import change_wallpaper, appFolder, format_time_remaining, SERVICE_PORT_STORE_PATH, UI_PORT_STORE_PATH
 from utils.logger import app_logger
 
+
+Bitmap = autoclass('android.graphics.Bitmap')
+BitmapConfig = autoclass('android.graphics.Bitmap$Config')
+Canvas = autoclass('android.graphics.Canvas')
+Paint = autoclass('android.graphics.Paint')
+Rect = autoclass('android.graphics.Rect')
+RectF = autoclass('android.graphics.RectF')
+PorterDuffMode = autoclass('android.graphics.PorterDuff$Mode')
+PorterDuffXfermode = autoclass('android.graphics.PorterDuffXfermode')
+BitmapFactoryOptions = autoclass('android.graphics.BitmapFactory$Options')
+AppWidgetManager_ = autoclass('android.appwidget.AppWidgetManager')
+ComponentName = autoclass('android.content.ComponentName')
+RemoteViews_ = autoclass('android.widget.RemoteViews')
+View = autoclass('android.view.View')
+IntentFilter = autoclass('android.content.IntentFilter')
+
+
 my_config = ConfigManager()
 wallpapers_folder_path = os.path.join(appFolder(), "wallpapers")
 
@@ -93,7 +110,6 @@ def register_screen_receiver():
     receiver = DetectReceiver()  # create an instance
 
     # Create the IntentFilter
-    IntentFilter = autoclass('android.content.IntentFilter')
     filter__ = IntentFilter()
     Intent = autoclass('android.content.Intent')
     filter__.addAction(Intent.ACTION_SCREEN_ON)
@@ -380,7 +396,7 @@ class WallpaperServerReceiver:
     def apply_new_wallpaper(self):
         self.current_wallpaper = self.next_wallpaper_path
         self.set_wallpaper(self.next_wallpaper_path)
-        self.__write_wallpaper_path_to_file(self.next_wallpaper_path)
+        threading.Thread(target=self.__write_wallpaper_path_to_file, args=(self.next_wallpaper_path,), daemon=True).start()
         self.next_wallpaper_path = None
 
     def apply_next_wallpaper(self, *args):
@@ -389,7 +405,7 @@ class WallpaperServerReceiver:
             self.__update_notification_texts("OnNext Wake", "")
             # print("from java", args)
             self.apply_new_wallpaper()
-            self.choseAndShowPreviewForNextWallpaper()
+            threading.Thread(target=self.choseAndShowPreviewForNextWallpaper, daemon=True).start()
 
     def start(self, data=None):
         # self.__start_main_loop()
@@ -461,21 +477,7 @@ class WallpaperServerReceiver:
             app_logger.warning("Failed to Change Home Screen Widget: Not on Android platform")
             return None
         context = get_python_activity_context()
-        Bitmap = autoclass('android.graphics.Bitmap')
-        BitmapConfig = autoclass('android.graphics.Bitmap$Config')
-        Canvas = autoclass('android.graphics.Canvas')
-        Paint = autoclass('android.graphics.Paint')
-        Rect = autoclass('android.graphics.Rect')
-        RectF = autoclass('android.graphics.RectF')
-        PorterDuffMode = autoclass('android.graphics.PorterDuff$Mode')
-        PorterDuffXfermode = autoclass('android.graphics.PorterDuffXfermode')
 
-        BitmapFactoryOptions = autoclass('android.graphics.BitmapFactory$Options')
-
-        AppWidgetManager_ = autoclass('android.appwidget.AppWidgetManager')
-        ComponentName = autoclass('android.content.ComponentName')
-        RemoteViews_ = autoclass('android.widget.RemoteViews')
-        View = autoclass('android.view.View')
         resources = context.getResources()
         package_name = context.getPackageName()
 
