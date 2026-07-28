@@ -574,7 +574,7 @@ class SettingsScreen(MyMDScreen):
     def show_export_dialog(self):
         if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
             self.app.bottom_bar.hide(animation=False, hidden_by="export")
-        self.export_dialog.on_hide_callback = lambda: self._restore_bottom_nav()
+        self.export_dialog.dialog_box.cancel_btn.bind(on_release=lambda *_: self._restore_bottom_nav())
         self.export_dialog.show(img_texture=None)
 
     def _restore_bottom_nav(self):
