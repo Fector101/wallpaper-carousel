@@ -35,9 +35,9 @@ def is_between_6am_6pm():
     return start <= now < end
 
 
-def get_next_wallpaper(current_wallpaper):
+def get_next_wallpaper(current_wallpaper, next_wallpaper=''):
     """Get the next wallpaper path and name without setting it yet
-    :return: [absolute_path, name]
+    :return: (name, absolute_path)
     """
     try:
 
@@ -47,21 +47,18 @@ def get_next_wallpaper(current_wallpaper):
         else:
             images = images + my_config.get_noon_wallpapers()
 
-        # images = [
-        #     os.path.join(wallpapers_folder_path, f)
-        #     for f in os.listdir(wallpapers_folder_path)
-        #     if f.lower().endswith((".jpg", ".jpeg", ".png"))
-        # ]
-        # rint("service found:",images)
         if not images:
             app_logger.warning(f"No images found in {wallpapers_folder_path}")
             return '', ''
-        new_wallpaper_path = current_wallpaper
-        while current_wallpaper == new_wallpaper_path:
+
+        exclude = {current_wallpaper, next_wallpaper}
+        candidates = [img for img in images if img not in exclude]
+
+        if candidates:
+            new_wallpaper_path = random.choice(candidates)
+        else:
             new_wallpaper_path = random.choice(images)
-            # print(current_wallpaper == new_wallpaper_path, current_wallpaper, new_wallpaper_path)
-            if len(images) == 1:
-                break
+
         return os.path.basename(new_wallpaper_path), new_wallpaper_path
     except Exception as error_getting_next_wallpaper:
         app_logger.exception(f"Failed to get next wallpaper: {error_getting_next_wallpaper}")
@@ -369,7 +366,7 @@ class WallpaperServerReceiver:
 
     def choseAndShowPreviewForNextWallpaper(self):
 
-        wallpaper = get_next_wallpaper(self.next_wallpaper_path)
+        wallpaper =  get_next_wallpaper(self.current_wallpaper, self.next_wallpaper_path or '')
         self.next_wallpaper_path = wallpaper[1]
         self.__set_next_img_in_notification(self.next_wallpaper_path)
         self.__send_data_to_ui("/changed_homescreen_widget",
