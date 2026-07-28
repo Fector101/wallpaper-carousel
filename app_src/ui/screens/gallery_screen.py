@@ -529,6 +529,17 @@ class DateGroupLayout(Column):
 
     def set_selection_mode(self,state):
         """Toggles selection mode for all preview images in this group."""
+        if state:
+            self.toggle_drop_btn.font_size = "18sp"
+            self.toggle_drop_btn.icon = "checkbox-blank-circle-outline"
+            self.toggle_drop_btn.unbind(on_release=self.toggle_dropdown)
+            self.toggle_drop_btn.bind(on_release=self._toggle_select_all_group)
+            self._update_group_select_all_button()
+        else:
+            self.toggle_drop_btn.font_size = "14sp"
+            self.toggle_drop_btn.icon = "triangle-down" if self.is_collapsed else "triangle"
+            self.toggle_drop_btn.unbind(on_release=self._toggle_select_all_group)
+            self.toggle_drop_btn.bind(on_release=self.toggle_dropdown)
         if self.images_container and self.images_container.children:
             for child in self.images_container.children:
                 if isinstance(child, PreviewImage):
@@ -540,12 +551,31 @@ class DateGroupLayout(Column):
 
     def _on_image_selection_changed(self, instance, value):
         """Called when any preview image's selection state changes."""
+        self._update_group_select_all_button()
         if hasattr(self.app,"sm"):
             gallery_screen =self.app.sm.gallery_screen
         else:
             app_logger.warning("This only calls when on hot reload")
             gallery_screen = gs
         gallery_screen.multi_select_manager.update_selection_count()
+
+    def _toggle_select_all_group(self, *args):
+        children = [c for c in self.images_container.children if isinstance(c, PreviewImage)]
+        if not children:
+            return
+        all_selected = all(c.selected for c in children)
+        for child in children:
+            child.selected = not all_selected
+
+    def _update_group_select_all_button(self):
+        children = [c for c in self.images_container.children if isinstance(c, PreviewImage)]
+        if not children:
+            return
+        all_selected = all(c.selected for c in children)
+        self.toggle_drop_btn.icon = (
+            "check-circle" if all_selected
+            else "checkbox-blank-circle-outline"
+        )
 
     def get_selected_images(self):
         """Return list of selected PreviewImage widgets in this group."""
