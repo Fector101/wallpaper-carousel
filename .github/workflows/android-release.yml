@@ -15,6 +15,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Get version from buildozer.spec (early fail if version is missing)
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(grep -Po '^version\s*=\s*\K\S+' buildozer.spec)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version $VERSION"
+
       # Setup Java 17 (required for sdkmanager)
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -80,15 +88,6 @@ jobs:
       - name: Decode keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-release-key.jks
-
-      # Get version from constants.py
-      - name: Get version
-        id: version
-        run: |
-          source venv/bin/activate
-          VERSION=$(python -c "from app_src.utils.constants import VERSION; print(VERSION)")
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Building version $VERSION"
 
       # Build APK
       - name: Build APK
