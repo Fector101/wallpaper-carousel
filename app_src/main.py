@@ -26,7 +26,6 @@ from utils.helper import Service, write_logs_to_file, get_free_port, register_fo
     get_stored_running_ui_server_port, get_stored_running_service_server_port
 from utils.image_operations import ImageOperation
 from utils.logger import app_logger
-from utils.permissions import ask_permission_to_images
 from utils.ui_service_bridge import UIListenToServicer, UIMessengerToService
 
 android_notify_logger.setLevel(logging.DEBUG if on_android_platform() else logging.ERROR)
@@ -37,8 +36,6 @@ register_fonts()
 
 if platform == 'linux':
     Window.size = (390, 740)
-elif on_android_platform() and not on_pydroid_app():
-    ask_permission_to_images()
 
 
 class WallpaperCarouselApp(MDApp):
@@ -152,6 +149,10 @@ class WallpaperCarouselApp(MDApp):
         ).start()
 
     def on_resume(self):
+        if self.file_operation and self.file_operation.showing_loading_screen and not self.file_operation._file_picker_active:
+            print("on_resume: cleaning up spinner left from permission settings redirect")
+            self.file_operation.hide_spinner()
+            self.bottom_bar.show(hidden_by="pic")
         if NotificationHandler.has_permission() and self.sm and self.sm.current == "welcome":
             self.sm.current = "thumbs"
 

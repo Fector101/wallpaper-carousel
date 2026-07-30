@@ -40,6 +40,7 @@ from ui.widgets.layouts import MyPopUp
 from utils.logger import app_logger
 from utils.model import get_app, GalleryTabs
 from utils.constants import theme_colors
+from utils.permissions import ask_permission_to_images, has_permission_to_images
 
 my_config = ConfigManager()
 gs=None # hot reload
@@ -1043,6 +1044,7 @@ class GalleryScreen(MyMDScreen):
             Clock.schedule_once(run_widgets_creation)
 
     def open_file_chooser(self, *_):
+        print(f"[DBG] open_file_chooser: entered")
         # file_operation = FileOperation(self.update_thumbnails_method)
         # if platform == 'android':
         #     from android import activity # type: ignore
@@ -1062,19 +1064,41 @@ class GalleryScreen(MyMDScreen):
         #
         #     activity.bind(on_activity_result=test) # handling image with no permission
         self.app.file_operation.show_spinner()
+        self.app.file_operation._file_picker_active = True
         self.app.bottom_bar.hide(animation=False, hidden_by="pic")
 
         def show_chooser(dt=None):
+            print("[DBG] open_file_chooser: launching plyer filechooser")
             filechooser.open_file(
                 on_selection=self.app.file_operation.copy_add,
                 filters=["image"],
                 multiple=True
             )
-        if on_android_platform():
-            Clock.schedule_once(show_chooser)
-        else:
+
+        if not on_android_platform():
             import threading
             threading.Thread(target=show_chooser).start()
+            return
+
+        if has_permission_to_images():
+            Clock.schedule_once(show_chooser)
+        else:
+            def on_permission_result(all_granted):
+                if all_granted:
+                    if self.app.file_operation._processing_intent:
+                        print("open_file_chooser: permission granted, import_from_intent already running")
+                    elif self.app.file_operation.has_pending_intent():
+                        print("open_file_chooser: permission granted, processing pending intent")
+                        self.app.file_operation.import_from_intent()
+                    else:
+                        print("open_file_chooser: permission granted, opening file chooser")
+                        Clock.schedule_once(show_chooser)
+                else:
+                    print("open_file_chooser: permission denied by user")
+                    self.app.file_operation._file_picker_active = False
+                    self.app.file_operation.hide_spinner()
+                    self.app.bottom_bar.show(animation=False, hidden_by="pic")
+            ask_permission_to_images(callback=on_permission_result)
         # ----------------- This Also Works Keeping for Reference ---------------------------
         # from jnius import autoclass, cast
         # from android import activity

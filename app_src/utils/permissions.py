@@ -1,19 +1,129 @@
-def ask_permission_to_images():
-    try:
-        from android.permissions import request_permissions, Permission  # type: ignore
-        def check_permissions():
-            permissions = [
-                Permission.READ_EXTERNAL_STORAGE,
-                Permission.WRITE_EXTERNAL_STORAGE,
-                Permission.READ_MEDIA_IMAGES
-            ]
-            request_permissions(permissions)
+import os
 
-        check_permissions()
+# p4a's Permission class doesn't include this Android 15+ constant
+_READ_MEDIA_VISUAL_USER_SELECTED = "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+
+
+def _is_first_image_permission_ask():
+    marker = ".ASKED_IMAGE_PERMISSION"
+    path = os.path.join(os.path.dirname(__file__), marker)
+    if os.path.exists(path):
+        return False
+    try:
+        open(path, 'w').close()
+    except Exception:
+        pass
+    return True
+
+
+def _remove_image_permission_marker():
+    marker = ".ASKED_IMAGE_PERMISSION"
+    path = os.path.join(os.path.dirname(__file__), marker)
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except Exception:
+        pass
+
+
+def _open_app_settings():
+    try:
+        from android_notify.config import get_python_activity_context
+        from android_notify.internal.java_classes import Intent, Settings, Uri
+
+        context = get_python_activity_context()
+        if not context:
+            return
+        intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        intent.setData(Uri.parse(f"package:{context.getPackageName()}"))
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+        print("_open_app_settings: opened app settings for manual permission grant")
+    except Exception as e:
+        print(f"_open_app_settings: error opening settings: {e}")
+
+
+def _can_show_permission_dialog(permissions):
+    from android_notify.config import get_python_activity_context
+    context = get_python_activity_context()
+    return any(context.shouldShowRequestPermissionRationale(p) for p in permissions)
+
+
+def _get_image_permissions():
+    from android_notify.internal.java_classes import BuildVersion
+    from android.permissions import Permission
+
+    sdk_int = BuildVersion.SDK_INT
+    if sdk_int >= 35:
+        return [Permission.READ_MEDIA_IMAGES, _READ_MEDIA_VISUAL_USER_SELECTED]
+    elif sdk_int >= 33:
+        return [Permission.READ_MEDIA_IMAGES]
+    elif sdk_int >= 29:
+        return [Permission.READ_EXTERNAL_STORAGE]
+    else:
+        return [Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE]
+
+
+def _has_image_access():
+    """Returns True if user has ANY level of image access (full or partial)."""
+    from android_notify.internal.java_classes import BuildVersion
+    from android.permissions import check_permission
+
+    perms = _get_image_permissions()
+    for each in perms:
+        state = check_permission(each)
+        print(f"_has_image_access: {each}={state}")
+
+    if BuildVersion.SDK_INT >= 35:
+        return any(check_permission(p) for p in perms)
+    return all(check_permission(p) for p in perms)
+
+
+def ask_permission_to_images(callback=None):
+    try:
+        from android.permissions import request_permissions, check_permission
+        from android_notify.internal.java_classes import BuildVersion
+
+        perms = _get_image_permissions()
+
+        if _has_image_access():
+            print(f"ask_permission_to_images: already has access")
+            _remove_image_permission_marker()
+            if callback:
+                callback(True)
+            return
+
+        if not _is_first_image_permission_ask() and not _can_show_permission_dialog(perms):
+            print("ask_permission_to_images: permission permanently denied, opening app settings")
+            _open_app_settings()
+            if callback:
+                callback(False)
+            return
+
+        def wrapped(permissions, grants):
+            if BuildVersion.SDK_INT >= 35:
+                granted = any(grants)
+            else:
+                granted = all(grants)
+            print(f"ask_permission_to_images: requested={permissions}, grants={grants} -> {'granted' if granted else 'denied'}")
+            if granted:
+                _remove_image_permission_marker()
+            if callback:
+                callback(granted)
+
+        request_permissions(perms, wrapped)
     except Exception as error_asking_file_permission:
         print('Error asking for permission:', error_asking_file_permission)
+        if callback:
+            callback(False)
 
 
+def has_permission_to_images():
+    try:
+        return _has_image_access()
+    except Exception as error_has_permission:
+        print('Error checking permission status:', error_has_permission)
+        return True
 # Below Works but not need Use Only Permission for images makes more sense
 
 # from kivy.utils import platform # OS
