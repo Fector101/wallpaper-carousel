@@ -5,15 +5,11 @@ from pathlib import Path
 from android_notify.config import on_android_platform
 from kivy.animation import Animation
 from kivy.clock import Clock
-from kivy.graphics import Color, Rectangle
 from kivy.metrics import dp, sp
 from kivy.properties import StringProperty, NumericProperty, ListProperty, BooleanProperty, ObjectProperty
 from kivy.uix.behaviors import ButtonBehavior
-from kivy.uix.button import Button
 from kivy.uix.widget import Widget
 from kivy.uix.image import AsyncImage
-from kivy.uix.recyclegridlayout import RecycleGridLayout
-from kivy.uix.tabbedpanel import TabbedPanel
 
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -35,7 +31,6 @@ from utils.config_manager import ConfigManager
 from utils.helper import appFolder, load_kv_file  # type
 from utils.image_operations import get_or_create_thumbnail, get_image_info, share_image_to_other_app, share_images_to_other_app
 from ui.widgets.modals import DialogScreen
-from ui.widgets.layouts import MyPopUp
 from utils.logger import app_logger
 from utils.model import get_app, GalleryTabs
 from utils.constants import theme_colors

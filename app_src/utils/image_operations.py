@@ -3,7 +3,7 @@ import shutil
 import threading
 import traceback
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 
 from android_notify.internal.java_classes import String, autoclass, cast, Intent
 from kivy.clock import Clock
@@ -56,6 +56,8 @@ class ImageOperation:
         print(f"[DBG] __copy_add: entered with {len(files)} files: {files}")
         if not files:
             print("[DBG] __copy_add: no files, cleaning up")
+            self._file_picker_active = False
+            self._processing_intent = False
             Clock.schedule_once(lambda dt: self.load_saved(has_files=False))
             self.hide_spinner()
             return
@@ -235,6 +237,7 @@ class ImageOperation:
                 print(log)
                 app_logger.info(log)
                 if not uris:
+                    self._file_picker_active = False
                     self._processing_intent = False
                     Clock.schedule_once(lambda dt: self.hide_spinner(), 0)
                     return
@@ -297,6 +300,7 @@ class ImageOperation:
                 Clock.schedule_once(lambda dt: self.ui_things(dt), 0)
                 Clock.schedule_once(lambda dt: self.app.bottom_bar.show(animation=False, hidden_by="pic"), 0)
             except Exception as e:
+                self._file_picker_active = False
                 self._processing_intent = False
                 err = f"import_from_intent: error: {e}"
                 print(err)
