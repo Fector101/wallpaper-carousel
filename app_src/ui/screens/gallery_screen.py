@@ -516,11 +516,15 @@ class DateGroupLayout(Column):
         available_width = window_width_minus_padding - spacing
         total_spacing = spacing * (self.cols - 1)
         thumb_size = (available_width - total_spacing) / number_of_cols
-        # thumb_size = (window_width_minus_padding + spacing + (number_of_cols * spacing))/number_of_cols
         for each_child in self.images_container.children:
             each_child.size = (thumb_size, thumb_size)
+
+        if self.is_collapsed:
+            self.images_container.height = 0
+            self.images_container.opacity = 0
+            self.images_container.disabled = True
+
         return None
-        # self.doing_cols_change=False
 
     def set_selection_mode(self,state):
         """Toggles selection mode for all preview images in this group."""
