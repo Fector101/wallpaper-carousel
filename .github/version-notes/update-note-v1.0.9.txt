@@ -1,0 +1,20 @@
+[color=#4CAF50][b]What's New[/b][/color]
+• Navigate Backwards: use your Android back button or ESC key to go back on any screen or dialog box
+• Pick your Theme: choose Light, Dark, or Adaptive theme from Settings
+• Always On: toggle carousel auto-start when you open the app or reboot your device
+• Long-press any image to enter Multi-select mode
+• Faster image import with direct file picker + better Android 15 support
+• Export wallpapers with a confirmation dialog, no more accidental exports
+
+[color=#4CAF50][b]Improvements[/b][/color]
+• Smoother multi-select and better touch handling
+• Light theme colors now display correctly throughout the app
+
+[color=#4CAF50][b]Fixes[/b][/color]
+• Some apps could not receive shared images
+• Dialog boxes no longer let touches pass through in multi-select mode
+• Collapsed groups no longer expand when you change columns
+• Random wallpaper selection picks the right images now
+• Multi-select header no longer overlaps the scroll area
+• Share button no longer gets stuck on the preview screen
+• Interval input now uses the numpad keyboard

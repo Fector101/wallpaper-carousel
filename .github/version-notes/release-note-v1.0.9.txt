@@ -1,0 +1,21 @@
+# V1.0.9
+
+## New
+- Navigate Backwards: Android back button and ESC key support across all screens, modals, and dialog boxes
+- Carousel auto-start controls: "Start on app launch" and "Start on device boot" toggles in settings
+- Enhanced multi-select: improved long-press detection, press animation, group selection handling
+- Custom intent-based file picker replacing plyer: faster image import, parallel processing, and better Android 15 support
+- Android 15 / API 35 permissions: `READ_MEDIA_VISUAL_USER_SELECTED` support for "allow limited access", rationale dialog, auto-redirect to app settings when permanently denied
+- Export confirmation dialog before exporting wallpapers, no more accidental exports.
+- Logs written to file immediately at app startup for easier debugging (at Android/data)
+- Pick your Theme: choose Light, Dark, or Adaptive mode from Settings with real-time color updates throughout the app
+
+## Fixes
+- Numpad keyboard type for column number input
+- URI permission handling improved for reliable image access from all sources
+- Multi-select header no longer overlaps the scroll area
+- Collapsed wallpaper groups no longer expand when changing columns
+- Some apps could not recognizing shared images
+- Share button no longer gets stuck on the preview screen
+- Dialog boxes no longer let touches pass through in multi-select mode
+- Light theme colors display correctly throughout the app

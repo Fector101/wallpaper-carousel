@@ -12,3 +12,4 @@ ui_port.txt
 test.*
 test1.*
 .*
+!/.github/
