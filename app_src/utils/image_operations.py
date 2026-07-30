@@ -310,6 +310,101 @@ class ImageOperation:
 
         threading.Thread(target=_run, daemon=True).start()
 
+    def import_from_mediastore(self):
+        """Query MediaStore for images accessible via limited permission.
+        Used on API 35+ when READ_MEDIA_VISUAL_USER_SELECTED is granted
+        but READ_MEDIA_IMAGES is not (system already showed its picker)."""
+        if self._processing_intent:
+            print("[DBG] import_from_mediastore: already running, skipping")
+            return
+        self._processing_intent = True
+        def _run():
+            try:
+                ImagesMedia = autoclass("android.provider.MediaStore$Images$Media")
+                PythonActivity = autoclass("org.kivy.android.PythonActivity")
+                cr = PythonActivity.mActivity.getContentResolver()
+                cursor = cr.query(
+                    ImagesMedia.EXTERNAL_CONTENT_URI, None, None, None, None
+                )
+                if cursor is None or cursor.getCount() == 0:
+                    self._file_picker_active = False
+                    self._processing_intent = False
+                    Clock.schedule_once(lambda dt: self.hide_spinner(), 0)
+                    return
+                Uri = autoclass("android.net.Uri")
+                uris = []
+                while cursor.moveToNext():
+                    id_val = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(String("_id"))
+                    )
+                    item_uri = Uri.withAppendedPath(
+                        ImagesMedia.EXTERNAL_CONTENT_URI,
+                        String(str(id_val))
+                    )
+                    uris.append(item_uri)
+                cursor.close()
+                print(f"[DBG] import_from_mediastore: got {len(uris)} URIs")
+                self.intent = None
+                new_images = []
+                images_lock = threading.Lock()
+                def process_one(i, item_uri):
+                    try:
+                        file_name = get_file_name_from_uri(item_uri)
+                        if not file_name:
+                            file_name = f"{int(time.time())}_{i}.png"
+                        with self._unique_lock:
+                            destination_path = self.unique(file_name)
+                        copy_image_to_internal(
+                            destination_name=destination_path, uri=item_uri
+                        )
+                        create_thumbnail(
+                            destination_path, destination_dir=self.wallpapers_dir
+                        )
+                        with images_lock:
+                            new_images.append(str(destination_path))
+                    except Exception as e:
+                        print(
+                            f"import_from_mediastore: error "
+                            f"importing {item_uri}: {e}"
+                        )
+                        app_logger.exception(e)
+                        traceback.print_exc()
+                with ThreadPoolExecutor(max_workers=3) as pool:
+                    list(
+                        pool.map(
+                            lambda args: process_one(*args), enumerate(uris)
+                        )
+                    )
+                summary = (
+                    f"import_from_mediastore: imported "
+                    f"{len(new_images)}/{len(uris)} images"
+                )
+                print(summary)
+                app_logger.info(summary)
+                data = my_config._read()
+                for img in new_images:
+                    if img not in data["wallpapers"]:
+                        data["wallpapers"].append(img)
+                my_config._write(data)
+                self._file_picker_active = False
+                self._processing_intent = False
+                Clock.schedule_once(lambda dt: self.ui_things(dt), 0)
+                Clock.schedule_once(
+                    lambda dt: self.app.bottom_bar.show(
+                        animation=False, hidden_by="pic"
+                    ),
+                    0,
+                )
+            except Exception as e:
+                self._file_picker_active = False
+                self._processing_intent = False
+                err = f"import_from_mediastore: error: {e}"
+                print(err)
+                app_logger.exception(err)
+                traceback.print_exc()
+                Clock.schedule_once(lambda dt: self.hide_spinner(), 0)
+        threading.Thread(target=_run, daemon=True).start()
+
     def hide_nav_btns(self):
         def ui_thing(*a):
             self.app.bottom_bar.hide(animation=False, hidden_by="pic")

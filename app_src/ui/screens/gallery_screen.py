@@ -1088,8 +1088,18 @@ class GalleryScreen(MyMDScreen):
                         print("open_file_chooser: permission granted, processing pending intent")
                         self.app.file_operation.import_from_intent()
                     else:
-                        print("open_file_chooser: permission granted, opening file chooser")
-                        Clock.schedule_once(show_chooser)
+                        try:
+                            from android.permissions import check_permission, Permission
+                            has_read_media = check_permission(Permission.READ_MEDIA_IMAGES)
+                        except Exception:
+                            has_read_media = True  # fallback to opening picker
+                        if not has_read_media:
+                            # READ_MEDIA_VISUAL_USER_SELECTED only → system already showed picker
+                            print("open_file_chooser: limited access granted, querying MediaStore directly")
+                            self.app.file_operation.import_from_mediastore()
+                        else:
+                            print("open_file_chooser: full access granted, opening file chooser")
+                            Clock.schedule_once(show_chooser)
                 else:
                     print("open_file_chooser: permission denied by user")
                     self.app.file_operation._file_picker_active = False
