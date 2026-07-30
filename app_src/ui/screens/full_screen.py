@@ -179,6 +179,8 @@ class FullscreenScreen(MyMDScreen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.info_popup = None
+        self.showing_info_modal = False
         self.carousel_has_images = None
         self.app = get_app()
         self.clock_for_higher_format = None
@@ -417,6 +419,7 @@ class FullscreenScreen(MyMDScreen):
     #               IMAGE INFO POPUP
     # ====================================================================
     def show_info(self, *_):
+        self.showing_info_modal = True
         gallery_screen = self.manager.gallery_screen
 
         if not gallery_screen.wallpapers:
@@ -425,13 +428,13 @@ class FullscreenScreen(MyMDScreen):
         idx = self.carousel.index
         path = gallery_screen.wallpapers[idx]
 
-        popup = MyPopUp(
+        self.info_popup = MyPopUp(
             info = get_image_info(path)
             # title="Image Info",
             # content=Label(text=f"Path:\n{path}"),
             # size_hint=(0.8, 0.4)
         )
-        popup.open()
+        self.info_popup.open()
 
     def update_images(self,index=None):
         """Rebuild carousel anytime wallpapers change."""
@@ -560,8 +563,12 @@ class FullscreenScreen(MyMDScreen):
             img.fit_mode = "contain"
 
     def back_to_gallery_screen(self,*_):
-        self.app.sm.gallery_screen.refresh_gallery_screen()
-        self.manager.current = "thumbs"
+        if self.showing_info_modal:
+            self.info_popup.dismiss()
+            self.showing_info_modal=False
+        else:
+            self.app.sm.gallery_screen.refresh_gallery_screen()
+            self.manager.current = "thumbs"
 
 
 def patch_resolution(proxy_image, image_object):
