@@ -463,6 +463,38 @@ def copy_image_to_internal(destination_name, uri):
     from jnius import autoclass
 
     PythonActivity = autoclass("org.kivy.android.PythonActivity")
+    # MediaStore = autoclass("android.provider.MediaStore")
+    # Environment = autoclass("android.os.Environment")
+    # ContentUris = autoclass("android.content.ContentUris")
+    # ImagesMedia = autoclass('android.provider.MediaStore$Images$Media')
+
+    # def path_to_image_uri(path):
+    #     cr = PythonActivity.mActivity.getContentResolver()
+    #
+    #     projection = ["_id"]
+    #     selection = "_data=?"
+    #     selection_args = [path]
+    #
+    #     cursor = cr.query(
+    #         ImagesMedia.EXTERNAL_CONTENT_URI,
+    #         projection,
+    #         selection,
+    #         selection_args,
+    #         None
+    #     )
+    #
+    #     if cursor and cursor.moveToFirst():
+    #         image_id = cursor.getLong(0)
+    #         cursor.close()
+    #         return ContentUris.withAppendedId(
+    #             ImagesMedia.EXTERNAL_CONTENT_URI,
+    #             image_id
+    #         )
+    #
+    #     if cursor:
+    #         cursor.close()
+    #
+    #     return None
     FileOutputStream = autoclass("java.io.FileOutputStream")
     BufferedInputStream = autoclass("java.io.BufferedInputStream")
     BufferedOutputStream = autoclass("java.io.BufferedOutputStream")
