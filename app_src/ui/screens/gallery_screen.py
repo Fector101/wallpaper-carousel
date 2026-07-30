@@ -664,7 +664,7 @@ class MultiselectTop(MDFloatLayout):
         bg = [.1, .1, .1, 1] if is_dark else [.9, .9, .9, 1]
         tc = [.8, .8, .8, 1] if is_dark else [.2, .2, .2, 1]
         self.md_bg_color = bg
-        self.size_hint_y = .25
+        self.size_hint_y = None
         self.pos_hint={"top":1}
         x_padding=15
         self.root_layout = Column(adaptive_height=True,pos_hint={"top":1}, padding=[x_padding,0,x_padding,10],spacing=dp(10))
@@ -694,6 +694,7 @@ class MultiselectTop(MDFloatLayout):
         self.add_widget(self.root_layout)
         app.bind(device_theme=self._set_theme)
         self.bind(select_all_=self.on_select_all_changed)
+        Clock.schedule_once(self._bind_head_height, 0)
 
     def _set_theme(self, _, theme):
         is_dark = theme == "dark"
@@ -702,10 +703,15 @@ class MultiselectTop(MDFloatLayout):
         self.md_bg_color = bg
         self.generic_status_bar_spacer.md_bg_color = bg
         self.cancel_selection_mode_btn.icon_color = tc
-        self.toggle_select_all_btn.icon_color = tc
         self.title_widget.text_color = tc
         # self.gallery_screen = get_app().sm.get_screen("thumbs")
     # def cancel_selection_mode_btn(self, *args):
+    def _bind_head_height(self, *args):
+        if self.gallery_screen and 'head_section' in self.gallery_screen.ids:
+            head = self.gallery_screen.ids.head_section
+            self.height = head.height
+            head.bind(height=self.setter('height'))
+
     def on_select_all_changed(self, _,v):
         if v:
             self.select_all()
