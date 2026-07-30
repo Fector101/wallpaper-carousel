@@ -709,8 +709,9 @@ class MultiselectTop(MDFloatLayout):
     def _bind_head_height(self, *args):
         if self.gallery_screen and 'head_section' in self.gallery_screen.ids:
             head = self.gallery_screen.ids.head_section
-            self.height = head.height
-            head.bind(height=self.setter('height'))
+            parent_spacing=10
+            self.height = head.height + parent_spacing
+            head.bind(height=lambda _, h: setattr(self, 'height', h + parent_spacing))
 
     def on_select_all_changed(self, _,v):
         if v:
