@@ -160,11 +160,14 @@ class WallpaperCarouselApp(MDApp):
         if on_android_platform() and not on_pydroid_app():
             from android import activity  # type: ignore
             def set_intent_for_file_operation_class(activity_id, some_int, intent):
-                if self.file_operation.showing_loading_screen and not some_int:
+                if not some_int:
                     # Fix for Half Screen Popup When no file is picked.
                     # some_int is usually -1 when a file is chosen and 0 when no file is chosen
-                    self.file_operation.hide_spinner()
-                    self.bottom_bar.show(hidden_by="pic")
+                    self.file_operation._file_picker_active = False
+                    if self.file_operation.showing_loading_screen:
+                        self.file_operation.hide_spinner()
+                        self.bottom_bar.show(hidden_by="pic")
+                    return
                 try:
                     print("intent must be before chooser callback",activity_id,some_int,intent)
                     if intent:
