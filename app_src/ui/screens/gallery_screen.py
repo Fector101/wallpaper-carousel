@@ -27,7 +27,6 @@ from kivy.factory import Factory
 from kivymd.uix.relativelayout import MDRelativeLayout
 from kivymd.uix.widget import MDWidget
 
-from plyer import filechooser
 
 from utils.logger import app_logger
 from ui.widgets.layouts import MyMDScreen, Column, Row, get_nav_bar_height, get_status_bar_height, \
@@ -1068,16 +1067,19 @@ class GalleryScreen(MyMDScreen):
         self.app.bottom_bar.hide(animation=False, hidden_by="pic")
 
         def show_chooser(dt=None):
-            print("[DBG] open_file_chooser: launching plyer filechooser")
-            filechooser.open_file(
-                on_selection=self.app.file_operation.copy_add,
-                filters=["image"],
-                multiple=True
-            )
+            print("[DBG] open_file_chooser: launching custom file picker")
+            self.app.file_operation.launch_file_picker()
 
         if not on_android_platform():
             import threading
-            threading.Thread(target=show_chooser).start()
+            from plyer import filechooser
+            def desktop_chooser():
+                filechooser.open_file(
+                    on_selection=self.app.file_operation.copy_add,
+                    filters=["image"],
+                    multiple=True
+                )
+            threading.Thread(target=desktop_chooser).start()
             return
 
         if has_permission_to_images():

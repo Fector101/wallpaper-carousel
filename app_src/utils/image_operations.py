@@ -25,6 +25,7 @@ class ImageOperation:
         self._file_picker_active = False # True while file picker is open; prevents on_resume from tearing down spinner
         self._processing_intent = False # True when import_from_intent is running; guards against plyer duplicate
         self._unique_lock = threading.Lock()
+        self._picker_request_code = 65432
         self.spinner_layout = None
         self.app_dir = Path(appFolder())
         self.intent = None
@@ -188,6 +189,21 @@ class ImageOperation:
 
     def has_pending_intent(self):
         return self.intent is not None
+
+    def launch_file_picker(self):
+        """Launch Android file picker directly, bypassing plyer's slow URI resolution."""
+        if not on_android_platform():
+            return
+        PythonActivity = autoclass('org.kivy.android.PythonActivity')
+        mActivity = PythonActivity.mActivity
+        intent = Intent(Intent.ACTION_GET_CONTENT)
+        intent.setType("image/*")
+        intent.addCategory(Intent.CATEGORY_OPENABLE)
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, True)
+        mActivity.startActivityForResult(
+            Intent.createChooser(intent, cast('java.lang.CharSequence', String("Select Images"))),
+            self._picker_request_code
+        )
 
     def import_from_intent(self):
         """Process URIs from a pending intent in parallel.

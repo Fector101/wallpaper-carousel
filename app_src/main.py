@@ -170,6 +170,10 @@ class WallpaperCarouselApp(MDApp):
                     if intent:
                         # Fix for permission Error when choosing from Internal Storage section Android FileExplorer
                         self.file_operation.intent = intent
+                        # Process URIs in background immediately, bypassing plyer's main-thread path resolution.
+                        if self.file_operation._file_picker_active:
+                            print("bind_plyer_fix: starting async import_from_intent")
+                            self.file_operation.import_from_intent()
                 except Exception as error_getting_path:
                     app_logger.exception(f"error_getting_path: {error_getting_path}")
 
