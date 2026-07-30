@@ -70,6 +70,22 @@ class ImageOperation:
 
         self.intent = None
         copy_time = time.time()
+
+        if uris:
+            try:
+                PythonActivity = autoclass("org.kivy.android.PythonActivity")
+                _mAct = PythonActivity.mActivity
+                for _uri in uris:
+                    try:
+                        _mAct.grantUriPermission(
+                            _mAct.getPackageName(), _uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        )
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
         new_images = []
         images_lock = threading.Lock()
 
@@ -224,6 +240,19 @@ class ImageOperation:
                     return
 
                 self.intent = None
+
+                # Grant URI permission so processed images are accessible
+                PythonActivity = autoclass("org.kivy.android.PythonActivity")
+                _mAct = PythonActivity.mActivity
+                for _uri in uris:
+                    try:
+                        _mAct.grantUriPermission(
+                            _mAct.getPackageName(), _uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        )
+                    except Exception:
+                        pass
+
                 new_images = []
                 images_lock = threading.Lock()
 
