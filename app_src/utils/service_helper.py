@@ -223,7 +223,7 @@ class WallpaperServerReceiver:
         try:
             register_screen_receiver()
         except Exception as error_registering_screen_receiver:
-            app_logger.exception(f"python error_registering_screen_receiver {error_registering_screen_receiver}")
+            app_logger.exception(f"python error_registering_screen_receiver: {error_registering_screen_receiver}")
 
     @staticmethod
     def __unregister_screen_state_receiver():
@@ -412,9 +412,8 @@ class WallpaperServerReceiver:
         pass
 
     def stop(self, *args):
-        print("called stop service")
-        self.notification.updateTitle("Stopping Service...")
         app_logger.info(f"stop args: {args}")
+        self.notification.updateTitle("Stopping Service...")
         self.running_on_wake_loop = False
         self.running_on_interval_loop = False
         self.stop_ongoing_loop()

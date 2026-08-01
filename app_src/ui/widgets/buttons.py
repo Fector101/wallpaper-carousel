@@ -94,7 +94,6 @@ class MyMDIconButton(MDIconButton):
         elif not self.time_of_second_release:
             self.time_of_second_release = time.time()
             if self.time_of_second_release - self.time_of_first_release < 1:
-                print(f"double_clicked: {self.icon}")
                 if self.on_double_click:
                     self.on_double_click()
             self.cancel_double_click()

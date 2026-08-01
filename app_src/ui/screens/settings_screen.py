@@ -123,7 +123,7 @@ def my_with_callback():
         ##p("got here2")
 
     except Exception as e:
-        app_logger.exception('Notify error:', e)
+        app_logger.exception(f'Notify error: {e}')
 
 
 def show_home_screen_widget_popup1():
@@ -169,7 +169,7 @@ def show_home_screen_widget_popup1():
                 successCallback
             )
     except Exception as error_from_my_way:
-        app_logger.exception("error_from_my_way", error_from_my_way)
+        app_logger.exception(f"error_from_my_way: {error_from_my_way}")
         traceback.print_exc()
 
 
@@ -763,7 +763,7 @@ class SettingsScreen(MyMDScreen):
                     exported_uris.append(dest_path)
 
                 except Exception as e:
-                   app_logger.exception("Pre-29 export error:", e)
+                   app_logger.exception(f"Pre-29 export error:{e}")
 
                 continue
 

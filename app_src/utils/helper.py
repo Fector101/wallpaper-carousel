@@ -184,7 +184,6 @@ class Service:
     def start(self):
         if not on_android_platform():
             self.__run_service_file()
-            print('hello')
             return None
         if not self.mActivity:
             return None

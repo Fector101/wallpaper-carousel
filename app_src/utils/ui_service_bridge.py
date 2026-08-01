@@ -56,7 +56,7 @@ class UIListenToServicer:
                 name="UIServiceListenerThread"
             ).start()
         except Exception as error_in_UIServiceListener_thread:
-            print("error_in_UIServiceListener_thread:", error_in_UIServiceListener_thread)
+            app_logger.exception(f"error_in_UIServiceListener_thread: {error_in_UIServiceListener_thread}")
             traceback.print_exc()
         return self
 
@@ -83,7 +83,7 @@ class UIListenToServicer:
 
     def changed_wallpaper(self, _, data):
         TAG = "changed_wallpaper"
-        app_logger.debug(f"[{TAG}] data: {data}")
+        app_logger.info(f"[{TAG}] data: {data}")
         if not data:
             return None
 
@@ -105,7 +105,7 @@ class UIListenToServicer:
 
     def changed_homescreen_widget(self, _, data):
         TAG = "changed_homescreen_widget"
-        app_logger.debug(f"[{TAG}] data: {data}")
+        app_logger.info(f"[{TAG}] data: {data}")
         if not data:
             return None
         try:

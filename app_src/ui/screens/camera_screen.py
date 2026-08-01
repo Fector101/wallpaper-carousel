@@ -102,7 +102,6 @@ class CameraLayout(BoxLayout):
         try:
             self._build_ui()
         except Exception as e:
-            print(e)
             traceback.print_exc()
         Clock.schedule_once(self._start_camera, 1.0)
 
