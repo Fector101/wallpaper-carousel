@@ -15,6 +15,41 @@ from utils.helper import appFolder
 from utils.config_manager import ConfigManager
 from utils.logger import app_logger
 
+BitmapFactory = autoclass('android.graphics.BitmapFactory')
+Bitmap = autoclass('android.graphics.Bitmap')
+BitmapConfig = autoclass('android.graphics.Bitmap$Config')
+CompressFormat = autoclass('android.graphics.Bitmap$CompressFormat')
+FileOutputStream = autoclass('java.io.FileOutputStream')
+Math = autoclass('java.lang.Math')
+
+ImagesMedia = autoclass("android.provider.MediaStore$Images$Media")
+PythonActivity = autoclass("org.kivy.android.PythonActivity")
+Uri = autoclass("android.net.Uri")
+
+BufferedInputStream = autoclass("java.io.BufferedInputStream")
+BufferedOutputStream = autoclass("java.io.BufferedOutputStream")
+FileUtils = autoclass("android.os.FileUtils")
+BuildVersion = autoclass("android.os.Build$VERSION")
+
+Environment = autoclass('android.os.Environment')
+ContentValues = autoclass('android.content.ContentValues')
+BuildVERSION = autoclass('android.os.Build$VERSION')
+File = autoclass('java.io.File')
+FileInputStream = autoclass('java.io.FileInputStream')
+# Nested Java classes
+MediaColumns = autoclass('android.provider.MediaStore$MediaColumns')
+OpenableColumns = autoclass("android.provider.OpenableColumns")
+
+Options = autoclass("android.graphics.BitmapFactory$Options")
+
+
+FileProvider = autoclass('androidx.core.content.FileProvider')
+ClipData = autoclass('android.content.ClipData')
+
+ArrayList = autoclass('java.util.ArrayList')
+
+_mAct = PythonActivity.mActivity
+cr = PythonActivity.mActivity.getContentResolver()
 my_config = ConfigManager()
 
 class ImageOperation:
@@ -24,6 +59,7 @@ class ImageOperation:
         self.showing_loading_screen = False # To fix when no image chosen from Half Popup
         self._file_picker_active = False # True while file picker is open; prevents on_resume from tearing down spinner
         self._processing_intent = False # True when import_from_intent is running; guards against plyer duplicate
+        self._processing_start = None # timestamp when import processing began
         self._unique_lock = threading.Lock()
         self._picker_request_code = 65432
         self.spinner_layout = None
@@ -53,17 +89,19 @@ class ImageOperation:
         self.showing_loading_screen = False
 
     def __copy_add(self, files):
-        print(f"[DBG] __copy_add: entered with {len(files)} files: {files}")
         if not files:
-            print("[DBG] __copy_add: no files, cleaning up")
             self._file_picker_active = False
             self._processing_intent = False
             Clock.schedule_once(lambda dt: self.load_saved(has_files=False))
             self.hide_spinner()
             return
+        self._processing_start = time.time()
+        app_logger.info(
+            f"__copy_add: started processing choice at "
+            f"{time.strftime('%H:%M:%S', time.localtime(self._processing_start))}"
+        )
         try:
             uris = self.get_selected_uris()
-            print(f"[DBG] __copy_add: got {len(uris)} URIs from intent")
         except Exception as e:
             print(f"[DBG] __copy_add: error getting uris: {e}")
             uris = []
@@ -75,17 +113,17 @@ class ImageOperation:
 
         if uris:
             try:
-                PythonActivity = autoclass("org.kivy.android.PythonActivity")
-                _mAct = PythonActivity.mActivity
                 for _uri in uris:
                     try:
                         _mAct.grantUriPermission(
                             _mAct.getPackageName(), _uri,
                             Intent.FLAG_GRANT_READ_URI_PERMISSION
                         )
-                    except Exception:
+                    except Exception as e3:
+                        app_logger.exception(e3)
                         pass
-            except Exception:
+            except Exception as e4:
+                app_logger.exception(e4)
                 pass
 
         new_images = []
@@ -93,51 +131,44 @@ class ImageOperation:
 
         def process_one(i, src):
             result = None
-            print(f"[DBG] __copy_add [{i+1}/{len(files)}]: src={src}")
             src_exists = os.path.exists(src)
 
             if not src_exists:
-                print(f"[DBG] __copy_add [{i+1}/{len(files)}]: src does not exist")
                 if i < len(uris):
                     dst_name = os.path.basename(src) or f"{int(time.time())}_{i}.png"
                     with self._unique_lock:
                         dst = self.unique(dst_name)
-                    print(f"[DBG] __copy_add [{i+1}/{len(files)}]: URI fallback -> {dst}")
                     try:
                         copy_image_to_internal(destination_name=dst, uri=uris[i])
                         create_thumbnail(dst, destination_dir=self.wallpapers_dir)
                         result = str(dst)
                     except Exception as e:
-                        print(f"[DBG] __copy_add [{i+1}/{len(files)}]: URI fallback failed: {e}")
+                        pass
                 else:
-                    print(f"[DBG] __copy_add [{i+1}/{len(files)}]: no URI fallback, skip")
+                    pass
                 return result
 
             with self._unique_lock:
                 dst = self.unique(os.path.basename(src))
-            print(f"[DBG] __copy_add [{i+1}/{len(files)}]: destination={dst}")
 
             try:
                 shutil.copy2(src, dst)
                 os.utime(dst, (copy_time, copy_time))
             except PermissionError:
-                print(f"[DBG] __copy_add [{i+1}/{len(files)}]: PermissionError, java copy")
                 if i < len(uris):
                     try:
                         copy_image_to_internal(destination_name=dst, uri=uris[i])
                     except Exception as e:
-                        print(f"[DBG] __copy_add [{i+1}/{len(files)}]: java copy failed: {e}")
                         return result
                 else:
                     return result
             except Exception as e:
-                print(f"[DBG] __copy_add [{i+1}/{len(files)}]: copy error: {e}")
                 return result
 
             try:
                 create_thumbnail(dst, destination_dir=self.wallpapers_dir)
             except Exception as e:
-                print(f"[DBG] __copy_add [{i+1}/{len(files)}]: thumbnail error: {e}")
+                pass
 
             return str(dst)
 
@@ -146,19 +177,16 @@ class ImageOperation:
                 if result:
                     new_images.append(result)
 
-        print(f"[DBG] __copy_add: batch-adding {len(new_images)} wallpapers to config")
         data = my_config._read()
         for img in new_images:
             if img not in data["wallpapers"]:
                 data["wallpapers"].append(img)
         my_config._write(data)
 
-        print(f"[DBG] __copy_add: scheduling ui_things")
         Clock.schedule_once(self.ui_things, 0)
 
     def copy_add(self, files):
         if self._processing_intent:
-            print("[DBG] copy_add: import_from_intent already running, skipping plyer callback")
             return
         threading.Thread(target=self.__copy_add, args=(files,)).start()
 
@@ -173,36 +201,36 @@ class ImageOperation:
 
     def ui_things(self, _):
         self._file_picker_active = False
-        print(f"[DBG] ui_things: refreshing gallery and hiding spinner")
+        elapsed = None
+        if self._processing_start is not None:
+            elapsed = time.time() - self._processing_start
+        when = time.strftime('%H:%M:%S')
+        elapsed_str = f" ({elapsed:.2f}s after processing started)" if elapsed is not None else ""
+        app_logger.info(f"ui_things: about to add widgets at {when}{elapsed_str}")
         self.load_saved()
         self.hide_spinner()
+        self._processing_start = None
 
     def get_selected_uris(self):
         uris = []
         if not self.intent:
-            print("[DBG] get_selected_uris: no intent")
             return uris
 
         clip = self.intent.getClipData()
         if clip:
             count = clip.getItemCount()
-            print(f"[DBG] get_selected_uris: clipData with {count} items")
             for i in range(count):
                 uri = clip.getItemAt(i).getUri()
                 if uri:
-                    print(f"[DBG] get_selected_uris: clip item {i}: {uri.toString() if uri else 'None'}")
                     uris.append(uri)
-            print(f"[DBG] get_selected_uris: returning {len(uris)} URIs from clip")
             return uris
 
         uri = self.intent.getData()
         if uri:
-            print(f"[DBG] get_selected_uris: single URI: {uri.toString()}")
             uris.append(uri)
         else:
-            print("[DBG] get_selected_uris: no clipData and no data URI")
+            pass
 
-        print(f"[DBG] get_selected_uris: returning {len(uris)} URIs")
         return uris
 
     def has_pending_intent(self):
@@ -212,7 +240,6 @@ class ImageOperation:
         """Launch Android file picker directly, bypassing plyer's slow URI resolution."""
         if not on_android_platform():
             return
-        PythonActivity = autoclass('org.kivy.android.PythonActivity')
         mActivity = PythonActivity.mActivity
         intent = Intent(Intent.ACTION_GET_CONTENT)
         intent.setType("image/*")
@@ -227,15 +254,17 @@ class ImageOperation:
         """Process URIs from a pending intent in parallel.
         Runs in a background thread; calls ui_things when done."""
         if self._processing_intent:
-            print("[DBG] import_from_intent: already running, skipping")
             return
         self._processing_intent = True
         def _run():
             try:
+                self._processing_start = time.time()
+                app_logger.info(
+                    f"import_from_intent: started processing choice at "
+                    f"{time.strftime('%H:%M:%S', time.localtime(self._processing_start))}"
+                )
                 uris = self.get_selected_uris()
                 log = f"import_from_intent: got {len(uris)} URIs from intent"
-                print(log)
-                app_logger.info(log)
                 if not uris:
                     self._file_picker_active = False
                     self._processing_intent = False
@@ -245,7 +274,6 @@ class ImageOperation:
                 self.intent = None
 
                 # Grant URI permission so processed images are accessible
-                PythonActivity = autoclass("org.kivy.android.PythonActivity")
                 _mAct = PythonActivity.mActivity
                 for _uri in uris:
                     try:
@@ -253,43 +281,42 @@ class ImageOperation:
                             _mAct.getPackageName(), _uri,
                             Intent.FLAG_GRANT_READ_URI_PERMISSION
                         )
-                    except Exception:
+                    except Exception as e5:
+                        app_logger.exception(e5)
                         pass
 
                 new_images = []
                 images_lock = threading.Lock()
 
                 def process_one(i, uri):
+                    t0 = time.time()
                     try:
-                        log_i = f"import_from_intent [{i+1}/{len(uris)}]: processing {uri}"
-                        print(log_i)
-                        app_logger.info(log_i)
-                        file_name = get_file_name_from_uri(uri)
+                        file_name, src_path = get_uri_name_and_path(uri)
                         if not file_name:
                             file_name = f"{int(time.time())}_{i}.png"
                         with self._unique_lock:
                             destination_path = self.unique(file_name)
-                        log_i_cp = f"import_from_intent: copying -> {destination_path}"
-                        print(log_i_cp)
-                        app_logger.info(log_i_cp)
-                        copy_image_to_internal(destination_name=destination_path, uri=uri)
+                        t1 = time.time()
+                        copy_uri_to_internal(destination_path, uri, src_path)
+                        t2 = time.time()
                         create_thumbnail(destination_path, destination_dir=self.wallpapers_dir)
+                        t3 = time.time()
                         with images_lock:
                             new_images.append(str(destination_path))
-                        log_i_done = f"import_from_intent: done {destination_path}"
-                        print(log_i_done)
-                        app_logger.info(log_i_done)
+                        app_logger.info(
+                            f"import_from_intent [{i+1}/{len(uris)}]: "
+                            f"{os.path.basename(str(destination_path))} "
+                            f"native={'yes' if src_path else 'no'} "
+                            f"meta={t1-t0:.3f}s copy={t2-t1:.3f}s thumb={t3-t2:.3f}s"
+                        )
                     except Exception as e:
-                        err = f"import_from_intent: error importing {uri}: {e}"
-                        print(err)
-                        app_logger.exception(err)
+                        app_logger.exception(f"import_from_intent: error importing {uri}: {e}")
                         traceback.print_exc()
 
                 with ThreadPoolExecutor(max_workers=3) as pool:
                     list(pool.map(lambda args: process_one(*args), enumerate(uris)))
 
                 summary = f"import_from_intent: imported {len(new_images)}/{len(uris)} images"
-                print(summary)
                 app_logger.info(summary)
                 data = my_config._read()
                 for img in new_images:
@@ -303,7 +330,6 @@ class ImageOperation:
                 self._file_picker_active = False
                 self._processing_intent = False
                 err = f"import_from_intent: error: {e}"
-                print(err)
                 app_logger.exception(err)
                 traceback.print_exc()
                 Clock.schedule_once(lambda dt: self.hide_spinner(), 0)
@@ -315,14 +341,15 @@ class ImageOperation:
         Used on API 35+ when READ_MEDIA_VISUAL_USER_SELECTED is granted
         but READ_MEDIA_IMAGES is not (system already showed its picker)."""
         if self._processing_intent:
-            print("[DBG] import_from_mediastore: already running, skipping")
             return
         self._processing_intent = True
         def _run():
             try:
-                ImagesMedia = autoclass("android.provider.MediaStore$Images$Media")
-                PythonActivity = autoclass("org.kivy.android.PythonActivity")
-                cr = PythonActivity.mActivity.getContentResolver()
+                self._processing_start = time.time()
+                app_logger.info(
+                    f"import_from_mediastore: started processing choice at "
+                    f"{time.strftime('%H:%M:%S', time.localtime(self._processing_start))}"
+                )
                 cursor = cr.query(
                     ImagesMedia.EXTERNAL_CONTENT_URI, None, None, None, None
                 )
@@ -331,7 +358,6 @@ class ImageOperation:
                     self._processing_intent = False
                     Clock.schedule_once(lambda dt: self.hide_spinner(), 0)
                     return
-                Uri = autoclass("android.net.Uri")
                 uris = []
                 while cursor.moveToNext():
                     id_val = cursor.getLong(
@@ -343,31 +369,36 @@ class ImageOperation:
                     )
                     uris.append(item_uri)
                 cursor.close()
-                print(f"[DBG] import_from_mediastore: got {len(uris)} URIs")
                 self.intent = None
                 new_images = []
                 images_lock = threading.Lock()
                 def process_one(i, item_uri):
+                    t0 = time.time()
                     try:
-                        file_name = get_file_name_from_uri(item_uri)
+                        file_name, src_path = get_uri_name_and_path(item_uri)
                         if not file_name:
                             file_name = f"{int(time.time())}_{i}.png"
                         with self._unique_lock:
                             destination_path = self.unique(file_name)
-                        copy_image_to_internal(
-                            destination_name=destination_path, uri=item_uri
-                        )
+                        t1 = time.time()
+                        copy_uri_to_internal(destination_path, item_uri, src_path)
+                        t2 = time.time()
                         create_thumbnail(
                             destination_path, destination_dir=self.wallpapers_dir
                         )
+                        t3 = time.time()
                         with images_lock:
                             new_images.append(str(destination_path))
-                    except Exception as e:
-                        print(
-                            f"import_from_mediastore: error "
-                            f"importing {item_uri}: {e}"
+                        app_logger.info(
+                            f"import_from_mediastore [{i+1}/{len(uris)}]: "
+                            f"{os.path.basename(str(destination_path))} "
+                            f"native={'yes' if src_path else 'no'} "
+                            f"meta={t1-t0:.3f}s copy={t2-t1:.3f}s thumb={t3-t2:.3f}s"
                         )
-                        app_logger.exception(e)
+                    except Exception as e:
+                        app_logger.exception(
+                            f"import_from_mediastore: error importing {item_uri}: {e}"
+                        )
                         traceback.print_exc()
                 with ThreadPoolExecutor(max_workers=3) as pool:
                     list(
@@ -379,7 +410,6 @@ class ImageOperation:
                     f"import_from_mediastore: imported "
                     f"{len(new_images)}/{len(uris)} images"
                 )
-                print(summary)
                 app_logger.info(summary)
                 data = my_config._read()
                 for img in new_images:
@@ -399,7 +429,6 @@ class ImageOperation:
                 self._file_picker_active = False
                 self._processing_intent = False
                 err = f"import_from_mediastore: error: {e}"
-                print(err)
                 app_logger.exception(err)
                 traceback.print_exc()
                 Clock.schedule_once(lambda dt: self.hide_spinner(), 0)
@@ -463,7 +492,6 @@ class ImageOperation:
             return
         try:
             from android import activity  # type: ignore
-            PythonActivity = autoclass('org.kivy.android.PythonActivity')
             activity.bind(on_new_intent=self.handle_image_sharing_from_others_app)
 
             # Handle initial intent when app starts
@@ -477,15 +505,16 @@ class ImageOperation:
             new_images = []
             if image_uris and len(image_uris) > 0:
                 for each_uri in image_uris:
-                    file_path = self.unique(get_file_name_from_uri(each_uri))
+                    file_name, src_path = get_uri_name_and_path(each_uri)
+                    if not file_name:
+                        file_name = f"{int(time.time())}.png"
+                    file_path = self.unique(file_name)
                     new_images.append(str(file_path))
-                    copy_image_to_internal(destination_name=file_path, uri=each_uri)
-                    print(f"done shared multiple{file_path}")
+                    copy_uri_to_internal(file_path, each_uri, src_path)
 
             for img in new_images:
                 my_config.add_wallpaper(img)
 
-            print("shared multiple")
 
         except Exception as e:
             print("error_processing_images", e)
@@ -496,12 +525,14 @@ class ImageOperation:
     def _process_single_image(self, uri):
         try:
 
-            file_path = self.unique(get_file_name_from_uri(uri))
+            file_name, src_path = get_uri_name_and_path(uri)
+            if not file_name:
+                file_name = f"{int(time.time())}.png"
+            file_path = self.unique(file_name)
             my_config.add_wallpaper(str(file_path))
 
-            copy_image_to_internal(destination_name=file_path, uri=uri)
+            copy_uri_to_internal(file_path, uri, src_path)
 
-            print(f"done shared single{file_path}")
 
         except Exception as e:
             print("error_processing_single", e)
@@ -547,7 +578,7 @@ def create_thumbnail(src, destination_dir=None, size=(320, 320), quality=60):
                 traceback.print_exc()
         return str(destination)
     except OSError as e:
-        app_logger.exception(f"OSError creating thumbnail for {src}")
+        app_logger.exception(f"OSError creating thumbnail for: {src}")
     except Exception as error_making_thumbnail:
         print(f"Error creating thumbnail for: {error_making_thumbnail}", src)
         traceback.print_exc()
@@ -555,9 +586,6 @@ def create_thumbnail(src, destination_dir=None, size=(320, 320), quality=60):
 
 
 def copy_image_to_internal(destination_name, uri):
-    from jnius import autoclass
-
-    PythonActivity = autoclass("org.kivy.android.PythonActivity")
     # MediaStore = autoclass("android.provider.MediaStore")
     # Environment = autoclass("android.os.Environment")
     # ContentUris = autoclass("android.content.ContentUris")
@@ -590,9 +618,6 @@ def copy_image_to_internal(destination_name, uri):
     #         cursor.close()
     #
     #     return None
-    FileOutputStream = autoclass("java.io.FileOutputStream")
-    BufferedInputStream = autoclass("java.io.BufferedInputStream")
-    BufferedOutputStream = autoclass("java.io.BufferedOutputStream")
 
     activity = PythonActivity.mActivity
     cr = activity.getContentResolver()
@@ -600,40 +625,127 @@ def copy_image_to_internal(destination_name, uri):
     if not uri:
         raise Exception("Image not found in MediaStore")
 
-    uri_str = uri.toString() if hasattr(uri, 'toString') else str(uri)
-    print(f"[DBG] copy_image_to_internal: start name={destination_name} uri={uri_str}")
-
-    try:
-        input_stream = BufferedInputStream(cr.openInputStream(uri))
-    except Exception as e:
-        print(f"[DBG] copy_image_to_internal: error opening input stream: {e}")
-        raise
-
     internal_dir = activity.getFilesDir().getAbsolutePath()
     destination_path = os.path.join(internal_dir, destination_name)
-    print(f"[DBG] copy_image_to_internal: destination_path={destination_path}")
 
-    output_stream = BufferedOutputStream(FileOutputStream(destination_path))
+    input_stream = BufferedInputStream(cr.openInputStream(uri))
+    try:
+        if _try_java_native_copy(input_stream, destination_path):
+            return destination_path
+    finally:
+        input_stream.close()
 
-    total = 0
-    buffer = bytearray(1024 * 8)
-    while True:
-        count = input_stream.read(buffer)
-        if count == -1:
-            break
-        output_stream.write(buffer, 0, count)
-        total += count
-
-    output_stream.flush()
-    input_stream.close()
-    output_stream.close()
-    print(f"[DBG] copy_image_to_internal: wrote {total} bytes")
+    # Fresh stream for the Python fallback (java copy may have consumed it).
+    input_stream = BufferedInputStream(cr.openInputStream(uri))
+    try:
+        output_stream = BufferedOutputStream(FileOutputStream(destination_path))
+        try:
+            buffer = bytearray(1024 * 64)
+            while True:
+                count = input_stream.read(buffer)
+                if count == -1:
+                    break
+                output_stream.write(buffer, 0, count)
+            output_stream.flush()
+        finally:
+            output_stream.close()
+    finally:
+        input_stream.close()
 
     current_time = time.time()
     os.utime(destination_path, (current_time, current_time))
 
-    print(f"[DBG] copy_image_to_internal: done returning {destination_path}")
     return destination_path
+
+
+def _try_java_native_copy(input_stream, destination_path):
+    """Copy the stream entirely inside Java (one JNI call) on API 29+.
+    Returns True when the copy succeeded, False to fall back to Python."""
+    output_stream = None
+    try:
+        if BuildVersion.SDK_INT < 29:
+            return False
+        output_stream = FileOutputStream(destination_path)
+        FileUtils.copy(input_stream, output_stream)
+        output_stream.close()
+        output_stream = None
+        current_time = time.time()
+        os.utime(destination_path, (current_time, current_time))
+        return True
+    except Exception as e:
+        app_logger.exception(f"Java native copy failed, falling back to streaming: {e}")
+        if output_stream:
+            try:
+                output_stream.close()
+            except Exception as e1:
+                app_logger.exception(e1)
+                pass
+        return False
+
+
+def get_uri_name_and_path(uri):
+    """Query a content:// URI once and return (display_name, real_path).
+    real_path is only set when the URI resolves to an existing local file,
+    so callers can use a fast native copy."""
+    name = None
+    path = None
+    try:
+        scheme = uri.getScheme().lower() if hasattr(uri, "getScheme") else "content"
+        if scheme == "file":
+            p = uri.getPath()
+            if p and os.path.exists(p):
+                path = p
+                name = os.path.basename(p)
+            return name, path
+        if scheme != "content":
+            return name, path
+
+        activity = get_python_activity_context()
+        cr = activity.getContentResolver()
+        cursor = None
+        try:
+            cursor = cr.query(
+                uri, ["_data", OpenableColumns.DISPLAY_NAME], None, None, None
+            )
+            if cursor and cursor.moveToFirst():
+                data_idx = cursor.getColumnIndex(String("_data"))
+                if data_idx != -1:
+                    p = cursor.getString(data_idx)
+                    if p and os.path.exists(p):
+                        path = p
+                name_idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if name_idx != -1:
+                    name = cursor.getString(name_idx)
+        finally:
+            if cursor:
+                cursor.close()
+    except Exception as e2:
+        app_logger.exception(f"get_uri_name_and_path error: {e2}")
+    return name, path
+
+
+def copy_uri_to_internal(destination_path, uri, src_path=None):
+    """Copy a URI's content to internal storage as fast as possible.
+    Uses native shutil.copy2 when the URI resolves to a local file,
+    falling back to a Java-native (or buffered) stream copy."""
+    t0 = time.time()
+    if src_path is None:
+        _, src_path = get_uri_name_and_path(uri)
+    if src_path:
+        shutil.copy2(src_path, str(destination_path))
+        current_time = time.time()
+        os.utime(destination_path, (current_time, current_time))
+        app_logger.info(
+            f"copy_uri_to_internal: native copy {os.path.basename(str(destination_path))} "
+            f"({time.time()-t0:.3f}s)"
+        )
+        return str(destination_path)
+    result = copy_image_to_internal(destination_name=str(destination_path), uri=uri)
+    app_logger.info(
+        f"copy_uri_to_internal: stream copy {os.path.basename(str(destination_path))} "
+        f"({time.time()-t0:.3f}s)"
+    )
+    return result
 
 
 def thumbnail_path_for(src, destination_dir=None):
@@ -651,14 +763,6 @@ def thumbnail_path_for(src, destination_dir=None):
 
 
 def use_android_classes_to_create_thumbnail(src, destination_dir=None, size=(320, 320), quality=60):
-    from jnius import autoclass
-
-    BitmapFactory = autoclass('android.graphics.BitmapFactory')
-    Bitmap = autoclass('android.graphics.Bitmap')
-    BitmapConfig = autoclass('android.graphics.Bitmap$Config')
-    CompressFormat = autoclass('android.graphics.Bitmap$CompressFormat')
-    FileOutputStream = autoclass('java.io.FileOutputStream')
-    Math = autoclass('java.lang.Math')
 
     src_path = src
     destination_path = destination_dir
@@ -705,18 +809,8 @@ def get_or_create_thumbnail(src, destination_dir=None, size=(320, 320)):
 
 def save_existing_file_to_public_pictures(input_file_path):
     # Working copying image from app to public path
-    from jnius import autoclass
     from android_notify.config import get_python_activity_context
     context = get_python_activity_context()
-
-    Environment = autoclass('android.os.Environment')
-    ContentValues = autoclass('android.content.ContentValues')
-    BuildVERSION = autoclass('android.os.Build$VERSION')
-    File = autoclass('java.io.File')
-    FileInputStream = autoclass('java.io.FileInputStream')
-    # Nested Java classes
-    MediaColumns = autoclass('android.provider.MediaStore$MediaColumns')
-    ImagesMedia = autoclass('android.provider.MediaStore$Images$Media')
 
     # Extract filename
     file_name = os.path.basename(input_file_path)
@@ -755,8 +849,6 @@ def save_existing_file_to_public_pictures(input_file_path):
         input_stream.close()
         output_stream.close()
 
-    print("This is Uri:", uri)
-    print("This is File:", input_file_path)
     return uri
 
     # try:
@@ -793,9 +885,6 @@ def get_image_info(path):
         return info_dict
 
     # Android BitmapFactory
-    from jnius import autoclass
-    BitmapFactory = autoclass("android.graphics.BitmapFactory")
-    Options = autoclass("android.graphics.BitmapFactory$Options")
 
     opts = Options()
     opts.inJustDecodeBounds = True
@@ -825,13 +914,6 @@ def share_image_to_other_app(image_absolute_path):
         app_logger.warning("Can't share to Another App, Not on Android.")
         return None
     try:
-        from jnius import autoclass, cast
-
-        PythonActivity = autoclass('org.kivy.android.PythonActivity')
-        File = autoclass('java.io.File')
-        FileProvider = autoclass('androidx.core.content.FileProvider')
-        ClipData = autoclass('android.content.ClipData')
-
         context = PythonActivity.mActivity
 
 
@@ -866,14 +948,6 @@ def share_images_to_other_app(image_paths):
         app_logger.warning("Can't share to Another App, Not on Android.")
         return None
     try:
-        from jnius import autoclass, cast
-
-        PythonActivity = autoclass('org.kivy.android.PythonActivity')
-        File = autoclass('java.io.File')
-        FileProvider = autoclass('androidx.core.content.FileProvider')
-        ArrayList = autoclass('java.util.ArrayList')
-        ClipData = autoclass('android.content.ClipData')
-
         context = PythonActivity.mActivity
 
         uris = ArrayList()
@@ -905,8 +979,6 @@ def share_images_to_other_app(image_paths):
 
 def get_file_name_from_uri(uri):
     try:
-        # PythonActivity = autoclass("org.kivy.android.PythonActivity")
-        OpenableColumns = autoclass("android.provider.OpenableColumns")
 
         activity = get_python_activity_context()
         # activity = PythonActivity.mActivity
@@ -928,7 +1000,6 @@ def get_file_name_from_uri(uri):
 
 
 def is_image_uri(uri):
-    PythonActivity = autoclass('org.kivy.android.PythonActivity')
     resolver = PythonActivity.mActivity.getContentResolver()
     mime = resolver.getType(uri)
     return mime and mime.startswith("image/")
