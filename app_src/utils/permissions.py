@@ -105,7 +105,7 @@ def ask_permission_to_images(callback=None):
                 granted = any(grants)
             else:
                 granted = all(grants)
-                print(f"ask_permission_to_images: requested={permissions}, grants={grants} -> {'granted' if granted else 'denied'}")
+            print(f"ask_permission_to_images: requested={permissions}, grants={grants} -> {'granted' if granted else 'denied'}")
             if granted:
                 _remove_image_permission_marker()
             if callback:

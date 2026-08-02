@@ -1073,6 +1073,7 @@ class GalleryScreen(MyMDScreen):
         self.app.bottom_bar.hide(animation=False, hidden_by="pic")
 
         def show_chooser(dt=None):
+            print("[DBG] open_file_chooser: launching custom file picker")
             self.app.file_operation.launch_file_picker()
 
         if not on_android_platform():
@@ -1093,7 +1094,7 @@ class GalleryScreen(MyMDScreen):
             def on_permission_result(all_granted):
                 if all_granted:
                     if self.app.file_operation._processing_intent:
-                        pass
+                        print("open_file_chooser: permission granted, import_from_intent already running")
                     elif self.app.file_operation.has_pending_intent():
                         print("open_file_chooser: permission granted, processing pending intent")
                         self.app.file_operation.import_from_intent()
@@ -1180,6 +1181,7 @@ class GalleryScreen(MyMDScreen):
         self.tab_instances[tab_name]["title"] = tab_title
         self.tab_instances[tab_name]["wallpapers"] = sorted_wallpapers
         self.tab_instances[tab_name]["widget"] = tab_container
+        app_logger.info(f"GENERATE_TAB: tab={tab_name} wallpapers={len(sorted_wallpapers)} list_id={id(sorted_wallpapers)} swp_id={id(self.wallpapers)} batches={list(data_of_batch_dict_of_lists.keys())} widget_children={len(tab_container.children)}")
 
     def open_fullscreen_for_image(self, wallpaper_path = None, wallpaper_index = -1):
         try:
@@ -1202,6 +1204,7 @@ class GalleryScreen(MyMDScreen):
         self.ids.header_info_label.text = tab_data["title"]
         scrollView_container.add_widget(tab_data["widget"])
         self.wallpapers = tab_data["wallpapers"]
+        app_logger.info(f"on_tab {tab_name} wp_len={len(self.wallpapers)} wp_list_id={id(tab_data['wallpapers'])} swp_id={id(self.wallpapers)} wallpapers={tab_data['wallpapers']} widget_children={tab_data['widget'].children}")
 
     def load_day_wallpapers(self):
         self.current_tab = GalleryTabs.DAY.value
@@ -1277,6 +1280,7 @@ class GalleryScreen(MyMDScreen):
         available_tab_key = tab or self.current_tab
         batch_title = format_file_date(wallpaper_path)
         a_tab_data = self.tab_instances.get(available_tab_key)
+        app_logger.info(f"REMOVE: tab={available_tab_key} path={wallpaper_path} batch_title={batch_title} a_tab_data_keys={list(a_tab_data.keys()) if a_tab_data else None}")
 
         if not a_tab_data or not isinstance(a_tab_data, dict):
             app_logger.error(f"Error getting tab Dict to remove item from thumbnails: {a_tab_data}")
@@ -1286,18 +1290,23 @@ class GalleryScreen(MyMDScreen):
         was_in_wallpapers = wallpaper_path in a_tab_data["wallpapers"]
         if was_in_wallpapers:
             a_tab_data["wallpapers"].remove(wallpaper_path)
+            app_logger.info(f"REMOVE: removed from wallpapers list, remaining={len(a_tab_data['wallpapers'])}")
             if available_tab_key == self.current_tab:
                 # Refresh UI element bound to self.wallpapers
                 self.wallpapers = a_tab_data["wallpapers"]
 
         a_batch_in_a_tab = a_tab_data.get(batch_title)
+        app_logger.info(f"REMOVE: batch={a_batch_in_a_tab} is_DGL={isinstance(a_batch_in_a_tab, DateGroupLayout)}")
         widget = None
         if isinstance(a_batch_in_a_tab, DateGroupLayout):
             widget = a_batch_in_a_tab.remove_wallpaper_from_badge_display(wallpaper_path)
+            app_logger.info(f"REMOVE: after remove_wallpaper_from_badge_display widget={widget} images_container_children={len(a_batch_in_a_tab.images_container.children) if a_batch_in_a_tab.images_container else 'NO_CONTAINER'} parent={a_batch_in_a_tab.parent}")
 
             if not a_batch_in_a_tab.images_container.children:
+                app_logger.info(f"REMOVE: DateGroupLayout empty, removing from widget parent and deleting from tab_data")
                 del a_tab_data[batch_title]
 
+        app_logger.info(f"REMOVE: returning widget={widget}")
         return widget
 
     def add_wallpaper_to_thumbnails(self, image_widget, tab=None):
@@ -1314,6 +1323,7 @@ class GalleryScreen(MyMDScreen):
 
         available_tab_key = tab or self.current_tab
         a_tab_data = self.tab_instances.get(available_tab_key)
+        app_logger.info(f"ADD: tab={available_tab_key} path={wallpaper_path} a_tab_data_keys={list(a_tab_data.keys()) if a_tab_data else None} wallpapers_len={len(a_tab_data['wallpapers']) if a_tab_data else None} wp_list_id={id(a_tab_data['wallpapers']) if a_tab_data else None} widget_children={len(a_tab_data['widget'].children) if a_tab_data and a_tab_data.get('widget') else None}")
 
         if not a_tab_data or not isinstance(a_tab_data, dict):
             app_logger.error(f"Error getting tab Dict to add item to thumbnails: {a_tab_data}")
@@ -1321,21 +1331,26 @@ class GalleryScreen(MyMDScreen):
 
         batch_title = "Today"
         date_batch_layout = a_tab_data.get(batch_title)
+        app_logger.info(f"ADD: batch_title={batch_title} found_existing={isinstance(date_batch_layout, DateGroupLayout)}")
 
         if isinstance(date_batch_layout, DateGroupLayout):
             date_batch_layout.add_wallpaper_to_badge_display(image_widget)
+            app_logger.info(f"ADD: added to existing DateGroupLayout, children={len(date_batch_layout.images_container.children) if date_batch_layout.images_container else 'NO_CONTAINER'}")
         else:
+            app_logger.info(f"ADD: creating new DateGroupLayout")
             date_batch_layout = DateGroupLayout(
                 batch=[image_widget],
                 title=f"{batch_title}  |  1 item"
             )
             a_tab_data[batch_title] = date_batch_layout
             a_tab_data["widget"].add_widget(date_batch_layout, index=len(a_tab_data["widget"].children))
+            app_logger.info(f"ADD: created and added to widget, widget_children_now={len(a_tab_data['widget'].children)}")
 
 
         if wallpaper_path in a_tab_data["wallpapers"]:
             app_logger.error(f"Broken feature wallpaper_path in a_tab_data['wallpapers']")
         a_tab_data["wallpapers"].insert(0, wallpaper_path)
+        app_logger.info(f"ADD: wallpapers_now={len(a_tab_data['wallpapers'])} widget_children={len(a_tab_data['widget'].children)}")
         if available_tab_key == self.current_tab:
             self.wallpapers = a_tab_data["wallpapers"]
 
