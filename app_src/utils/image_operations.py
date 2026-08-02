@@ -61,7 +61,7 @@ class ImageOperation:
 
         self.showing_loading_screen = False # To fix when no image chosen from Half Popup
         self._file_picker_active = False # True while file picker is open; prevents on_resume from tearing down spinner
-        self._processing_intent = False # True when import_from_intent is running; guards against plyer duplicate
+        self.processing_intent = False # True when import_from_intent is running; guards against plyer duplicate
         self._processing_start = None # timestamp when import processing began
         self._unique_lock = threading.Lock()
         self._picker_request_code = 65432
@@ -104,7 +104,7 @@ class ImageOperation:
     def __copy_add(self, files):
         if not files:
             self._file_picker_active = False
-            self._processing_intent = False
+            self.processing_intent = False
             Clock.schedule_once(lambda dt: self.load_saved(has_files=False))
             self.hide_spinner()
             return
@@ -187,7 +187,7 @@ class ImageOperation:
         Clock.schedule_once(self.ui_things, 0)
 
     def copy_add(self, files):
-        if self._processing_intent:
+        if self.processing_intent:
             return
         threading.Thread(target=self.__copy_add, args=(files,)).start()
 
@@ -242,7 +242,7 @@ class ImageOperation:
         if not on_android_platform():
             return
         intent = Intent(Intent.ACTION_GET_CONTENT)
-        intent.setType("image/*")
+        intent.setType(String("image/*"))
         intent.addCategory(Intent.CATEGORY_OPENABLE)
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, True)
         mActivity.startActivityForResult(
@@ -253,9 +253,9 @@ class ImageOperation:
     def import_from_intent(self):
         """Process URIs from a pending intent in parallel.
         Runs in a background thread; calls ui_things when done."""
-        if self._processing_intent:
+        if self.processing_intent:
             return
-        self._processing_intent = True
+        self.processing_intent = True
         def _run():
             try:
                 self._processing_start = time.time()
@@ -267,7 +267,7 @@ class ImageOperation:
                 log = f"import_from_intent: got {len(uris)} URIs from intent"
                 if not uris:
                     self._file_picker_active = False
-                    self._processing_intent = False
+                    self.processing_intent = False
                     Clock.schedule_once(lambda dt: self.hide_spinner(), 0)
                     return
 
@@ -310,12 +310,12 @@ class ImageOperation:
                 summary = f"import_from_intent: imported {len(new_images)}/{len(uris)} images"
                 app_logger.info(summary)
                 _add_wallpapers_to_config(new_images)
-                self._processing_intent = False
+                self.processing_intent = False
                 Clock.schedule_once(lambda dt: self.ui_things(dt), 0)
                 Clock.schedule_once(lambda dt: self.app.bottom_bar.show(animation=False, hidden_by="pic"), 0)
             except Exception as e:
                 self._file_picker_active = False
-                self._processing_intent = False
+                self.processing_intent = False
                 err = f"import_from_intent: error: {e}"
                 app_logger.exception(err)
                 traceback.print_exc()
@@ -323,26 +323,23 @@ class ImageOperation:
 
         threading.Thread(target=_run, daemon=True).start()
 
-    def import_from_mediastore(self):
+    def import_from_mediaStore(self):
         """Query MediaStore for images accessible via limited permission.
-        Used on API 35+ when READ_MEDIA_VISUAL_USER_SELECTED is granted
+        Used on API 34+ when READ_MEDIA_VISUAL_USER_SELECTED is granted
         but READ_MEDIA_IMAGES is not (system already showed its picker)."""
-        if self._processing_intent:
+        if self.processing_intent:
             return
-        self._processing_intent = True
+        self.processing_intent = True
         def _run():
             try:
                 self._processing_start = time.time()
-                app_logger.info(
-                    f"import_from_mediastore: started processing choice at "
-                    f"{_format_started_time(self._processing_start)}"
-                )
+                app_logger.info(f"import_from_mediaStore: started processing choice at: {_format_started_time(self._processing_start)}")
                 cursor = content_resolver.query(
                     ImagesMedia.EXTERNAL_CONTENT_URI, None, None, None, None
                 )
                 if cursor is None or cursor.getCount() == 0:
                     self._file_picker_active = False
-                    self._processing_intent = False
+                    self.processing_intent = False
                     Clock.schedule_once(lambda dt: self.hide_spinner(), 0)
                     return
                 uris = []
@@ -377,14 +374,14 @@ class ImageOperation:
                         with images_lock:
                             new_images.append(str(destination_path))
                         app_logger.info(
-                            f"import_from_mediastore [{i+1}/{len(uris)}]: "
+                            f"import_from_mediaStore [{i+1}/{len(uris)}]: "
                             f"{os.path.basename(str(destination_path))} "
                             f"native={'yes' if src_path else 'no'} "
                             f"meta={t1-t0:.3f}s copy={t2-t1:.3f}s thumb={t3-t2:.3f}s"
                         )
                     except Exception as e:
                         app_logger.exception(
-                            f"import_from_mediastore: error importing {item_uri}: {e}"
+                            f"import_from_mediaStore: error importing {item_uri}: {e}"
                         )
                         traceback.print_exc()
                 with ThreadPoolExecutor(max_workers=3) as pool:
@@ -394,13 +391,13 @@ class ImageOperation:
                         )
                     )
                 summary = (
-                    f"import_from_mediastore: imported "
+                    f"import_from_mediaStore: imported "
                     f"{len(new_images)}/{len(uris)} images"
                 )
                 app_logger.info(summary)
                 _add_wallpapers_to_config(new_images)
                 self._file_picker_active = False
-                self._processing_intent = False
+                self.processing_intent = False
                 Clock.schedule_once(lambda dt: self.ui_things(dt), 0)
                 Clock.schedule_once(
                     lambda dt: self.app.bottom_bar.show(
@@ -410,9 +407,8 @@ class ImageOperation:
                 )
             except Exception as e:
                 self._file_picker_active = False
-                self._processing_intent = False
-                err = f"import_from_mediastore: error: {e}"
-                app_logger.exception(err)
+                self.processing_intent = False
+                app_logger.exception(f"import_from_mediaStore: error: {e}")
                 traceback.print_exc()
                 Clock.schedule_once(lambda dt: self.hide_spinner(), 0)
         threading.Thread(target=_run, daemon=True).start()
@@ -421,6 +417,7 @@ class ImageOperation:
         def ui_thing(*a):
             self.app.bottom_bar.hide(animation=False, hidden_by="pic")
         Clock.schedule_once(ui_thing)
+
     def handle_image_sharing_from_others_app(self, intent):
         tag="handle_image_sharing_from_others_app"
         if intent is None:
