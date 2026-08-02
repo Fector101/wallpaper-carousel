@@ -5,9 +5,9 @@ import traceback
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
-from android_notify.internal.java_classes import String, autoclass, cast, Intent
+from android_notify.internal.java_classes import String, autoclass, cast, Intent, BuildVersion, Uri, BitmapFactory, File
 from kivy.clock import Clock
-from android_notify.config import on_android_platform, get_python_activity_context, on_pydroid_app
+from android_notify.config import on_android_platform, on_pydroid_app, get_package_name
 from kivymd.app import MDApp
 
 from ui.widgets.layouts import LoadingLayout
@@ -15,42 +15,45 @@ from utils.helper import appFolder
 from utils.config_manager import ConfigManager
 from utils.logger import app_logger
 
-BitmapFactory = autoclass('android.graphics.BitmapFactory')
-Bitmap = autoclass('android.graphics.Bitmap')
-BitmapConfig = autoclass('android.graphics.Bitmap$Config')
-CompressFormat = autoclass('android.graphics.Bitmap$CompressFormat')
-FileOutputStream = autoclass('java.io.FileOutputStream')
-Math = autoclass('java.lang.Math')
-
-ImagesMedia = autoclass("android.provider.MediaStore$Images$Media")
-PythonActivity = autoclass("org.kivy.android.PythonActivity")
-Uri = autoclass("android.net.Uri")
-
-BufferedInputStream = autoclass("java.io.BufferedInputStream")
-BufferedOutputStream = autoclass("java.io.BufferedOutputStream")
-FileUtils = autoclass("android.os.FileUtils")
-BuildVersion = autoclass("android.os.Build$VERSION")
-
-Environment = autoclass('android.os.Environment')
-ContentValues = autoclass('android.content.ContentValues')
-BuildVERSION = autoclass('android.os.Build$VERSION')
-File = autoclass('java.io.File')
-FileInputStream = autoclass('java.io.FileInputStream')
-# Nested Java classes
-MediaColumns = autoclass('android.provider.MediaStore$MediaColumns')
-OpenableColumns = autoclass("android.provider.OpenableColumns")
-
-Options = autoclass("android.graphics.BitmapFactory$Options")
+if on_android_platform():
+    PythonActivity = autoclass("org.kivy.android.PythonActivity")
+    Bitmap = autoclass('android.graphics.Bitmap')
+    BitmapConfig = autoclass('android.graphics.Bitmap$Config')
+    CompressFormat = autoclass('android.graphics.Bitmap$CompressFormat')
+    FileOutputStream = autoclass('java.io.FileOutputStream')
+    Math = autoclass('java.lang.Math')
+    ImagesMedia = autoclass("android.provider.MediaStore$Images$Media")
+    BufferedInputStream = autoclass("java.io.BufferedInputStream")
+    BufferedOutputStream = autoclass("java.io.BufferedOutputStream")
+    FileUtils = autoclass("android.os.FileUtils")
+    Environment = autoclass('android.os.Environment')
+    ContentValues = autoclass('android.content.ContentValues')
+    FileInputStream = autoclass('java.io.FileInputStream')
+    MediaColumns = autoclass('android.provider.MediaStore$MediaColumns')
+    OpenableColumns = autoclass("android.provider.OpenableColumns")
+    Options = autoclass("android.graphics.BitmapFactory$Options")
+    FileProvider = autoclass('androidx.core.content.FileProvider')
+    ClipData = autoclass('android.content.ClipData')
+    ArrayList = autoclass('java.util.ArrayList')
+    mActivity = PythonActivity.mActivity
+    content_resolver = mActivity.getContentResolver()
+    package_name = get_package_name()
+    file_provider_authority = package_name + ".fileprovider"
 
 
-FileProvider = autoclass('androidx.core.content.FileProvider')
-ClipData = autoclass('android.content.ClipData')
-
-ArrayList = autoclass('java.util.ArrayList')
-
-_mAct = PythonActivity.mActivity
-cr = PythonActivity.mActivity.getContentResolver()
 my_config = ConfigManager()
+
+
+def _format_started_time(timestamp):
+    return time.strftime('%H:%M:%S', time.localtime(timestamp))
+
+
+def _add_wallpapers_to_config(new_images):
+    data = my_config._read()
+    for img in new_images:
+        if img not in data["wallpapers"]:
+            data["wallpapers"].append(img)
+    my_config._write(data)
 
 class ImageOperation:
     def __init__(self,load_saved):
@@ -88,6 +91,16 @@ class ImageOperation:
             Clock.schedule_once(self.spinner_layout.remove)
         self.showing_loading_screen = False
 
+    def __grant_uri_permissions(self, uris):
+        for _uri in uris:
+            try:
+                mActivity.grantUriPermission(
+                    package_name, _uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            except Exception as e3:
+                app_logger.exception(e3)
+
     def __copy_add(self, files):
         if not files:
             self._file_picker_active = False
@@ -98,7 +111,7 @@ class ImageOperation:
         self._processing_start = time.time()
         app_logger.info(
             f"__copy_add: started processing choice at "
-            f"{time.strftime('%H:%M:%S', time.localtime(self._processing_start))}"
+            f"{_format_started_time(self._processing_start)}"
         )
         try:
             uris = self.get_selected_uris()
@@ -113,15 +126,7 @@ class ImageOperation:
 
         if uris:
             try:
-                for _uri in uris:
-                    try:
-                        _mAct.grantUriPermission(
-                            _mAct.getPackageName(), _uri,
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        )
-                    except Exception as e3:
-                        app_logger.exception(e3)
-                        pass
+                self.__grant_uri_permissions(uris)
             except Exception as e4:
                 app_logger.exception(e4)
                 pass
@@ -177,11 +182,7 @@ class ImageOperation:
                 if result:
                     new_images.append(result)
 
-        data = my_config._read()
-        for img in new_images:
-            if img not in data["wallpapers"]:
-                data["wallpapers"].append(img)
-        my_config._write(data)
+        _add_wallpapers_to_config(new_images)
 
         Clock.schedule_once(self.ui_things, 0)
 
@@ -240,7 +241,6 @@ class ImageOperation:
         """Launch Android file picker directly, bypassing plyer's slow URI resolution."""
         if not on_android_platform():
             return
-        mActivity = PythonActivity.mActivity
         intent = Intent(Intent.ACTION_GET_CONTENT)
         intent.setType("image/*")
         intent.addCategory(Intent.CATEGORY_OPENABLE)
@@ -261,7 +261,7 @@ class ImageOperation:
                 self._processing_start = time.time()
                 app_logger.info(
                     f"import_from_intent: started processing choice at "
-                    f"{time.strftime('%H:%M:%S', time.localtime(self._processing_start))}"
+                    f"{_format_started_time(self._processing_start)}"
                 )
                 uris = self.get_selected_uris()
                 log = f"import_from_intent: got {len(uris)} URIs from intent"
@@ -274,16 +274,7 @@ class ImageOperation:
                 self.intent = None
 
                 # Grant URI permission so processed images are accessible
-                _mAct = PythonActivity.mActivity
-                for _uri in uris:
-                    try:
-                        _mAct.grantUriPermission(
-                            _mAct.getPackageName(), _uri,
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        )
-                    except Exception as e5:
-                        app_logger.exception(e5)
-                        pass
+                self.__grant_uri_permissions(uris)
 
                 new_images = []
                 images_lock = threading.Lock()
@@ -318,11 +309,7 @@ class ImageOperation:
 
                 summary = f"import_from_intent: imported {len(new_images)}/{len(uris)} images"
                 app_logger.info(summary)
-                data = my_config._read()
-                for img in new_images:
-                    if img not in data["wallpapers"]:
-                        data["wallpapers"].append(img)
-                my_config._write(data)
+                _add_wallpapers_to_config(new_images)
                 self._processing_intent = False
                 Clock.schedule_once(lambda dt: self.ui_things(dt), 0)
                 Clock.schedule_once(lambda dt: self.app.bottom_bar.show(animation=False, hidden_by="pic"), 0)
@@ -348,9 +335,9 @@ class ImageOperation:
                 self._processing_start = time.time()
                 app_logger.info(
                     f"import_from_mediastore: started processing choice at "
-                    f"{time.strftime('%H:%M:%S', time.localtime(self._processing_start))}"
+                    f"{_format_started_time(self._processing_start)}"
                 )
-                cursor = cr.query(
+                cursor = content_resolver.query(
                     ImagesMedia.EXTERNAL_CONTENT_URI, None, None, None, None
                 )
                 if cursor is None or cursor.getCount() == 0:
@@ -411,11 +398,7 @@ class ImageOperation:
                     f"{len(new_images)}/{len(uris)} images"
                 )
                 app_logger.info(summary)
-                data = my_config._read()
-                for img in new_images:
-                    if img not in data["wallpapers"]:
-                        data["wallpapers"].append(img)
-                my_config._write(data)
+                _add_wallpapers_to_config(new_images)
                 self._file_picker_active = False
                 self._processing_intent = False
                 Clock.schedule_once(lambda dt: self.ui_things(dt), 0)
@@ -495,7 +478,7 @@ class ImageOperation:
             activity.bind(on_new_intent=self.handle_image_sharing_from_others_app)
 
             # Handle initial intent when app starts
-            self.handle_image_sharing_from_others_app(PythonActivity.mActivity.getIntent())
+            self.handle_image_sharing_from_others_app(mActivity.getIntent())
         except Exception as error_setup_share_from_others_to_app_listener:
             print("error_setup_share_from_others_to_app_listener",error_setup_share_from_others_to_app_listener)
             traceback.print_exc()
@@ -619,16 +602,14 @@ def copy_image_to_internal(destination_name, uri):
     #
     #     return None
 
-    activity = PythonActivity.mActivity
-    cr = activity.getContentResolver()
 
     if not uri:
         raise Exception("Image not found in MediaStore")
 
-    internal_dir = activity.getFilesDir().getAbsolutePath()
+    internal_dir = mActivity.getFilesDir().getAbsolutePath()
     destination_path = os.path.join(internal_dir, destination_name)
 
-    input_stream = BufferedInputStream(cr.openInputStream(uri))
+    input_stream = BufferedInputStream(content_resolver.openInputStream(uri))
     try:
         if _try_java_native_copy(input_stream, destination_path):
             return destination_path
@@ -636,7 +617,7 @@ def copy_image_to_internal(destination_name, uri):
         input_stream.close()
 
     # Fresh stream for the Python fallback (java copy may have consumed it).
-    input_stream = BufferedInputStream(cr.openInputStream(uri))
+    input_stream = BufferedInputStream(content_resolver.openInputStream(uri))
     try:
         output_stream = BufferedOutputStream(FileOutputStream(destination_path))
         try:
@@ -700,11 +681,9 @@ def get_uri_name_and_path(uri):
         if scheme != "content":
             return name, path
 
-        activity = get_python_activity_context()
-        cr = activity.getContentResolver()
         cursor = None
         try:
-            cursor = cr.query(
+            cursor = content_resolver.query(
                 uri, ["_data", OpenableColumns.DISPLAY_NAME], None, None, None
             )
             if cursor and cursor.moveToFirst():
@@ -809,8 +788,6 @@ def get_or_create_thumbnail(src, destination_dir=None, size=(320, 320)):
 
 def save_existing_file_to_public_pictures(input_file_path):
     # Working copying image from app to public path
-    from android_notify.config import get_python_activity_context
-    context = get_python_activity_context()
 
     # Extract filename
     file_name = os.path.basename(input_file_path)
@@ -825,19 +802,18 @@ def save_existing_file_to_public_pictures(input_file_path):
     content_values.put(MediaColumns.DISPLAY_NAME, file_name)
     content_values.put(MediaColumns.MIME_TYPE, mime_type)
 
-    if BuildVERSION.SDK_INT >= 29:
+    if BuildVersion.SDK_INT >= 29:
         content_values.put(
             MediaColumns.RELATIVE_PATH,
             Environment.DIRECTORY_PICTURES + "/.waller"
         )
 
-    resolver = context.getContentResolver()
-    uri = resolver.insert(ImagesMedia.EXTERNAL_CONTENT_URI, content_values)
+    uri = content_resolver.insert(ImagesMedia.EXTERNAL_CONTENT_URI, content_values)
 
     if uri:
         input_file = File(input_file_path)
         input_stream = FileInputStream(input_file)
-        output_stream = resolver.openOutputStream(uri)
+        output_stream = content_resolver.openOutputStream(uri)
 
         buffer = bytearray(8192)
         while True:
@@ -914,14 +890,13 @@ def share_image_to_other_app(image_absolute_path):
         app_logger.warning("Can't share to Another App, Not on Android.")
         return None
     try:
-        context = PythonActivity.mActivity
 
 
         file = File(image_absolute_path)
 
         uri = FileProvider.getUriForFile(
-            context,
-            context.getPackageName() + ".fileprovider",
+            mActivity,
+            file_provider_authority,
             file
         )
 
@@ -931,11 +906,11 @@ def share_image_to_other_app(image_absolute_path):
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
         # preview
-        clip = ClipData.newUri(context.getContentResolver(), String("Image"), uri)
+        clip = ClipData.newUri(content_resolver, String("Image"), uri)
         intent.setClipData(clip)
 
         chooser = Intent.createChooser(intent, String("Share Image"))
-        context.startActivity(chooser)
+        mActivity.startActivity(chooser)
         app_logger.info("Sharing image to other app")
 
     except Exception as error_from_trying_to_share_image_to_other_apps:
@@ -948,14 +923,13 @@ def share_images_to_other_app(image_paths):
         app_logger.warning("Can't share to Another App, Not on Android.")
         return None
     try:
-        context = PythonActivity.mActivity
 
         uris = ArrayList()
         for path in image_paths:
             file = File(path)
             uri = FileProvider.getUriForFile(
-                context,
-                context.getPackageName() + ".fileprovider",
+                mActivity,
+                file_provider_authority,
                 file
             )
             uris.add(uri)
@@ -965,11 +939,11 @@ def share_images_to_other_app(image_paths):
         intent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
-        clip = ClipData.newUri(context.getContentResolver(), String("Image"), uris.get(0))
+        clip = ClipData.newUri(content_resolver, String("Image"), uris.get(0))
         intent.setClipData(clip)
 
         chooser = Intent.createChooser(intent, String("Share Images"))
-        context.startActivity(chooser)
+        mActivity.startActivity(chooser)
         app_logger.info(f"Sharing {len(image_paths)} images to other app")
 
     except Exception as error_from_trying_to_share_images_to_other_apps:
@@ -980,11 +954,7 @@ def share_images_to_other_app(image_paths):
 def get_file_name_from_uri(uri):
     try:
 
-        activity = get_python_activity_context()
-        # activity = PythonActivity.mActivity
-        cr = activity.getContentResolver()
-
-        cursor = cr.query(uri, None, None, None, None)
+        cursor = content_resolver.query(uri, None, None, None, None)
 
         if cursor and cursor.moveToFirst():
             name_index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
@@ -1000,6 +970,5 @@ def get_file_name_from_uri(uri):
 
 
 def is_image_uri(uri):
-    resolver = PythonActivity.mActivity.getContentResolver()
-    mime = resolver.getType(uri)
+    mime = content_resolver.getType(uri)
     return mime and mime.startswith("image/")
