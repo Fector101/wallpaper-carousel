@@ -342,6 +342,7 @@ class DateGroupLayout(Column):
         # self.md_bg_color=[.1,1,.3,1]
 
     def build_grid(self, *args):
+        app_logger.info(f"DGL_BUILD: starting batch_len={len(self.batch)} parent={self.parent}")
         header_layout = MDRelativeLayout(
             adaptive_height=1,
             size_hint_x=1,
@@ -401,6 +402,7 @@ class DateGroupLayout(Column):
                 )
             elif isinstance(each_data, PreviewImage):
                 thumbnailWidget = each_data
+                app_logger.debug(f"Found: {each_data}")
             else:
                 app_logger.error(f"Error getting PreviewImage Class or Init Data, got: {each_data}")
                 return None
@@ -414,6 +416,7 @@ class DateGroupLayout(Column):
 
         self.add_widget(line)
         self.app.bind(device_theme=self._set_theme)
+        app_logger.info(f"DGL_BUILD: done self.children={len(self.children)} parent={self.parent}")
         return None
 
     def _set_theme(self, _, theme):
@@ -448,6 +451,7 @@ class DateGroupLayout(Column):
     def remove_wallpaper_from_badge_display(self, image_absolute_path):
         images_container_widget = self.images_container
         if images_container_widget is None:
+            app_logger.info(f"DGL_REMOVE: images_container is None! parent={self.parent} self={self}")
             return None
         image_widget=None
         for each_image_widget in list(images_container_widget.children):
@@ -460,10 +464,13 @@ class DateGroupLayout(Column):
                 image_widget = each_image_widget
                 break
         new_children = images_container_widget.children
+        app_logger.info(f"DGL_REMOVE: found={image_widget is not None} new_children_count={len(new_children)} self.parent={self.parent}")
         if not new_children:
             if self.parent:
+                app_logger.info(f"DGL_REMOVE: removing self from parent ({self.parent})")
                 self.parent.remove_widget(self)
             else:
+                app_logger.info(f"DGL_REMOVE: no parent to remove from")
                 pass
         else:
             self.__update_title(len(new_children))
@@ -1042,6 +1049,7 @@ class GalleryScreen(MyMDScreen):
             Clock.schedule_once(run_widgets_creation)
 
     def open_file_chooser(self, *_):
+        print(f"[DBG] open_file_chooser: entered")
         # file_operation = FileOperation(self.update_thumbnails_method)
         # if platform == 'android':
         #     from android import activity # type: ignore
@@ -1087,6 +1095,7 @@ class GalleryScreen(MyMDScreen):
                     if self.app.file_operation._processing_intent:
                         pass
                     elif self.app.file_operation.has_pending_intent():
+                        print("open_file_chooser: permission granted, processing pending intent")
                         self.app.file_operation.import_from_intent()
                     else:
                         try:
@@ -1096,10 +1105,13 @@ class GalleryScreen(MyMDScreen):
                             has_read_media = True  # fallback to opening picker
                         if not has_read_media:
                             # READ_MEDIA_VISUAL_USER_SELECTED only → system already showed picker
+                            print("open_file_chooser: limited access granted, querying MediaStore directly")
                             self.app.file_operation.import_from_mediastore()
                         else:
+                            print("open_file_chooser: full access granted, opening file chooser")
                             Clock.schedule_once(show_chooser)
                 else:
+                    print("open_file_chooser: permission denied by user")
                     self.app.file_operation._file_picker_active = False
                     self.app.file_operation.hide_spinner()
                     self.app.bottom_bar.show(animation=False, hidden_by="pic")
