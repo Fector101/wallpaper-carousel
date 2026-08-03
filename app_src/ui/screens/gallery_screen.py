@@ -1081,11 +1081,12 @@ class GalleryScreen(MyMDScreen):
             from plyer import filechooser
             def desktop_chooser():
                 filechooser.open_file(
-                    on_selection=self.app.file_operation.copy_add,
+                    on_selection=self.app.file_operation.import_images_from_plyer,
                     filters=["image"],
                     multiple=True
                 )
-            threading.Thread(target=desktop_chooser).start()
+            desktop_chooser()
+            # threading.Thread(target=desktop_chooser).start()
             return
 
         if has_permission_to_images():
@@ -1097,13 +1098,14 @@ class GalleryScreen(MyMDScreen):
                         print("open_file_chooser: permission granted, import_from_intent already running")
                     elif self.app.file_operation.has_pending_intent():
                         print("open_file_chooser: permission granted, processing pending intent")
-                        self.app.file_operation.import_from_intent()
+                        self.app.file_operation.import_images_from_android()
+
                     else:
                         has_read_media = has_android_13plus_image_permission()
                         if not has_read_media:
                             # READ_MEDIA_VISUAL_USER_SELECTED only → system already showed picker
                             print("open_file_chooser: limited access granted, querying MediaStore directly")
-                            self.app.file_operation.import_from_mediaStore()
+                            self.app.file_operation.import_images_from_android(only_limited_access=True)
                         else:
                             print("open_file_chooser: full access granted, opening file chooser")
                             Clock.schedule_once(show_chooser)
