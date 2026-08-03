@@ -133,11 +133,12 @@ def do_android_install(apk_path):
     try:
         install_apk15(apk_path)
     except Exception as e:
-        app_logger.exception("install_apk15 failed: {e}")
+        app_logger.exception(f"install_apk15 failed: {e}")
         try:
             install_apk(apk_path)
         except Exception as e1:
             app_logger.exception(f"install_apk failed: {e1}")
+
 
 class TextButton(MDButton):
     text = StringProperty("")
@@ -156,13 +157,13 @@ class TextButton(MDButton):
         Clock.schedule_once(self.fix_width,2)
         Clock.schedule_once(self.add_text_widget)
 
-    def add_text_widget(self, dt=None):
+    def add_text_widget(self, _=None):
         self.add_widget(self.txt)
 
-    def set_val(self, instance, value):
+    def set_val(self, _, value):
         self.txt.text = value
 
-    def set_text_color(self, instance, value):
+    def set_text_color(self, _, value):
         if not value:
             return
         self.txt.text_color = value
@@ -228,6 +229,7 @@ class ProgressButton(MDBoxLayout):
 
         self.rect.size = [self.width - per, self.height]
         ##p(f"time 2 {percent}")
+
 
 class DownloadApkScreen(MyMDScreen):
 
@@ -341,7 +343,7 @@ class DownloadApkScreen(MyMDScreen):
         self.new_stuff_container.clear_widgets()
         self.new_stuff_container.add_widget(rst_widget)
 
-    def start_download(self,widget=None):
+    def start_download(self,_=None):
        #p("Clicked start download...")
 
         if self.update_button.clicked:
@@ -371,9 +373,8 @@ class DownloadApkScreen(MyMDScreen):
             progress(0)
             threading.Thread(target=worker, daemon=True).start()
 
-    def start_install(self,widget):
+    def start_install(self,_):
         apk_path=get_apk_path(self.new_version)
-       #p(f"Clicked start install...:{apk_path}")
         do_android_install(apk_path)
 
     def change_download_btn_to_install(self,apk_path,text="Install Update"):
@@ -421,12 +422,10 @@ class DownloadApkScreen(MyMDScreen):
             self.change_download_btn_to_download()
 
 
-
-
-def thread_check_for_update(dt, download_apk_screen__show,download_apk_screen__do_not_show=None):
+def thread_check_for_update(_, download_apk_screen__show,download_apk_screen__do_not_show=None):
     threading.Thread(target=check_update, args=[download_apk_screen__show,download_apk_screen__do_not_show],daemon=True).start()
 
-def check_update(download_apk_screen__show,download_apk_screen__do_not_show=None,*args):
+def check_update(download_apk_screen__show,download_apk_screen__do_not_show=None,*_):
     """Check GitHub latest release version"""
     repo_owner = "Fector101"
     repo_name = "wallpaper-carousel"
@@ -435,7 +434,7 @@ def check_update(download_apk_screen__show,download_apk_screen__do_not_show=None
     latest_version = None
     apk_size = 0
 
-    def go_to_update_screen(dt):
+    def go_to_update_screen(_):
         download_apk_screen__show(new_version=latest_version,release_notes=release_notes,apk_size=apk_size)
     def do_not_go_to_update_screen(msg):
         if download_apk_screen__do_not_show:
