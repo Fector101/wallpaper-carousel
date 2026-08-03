@@ -34,7 +34,7 @@ from ui.widgets.modals import DialogScreen
 from utils.logger import app_logger
 from utils.model import get_app, GalleryTabs
 from utils.constants import theme_colors
-from utils.permissions import ask_permission_to_images, has_permission_to_images
+from utils.permissions import ask_permission_to_images, has_permission_to_images, has_android_13plus_image_permission
 
 my_config = ConfigManager()
 gs=None # hot reload
@@ -1081,11 +1081,12 @@ class GalleryScreen(MyMDScreen):
             from plyer import filechooser
             def desktop_chooser():
                 filechooser.open_file(
-                    on_selection=self.app.file_operation.copy_add,
+                    on_selection=self.app.file_operation.import_images_from_plyer,
                     filters=["image"],
                     multiple=True
                 )
-            threading.Thread(target=desktop_chooser).start()
+            desktop_chooser()
+            # threading.Thread(target=desktop_chooser).start()
             return
 
         if has_permission_to_images():
@@ -1093,21 +1094,18 @@ class GalleryScreen(MyMDScreen):
         else:
             def on_permission_result(all_granted):
                 if all_granted:
-                    if self.app.file_operation._processing_intent:
+                    if self.app.file_operation.processing_intent:
                         print("open_file_chooser: permission granted, import_from_intent already running")
                     elif self.app.file_operation.has_pending_intent():
                         print("open_file_chooser: permission granted, processing pending intent")
-                        self.app.file_operation.import_from_intent()
+                        self.app.file_operation.import_images_from_android()
+
                     else:
-                        try:
-                            from android.permissions import check_permission, Permission
-                            has_read_media = check_permission(Permission.READ_MEDIA_IMAGES)
-                        except Exception:
-                            has_read_media = True  # fallback to opening picker
+                        has_read_media = has_android_13plus_image_permission()
                         if not has_read_media:
                             # READ_MEDIA_VISUAL_USER_SELECTED only → system already showed picker
                             print("open_file_chooser: limited access granted, querying MediaStore directly")
-                            self.app.file_operation.import_from_mediastore()
+                            self.app.file_operation.import_images_from_android(only_limited_access=True)
                         else:
                             print("open_file_chooser: full access granted, opening file chooser")
                             Clock.schedule_once(show_chooser)
@@ -1117,27 +1115,6 @@ class GalleryScreen(MyMDScreen):
                     self.app.file_operation.hide_spinner()
                     self.app.bottom_bar.show(animation=False, hidden_by="pic")
             ask_permission_to_images(callback=on_permission_result)
-        # ----------------- This Also Works Keeping for Reference ---------------------------
-        # from jnius import autoclass, cast
-        # from android import activity
-        # def test(activity_id,some_int,data):
-        #     p("args", data)
-        # activity.bind(on_activity_result=test)
-
-        # def open_file_picker():
-        #     PythonActivity = autoclass('org.kivy.android.PythonActivity')
-        #     Intent = autoclass('android.content.Intent')# autoclass('android.intent.action.OPEN_DOCUMENT')  # Use OPEN_DOCUMENT for permanent files
-        #     intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
-        #     intent.addCategory(Intent.CATEGORY_OPENABLE)
-        #     intent.setType("image/*")  # Only show images
-        #
-        #     # Start the activity and wait for a result
-        #     # Note: You'll need to handle the result in your App class via bind
-        #     PythonActivity.mActivity.startActivityForResult(intent, 1001)
-        # try:
-        #     open_file_picker()
-        # except Exception as error_testing_picker:
-        #     p("error_testing_picker", error_testing_picker)
 
     def generate_tab_widgets(self, tab_name, wallpapers, dt=None):
         sorted_wallpapers = sorted(

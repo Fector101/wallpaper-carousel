@@ -1,5 +1,10 @@
 import os
 
+from android_notify.config import on_android_platform
+
+if on_android_platform():
+    from android.permissions import check_permission, Permission, request_permissions
+
 # p4a's Permission class doesn't include this Android 15+ constant
 _READ_MEDIA_VISUAL_USER_SELECTED = "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
 
@@ -50,7 +55,6 @@ def _can_show_permission_dialog(permissions):
 
 def _get_image_permissions():
     from android_notify.internal.java_classes import BuildVersion
-    from android.permissions import Permission
 
     sdk_int = BuildVersion.SDK_INT
     if sdk_int >= 35:
@@ -66,7 +70,6 @@ def _get_image_permissions():
 def _has_image_access():
     """Returns True if user has ANY level of image access (full or partial)."""
     from android_notify.internal.java_classes import BuildVersion
-    from android.permissions import check_permission
 
     perms = _get_image_permissions()
     for each in perms:
@@ -80,7 +83,6 @@ def _has_image_access():
 
 def ask_permission_to_images(callback=None):
     try:
-        from android.permissions import request_permissions, check_permission
         from android_notify.internal.java_classes import BuildVersion
 
         perms = _get_image_permissions()
@@ -120,6 +122,14 @@ def has_permission_to_images():
         return _has_image_access()
     except Exception as error_has_permission:
         print(f'Error checking permission status: {error_has_permission}')
+        return True
+
+
+def has_android_13plus_image_permission():
+    try:
+        return check_permission(Permission.READ_MEDIA_IMAGES)
+    except Exception as error_has_permission_on_android13plus:
+        print(f"[WARNING] error_has_permission_on_android13plus: {error_has_permission_on_android13plus}")
         return True
 # Below Works but not need Use Only Permission for images makes more sense
 

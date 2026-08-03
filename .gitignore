@@ -13,3 +13,4 @@ test.*
 test1.*
 .*
 !/.github/
+old_app_src
