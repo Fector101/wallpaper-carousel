@@ -34,7 +34,7 @@ from ui.widgets.modals import DialogScreen
 from utils.logger import app_logger
 from utils.model import get_app, GalleryTabs
 from utils.constants import theme_colors
-from utils.permissions import ask_permission_to_images, has_permission_to_images, has_android_13plus_image_permission
+from utils.permissions import ask_permission_to_images, has_permission_to_images, ACCESS_GRANTED, ACCESS_PARTIAL
 
 my_config = ConfigManager()
 gs=None # hot reload
@@ -1092,23 +1092,20 @@ class GalleryScreen(MyMDScreen):
         if has_permission_to_images():
             Clock.schedule_once(show_chooser)
         else:
-            def on_permission_result(all_granted):
-                if all_granted:
+            def on_permission_result(status):
+                if status == ACCESS_GRANTED:
                     if self.app.file_operation.processing_intent:
                         print("open_file_chooser: permission granted, import_from_intent already running")
                     elif self.app.file_operation.has_pending_intent():
                         print("open_file_chooser: permission granted, processing pending intent")
                         self.app.file_operation.import_images_from_android()
-
                     else:
-                        has_read_media = has_android_13plus_image_permission()
-                        if not has_read_media:
-                            # READ_MEDIA_VISUAL_USER_SELECTED only → system already showed picker
-                            print("open_file_chooser: limited access granted, querying MediaStore directly")
-                            self.app.file_operation.import_images_from_android(only_limited_access=True)
-                        else:
-                            print("open_file_chooser: full access granted, opening file chooser")
-                            Clock.schedule_once(show_chooser)
+                        print("open_file_chooser: full access granted, opening file chooser")
+                        Clock.schedule_once(show_chooser)
+                elif status == ACCESS_PARTIAL:
+                    # READ_MEDIA_VISUAL_USER_SELECTED only → system already showed picker
+                    print("open_file_chooser: limited access granted, querying MediaStore directly")
+                    self.app.file_operation.import_images_from_android(only_limited_access=True)
                 else:
                     print("open_file_chooser: permission denied by user")
                     self.app.file_operation._file_picker_active = False

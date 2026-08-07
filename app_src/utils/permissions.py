@@ -1,11 +1,12 @@
 import os
 
 from android_notify.config import on_android_platform
+from android_notify.internal.java_classes import BuildVersion
 
 if on_android_platform():
     from android.permissions import check_permission, Permission, request_permissions
 
-# p4a's Permission class doesn't include this Android 15+ constant
+# p4a's Permission class doesn't include this Android 14+ constant
 _READ_MEDIA_VISUAL_USER_SELECTED = "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
 
 
@@ -53,84 +54,80 @@ def _can_show_permission_dialog(permissions):
     return any(context.shouldShowRequestPermissionRationale(p) for p in permissions)
 
 
-def _get_image_permissions():
-    from android_notify.internal.java_classes import BuildVersion
+ACCESS_GRANTED = "GRANTED"
+ACCESS_PARTIAL = "PARTIAL"
+ACCESS_DENIED = "DENIED"
 
+
+def _required_image_permissions():
     sdk_int = BuildVersion.SDK_INT
-    if sdk_int >= 35:
+    if sdk_int >= 34: # android 14+
         return [Permission.READ_MEDIA_IMAGES, _READ_MEDIA_VISUAL_USER_SELECTED]
-    elif sdk_int >= 33:
+    elif sdk_int >= 33: # android 13+
         return [Permission.READ_MEDIA_IMAGES]
-    elif sdk_int >= 29:
-        return [Permission.READ_EXTERNAL_STORAGE]
-    else:
+    else: # android 12 and below
         return [Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE]
 
 
-def _has_image_access():
-    """Returns True if user has ANY level of image access (full or partial)."""
-    from android_notify.internal.java_classes import BuildVersion
-
-    perms = _get_image_permissions()
-    for each in perms:
-        state = check_permission(each)
-        print(f"_has_image_access: {each}={state}")
-
-    if BuildVersion.SDK_INT >= 35:
-        return any(check_permission(p) for p in perms)
-    return all(check_permission(p) for p in perms)
+def _get_image_permissions():
+    """Return ACCESS_GRANTED, ACCESS_PARTIAL, or ACCESS_DENIED for image access."""
+    sdk_int = BuildVersion.SDK_INT
+    if sdk_int >= 34: # android 14+
+        if check_permission(Permission.READ_MEDIA_IMAGES):
+            return ACCESS_GRANTED
+        if check_permission(_READ_MEDIA_VISUAL_USER_SELECTED):
+            return ACCESS_PARTIAL
+        return ACCESS_DENIED
+    if sdk_int >= 33: # android 13+
+        return ACCESS_GRANTED if check_permission(Permission.READ_MEDIA_IMAGES) else ACCESS_DENIED
+    # android 12 and below
+    return ACCESS_GRANTED if check_permission(Permission.READ_EXTERNAL_STORAGE) else ACCESS_DENIED
 
 
 def ask_permission_to_images(callback=None):
     try:
-        from android_notify.internal.java_classes import BuildVersion
+        perms = _required_image_permissions()
 
-        perms = _get_image_permissions()
-
-        if _has_image_access():
+        status = _get_image_permissions()
+        if status == ACCESS_GRANTED:
             _remove_image_permission_marker()
             if callback:
-                callback(True)
+                callback(ACCESS_GRANTED)
+            return
+
+        if status == ACCESS_PARTIAL:
+            # system already showed its picker and granted limited access
+            if callback:
+                callback(ACCESS_PARTIAL)
             return
 
         if not _is_first_image_permission_ask() and not _can_show_permission_dialog(perms):
             _open_app_settings()
             if callback:
-                callback(False)
+                callback(ACCESS_DENIED)
             return
 
         def wrapped(permissions, grants):
-            if BuildVersion.SDK_INT >= 35:
-                granted = any(grants)
-            else:
-                granted = all(grants)
-            print(f"ask_permission_to_images: requested={permissions}, grants={grants} -> {'granted' if granted else 'denied'}")
-            if granted:
+            status = _get_image_permissions()
+            print(f"ask_permission_to_images: requested={permissions}, grants={grants} -> {status}")
+            if status == ACCESS_GRANTED:
                 _remove_image_permission_marker()
             if callback:
-                callback(granted)
+                callback(status)
 
         request_permissions(perms, wrapped)
     except Exception as error_asking_file_permission:
         print(f'Error asking for permission: {error_asking_file_permission}')
         if callback:
-            callback(False)
+            callback(ACCESS_DENIED)
 
 
 def has_permission_to_images():
     try:
-        return _has_image_access()
+        return _get_image_permissions() == ACCESS_GRANTED or _get_image_permissions() == ACCESS_PARTIAL
     except Exception as error_has_permission:
         print(f'Error checking permission status: {error_has_permission}')
-        return True
-
-
-def has_android_13plus_image_permission():
-    try:
-        return check_permission(Permission.READ_MEDIA_IMAGES)
-    except Exception as error_has_permission_on_android13plus:
-        print(f"[WARNING] error_has_permission_on_android13plus: {error_has_permission_on_android13plus}")
-        return True
+        return False
 # Below Works but not need Use Only Permission for images makes more sense
 
 # from kivy.utils import platform # OS
