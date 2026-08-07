@@ -194,6 +194,8 @@ class BottomNavigationBar(MDNavigationDrawer):
         if self.pass_width:
             self.pass_width = False
             return
+        if not self.children:
+            return
 
         # p("on_size",args)
         self.width = self.minimum_width
@@ -203,6 +205,8 @@ class BottomNavigationBar(MDNavigationDrawer):
     def on_width(self, *args):
         if self.pass_width:
             self.pass_width = False
+            return
+        if not self.children:
             return
 
         # p("width",args)
