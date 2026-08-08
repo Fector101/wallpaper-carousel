@@ -342,7 +342,7 @@ class DateGroupLayout(Column):
         # self.md_bg_color=[.1,1,.3,1]
 
     def build_grid(self, *args):
-        app_logger.info(f"DGL_BUILD: starting batch_len={len(self.batch)} parent={self.parent}")
+        # app_logger.info(f"DGL_BUILD: starting batch_len={len(self.batch)} parent={self.parent}")
         header_layout = MDRelativeLayout(
             adaptive_height=1,
             size_hint_x=1,
@@ -416,7 +416,7 @@ class DateGroupLayout(Column):
 
         self.add_widget(line)
         self.app.bind(device_theme=self._set_theme)
-        app_logger.info(f"DGL_BUILD: done self.children={len(self.children)} parent={self.parent}")
+        # app_logger.info(f"DGL_BUILD: done self.children={len(self.children)} parent={self.parent}")
         return None
 
     def _set_theme(self, _, theme):
@@ -1155,7 +1155,7 @@ class GalleryScreen(MyMDScreen):
         self.tab_instances[tab_name]["title"] = tab_title
         self.tab_instances[tab_name]["wallpapers"] = sorted_wallpapers
         self.tab_instances[tab_name]["widget"] = tab_container
-        app_logger.info(f"GENERATE_TAB: tab={tab_name} wallpapers={len(sorted_wallpapers)} list_id={id(sorted_wallpapers)} swp_id={id(self.wallpapers)} batches={list(data_of_batch_dict_of_lists.keys())} widget_children={len(tab_container.children)}")
+        # app_logger.info(f"GENERATE_TAB: tab={tab_name} wallpapers={len(sorted_wallpapers)} list_id={id(sorted_wallpapers)} swp_id={id(self.wallpapers)} batches={list(data_of_batch_dict_of_lists.keys())} widget_children={len(tab_container.children)}")
 
     def open_fullscreen_for_image(self, wallpaper_path = None, wallpaper_index = -1):
         try:
@@ -1178,7 +1178,7 @@ class GalleryScreen(MyMDScreen):
         self.ids.header_info_label.text = tab_data["title"]
         scrollView_container.add_widget(tab_data["widget"])
         self.wallpapers = tab_data["wallpapers"]
-        app_logger.info(f"on_tab {tab_name} wp_len={len(self.wallpapers)} wp_list_id={id(tab_data['wallpapers'])} swp_id={id(self.wallpapers)} wallpapers={tab_data['wallpapers']} widget_children={tab_data['widget'].children}")
+        # app_logger.info(f"on_tab {tab_name} wp_len={len(self.wallpapers)} wp_list_id={id(tab_data['wallpapers'])} swp_id={id(self.wallpapers)} wallpapers={tab_data['wallpapers']} widget_children={tab_data['widget'].children}")
 
     def load_day_wallpapers(self):
         self.current_tab = GalleryTabs.DAY.value

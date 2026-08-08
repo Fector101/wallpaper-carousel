@@ -381,7 +381,7 @@ class FullscreenScreen(MyMDScreen):
             spinner_layout.remove()
             return
 
-        idx = self.carousel.index
+        idx = self.logical_index
         # Get path without removing it from the list directly
         path = wallpapers[idx]
 
@@ -410,10 +410,8 @@ class FullscreenScreen(MyMDScreen):
             spinner_layout.remove()
             return
             
-        self.update_images()
-        new_index=max(0, min(idx, len(gallery_screen.wallpapers) - 1))
-        self.carousel.index = new_index
-        self.__patch_for_first_not_getting_called_by_on_current_slide(index=new_index)
+        new_index = max(0, min(self.logical_index, len(gallery_screen.wallpapers) - 1))
+        self.update_images(new_index)
         spinner_layout.remove()
     # ====================================================================
     #               IMAGE INFO POPUP
@@ -425,7 +423,7 @@ class FullscreenScreen(MyMDScreen):
         if not gallery_screen.wallpapers:
             return
 
-        idx = self.carousel.index
+        idx = self.logical_index
         path = gallery_screen.wallpapers[idx]
 
         self.info_popup = MyPopUp(
@@ -436,36 +434,78 @@ class FullscreenScreen(MyMDScreen):
         )
         self.info_popup.open()
 
+    NUMBER_OF_SLIDES = 3
+
     def update_images(self,index=None):
-        """Rebuild carousel anytime wallpapers change."""
+        """Rebuild carousel window around a logical index; only 3 slides exist."""
         self.carousel.unbind(current_slide=self.on_current_slide)
         self.carousel_has_images = False
         gallery_screen = self.manager.gallery_screen
         self.carousel.clear_widgets()
-        
-        # for hot_reload
-        # self.data = ["/home/fabian/Pictures/test.jpg"]
-        # for p in self.data:
-        for p in gallery_screen.wallpapers:
-            # p("thumbnail_path_for(p)", str(thumbnail_path_for(p)))
-            img = AsyncImage(
-                source=str(thumbnail_path_for(p)),  # p,
-                # allow_stretch=True,
-                # keep_ratio=True,
-                fit_mode="contain",
-                # on_load=self.set_side_by_side1
-            )
-            img.higher_format = p
-            self.carousel_has_images = True
+
+        for _ in range(self.NUMBER_OF_SLIDES):
+            img = AsyncImage(fit_mode="contain")
+            img.higher_format = None
             self.carousel.add_widget(img)
+
         self.carousel.bind(current_slide=self.on_current_slide)
 
-        # Setting data when entering Carousel From first slide because self.carousel.bind(current_slide=self.on_current_slide) isn't called
-        self.__patch_for_first_not_getting_called_by_on_current_slide(index)
+        wallpapers = gallery_screen.wallpapers
+        if not wallpapers:
+            return
 
-    def __patch_for_first_not_getting_called_by_on_current_slide(self,index):
-        if index == 0:
-            self.on_current_slide(self.carousel,0)
+        self.carousel_has_images = True
+        if index is None:
+            index = 0
+        self.logical_index = max(0, min(index, len(wallpapers) - 1))
+        self._carousel_prev_index = 0
+        self.carousel.index = 0
+        self._fill_window()
+        self._setup_current_slide(self.carousel.current_slide)
+
+    def _fill_window(self):
+        """Fill the 3 slides with logical_index-1, logical_index, logical_index+1."""
+        i = self.carousel.index
+        slides = self.carousel.slides
+        self._set_slide(slides[i], self.logical_index)
+        self._set_slide(slides[(i + 1) % self.NUMBER_OF_SLIDES], self.logical_index + 1)
+        self._set_slide(slides[(i - 1) % self.NUMBER_OF_SLIDES], self.logical_index - 1)
+
+    def _set_slide(self, img, logical_index):
+        """Point a carousel slide at a logical wallpaper index (thumbnail first)."""
+        path = self._wallpaper_at(logical_index)
+        if path is None:
+            img.higher_format = None
+            img.source = ""
+            return
+        img.higher_format = path
+        if img.source != str(thumbnail_path_for(path)):
+            img.source = str(thumbnail_path_for(path))
+
+    def _wallpaper_at(self, logical_index):
+        wallpapers = self.manager.gallery_screen.wallpapers
+        if not wallpapers:
+            return None
+        return wallpapers[logical_index % len(wallpapers)]
+
+    def _setup_current_slide(self, current_slide):
+        """Header, full-res swap and neighbor preload for the current slide."""
+        if hasattr(current_slide, "higher_format") and current_slide.higher_format:
+            self.current_image = current_slide.higher_format
+
+        if self.clock_for_side_by_side:
+            self.clock_for_side_by_side.cancel()
+            self.clock_for_side_by_side = None
+        if self.clock_for_higher_format:
+            self.clock_for_higher_format.cancel()
+            self.clock_for_higher_format = None
+
+        def change_img(_):
+            current_slide.source = str(current_slide.higher_format)
+
+        self.update_header_texts(current_slide.higher_format)
+        self.clock_for_higher_format = Clock.schedule_once(change_img, 1)
+        self.clock_for_side_by_side = Clock.schedule_once(self.set_side_by_side, 1.5)
 
     def update_header_texts(self,image_path):
         self.header_title.text = os.path.basename(image_path)
@@ -482,31 +522,29 @@ class FullscreenScreen(MyMDScreen):
         else:
             self.day_noon_both_button.set_day_nd_noon_image()
 
-    def on_current_slide(self, carousel, index): # type: ignore
+    def on_current_slide(self, carousel, slide): # type: ignore
         """Using on_current_slide instead of on_index to prevent multiple Calls"""
-        # p("self.carousel_has_images",self.carousel_has_images)
         if not self.carousel_has_images or not carousel.current_slide: # From self.carousel.clear_widgets() changes current_slide Carousel.clear_widgets.remove_widget
             return None
 
-        current_slide = carousel.current_slide
+        index = carousel.index
+        prev = getattr(self, "_carousel_prev_index", index)
+        delta = (index - prev) % self.NUMBER_OF_SLIDES
+        self._carousel_prev_index = index
 
-        if hasattr(self.carousel.current_slide,"higher_format"):
-            self.current_image = self.carousel.current_slide.higher_format
-        # p('there',self.carousel.current_slide.higher_format, current_slide.higher_format, self.clock_for_side_by_side,self.clock_for_higher_format)
+        if delta == 1:
+            self.logical_index += 1
+            self._set_slide(carousel.slides[(index + 1) % self.NUMBER_OF_SLIDES],
+                            self.logical_index + 1)
+        elif delta == 2:
+            self.logical_index -= 1
+            self._set_slide(carousel.slides[(index - 1) % self.NUMBER_OF_SLIDES],
+                            self.logical_index - 1)
+        else:
+            # No real movement (initial placement). Make sure the window is filled.
+            self._fill_window()
 
-        if self.clock_for_side_by_side:
-            self.clock_for_side_by_side.cancel()
-            self.clock_for_side_by_side = None
-        if self.clock_for_higher_format:
-            self.clock_for_higher_format.cancel()
-            self.clock_for_higher_format = None
-
-        def change_img(_):
-            current_slide.source = str(current_slide.higher_format)
-
-        self.update_header_texts(current_slide.higher_format)
-        self.clock_for_higher_format = Clock.schedule_once(change_img, 1)
-        self.clock_for_side_by_side = Clock.schedule_once(self.set_side_by_side, 1.5)
+        self._setup_current_slide(carousel.current_slide)
         return None
 
     def set_side_by_side(self, *_):

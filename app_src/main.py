@@ -1,47 +1,77 @@
-from utils.helper import write_logs_to_file
-write_logs_to_file()
-
-import logging
+import time
 import traceback
 
-from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.properties import StringProperty, ObjectProperty
 from kivy.utils import platform
+from kivy.clock import Clock
+
 from kivymd.app import MDApp
 from kivymd.uix.navigationdrawer import MDNavigationLayout
 
-from android_notify import NotificationHandler, logger as android_notify_logger
-from android_notify.config import on_android_platform, on_pydroid_app
-
 from ui.screens.manager import ScreenManager
-from ui.widgets.android import toast
-from ui.widgets.buttons import BottomNavigationBar
-from ui.widgets.bottom_sheet import MyBtmSheet
 
-from utils.android import is_device_on_light_mode
-from utils.config_manager import ConfigManager
-from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, theme_colors as _theme_colors
-from utils.helper import Service, write_logs_to_file, get_free_port, register_fonts, fix_input_on_linux, \
-    get_stored_running_ui_server_port, get_stored_running_service_server_port
-from utils.image_operations import ImageOperation
-from utils.logger import app_logger
-from utils.ui_service_bridge import UIListenToServicer, UIMessengerToService
 
-android_notify_logger.setLevel(logging.DEBUG if on_android_platform() else logging.ERROR)
+def lazy_load(st):
+    global write_logs_to_file, logging, NotificationHandler, android_notify_logger, \
+        on_android_platform, on_pydroid_app, toast, BottomNavigationBar, MyBtmSheet, \
+        is_device_on_light_mode, SERVICE_PORT_ARGUMENT_KEY, \
+        SERVICE_UI_PORT_ARGUMENT_KEY, _theme_colors, Service, get_free_port, \
+        register_fonts, fix_input_on_linux, get_stored_running_ui_server_port, \
+        get_stored_running_service_server_port, app_logger, \
+        UIListenToServicer, UIMessengerToService, ConfigManager
 
-write_logs_to_file()
-fix_input_on_linux()
-register_fonts()
+    import logging
+    from android_notify import NotificationHandler, logger as android_notify_logger
+    from android_notify.config import on_android_platform, on_pydroid_app
+    from ui.widgets.android import toast
+    from ui.widgets.buttons import BottomNavigationBar
+    from ui.widgets.bottom_sheet import MyBtmSheet
+    from utils.android import is_device_on_light_mode
+    from utils.config_manager import ConfigManager
+    from utils.constants import (SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY,
+                                 theme_colors as _theme_colors)
+
+    from utils.helper import (write_logs_to_file, Service, get_free_port, register_fonts,
+                              fix_input_on_linux, get_stored_running_ui_server_port,
+                              get_stored_running_service_server_port)
+    from utils.logger import app_logger
+    from utils.ui_service_bridge import UIListenToServicer, UIMessengerToService
+
+    from kivy.lang import Builder
+    Builder.load_string("""
+<MDButton>:
+    theme_elevation_level: "Custom"
+    elevation_level: 0
+    theme_shadow_softness: "Custom"
+    shadow_softness: 0
+<MDIconButton>:
+    theme_elevation_level: "Custom"
+    elevation_level: 0
+    theme_shadow_softness: "Custom"
+    shadow_softness: 0
+""")
+
+    write_logs_to_file()
+    android_notify_logger.setLevel(logging.DEBUG if on_android_platform() else logging.ERROR)
+    fix_input_on_linux()
+    register_fonts()
+    print(f"lazy loaded: {time.time()-st}")
+
+
 
 if platform == 'linux':
     Window.size = (390, 740)
-
+#
+# class MyMDBoxLayout(MDBoxLayout):
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#
 
 class WallpaperCarouselApp(MDApp):
     device_theme = StringProperty("dark")
-    theme_preference = StringProperty(ConfigManager.get_theme_preference())
-    theme_colors = ObjectProperty(_theme_colors)
+    theme_preference = StringProperty("dark")
+    theme_colors = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -55,57 +85,58 @@ class WallpaperCarouselApp(MDApp):
         self.bottom_bar = None
 
     def build_ui(self):
-        from kivy.lang import Builder
-        Builder.load_string("""
-<MDButton>:
-    theme_elevation_level: "Custom"
-    elevation_level: 0
-    theme_shadow_softness: "Custom"
-    shadow_softness: 0
-<MDIconButton>:
-    theme_elevation_level: "Custom"
-    elevation_level: 0
-    theme_shadow_softness: "Custom"
-    shadow_softness: 0
-""")
         root_layout = MDNavigationLayout()
         # self.root_layout = MDRelativeLayout()
 
         self.sm = ScreenManager()
         root_layout.add_widget(self.sm)
-
-        self.bottom_bar = BottomNavigationBar(
-            on_camera=self.sm.go_to_thumbs,
-            on_settings=self.sm.go_to_settings,
-            on_double_click_camera = self.sm.scroll_to_to_thumbs,
-            on_double_click_settings = self.sm.scroll_to_to_settings
-        )
-
-        if not NotificationHandler.has_permission():
-            self.sm.current = "welcome"
-        else:
-            self.sm.current = "thumbs"
-
-        root_layout.add_widget(self.bottom_bar)
-        self.bottom_bar.bind_change()  # needs theme from monitor_dark_and_light_device_change
-
-        # get_number_of_cols()
-        self.btm_sheet = MyBtmSheet(change_number_or_cols=self.sm.gallery_screen.change_amount_of_columns)
-        root_layout.add_widget(self.btm_sheet)
+        #
+        # self.bottom_bar = BottomNavigationBar(
+        #     on_camera=self.sm.go_to_thumbs,
+        #     on_settings=self.sm.go_to_settings,
+        #     on_double_click_camera = self.sm.scroll_to_to_thumbs,
+        #     on_double_click_settings = self.sm.scroll_to_to_settings
+        # )
+        # #
+        # # if not NotificationHandler.has_permission():
+        # #     self.sm.current = "welcome"
+        # # else:
+        # #     self.sm.current = "thumbs"
+        # #
+        # root_layout.add_widget(self.bottom_bar)
+        # self.bottom_bar.bind_change()  # needs theme from monitor_dark_and_light_device_change
+        # #
+        # # get_number_of_cols()
+        # self.btm_sheet = MyBtmSheet(
+        #     # change_number_or_cols=self.sm.gallery_screen.change_amount_of_columns
+        # )
+        # root_layout.add_widget(self.btm_sheet)
 
         return root_layout
 
     def build(self):
+        print('pre build')
+        st=time.time()
+        self.st=st
         self.bind(device_theme=self._sync_theme_colors)
-        self._sync_theme_colors()
+        # self._sync_theme_colors()
         self.root_layout = self.build_ui()
-        self.file_operation = ImageOperation(load_saved=self.sm.gallery_screen.initialize_tabs)
-        self.bind_plyer_fix()
-        self.file_operation.setup_share_from_others_to_app_listener()
+        print('after build')
+        print(f"time: {time.time()-st}")
+        # self.file_operation = ImageOperation(load_saved=self.sm.gallery_screen.initialize_tabs)
+        # self.bind_plyer_fix()
+        # self.file_operation.setup_share_from_others_to_app_listener()
 
         return self.root_layout
 
     def on_start(self):
+        print('on start')
+        Clock.schedule_once(self._start_loading_timer, 0)
+
+    def _start_loading_timer(self, dt):
+        print("_start_loading_timer")
+        Clock.schedule_once(lambda _: self._post_loading_setup(),2)
+        Clock.schedule_once(self._load_screens_and_build_bottom_nav, 3)
         def android_service():
             try:
                 self.setup_service()
@@ -113,8 +144,43 @@ class WallpaperCarouselApp(MDApp):
                 toast(str(error_call_service_on_start))
                 traceback.print_exc()
 
-        Clock.schedule_once(lambda dt: android_service(), 2)
-        Clock.schedule_interval(lambda dt: self.monitor_dark_and_light_device_change(), 1)
+        # Clock.schedule_once(lambda dt: android_service(), 2)
+        # Clock.schedule_interval(lambda dt: self.monitor_dark_and_light_device_change(), 1)
+
+    def _load_screens_and_build_bottom_nav(self, dt):
+        st=time.time()
+        self.sm.lazy_load_screens()
+        self._build_bottom_nav()
+        print(f"_load_screens_and_build_bottom_nav: {time.time()-st}")
+
+    def _build_bottom_nav(self):
+        self.bottom_bar = BottomNavigationBar(
+            on_camera=self.sm.go_to_thumbs,
+            on_settings=self.sm.go_to_settings,
+            on_double_click_camera=self.sm.scroll_to_to_thumbs,
+            on_double_click_settings=self.sm.scroll_to_to_settings,
+        )
+
+        if not NotificationHandler.has_permission():
+            self.sm.current = "welcome"
+        else:
+            self.sm.current = "thumbs"
+
+        self.root_layout.add_widget(self.bottom_bar)
+        self.bottom_bar.bind_change()  # needs theme from monitor_dark_and_light_device_change
+
+        self.btm_sheet = MyBtmSheet(
+            change_number_or_cols=self.sm.gallery_screen.change_amount_of_columns
+        )
+        self.root_layout.add_widget(self.btm_sheet)
+
+    def _post_loading_setup(self):
+        st=time.time()
+        lazy_load(self.st)
+        self.theme_preference = ConfigManager.get_theme_preference()
+        self.theme_colors = _theme_colors
+        self.monitor_dark_and_light_device_change()
+        print(f"_post_loading_setup: {time.time()-st}")
 
     def setup_service(self):
         service = Service(name='Wallpapercarousel')
@@ -149,6 +215,7 @@ class WallpaperCarouselApp(MDApp):
         ).start()
 
     def on_resume(self):
+        print('on resume')
         if self.file_operation and self.file_operation.showing_loading_screen and not self.file_operation._file_picker_active:
             print("on_resume: cleaning up spinner left from permission settings redirect")
             self.file_operation.hide_spinner()
@@ -199,7 +266,8 @@ class WallpaperCarouselApp(MDApp):
             self.device_theme = preference
 
     def _sync_theme_colors(self, *args):
-        _theme_colors.theme = self.device_theme
+        if self.theme_colors:
+            self.theme_colors.theme = self.device_theme
 
 
 if __name__ == '__main__':

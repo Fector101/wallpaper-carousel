@@ -1,30 +1,42 @@
+import time
 import os.path
 import traceback
 
-from android_notify.internal.java_classes import autoclass
 
-from android_notify.config import get_python_activity_context, on_android_platform
 from kivy.uix.screenmanager import SlideTransition, NoTransition
 from kivymd.uix.screenmanager import MDScreenManager
+from ui.screens.loading_screen import LoadingScreen
 
-from android_notify import NotificationHandler
-from ui.widgets.layouts import MyMDScreen
-from utils.android import DisplayListener
-from utils.logger import app_logger
+def lazy_load():
+    global autoclass, get_python_activity_context, on_android_platform, NotificationHandler, MyMDScreen, DisplayListener,\
+        app_logger, DownloadApkScreen,LogsScreen,WelcomeScreen,FullscreenScreen,get_app,SettingsScreen, GalleryScreen
+    from android_notify.internal.java_classes import autoclass
+    from android_notify.config import get_python_activity_context, on_android_platform
+    from android_notify import NotificationHandler
+    from ui.widgets.layouts import MyMDScreen
+    from utils.android import DisplayListener
+    from utils.logger import app_logger
 
-from utils.model import get_app
-from ui.screens.gallery_screen import GalleryScreen
-from ui.screens.settings_screen import SettingsScreen
-from ui.screens.full_screen import FullscreenScreen
-from ui.screens.welcome_screen import WelcomeScreen
-from ui.screens.logs_screen import LogsScreen
-from ui.screens.download_apk_screen import DownloadApkScreen
-
-
+    from utils.model import get_app
+    from ui.screens.gallery_screen import GalleryScreen
+    from ui.screens.settings_screen import SettingsScreen
+    from ui.screens.full_screen import FullscreenScreen
+    from ui.screens.welcome_screen import WelcomeScreen
+    from ui.screens.logs_screen import LogsScreen
+    from ui.screens.download_apk_screen import DownloadApkScreen
+    # print(f"lazy loaded: {time.time()-st}")
 class ScreenManager(MDScreenManager):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        # self.app = get_app()
+
+        self.loading_screen = LoadingScreen()
+        self.add_widget(self.loading_screen)
+        self.current = "loading_screen"
+
+    def lazy_load_screens(self,dt=None):
+        lazy_load()
         self.app = get_app()
         self.welcome_screen = WelcomeScreen()
         self.gallery_screen = GalleryScreen()
@@ -40,6 +52,7 @@ class ScreenManager(MDScreenManager):
         self.add_widget(self.log_screen)
         self.add_widget(self.download_apk_screen)
         self.__register_rotate_listener()
+        self.current = "thumbs"
         # self.__run_rotate_method_for_each_screen("BOTTOM")
 
         # self.current = "update_screen"
@@ -61,13 +74,14 @@ class ScreenManager(MDScreenManager):
                 app_logger.exception(error_registering_rotate_listener)
                 traceback.print_exc()
 
-    def on_current(self,*args):
-        screen_name = args[1]
-        self.btm_nav_patch(screen_name)
-        super().on_current(instance=args[0],value=args[1])
+    def on_current(self,instance,value):
+        screen_name = value
+        if screen_name != "loading_screen":
+            self.btm_nav_patch(screen_name)
+        super().on_current(instance=instance,value=value)
 
     def btm_nav_patch(self, screen_name):
-        is_fullscreen = screen_name in ["welcome", "fullscreen", "logs", "update_screen"]
+        is_fullscreen = screen_name in ["welcome", "fullscreen", "logs", "update_screen","loading_screen"]
         if is_fullscreen and self.app.bottom_bar:
             self.app.bottom_bar.hide(animation=False, hidden_by=self)
         elif self.app.bottom_bar:
@@ -91,7 +105,6 @@ class ScreenManager(MDScreenManager):
         self.transition = NoTransition()
         self.current = "fullscreen"
         self.full_screen.update_images(index)
-        self.full_screen.carousel.index = index
 
     def on_rotation(self, rotation):
         rotation=self.__get_rotation_name(rotation)

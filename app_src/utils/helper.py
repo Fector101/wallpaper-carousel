@@ -83,7 +83,6 @@ class Tee:
         # Write to file
         self.file.write(message)
         self.file.flush()
-
         self.fix_log_to_terminal_on_android(message)
 
     def flush(self):
@@ -93,7 +92,6 @@ class Tee:
     @staticmethod
     def fix_log_to_terminal_on_android(message):
         if on_android_platform():
-
             Log.d("python", message)
 
 
