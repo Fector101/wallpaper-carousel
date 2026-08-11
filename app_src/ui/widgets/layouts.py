@@ -32,26 +32,42 @@ Window.softinput_mode = 'below_target' # or 'pan'
 
 if on_android_platform():
     View = autoclass("android.view.View")
+    WindowInsetsType = autoclass("android.view.WindowInsets$Type")
+    WindowInsetsController = autoclass("android.view.WindowInsetsController")
     from jnius import PythonJavaClass, java_method
     class _SystemUiRunnable(PythonJavaClass):
         __javainterfaces__ = ['java/lang/Runnable']
         __javacontext__ = 'app'
 
-        def __init__(self, flags):
+        def __init__(self, hide):
             super().__init__()
-            self.flags = flags
+            self.hide = hide
 
         @java_method('()V')
         def run(self):
-            PythonActivity = autoclass("org.kivy.android.PythonActivity")
-            activity = PythonActivity.mActivity
-            decor = activity.getWindow().getDecorView()
-            decor.setSystemUiVisibility(self.flags)
+            decor = get_python_activity_context().getWindow().getDecorView()
+            if BuildVersion.SDK_INT >= 30:
+                controller = decor.getWindowInsetsController()
+                bars = WindowInsetsType.statusBars() | WindowInsetsType.navigationBars()
+                if self.hide:
+                    controller.setSystemBarsBehavior(
+                        WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    )
+                    controller.hide(bars)
+                else:
+                    controller.show(bars)
+            else:
+                flags = (
+                    View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                ) if self.hide else 0
+                decor.setSystemUiVisibility(flags)
 
 
-def _set_system_ui_visibility(flags):
+def _set_system_ui_visibility(hide):
     activity = get_python_activity_context()
-    activity.runOnUiThread(_SystemUiRunnable(flags))
+    activity.runOnUiThread(_SystemUiRunnable(hide))
 
 class Row(MDBoxLayout):
     my_widgets = ListProperty([])
@@ -442,15 +458,15 @@ class MyMDScreen(MDScreen):
         # app_logger.info(f"[BackKey] MyMDScreen.on_leave screen='{self.name}' -> unbound on_key_down + on_key_up")
     
     def show_system_ui(self):
-        _set_system_ui_visibility(0)
+        if not on_android_platform():
+            return
+        _set_system_ui_visibility(False)
         self.screen_content.padding = [0,0,0,self.nav_bar_height]
 
     def hide_system_ui(self):
-        _set_system_ui_visibility(
-            View.SYSTEM_UI_FLAG_FULLSCREEN
-                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-              )
+        if not on_android_platform():
+            return
+        _set_system_ui_visibility(True)
         self.screen_content.padding = [0,0,0,0]
     
 
