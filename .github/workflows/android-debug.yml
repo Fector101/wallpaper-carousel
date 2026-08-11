@@ -2,6 +2,11 @@ name: Build Debug APK
 
 on:
   workflow_dispatch:
+  pull_request:
+
+concurrency:
+  group: debug-build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-android:
