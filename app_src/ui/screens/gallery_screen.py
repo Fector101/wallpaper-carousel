@@ -1085,8 +1085,8 @@ class GalleryScreen(MyMDScreen):
                     filters=["image"],
                     multiple=True
                 )
-            desktop_chooser()
-            # threading.Thread(target=desktop_chooser).start()
+            # desktop_chooser()
+            threading.Thread(target=desktop_chooser).start()
             return
 
         if has_permission_to_images():
