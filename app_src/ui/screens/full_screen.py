@@ -30,6 +30,8 @@ from utils.model import get_app, GalleryTabs
 from kivy.loader import  Loader
 from utils.logger import app_logger
 from kivy.core.window import Window
+from android_notify.internal.java_classes import autoclass
+from android_notify.config import get_python_activity_context, on_android_platform
 
 
 my_config=ConfigManager()
@@ -318,7 +320,7 @@ class FullscreenScreen(MyMDScreen):
         # Bind events
         self.btn_delete.bind(on_release=lambda x:dialog_popup.show(img_texture=self.carousel.current_slide.texture))
         self.btn_info.bind(on_release=self.show_info)
-        self.btn_fullscreen.bind(on_release=self.toggle_fullscreen)
+        self.btn_fullscreen.bind(on_release=self.enter_preview_mode)
 
         # self.set_wallpaper_btn.bind(on_release=lambda x: change_wallpaper(self.carousel.current_slide.higher_format))
         self.set_wallpaper_btn.bind(on_release=self.set_as_wallpaper)
@@ -343,7 +345,7 @@ class FullscreenScreen(MyMDScreen):
         self.btn_fullscreen.icon_color = tc
         self.share_btn.icon_color = tc
 
-    def toggle_fullscreen(self, *_):
+    def enter_preview_mode(self, *_):
         self.is_fullscreen = True
 
         self.carousel.size_hint = (1, 1)
@@ -359,6 +361,9 @@ class FullscreenScreen(MyMDScreen):
             img.fit_mode = "cover"
 
         self.layout.do_layout()
+        if on_android_platform():
+            self.hide_system_ui()
+            self.generic_status_bar_spacer.status_bar_height=0
 
     def handle_going_back(self, *_):
         if self.is_fullscreen:
@@ -562,6 +567,9 @@ class FullscreenScreen(MyMDScreen):
         for img in self.carousel.slides:
             img.fit_mode = "contain"
 
+        if on_android_platform():
+            self.show_system_ui()
+            self.generic_status_bar_spacer.status_bar_height=self.status_bar_height
     def back_to_gallery_screen(self,*_):
         if self.showing_info_modal:
             self.info_popup.dismiss()
@@ -573,3 +581,22 @@ class FullscreenScreen(MyMDScreen):
 
 def patch_resolution(proxy_image, image_object):
     image_object.texture = proxy_image.image.texture
+
+def hide_nav_btn_and_status_bar():
+    if not on_android_platform():
+        return
+    try:
+        View = autoclass('android.view.View')
+        decor_view = get_python_activity_context().getWindow().getDecorView()
+        decor_view.setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            | View.SYSTEM_UI_FLAG_FULLSCREEN
+            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+        )
+    except Exception as error_hiding_nav_btn_and_status_bar:
+        app_logger.exception(error_hiding_nav_btn_and_status_bar)
+
+
