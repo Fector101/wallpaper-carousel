@@ -1,6 +1,6 @@
 import traceback
 from android_notify.config import get_python_activity_context,autoclass, on_android_platform
-from android_notify.internal.java_classes import PendingIntent,Intent
+from android_notify.internal.java_classes import PendingIntent, Intent, _LazyJavaClass
 
 from utils.logger import app_logger
 from ui.widgets.android import toast
@@ -241,8 +241,8 @@ def test_java_action():
     #     log.warning(f"FOUND {len(image_uris)} IMAGES")
     #     return image_uris
 
-PythonActivity = autoclass('org.kivy.android.PythonActivity')
-from jnius import autoclass, PythonJavaClass, java_method
+PythonActivity = _LazyJavaClass("PythonActivity", "org.kivy.android.PythonActivity")
+from jnius import PythonJavaClass, java_method
 
 if on_android_platform():
     # Native Display Listener

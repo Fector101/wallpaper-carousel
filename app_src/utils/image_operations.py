@@ -5,7 +5,7 @@ import traceback
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
-from android_notify.internal.java_classes import String, autoclass, cast, Intent, BuildVersion, Uri, BitmapFactory, File
+from android_notify.internal.java_classes import String, autoclass, cast, Intent, BuildVersion, Uri, BitmapFactory, File, _LazyJavaClass
 from kivy.clock import Clock
 from android_notify.config import on_android_platform, on_pydroid_app, get_package_name
 from kivymd.app import MDApp
@@ -18,30 +18,30 @@ from utils.logger import app_logger
 
 
 if on_android_platform():
-    PythonActivity = autoclass("org.kivy.android.PythonActivity")
-    Bitmap = autoclass('android.graphics.Bitmap')
-    BitmapConfig = autoclass('android.graphics.Bitmap$Config')
-    CompressFormat = autoclass('android.graphics.Bitmap$CompressFormat')
-    FileOutputStream = autoclass('java.io.FileOutputStream')
-    Math = autoclass('java.lang.Math')
-    ImagesMedia = autoclass("android.provider.MediaStore$Images$Media")
-    BufferedInputStream = autoclass("java.io.BufferedInputStream")
-    BufferedOutputStream = autoclass("java.io.BufferedOutputStream")
-    FileUtils = autoclass("android.os.FileUtils")
-    Environment = autoclass('android.os.Environment')
-    ContentValues = autoclass('android.content.ContentValues')
-    FileInputStream = autoclass('java.io.FileInputStream')
-    MediaColumns = autoclass('android.provider.MediaStore$MediaColumns')
-    OpenableColumns = autoclass("android.provider.OpenableColumns")
-    Options = autoclass("android.graphics.BitmapFactory$Options")
-    FileProvider = autoclass('androidx.core.content.FileProvider')
-    ClipData = autoclass('android.content.ClipData')
-    ArrayList = autoclass('java.util.ArrayList')
+    PythonActivity = _LazyJavaClass("PythonActivity", "org.kivy.android.PythonActivity")
+    Bitmap = _LazyJavaClass("Bitmap", "android.graphics.Bitmap")
+    BitmapConfig = _LazyJavaClass("BitmapConfig", "android.graphics.Bitmap$Config")
+    CompressFormat = _LazyJavaClass("CompressFormat", "android.graphics.Bitmap$CompressFormat")
+    FileOutputStream = _LazyJavaClass("FileOutputStream", "java.io.FileOutputStream")
+    Math = _LazyJavaClass("Math", "java.lang.Math")
+    ImagesMedia = _LazyJavaClass("ImagesMedia", "android.provider.MediaStore$Images$Media")
+    BufferedInputStream = _LazyJavaClass("BufferedInputStream", "java.io.BufferedInputStream")
+    BufferedOutputStream = _LazyJavaClass("BufferedOutputStream", "java.io.BufferedOutputStream")
+    FileUtils = _LazyJavaClass("FileUtils", "android.os.FileUtils")
+    Environment = _LazyJavaClass("Environment", "android.os.Environment")
+    ContentValues = _LazyJavaClass("ContentValues", "android.content.ContentValues")
+    FileInputStream = _LazyJavaClass("FileInputStream", "java.io.FileInputStream")
+    MediaColumns = _LazyJavaClass("MediaColumns", "android.provider.MediaStore$MediaColumns")
+    OpenableColumns = _LazyJavaClass("OpenableColumns", "android.provider.OpenableColumns")
+    Options = _LazyJavaClass("Options", "android.graphics.BitmapFactory$Options")
+    FileProvider = _LazyJavaClass("FileProvider", "androidx.core.content.FileProvider")
+    ClipData = _LazyJavaClass("ClipData", "android.content.ClipData")
+    ArrayList = _LazyJavaClass("ArrayList", "java.util.ArrayList")
     mActivity = PythonActivity.mActivity
     content_resolver = mActivity.getContentResolver()
     package_name = get_package_name()
     file_provider_authority = package_name + ".fileprovider"
-    ContentUris = autoclass("android.content.ContentUris")
+    ContentUris = _LazyJavaClass("ContentUris", "android.content.ContentUris")
 
 my_config = ConfigManager()
 app_dir = Path(appFolder())
@@ -286,9 +286,11 @@ class ImageOperation:
         """
         Don't Call self.__copy_add removes spinner, This method is for a specific edge case
         Fix for Half Screen File Chooser filechooser.open_file not calling on_selection"""
+        def task(_):
+            self.spinner_layout.remove()
+            self.showing_loading_screen = False
         if self.showing_loading_screen:
-            Clock.schedule_once(self.spinner_layout.remove)
-        self.showing_loading_screen = False
+            Clock.schedule_once(task)
 
     def has_pending_intent(self):
         return self.intent is not None

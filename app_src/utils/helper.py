@@ -8,16 +8,16 @@ import traceback
 from datetime import datetime
 
 from android_notify.config import get_python_activity_context, from_service_file, on_android_platform, on_pydroid_app
-from android_notify.internal.java_classes import BuildVersion, BitmapFactory, autoclass, cast
+from android_notify.internal.java_classes import BuildVersion, BitmapFactory, autoclass, cast, _LazyJavaClass
 
 from ui.widgets.android import toast
 from utils.constants import DEV, WALLPAPER_SERVICE_PATH
 
 if on_android_platform():
-    Log = autoclass("android.util.Log")
-    WallpaperManager = autoclass('android.app.WallpaperManager')
-    ApplicationInfo = autoclass("android.content.pm.ApplicationInfo")
-    PythonActivity = autoclass("org.kivy.android.PythonActivity")
+    Log = _LazyJavaClass("Log", "android.util.Log")
+    WallpaperManager = _LazyJavaClass("WallpaperManager", "android.app.WallpaperManager")
+    ApplicationInfo = _LazyJavaClass("ApplicationInfo", "android.content.pm.ApplicationInfo")
+    PythonActivity = _LazyJavaClass("PythonActivity", "org.kivy.android.PythonActivity")
 else:
     WallpaperManager = None
 
