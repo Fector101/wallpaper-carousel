@@ -5,7 +5,7 @@ from kivy.uix.label import Label
 # from kivy.uix.floatlayout import FloatLayout
 from kivymd.uix.widget import MDWidget
 
-from android_notify.config import on_android_platform, autoclass
+from android_notify.config import on_android_platform, autoclass, get_python_activity_context
 from kivy.metrics import dp
 from kivy.properties import ListProperty, DictProperty, NumericProperty
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -30,6 +30,28 @@ from utils.constants import theme_colors
 # Add this before creating your main widget or in your build method
 Window.softinput_mode = 'below_target' # or 'pan'
 
+if on_android_platform():
+    View = autoclass("android.view.View")
+    from jnius import PythonJavaClass, java_method
+    class _SystemUiRunnable(PythonJavaClass):
+        __javainterfaces__ = ['java/lang/Runnable']
+        __javacontext__ = 'app'
+
+        def __init__(self, flags):
+            super().__init__()
+            self.flags = flags
+
+        @java_method('()V')
+        def run(self):
+            PythonActivity = autoclass("org.kivy.android.PythonActivity")
+            activity = PythonActivity.mActivity
+            decor = activity.getWindow().getDecorView()
+            decor.setSystemUiVisibility(self.flags)
+
+
+def _set_system_ui_visibility(flags):
+    activity = get_python_activity_context()
+    activity.runOnUiThread(_SystemUiRunnable(flags))
 
 class Row(MDBoxLayout):
     my_widgets = ListProperty([])
@@ -418,7 +440,19 @@ class MyMDScreen(MDScreen):
         Window.unbind(on_key_down=self._on_key_down)
         Window.unbind(on_key_up=self._on_key_up)
         # app_logger.info(f"[BackKey] MyMDScreen.on_leave screen='{self.name}' -> unbound on_key_down + on_key_up")
+    
+    def show_system_ui(self):
+        _set_system_ui_visibility(0)
+        self.screen_content.padding = [0,0,0,self.nav_bar_height]
 
+    def hide_system_ui(self):
+        _set_system_ui_visibility(
+            View.SYSTEM_UI_FLAG_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+              )
+        self.screen_content.padding = [0,0,0,0]
+    
 
 class GenericStatusBarSpacer(MDWidget):
     status_bar_height=NumericProperty(0)
@@ -427,7 +461,7 @@ class GenericStatusBarSpacer(MDWidget):
         self.size_hint=[1, None]
         self.pos_hint={'center_x': .5, 'top': 1}
         self.height=self.status_bar_height
-        self.bind(height=lambda _,value: setattr(self, 'height', value))
+        self.bind(status_bar_height=lambda _,value: setattr(self, 'height', value))
 # NOTE this from kivymd.uix.button import MDButton has line color feature
 # Still Useful for Element with No Button Behavior
 
