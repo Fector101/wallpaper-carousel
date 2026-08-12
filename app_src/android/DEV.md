@@ -217,3 +217,14 @@ jobs:
 4. ~/.buildozer/android/platform/android-sdk/platform-tools/adb shell "run-as org.wally.waller sh -c 'which tar'" — confirmed tar exists on device
 5. ~/.buildozer/android/platform/android-sdk/platform-tools/adb exec-out run-as org.wally.waller tar -cf - -C /data/user/0/org.wally.waller files > /tmp/waller_files.tar — streamed the dir into a local tar
 6. mkdir -p ~/Desktop && tar -xf /tmp/waller_files.tar -C ~/Desktop — extracted to ~/Desktop/files/
+
+
+## How to inject code for hot refresh on debug APK 
+```shell
+ 2045  cp app_src/ui/widgets/layouts.py /tmp/opencode/layouts.py && ~/.buildozer/android/platform/android-sdk/platform-tools/adb push /tmp/opencode/layouts.py /data/local/tmp/layouts.py
+ 2046  ~/.buildozer/android/platform/android-sdk/platform-tools/adb shell "run-as org.wally.waller sh -c 'cp /data/local/tmp/layouts.py files/app/ui/widgets/layouts.py'"
+ 2047  ~/.buildozer/android/platform/android-sdk/platform-tools/adb shell am force-stop org.wally.waller && ~/.buildozer/android/platform/android-sdk/platform-tools/adb logcat -c && ~/.buildozer/android/platform/android-sdk/platform-tools/adb shell monkey -p org.wally.waller -c android.intent.categor
+ 2048  adb logcat | grep python
+
+
+```
