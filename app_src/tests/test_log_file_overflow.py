@@ -1,9 +1,11 @@
+import logging
 import sys
 
 import pytest
 
 import utils.helper as helper
 from utils.service_helper import prevent_log_file_overflow
+from utils.logger import app_logger
 
 DEFAULT_MAX_BYTES = 512 * 1024
 
@@ -31,10 +33,14 @@ def log_setup(tmp_path, monkeypatch):
     tee = FakeTee(str(file_path))
     old_stdout = sys.stdout
     sys.stdout = tee
+    handler = app_logger.handlers[0]
+    old_stream = handler.stream
+    handler.stream = tee
     try:
         yield tee, file_path
     finally:
         sys.stdout = old_stdout
+        handler.stream = old_stream
         tee.file.close()
 
 
