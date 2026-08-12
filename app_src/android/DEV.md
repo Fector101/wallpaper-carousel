@@ -1,3 +1,4 @@
+
 # Important
 
 - adb install does NOT sync assets incrementally
@@ -206,3 +207,13 @@ jobs:
           files: bin/waller.apk
 
 ```
+
+## How to Copy from APK directory(running app) to desktop
+### Failed
+1. ~/.buildozer/android/platform/android-sdk/platform-tools/adb shell "mkdir -p /data/local/tmp/waller_files" — created a temp dir (failed attempt, kept for context)
+2. ~/.buildozer/android/platform/android-sdk/platform-tools/adb shell "run-as org.wally.waller sh -c 'cp -r /data/user/0/org.wally.waller/files/. /data/local/tmp/waller_files/'" — failed: Permission denied
+3. ~/.buildozer/android/platform/android-sdk/platform-tools/adb shell "chmod 777 /data/local/tmp/waller_files && run-as ... cp ..." — failed again
+### Worked
+4. ~/.buildozer/android/platform/android-sdk/platform-tools/adb shell "run-as org.wally.waller sh -c 'which tar'" — confirmed tar exists on device
+5. ~/.buildozer/android/platform/android-sdk/platform-tools/adb exec-out run-as org.wally.waller tar -cf - -C /data/user/0/org.wally.waller files > /tmp/waller_files.tar — streamed the dir into a local tar
+6. mkdir -p ~/Desktop && tar -xf /tmp/waller_files.tar -C ~/Desktop — extracted to ~/Desktop/files/

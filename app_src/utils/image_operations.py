@@ -48,6 +48,8 @@ app_dir = Path(appFolder())
 wallpapers_dir = app_dir / "wallpapers"
 wallpapers_dir.mkdir(parents=True, exist_ok=True)
 
+_ANDROID_THUMBNAIL_LOCK = threading.Lock()
+
 def _format_started_time(timestamp):
     return time.strftime('%H:%M:%S', time.localtime(timestamp))
 
@@ -487,11 +489,16 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
                 im.thumbnail(size, Image.LANCZOS)
                 im.save(destination, format='JPEG', quality=quality)
         elif on_android_platform():
-            try:
-                use_android_classes_to_create_thumbnail(str(src_path), str(destination))
-            except Exception as error_using_android_classes_to_create_thumbnail:
-                print("error_using_android_classes_to_create_thumbnail",error_using_android_classes_to_create_thumbnail)
-                traceback.print_exc()
+            # BitmapFactory/decodeFile + the JNI round-trips below are not safe to
+            # run from multiple threads at once: concurrent first-use class
+            # resolution made decodeFile return another thread's image, so
+            # thumbnails ended up as copies of a different wallpaper. Serialize it.
+            with _ANDROID_THUMBNAIL_LOCK:
+                try:
+                    use_android_classes_to_create_thumbnail(str(src_path), str(destination))
+                except Exception as error_using_android_classes_to_create_thumbnail:
+                    print("error_using_android_classes_to_create_thumbnail",error_using_android_classes_to_create_thumbnail)
+                    traceback.print_exc()
         return str(destination)
     except OSError as os_error:
         app_logger.exception(f"OSError creating thumbnail for: {src_path}, os_error:{os_error}")
@@ -661,7 +668,6 @@ def share_image_to_other_app(image_absolute_path):
     except Exception as error_from_trying_to_share_image_to_other_apps:
         print("error_from_trying_to_share_image_to_other_apps",error_from_trying_to_share_image_to_other_apps)
         traceback.print_exc()
-
 
 def share_images_to_other_app(image_paths):
     if not on_android_platform():
