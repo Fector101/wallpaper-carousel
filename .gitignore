@@ -9,10 +9,9 @@ port.txt
 ui_port.txt
 .buildozer
 *.apk
-test.*
-test1.*
 .*
 !/.github/
 old_app_src
 home*
 widgets.py
+bin/
