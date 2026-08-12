@@ -149,14 +149,17 @@ def prevent_log_file_overflow(max_bytes=512 * 1024):
     # Check current log file size if up to 500KB Clear
     file_size = os.stat(file_path).st_size
     if file_size >= max_bytes:
-        app_logger.warning("Clearing Log File Size is Over Half an MB")
+        app_logger.warning(f"Clearing Log File Size is Over Half an MB, btyes: {file_size}")
         # Truncate the same fd the Tee keeps open; opening a fresh handle leaves
         # the Tee's offset past EOF and the next write re-extends the file with
         # null bytes instead of clearing it.
-        if hasattr(sys.stdout, "file"):
-            sys.stdout.file.seek(0)
-            sys.stdout.file.truncate()
-
+        try:
+            if hasattr(sys.stdout, "file"):
+                sys.stdout.file.seek(0)
+                sys.stdout.file.truncate()
+        except Exception as error_avoiding_log_file_overflow:
+            app_logger.exception(error_avoiding_log_file_overflow)
+            traceback.print_exc()
 class ReceivedDataFromUI:
     # Always use `json.dumps(args)` to start service.
     def __init__(self):
