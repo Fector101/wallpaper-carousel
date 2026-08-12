@@ -106,8 +106,6 @@ class LogsScreen(MyMDScreen):
             base_dir = app_external_storage_path()
             return  os.path.join(base_dir, "logs")
         except ModuleNotFoundError:
-            from kivy.core.window import Window
-            Window.size = (370, 700)
             return os.getcwd()
 
     def handle_going_back(self,*_):

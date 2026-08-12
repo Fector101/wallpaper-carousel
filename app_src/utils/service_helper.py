@@ -5,6 +5,7 @@ Should Only be imported by service File
 import json
 import os
 import random
+import sys
 import threading
 import time
 import traceback
@@ -137,6 +138,25 @@ def unregister_screen_receiver(receiver):
         app_logger.exception(f"python Failed to unregister receiver: {error_unregistering_screen_receiver}")
 
 
+def prevent_log_file_overflow(max_bytes=512 * 1024):
+    # don't archive by date or name by data preventing multiple redundant files
+    from utils.helper import app_external_storage_path
+    base_dir = app_external_storage_path()
+    folder_path = os.path.join(base_dir, "logs")
+    file_path = os.path.join(folder_path, "all_output1.txt")
+    if not os.path.exists(file_path):
+        return
+    # Check current log file size if up to 500KB Clear
+    file_size = os.stat(file_path).st_size
+    if file_size >= max_bytes:
+        app_logger.warning("Clearing Log File Size is Over Half an MB")
+        # Truncate the same fd the Tee keeps open; opening a fresh handle leaves
+        # the Tee's offset past EOF and the next write re-extends the file with
+        # null bytes instead of clearing it.
+        if hasattr(sys.stdout, "file"):
+            sys.stdout.file.seek(0)
+            sys.stdout.file.truncate()
+
 class ReceivedDataFromUI:
     # Always use `json.dumps(args)` to start service.
     def __init__(self):
@@ -258,6 +278,7 @@ class WallpaperServerReceiver:
             self.choseAndShowPreviewForNextWallpaper()
 
         print(f"running on wake")
+        marked_time = time.monotonic()
         while self.live and self.using_on_wake and self.running_on_wake_loop:
             time.sleep(2)
 
@@ -266,6 +287,12 @@ class WallpaperServerReceiver:
             self.__update_notification_texts("OnNext Wake", "")
 
             self.using_on_wake = my_config.get_on_wake_state()
+
+            # logs file patch
+            if time.monotonic() - marked_time >= 1800:
+                marked_time = time.monotonic()
+                prevent_log_file_overflow()
+                
         print(
             f"ended on wake live: {self.live}, using_on_wake: {self.using_on_wake}, running_on_wake_loop: {self.running_on_wake_loop}")
         self.running_on_wake_loop = False
@@ -275,6 +302,7 @@ class WallpaperServerReceiver:
         self.live = True
         self.running_on_interval_loop = True
         self.skip_now = False
+        marked_time = time.monotonic()
         while self.live and self.running_on_interval_loop:
             if not self.next_wallpaper_path:  # check if wallpaper already set from on wake
                 self.choseAndShowPreviewForNextWallpaper()  # sets self.next_wallpaper_path
@@ -287,6 +315,11 @@ class WallpaperServerReceiver:
             self.count_down_interval()
             if not self.skip_now:
                 self.apply_new_wallpaper()
+
+            # logs file patch
+            if time.monotonic() - marked_time >= 1800:
+                marked_time = time.monotonic()
+                prevent_log_file_overflow()
             self.skip_now = False
         app_logger.warning(f"ended interval live: {self.live}, self.running_on_interval_loop: {self.running_on_interval_loop}")
         self.running_on_interval_loop = False
