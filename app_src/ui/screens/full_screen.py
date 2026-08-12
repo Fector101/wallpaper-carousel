@@ -361,9 +361,8 @@ class FullscreenScreen(MyMDScreen):
             img.fit_mode = "cover"
 
         self.layout.do_layout()
-        if on_android_platform():
-            self.hide_system_ui()
-            self.generic_status_bar_spacer.status_bar_height=0
+        self.hide_system_ui()
+        self.generic_status_bar_spacer.status_bar_height=0
 
     def handle_going_back(self, *_):
         if self.is_fullscreen:
@@ -567,9 +566,9 @@ class FullscreenScreen(MyMDScreen):
         for img in self.carousel.slides:
             img.fit_mode = "contain"
 
-        if on_android_platform():
-            self.show_system_ui()
-            self.generic_status_bar_spacer.status_bar_height=self.status_bar_height
+        self.show_system_ui()
+        self.generic_status_bar_spacer.status_bar_height=self.status_bar_height
+
     def back_to_gallery_screen(self,*_):
         if self.showing_info_modal:
             self.info_popup.dismiss()

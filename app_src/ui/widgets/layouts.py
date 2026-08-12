@@ -299,6 +299,7 @@ class MyMDScreen(MDScreen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.__hide_system_ui = False
         self.do_not_leave_app = True # If false app closes on back btn
         self.change_layout_orientation_clock = None
         self._back_key_down_time = 0
@@ -332,7 +333,7 @@ class MyMDScreen(MDScreen):
     def portrait__or__landscape(self, size):
         width, height = size
         orientation = "portrait" if height > width else "landscape"
-        if not self.screen_content or on_android_platform():
+        if not self.screen_content:
             return
 
         if orientation == "landscape":
@@ -341,14 +342,14 @@ class MyMDScreen(MDScreen):
             self.set_widget_left_and_right_padding(left_padding=pos[0],right_padding=pos[1],rotation=orientation)
             # self.set_widget_left_and_right_padding(left_padding=self.status_bar_height,right_padding=self.nav_bar_height)
         else:
-            self.screen_content.padding = [0, 0, 0, self.nav_bar_height]
+            self.screen_content.padding = [0, 0, 0, 0 if self.__hide_system_ui else self.nav_bar_height]
             self.set_widget_left_and_right_padding(left_padding=0,right_padding=0,rotation=orientation)
 
     def adjust_padding(self, rotation):
         if rotation == "TOP":
-            self.screen_content.padding = [0, 0, 0, self.nav_bar_height]
+            self.screen_content.padding = [0, 0, 0, 0 if self.__hide_system_ui else self.nav_bar_height]
         elif rotation == "BOTTOM":
-            self.screen_content.padding = [0, 0, 0, self.nav_bar_height+self.status_bar_height]
+            self.screen_content.padding = [0, 0, 0, 0 if self.__hide_system_ui else self.nav_bar_height]
         elif rotation in ["LEFT", "RIGHT"]:
             self.screen_content.padding = [0, 0, 0, 0]
 
@@ -458,17 +459,19 @@ class MyMDScreen(MDScreen):
         # app_logger.info(f"[BackKey] MyMDScreen.on_leave screen='{self.name}' -> unbound on_key_down + on_key_up")
     
     def show_system_ui(self):
+        self.__hide_system_ui = False
+        self.screen_content.padding = [0,0,0,self.nav_bar_height]
         if not on_android_platform():
             return
         _set_system_ui_visibility(False)
-        self.screen_content.padding = [0,0,0,self.nav_bar_height]
 
     def hide_system_ui(self):
+        self.__hide_system_ui = True
+        self.screen_content.padding = [0,0,0,0]
         if not on_android_platform():
             return
         _set_system_ui_visibility(True)
-        self.screen_content.padding = [0,0,0,0]
-    
+
 
 class GenericStatusBarSpacer(MDWidget):
     status_bar_height=NumericProperty(0)
