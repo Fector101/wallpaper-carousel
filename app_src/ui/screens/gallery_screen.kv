@@ -189,7 +189,7 @@
                             font_name: "RobotoMono"
         #                    theme_font_size:"Custom"
         #                    font_size: sp(16)
-                            text_color: [0,0,0,1] if root.current_tab == self.text else (0.85, 0.85, 0.85, 1)
+                            text_color: app.theme_colors.TAB_ACTIVE_TEXT if root.current_tab == self.text else app.theme_colors.TAB_INACTIVE_TEXT
 
                     MDButton:
                         theme_bg_color:"Custom"
@@ -210,7 +210,7 @@
                             font_name: "RobotoMono"
         #                    theme_font_size:"Custom"
         #                    font_size: sp(16)
-                            text_color: [0,0,0,1] if root.current_tab == self.text else (0.85, 0.85, 0.85, 1)
+                            text_color: app.theme_colors.TAB_ACTIVE_TEXT if root.current_tab == self.text else app.theme_colors.TAB_INACTIVE_TEXT
 
                     MDButton:
                         theme_bg_color:"Custom"
@@ -230,7 +230,7 @@
                             font_name: "RobotoMono"
         #                    theme_font_size:"Custom"
         #                    font_size: sp(16)
-                            text_color: [0,0,0,1] if root.current_tab == self.text else (0.85, 0.85, 0.85, 1)
+                            text_color: app.theme_colors.TAB_ACTIVE_TEXT if root.current_tab == self.text else app.theme_colors.TAB_INACTIVE_TEXT
     #        MDBoxLayout:
     #            md_bg_color:[1,0,0,1]
     #            orientation:"vertical"
