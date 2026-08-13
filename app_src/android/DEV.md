@@ -221,9 +221,9 @@ jobs:
 
 ## How to inject code for hot refresh on debug APK 
 ```shell
- 2045  cp app_src/ui/widgets/layouts.py /tmp/opencode/layouts.py && ~/.buildozer/android/platform/android-sdk/platform-tools/adb push /tmp/opencode/layouts.py /data/local/tmp/layouts.py
- 2046  ~/.buildozer/android/platform/android-sdk/platform-tools/adb shell "run-as org.wally.waller sh -c 'cp /data/local/tmp/layouts.py files/app/ui/widgets/layouts.py'"
- 2047  ~/.buildozer/android/platform/android-sdk/platform-tools/adb shell am force-stop org.wally.waller && ~/.buildozer/android/platform/android-sdk/platform-tools/adb logcat -c && ~/.buildozer/android/platform/android-sdk/platform-tools/adb shell monkey -p org.wally.waller -c android.intent.categor
+ 2045  adb push app_src/ui/widgets/layouts.py /data/local/tmp/layouts.py
+ 2046  adb shell "run-as org.wally.waller sh -c 'cp /data/local/tmp/layouts.py files/app/ui/widgets/layouts.py'"
+ 2047  adb shell am force-stop org.wally.waller && adb logcat -c && adb shell monkey -p org.wally.waller -c android.intent.category.LAUNCHER 1
  2048  adb logcat | grep python
 
 
