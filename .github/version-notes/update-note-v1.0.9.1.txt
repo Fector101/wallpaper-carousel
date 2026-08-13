@@ -1,6 +1,8 @@
 [color=#4CAF50][b]Improvements[/b][/color]
 • Faster Image Progressing in successions
-• Processing Images from "Allow Limited Access" File pick on Android 14+
+• Processing Images from "Allow Limited Access" File picker on Android 14+
 
 [color=#4CAF50][b]Fixes[/b][/color]
-• Hide navigation and status bars when on wallpaper preview screen
+• Hiding navigation and status bars when on wallpaper preview screen
+• Interrupting Button Animation when closing bottom sheet
+• Light Mode color for inactive tabs

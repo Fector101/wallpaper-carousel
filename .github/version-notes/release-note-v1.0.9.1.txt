@@ -1,0 +1,13 @@
+# Waller V1.0.9.1
+
+## Improvements
+- Faster Image Progressing in successions by threading and a lazy import mechanism for android classes
+- Capturing Images from Android `Allow Limited Access` File picker on Android 14+
+- Hiding navigation and status bars when on wallpaper preview screen on Android 11+
+
+## Fixes
+- Capping Logs file by size to prevent overflow and allow faster processing
+- Light Mode color for inactive tabs
+- Unified Git Flow For APK Debug and Release
+- Interrupting Button Animation when closing bottom sheet is guarded by kivymd
+- Avoided Fbo Error with BottomNavigationBar
