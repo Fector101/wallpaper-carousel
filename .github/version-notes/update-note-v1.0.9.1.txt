@@ -1,5 +1,5 @@
 [color=#4CAF50][b]Improvements[/b][/color]
-• Fastest Image Progressing in successions
+• Faster Image Progressing in successions
 • Processing Images from "Allow Limited Access" File pick on Android 14+
 
 [color=#4CAF50][b]Fixes[/b][/color]
