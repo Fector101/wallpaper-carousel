@@ -349,7 +349,7 @@ class MyMDScreen(MDScreen):
         if rotation == "TOP":
             self.screen_content.padding = [0, 0, 0, 0 if self.__hide_system_ui else self.nav_bar_height]
         elif rotation == "BOTTOM":
-            self.screen_content.padding = [0, 0, 0, 0 if self.__hide_system_ui else self.nav_bar_height]
+            self.screen_content.padding = [0, 0, 0, 0 if self.__hide_system_ui else self.nav_bar_height+self.status_bar_height]
         elif rotation in ["LEFT", "RIGHT"]:
             self.screen_content.padding = [0, 0, 0, 0]
 
