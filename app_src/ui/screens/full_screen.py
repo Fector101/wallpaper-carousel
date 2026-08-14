@@ -283,7 +283,7 @@ class FullscreenScreen(MyMDScreen):
         left_btm_box.add_widget(self.set_wallpaper_btn)
         self.btn_delete = MyMDIconButton(icon="trash-can-outline", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
         self.btn_info = MyMDIconButton(icon="information-outline", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
-        self.btn_fullscreen = MyMDIconButton(icon="fullscreen", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
+        self.btn_fullscreen = MyMDIconButton(icon="aspect-ratio", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
         right_btm_box= MDBoxLayout(
             pos_hint={'center_x': .9, 'center_y': .549},
             adaptive_size=True,
