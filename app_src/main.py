@@ -59,13 +59,17 @@ class WallpaperCarouselApp(MDApp):
         Builder.load_string("""
 <MDButton>:
     theme_elevation_level: "Custom"
-    elevation_level: 0
     theme_shadow_softness: "Custom"
+    theme_shadow_color: "Custom"
+    elevation_level: 0
+    shadow_color: [0,0,0,0]
     shadow_softness: 0
 <MDIconButton>:
     theme_elevation_level: "Custom"
-    elevation_level: 0
     theme_shadow_softness: "Custom"
+    theme_shadow_color: "Custom"
+    elevation_level: 0
+    shadow_color: [0,0,0,0]
     shadow_softness: 0
 """)
         root_layout = MDNavigationLayout()
@@ -85,7 +89,7 @@ class WallpaperCarouselApp(MDApp):
             self.sm.current = "welcome"
         else:
             self.sm.current = "thumbs"
-
+        # self.bottom_bar.hide(hidden_by=self.sm)
         root_layout.add_widget(self.bottom_bar)
         self.bottom_bar.bind_change()  # needs theme from monitor_dark_and_light_device_change
 
