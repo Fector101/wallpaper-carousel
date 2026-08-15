@@ -4,6 +4,7 @@ boot_log("-----------------main: imports started------------------------------")
 write_logs_to_file()
 
 import logging
+import threading
 import traceback
 
 from kivy.clock import Clock
@@ -129,43 +130,55 @@ class WallpaperCarouselApp(MDApp):
         return self.root_layout
 
     def on_start(self):
-        def android_service():
-            try:
-                self.setup_service()
-            except Exception as error_call_service_on_start:
-                toast(str(error_call_service_on_start))
-                traceback.print_exc()
-
         boot_log("on_start: scheduling")
-        Clock.schedule_once(lambda dt: android_service(), 2)
+        Clock.schedule_once(lambda dt: self.setup_service(), 2)
         Clock.schedule_interval(lambda dt: self.monitor_dark_and_light_device_change(), 1)
 
     def setup_service(self):
         boot_log("setup_service: start")
         print(f"ConfigManager.get_start_on_app_launch(): {ConfigManager.get_start_on_app_launch()}")
-        service = Service(name='Wallpapercarousel')
-        service_port = ui_port = None
+        threading.Thread(
+            target=self._setup_service_on_background_thread,
+            daemon=True,
+            name="setup_service_thread",
+        ).start()
 
-        if service.is_running():
-            ui_port = get_stored_running_ui_server_port()
-            service_port = get_stored_running_service_server_port()
+    def _setup_service_on_background_thread(self):
+        try:
+            service = Service(name='Wallpapercarousel')
+            service_port = ui_port = None
 
+            if service.is_running():
+                ui_port = get_stored_running_ui_server_port()
+                service_port = get_stored_running_service_server_port()
 
-        self.service_port = service_port or get_free_port()
-        boot_log("setup_service: service/ports done")
-        self.ui_messenger_to_service = UIMessengerToService(self.service_port)
-        self.sm.settings_screen.build_ui()
-        self.sm.settings_screen.ids.skip_upcoming_wallpaper_button.on_release = self.ui_messenger_to_service.change_next
-        self.sm.settings_screen.ids.pause_home_screen_widget_loop_button.on_release = self.ui_messenger_to_service.toggle_home_screen_widget_changes
+            self.service_port = service_port or get_free_port()
+            boot_log("setup_service: service/ports done")
+            self.ui_messenger_to_service = UIMessengerToService(self.service_port)
 
-        self.ui_service_listener = UIListenToServicer(ui_port)
-        self.ui_service_listener.start()
-        boot_log("setup_service: messenger+listener started")
-        self.ui_service_listener.on_countdown_change = self.sm.settings_screen.update_label
-        self.ui_service_listener.on_changed_homescreen_widget = self.sm.settings_screen.on_changed_homescreen_widget
-        if ConfigManager.get_start_on_app_launch():
-            self.start_service()
-        boot_log("setup_service: done")
+            self.ui_service_listener = UIListenToServicer(ui_port)
+            self.ui_service_listener.start()
+            boot_log("setup_service: messenger+listener started")
+            Clock.schedule_once(self._finish_setup_service, 0)
+        except Exception as error_call_service_on_start:
+            traceback.print_exc()
+            error_message = str(error_call_service_on_start)
+            Clock.schedule_once(lambda dt: toast(error_message))
+
+    def _finish_setup_service(self, _):
+        try:
+            self.sm.settings_screen.build_ui()
+            self.sm.settings_screen.ids.skip_upcoming_wallpaper_button.on_release = self.ui_messenger_to_service.change_next
+            self.sm.settings_screen.ids.pause_home_screen_widget_loop_button.on_release = self.ui_messenger_to_service.toggle_home_screen_widget_changes
+
+            self.ui_service_listener.on_countdown_change = self.sm.settings_screen.update_label
+            self.ui_service_listener.on_changed_homescreen_widget = self.sm.settings_screen.on_changed_homescreen_widget
+            if ConfigManager.get_start_on_app_launch():
+                self.start_service()
+            boot_log("setup_service: done")
+        except Exception as error_call_service_on_start:
+            toast(str(error_call_service_on_start))
+            traceback.print_exc()
 
     def start_service(self):
 

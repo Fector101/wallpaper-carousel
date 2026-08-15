@@ -139,14 +139,45 @@ class Service:
         self.mActivity = mActivity if not on_pydroid_app() else None
         self.args_str = args_str
         self.name = name
-        self.service = autoclass(self.get_name()) if self.mActivity else None
         self.extra = extra
+        self._method_cache = {}
+        self.service = self.__load_service_class() if self.mActivity else None
 
     def get_name(self):
         if not self.mActivity:
             return None
         context = self.mActivity.getApplicationContext()
         return str(context.getPackageName()) + '.Service' + self.name
+
+    def __load_service_class(self):
+        # Find the app's generated service class via the app class loader so this
+        # works from background threads (JNI FindClass cannot see app dex classes
+        # on natively-attached threads). Avoids autoclass()'s slow full-hierarchy
+        # reflection and sidesteps pyjnius 1.7.0's corrupted Class.getMethod /
+        # forName signatures.
+        class_loader = self.mActivity.getClass().getClassLoader()
+        return class_loader.loadClass(self.get_name())
+
+    @staticmethod
+    def __ensure_method_invoke():
+        # The manual java.lang.reflect.Method wrapper in pyjnius 1.7.0 lacks
+        # `invoke`; add it (idempotent) before we enumerate methods and call it.
+        from jnius import JavaMethod
+        from jnius.reflect import Method
+        if not hasattr(Method, 'invoke'):
+            Method.invoke = JavaMethod('(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;')
+
+    def __get_static_method(self, method_name, argc):
+        key = (method_name, argc)
+        if key in self._method_cache:
+            return self._method_cache[key]
+        self.__ensure_method_invoke()
+        for method in self.service.getMethods():
+            if method.getName() == method_name and len(method.getParameterTypes()) == argc:
+                self._method_cache[key] = method
+                return method
+        raise Exception(
+            "No static method {0} with {1} arguments on {2}".format(method_name, argc, self.get_name()))
 
     def is_running(self):
         if not self.mActivity:
@@ -173,7 +204,7 @@ class Service:
                 print("Service not running")
                 return None
 
-            self.service.stop(self.mActivity)
+            self.__get_static_method('stop', 1).invoke(None, (self.mActivity,))
             return True
 
         except Exception as error_stopping_service:
@@ -193,7 +224,7 @@ class Service:
 
         arg = json.dumps(self.args_str)
         try:
-            self.service.start(self.mActivity, arg)
+            self.__get_static_method('start', 2).invoke(None, (self.mActivity, arg))
         except Exception as error_starting_service:
             print("Error starting service:", error_starting_service)
             traceback.print_exc()
