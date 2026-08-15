@@ -1,6 +1,6 @@
 from kivy.clock import Clock
 from kivy.metrics import dp
-from kivy.properties import ListProperty, StringProperty, BooleanProperty, ObjectProperty
+from kivy.properties import ListProperty, StringProperty, BooleanProperty, ObjectProperty, NumericProperty
 from kivymd.uix.button import MDButtonText, MDButton
 from kivymd.uix.fitimage import FitImage
 from kivymd.uix.floatlayout import MDFloatLayout
@@ -22,6 +22,9 @@ class MyTextButton(MDButton):
     text = StringProperty("")
     text_color = ListProperty("")
     adaptive_size = BooleanProperty(False)
+    font_name = StringProperty("")
+    font_size = StringProperty("")
+    size_padding = NumericProperty(10)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.elevation_level = 1
@@ -36,6 +39,12 @@ class MyTextButton(MDButton):
             self.txt.bind(width=self.fix_text_out_of_bounds_width_on_android)
         else:
             Clock.schedule_once(self.set_width_to_parent_width, 1)
+        if self.font_name:
+            self.txt.font_name = self.font_name
+            self.txt.theme_font_name="Custom"
+        if self.font_size:
+            self.txt.font_size = self.font_size
+            self.txt.theme_font_size="Custom"
 
         self.set_text_color(self, self.text_color)
         self.bind(text=self.set_val, text_color=self.set_text_color)
@@ -61,7 +70,7 @@ class MyTextButton(MDButton):
         self.txt.text_color = value
 
     def fix_text_out_of_bounds_width_on_android(self,_,v):
-        self.width = dp(v+10)
+        self.width = dp(v+self.size_padding)
 
         # p(self.txt.texture_size[0] + 10,v,"used")
 
