@@ -30,8 +30,7 @@ class ScreenManager(MDScreenManager):
         super().__init__(**kwargs)
         boot_log("sm: init start")
         self.app = get_app()
-        self.welcome_screen = WelcomeScreen()
-        boot_log("sm: WelcomeScreen done")
+        self.welcome_screen = None
         self.gallery_screen = GalleryScreen()
         boot_log("sm: GalleryScreen done")
         self.full_screen = FullscreenScreen()
@@ -48,7 +47,6 @@ class ScreenManager(MDScreenManager):
         self.add_widget(self.gallery_screen)
         self.add_widget(self.full_screen)
         self.add_widget(self.settings_screen)
-        self.add_widget(self.welcome_screen)
         self.add_widget(self.log_screen)
         self.add_widget(self.download_apk_screen)
         self.add_widget(self.stats_screen)
@@ -58,6 +56,12 @@ class ScreenManager(MDScreenManager):
         # self.__run_rotate_method_for_each_screen("BOTTOM")
 
         # self.current = "update_screen"
+
+    def _ensure_welcome_screen(self):
+        if self.welcome_screen is None:
+            self.welcome_screen = WelcomeScreen()
+            self.add_widget(self.welcome_screen)
+            boot_log("sm: WelcomeScreen built")
     def __register_rotate_listener(self):
         if on_android_platform():
             try:
@@ -82,6 +86,8 @@ class ScreenManager(MDScreenManager):
 
     def btm_nav_patch(self, screen_name):
         is_fullscreen = screen_name in ["welcome", "fullscreen", "logs", "update_screen","stats"]
+        if screen_name == "welcome":
+            self._ensure_welcome_screen()
         if is_fullscreen and self.app.bottom_bar:
             self.app.bottom_bar.hide(animation=False, hidden_by=self)
         elif self.app.bottom_bar:

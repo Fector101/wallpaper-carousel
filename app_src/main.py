@@ -95,6 +95,7 @@ class WallpaperCarouselApp(MDApp):
 
         boot_log("build_ui: has_permission() start")
         if not NotificationHandler.has_permission():
+            self.sm._ensure_welcome_screen()
             self.sm.current = "welcome"
         else:
             self.sm.current = "thumbs"
