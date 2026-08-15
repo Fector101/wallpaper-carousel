@@ -34,7 +34,6 @@ boot_log("main: local imports done")
 
 android_notify_logger.setLevel(logging.DEBUG if on_android_platform() else logging.ERROR)
 
-write_logs_to_file()
 fix_input_on_linux()
 register_fonts()
 boot_log("main: module setup done")
@@ -50,6 +49,7 @@ class WallpaperCarouselApp(MDApp):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        boot_log("app: __init__ done")
         self.btm_sheet = None
         self.service_port = None
         self.ui_messenger_to_service = None

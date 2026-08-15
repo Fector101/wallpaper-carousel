@@ -2,13 +2,11 @@ from kivy.metrics import dp
 from kivymd.uix.boxlayout import MDBoxLayout
 
 from kivymd.app import MDApp
-from kivymd.uix.label import MDLabel
 
-from ui.screens.gallery_screen import GalleryScreen, DateGroupLayout
 from utils.logger import app_logger
 from utils.config_manager import ConfigManager
-from kivy.properties import StringProperty, NumericProperty, ListProperty, BooleanProperty, ObjectProperty
-from ui.widgets.layouts import MyMDScreen, Column, Row, get_nav_bar_height, get_status_bar_height  # used in .kv file
+from kivy.properties import StringProperty, NumericProperty, BooleanProperty, ObjectProperty
+from ui.widgets.layouts import Row, get_nav_bar_height  # used in .kv file
 
 my_config = ConfigManager()
 
@@ -89,7 +87,21 @@ class MyBtmSheet(MDBottomSheet):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.built_ui = False
+        self.drag_sheet = None
+        self.sheet_title = None
+        self.close_btn = None
+        self.content = None
         app = MDApp.get_running_app()
+        app.bind(device_theme=self._set_theme)
+
+    def build_ui(self, _=None):
+        if self.built_ui:
+            return
+        self.built_ui = True
+
+        from kivymd.uix.label import MDLabel
+
         self.md_bg_color = [.14, .14, .14, 1]
         self.adaptive_height=1
         self.padding=[0,0,0, get_nav_bar_height()*2.5]
@@ -121,6 +133,7 @@ class MyBtmSheet(MDBottomSheet):
         self.add_widget(self.drag_sheet)
         self.add_widget(self.content)
         self.enable_swiping = 0
+
         c = .3
         self.items=[{
             "header_title": "Grouped",
@@ -196,9 +209,10 @@ class MyBtmSheet(MDBottomSheet):
         #         )
         #     )
         # self.set_state("open")
-        app.bind(device_theme=self._set_theme)
 
     def _set_theme(self, _, theme):
+        if not self.built_ui:
+            return
         is_dark = theme == "dark"
         self.md_bg_color = [.14, .14, .14, 1] if is_dark else [.95, .95, .95, 1]
         self.drag_sheet.drag_handle_color = [.7, .7, .7, 1] if is_dark else [.4, .4, .4, 1]
@@ -244,6 +258,7 @@ class MyBtmSheet(MDBottomSheet):
         return super().on_close(*args)
 
     def show(self,animation=True):
+        self.build_ui()
         self.enable_swiping = True
         self.set_state("open",animation=animation)
         self.__mark_number_of_cols_selected()
