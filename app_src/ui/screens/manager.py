@@ -8,6 +8,7 @@ from kivy.uix.screenmanager import SlideTransition, NoTransition
 from kivymd.uix.screenmanager import MDScreenManager
 
 from android_notify import NotificationHandler
+from ui.screens.stats_screen import StatsScreen
 from ui.widgets.layouts import MyMDScreen
 from utils.android import DisplayListener
 from utils.logger import app_logger
@@ -32,6 +33,7 @@ class ScreenManager(MDScreenManager):
         self.settings_screen = SettingsScreen()
         self.log_screen = LogsScreen()
         self.download_apk_screen = DownloadApkScreen()
+        self.stats_screen = StatsScreen()
 
         self.add_widget(self.gallery_screen)
         self.add_widget(self.full_screen)
@@ -39,6 +41,7 @@ class ScreenManager(MDScreenManager):
         self.add_widget(self.welcome_screen)
         self.add_widget(self.log_screen)
         self.add_widget(self.download_apk_screen)
+        self.add_widget(self.stats_screen)
         self.__register_rotate_listener()
         # self.__run_rotate_method_for_each_screen("BOTTOM")
 
@@ -61,13 +64,12 @@ class ScreenManager(MDScreenManager):
                 app_logger.exception(error_registering_rotate_listener)
                 traceback.print_exc()
 
-    def on_current(self,*args):
-        screen_name = args[1]
-        self.btm_nav_patch(screen_name)
-        super().on_current(instance=args[0],value=args[1])
+    def on_current(self,instance, value):
+        self.btm_nav_patch(value)
+        super().on_current(instance=instance,value=value)
 
     def btm_nav_patch(self, screen_name):
-        is_fullscreen = screen_name in ["welcome", "fullscreen", "logs", "update_screen"]
+        is_fullscreen = screen_name in ["welcome", "fullscreen", "logs", "update_screen","stats"]
         if is_fullscreen and self.app.bottom_bar:
             self.app.bottom_bar.hide(animation=False, hidden_by=self)
         elif self.app.bottom_bar:

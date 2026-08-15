@@ -65,6 +65,7 @@ class MDLive(App,MDApp):
         "MyBtmSheet":"ui.screens.gallery_screen",
         # "NotificationScreen": "important",
         "WelcomeScreen": "ui.screens.welcome_screen",
+        "StatsScreen": "ui.screens.stats_screen",
         # "MyRoundButton": "ui.widgets.buttons",
         "BottomNavigationBar": "ui.widgets.buttons",
         "DialogScreen": "ui.widgets.modals",
@@ -77,7 +78,7 @@ class MDLive(App,MDApp):
     def build_app(self, *args):
         # return Factory.MyPopUp()
         # return Factory.DialogScreen(ok_callback=None)
-        return Factory.FullscreenScreen()
+        return Factory.StatsScreen()
 
     def on_start(self):
         # self.theme_cls.theme_style = "Light"
@@ -95,7 +96,6 @@ class MDLive(App,MDApp):
                 each_widget.lightDark()
 
 MDLive().run()
-
 
 
 # from jnius import PythonJavaClass, java_method
