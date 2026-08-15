@@ -119,15 +119,38 @@ class WallpaperCarouselApp(MDApp):
         boot_log("build: build_ui start")
         self.root_layout = self.build_ui()
         boot_log("build: build_ui done")
-        boot_log("build: ImageOperation start")
-        self.file_operation = ImageOperation(load_saved=self.sm.gallery_screen.initialize_tabs)
-        boot_log("build: ImageOperation done")
-        self.bind_plyer_fix()
-        boot_log("build: bind_plyer_fix done")
-        self.file_operation.setup_share_from_others_to_app_listener()
-        boot_log("build: share listener done")
+        threading.Thread(
+            target=self._init_image_operation_on_background_thread,
+            daemon=True,
+            name="image_operation_thread",
+        ).start()
 
         return self.root_layout
+
+    def _init_image_operation_on_background_thread(self):
+        try:
+            boot_log("build: ImageOperation start")
+            self.file_operation = ImageOperation(load_saved=self.sm.gallery_screen.initialize_tabs)
+            boot_log("build: ImageOperation done")
+            Clock.schedule_once(self._finish_image_operation_init, 0)
+        except Exception as error_init_image_operation:
+            traceback.print_exc()
+            error_message = str(error_init_image_operation)
+            Clock.schedule_once(lambda dt: toast(error_message))
+
+    def _finish_image_operation_init(self, _):
+        # jnius PythonJavaClass proxies (activity.bind) require app-dex classes
+        # (org.kivy.android.PythonActivity$*) via FindClass, which only works on
+        # the main thread -- so this must stay here, off the background thread.
+        try:
+            self.bind_plyer_fix()
+            boot_log("build: bind_plyer_fix done")
+            self.file_operation.setup_share_from_others_to_app_listener()
+            boot_log("build: share listener done")
+        except Exception as error_finish_image_operation_init:
+            traceback.print_exc()
+            error_message = str(error_finish_image_operation_init)
+            Clock.schedule_once(lambda dt: toast(error_message))
 
     def on_start(self):
         boot_log("on_start: scheduling")
