@@ -1,26 +1,17 @@
 import os
-import threading
-import time
-import traceback
-import requests
+
 from android_notify.config import on_android_platform
 
 from kivy.clock import Clock
-from kivy.graphics import RoundedRectangle, Color
 from kivy.metrics import dp, sp
 from kivy.properties import StringProperty, ListProperty, BooleanProperty
-from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDButtonText, MDButton
-from kivymd.uix.fitimage import FitImage
-from kivymd.uix.label import MDLabel
-from kivymd.uix.scrollview import MDScrollView
 
 from ui.widgets.android import toast
-from ui.widgets.layouts import MyMDScreen, Column, Row, GenericStatusBarSpacer
+from ui.widgets.layouts import MyMDScreen
 from utils.constants import VERSION, theme_colors
 from utils.logger import app_logger
-from utils.helper import is_running_debug_build
 
 def get_apk_path(version):
     folder = get_apk_directory()
@@ -36,6 +27,8 @@ def get_apk_directory():
 
 def download_apk(url, filename="waller.apk", progress_callback=None):
     """Download APK with resume support"""
+    import traceback
+    import requests
     try:
         sent_percent = 0
        #p("Entered download apk:", url)
@@ -181,6 +174,7 @@ class TextButton(MDButton):
 class ProgressButton(MDBoxLayout):
     clicked=BooleanProperty(False)
     def __init__(self, **kwargs):
+        from kivy.graphics import RoundedRectangle, Color
         super().__init__(**kwargs)
         self.size_hint = [1, None]
         self.height = dp(40)
@@ -238,16 +232,51 @@ class DownloadApkScreen(MyMDScreen):
         self.new_version = ''
         self.clock_for_progress_update=None
         self.apk_size = 0
-        app = MDApp.get_running_app()
-        self.md_bg_color = [0.9, 0.9, 0.9, 1] if app.device_theme == "light" else [.1, .1, .1, 1]
+        self.generic_status_bar_spacer = None
+        self.h1_text_widget = None
+        self.new_stuff_container = None
+        self.update_button = None
+        self.later_button = None
+        self.built_ui = False
         self.name = "update_screen"
 
+        from utils.model import get_app
+        get_app().bind(device_theme=self._set_theme)
+
+        from utils.helper import is_running_debug_build
+        if not is_running_debug_build():
+            Clock.schedule_once(lambda dt: thread_check_for_update(dt, self.show),3)
+
+    def on_enter(self, *args):
+        super().on_enter(*args)
+        if not self.built_ui:
+            Clock.schedule_once(self._timer_set)
+            self.built_ui = True
+
+    def _timer_set(self, _):
+        Clock.schedule_once(self.build_ui)
+
+    def build_ui(self, _=None):
+        if self.built_ui:
+            return
+        self.built_ui = True
+
+        from kivymd.app import MDApp
+        from kivymd.uix.fitimage import FitImage
+        from kivymd.uix.label import MDLabel
+        from kivymd.uix.scrollview import MDScrollView
+        from ui.widgets.layouts import Column, Row, GenericStatusBarSpacer
+
+        app = MDApp.get_running_app()
+        is_light = app.device_theme == "light"
+
+        self.md_bg_color = [0.9, 0.9, 0.9, 1] if is_light else [.1, .1, .1, 1]
+
         root = Column(padding=[dp(20), dp(10)])
-        sb_bg = [0.9, 0.9, 0.9, 1] if app.device_theme == "light" else [.1, .1, .1, 1]
+        sb_bg = [0.9, 0.9, 0.9, 1] if is_light else [.1, .1, .1, 1]
         self.generic_status_bar_spacer = GenericStatusBarSpacer(
             status_bar_height=self.status_bar_height,
             md_bg_color=sb_bg)
-        app.bind(device_theme=self._set_theme)
 
         # Top App Bar
         top_app_bar = Row(
@@ -317,10 +346,9 @@ class DownloadApkScreen(MyMDScreen):
         root.add_widget(bottom_container)
         self.add_widget(root)
 
-        if not is_running_debug_build():
-            Clock.schedule_once(lambda dt: thread_check_for_update(dt, self.show),3)
-
     def _set_theme(self, _, theme):
+        if not self.built_ui:
+            return
         is_dark = theme == "dark"
         self.md_bg_color = [0.9, 0.9, 0.9, 1] if not is_dark else [.1, .1, .1, 1]
         self.generic_status_bar_spacer.md_bg_color = [0.9, 0.9, 0.9, 1] if not is_dark else [.1, .1, .1, 1]
@@ -332,6 +360,9 @@ class DownloadApkScreen(MyMDScreen):
         # self.change_download_btn_to_install(None)
 
     def add_body_to_new_stuff_container(self, markup_text):
+        if not self.built_ui:
+            return
+        from kivymd.uix.label import MDLabel
         rst_widget = MDLabel(
             text=markup_text,
             theme_text_color="Custom",
@@ -345,6 +376,9 @@ class DownloadApkScreen(MyMDScreen):
 
     def start_download(self,_=None):
        #p("Clicked start download...")
+        import threading
+        if not self.built_ui:
+            return
 
         if self.update_button.clicked:
             app_logger.warning("Already Clicked Download.")
@@ -374,10 +408,14 @@ class DownloadApkScreen(MyMDScreen):
             threading.Thread(target=worker, daemon=True).start()
 
     def start_install(self,_):
+        if not self.built_ui:
+            return
         apk_path=get_apk_path(self.new_version)
         do_android_install(apk_path)
 
     def change_download_btn_to_install(self,apk_path,text="Install Update"):
+        if not self.built_ui:
+            return
         app_logger.info(f"Called change btn to install: {apk_path}")
         if self.clock_for_progress_update:
             self.clock_for_progress_update.cancel()
@@ -389,6 +427,8 @@ class DownloadApkScreen(MyMDScreen):
         self.update_button.streak.bind(on_release = self.start_install)
 
     def change_download_btn_to_download(self,text="Download APK for Upgrade"):
+        if not self.built_ui:
+            return
         app_logger.info(f"Called change btn to download")
         Clock.schedule_once(lambda x: setattr(self.update_button.streak,"text",text),1)
         # self.update_button.streak.txt.text = text
@@ -405,6 +445,7 @@ class DownloadApkScreen(MyMDScreen):
             app_logger.warning("On Hot Reload Can't go to gallery screen")
 
     def show(self, new_version, release_notes, apk_size):
+        self.build_ui()
         self.disabled=True
         Clock.schedule_once(lambda dt: setattr(self, "disabled", False),1)
         self.h1_text_widget.text=f"Discover new version V{new_version}"
@@ -423,10 +464,13 @@ class DownloadApkScreen(MyMDScreen):
 
 
 def thread_check_for_update(_, download_apk_screen__show,download_apk_screen__do_not_show=None):
+    import threading
     threading.Thread(target=check_update, args=[download_apk_screen__show,download_apk_screen__do_not_show],daemon=True).start()
 
 def check_update(download_apk_screen__show,download_apk_screen__do_not_show=None,*_):
     """Check GitHub latest release version"""
+    import traceback
+    import requests
     repo_owner = "Fector101"
     repo_name = "wallpaper-carousel"
     api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest"
@@ -472,6 +516,9 @@ def check_update(download_apk_screen__show,download_apk_screen__do_not_show=None
 
 def get_release_note_txt(data,latest_version):
     """Check GitHub latest release version"""
+    import time
+    import traceback
+    import requests
     release_notes = None
     file_name = f"update-note-v{latest_version}.txt"
     found_note = False

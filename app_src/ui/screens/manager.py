@@ -11,6 +11,7 @@ from android_notify import NotificationHandler
 from ui.screens.stats_screen import StatsScreen
 from ui.widgets.layouts import MyMDScreen
 from utils.android import DisplayListener
+from utils.boot_log import boot_log
 from utils.logger import app_logger
 
 from utils.model import get_app
@@ -20,20 +21,29 @@ from ui.screens.full_screen import FullscreenScreen
 from ui.screens.welcome_screen import WelcomeScreen
 from ui.screens.logs_screen import LogsScreen
 from ui.screens.download_apk_screen import DownloadApkScreen
+boot_log("sm: MDScreenManager import done")
 
 
 class ScreenManager(MDScreenManager):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        boot_log("sm: init start")
         self.app = get_app()
         self.welcome_screen = WelcomeScreen()
+        boot_log("sm: WelcomeScreen done")
         self.gallery_screen = GalleryScreen()
+        boot_log("sm: GalleryScreen done")
         self.full_screen = FullscreenScreen()
+        boot_log("sm: FullscreenScreen done")
         self.settings_screen = SettingsScreen()
+        boot_log("sm: SettingsScreen done")
         self.log_screen = LogsScreen()
+        boot_log("sm: LogsScreen done")
         self.download_apk_screen = DownloadApkScreen()
+        boot_log("sm: DownloadApkScreen done")
         self.stats_screen = StatsScreen()
+        boot_log("sm: StatsScreen done")
 
         self.add_widget(self.gallery_screen)
         self.add_widget(self.full_screen)
@@ -42,7 +52,9 @@ class ScreenManager(MDScreenManager):
         self.add_widget(self.log_screen)
         self.add_widget(self.download_apk_screen)
         self.add_widget(self.stats_screen)
+        boot_log("sm: screens added")
         self.__register_rotate_listener()
+        boot_log("sm: rotate listener done")
         # self.__run_rotate_method_for_each_screen("BOTTOM")
 
         # self.current = "update_screen"
@@ -87,6 +99,7 @@ class ScreenManager(MDScreenManager):
         self.gallery_screen.ids.thumbnails_scroll_view_widget.scroll_y = 1
 
     def scroll_to_to_settings(self):
+        self.settings_screen.build_ui()
         self.settings_screen.ids.settings_scroll_view_widget.scroll_y = 1
 
     def open_image_in_full_screen(self, index):

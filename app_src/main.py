@@ -1,4 +1,6 @@
 from utils.helper import write_logs_to_file
+from utils.boot_log import boot_log
+boot_log("-----------------main: imports started------------------------------")
 write_logs_to_file()
 
 import logging
@@ -13,6 +15,7 @@ from kivymd.uix.navigationdrawer import MDNavigationLayout
 
 from android_notify import NotificationHandler, logger as android_notify_logger
 from android_notify.config import on_android_platform, on_pydroid_app
+boot_log("main: kivy/kivymd/android_notify imports done")
 
 from ui.screens.manager import ScreenManager
 from ui.widgets.android import toast
@@ -22,17 +25,19 @@ from ui.widgets.bottom_sheet import MyBtmSheet
 from utils.android import is_device_on_light_mode
 from utils.config_manager import ConfigManager
 from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, theme_colors as _theme_colors
-from utils.helper import Service, write_logs_to_file, get_free_port, register_fonts, fix_input_on_linux, \
+from utils.helper import Service, get_free_port, register_fonts, fix_input_on_linux, \
     get_stored_running_ui_server_port, get_stored_running_service_server_port
 from utils.image_operations import ImageOperation
 from utils.logger import app_logger
 from utils.ui_service_bridge import UIListenToServicer, UIMessengerToService
+boot_log("main: local imports done")
 
 android_notify_logger.setLevel(logging.DEBUG if on_android_platform() else logging.ERROR)
 
 write_logs_to_file()
 fix_input_on_linux()
 register_fonts()
+boot_log("main: module setup done")
 
 if platform == 'linux':
     Window.size = (390, 740)
@@ -56,56 +61,70 @@ class WallpaperCarouselApp(MDApp):
 
     def build_ui(self):
         from kivy.lang import Builder
+        boot_log("build_ui: Builder.load_string start")
         Builder.load_string("""
 <MDButton>:
     theme_elevation_level: "Custom"
-    theme_shadow_softness: "Custom"
-    theme_shadow_color: "Custom"
     elevation_level: 0
-    shadow_color: [0,0,0,0]
+    theme_shadow_softness: "Custom"
     shadow_softness: 0
 <MDIconButton>:
     theme_elevation_level: "Custom"
-    theme_shadow_softness: "Custom"
-    theme_shadow_color: "Custom"
     elevation_level: 0
-    shadow_color: [0,0,0,0]
+    theme_shadow_softness: "Custom"
     shadow_softness: 0
 """)
+        boot_log("build_ui: Builder.load_string done")
         root_layout = MDNavigationLayout()
         # self.root_layout = MDRelativeLayout()
 
+        boot_log("build_ui: ScreenManager() start")
         self.sm = ScreenManager()
+        boot_log("build_ui: ScreenManager() done")
         root_layout.add_widget(self.sm)
 
+        boot_log("build_ui: BottomNavigationBar start")
         self.bottom_bar = BottomNavigationBar(
             on_camera=self.sm.go_to_thumbs,
             on_settings=self.sm.go_to_settings,
             on_double_click_camera = self.sm.scroll_to_to_thumbs,
             on_double_click_settings = self.sm.scroll_to_to_settings
         )
+        boot_log("build_ui: BottomNavigationBar done")
 
+        boot_log("build_ui: has_permission() start")
         if not NotificationHandler.has_permission():
             self.sm.current = "welcome"
         else:
             self.sm.current = "thumbs"
-        # self.bottom_bar.hide(hidden_by=self.sm)
+        boot_log("build_ui: has_permission() done")
+
         root_layout.add_widget(self.bottom_bar)
+        boot_log("build_ui: bind_change start")
         self.bottom_bar.bind_change()  # needs theme from monitor_dark_and_light_device_change
+        boot_log("build_ui: bind_change done")
 
         # get_number_of_cols()
+        boot_log("build_ui: MyBtmSheet start")
         self.btm_sheet = MyBtmSheet(change_number_or_cols=self.sm.gallery_screen.change_amount_of_columns)
         root_layout.add_widget(self.btm_sheet)
+        boot_log("build_ui: MyBtmSheet done")
 
         return root_layout
 
     def build(self):
         self.bind(device_theme=self._sync_theme_colors)
         self._sync_theme_colors()
+        boot_log("build: build_ui start")
         self.root_layout = self.build_ui()
+        boot_log("build: build_ui done")
+        boot_log("build: ImageOperation start")
         self.file_operation = ImageOperation(load_saved=self.sm.gallery_screen.initialize_tabs)
+        boot_log("build: ImageOperation done")
         self.bind_plyer_fix()
+        boot_log("build: bind_plyer_fix done")
         self.file_operation.setup_share_from_others_to_app_listener()
+        boot_log("build: share listener done")
 
         return self.root_layout
 
@@ -117,10 +136,13 @@ class WallpaperCarouselApp(MDApp):
                 toast(str(error_call_service_on_start))
                 traceback.print_exc()
 
+        boot_log("on_start: scheduling")
         Clock.schedule_once(lambda dt: android_service(), 2)
         Clock.schedule_interval(lambda dt: self.monitor_dark_and_light_device_change(), 1)
 
     def setup_service(self):
+        boot_log("setup_service: start")
+        print(f"ConfigManager.get_start_on_app_launch(): {ConfigManager.get_start_on_app_launch()}")
         service = Service(name='Wallpapercarousel')
         service_port = ui_port = None
 
@@ -130,16 +152,20 @@ class WallpaperCarouselApp(MDApp):
 
 
         self.service_port = service_port or get_free_port()
+        boot_log("setup_service: service/ports done")
         self.ui_messenger_to_service = UIMessengerToService(self.service_port)
+        self.sm.settings_screen.build_ui()
         self.sm.settings_screen.ids.skip_upcoming_wallpaper_button.on_release = self.ui_messenger_to_service.change_next
         self.sm.settings_screen.ids.pause_home_screen_widget_loop_button.on_release = self.ui_messenger_to_service.toggle_home_screen_widget_changes
 
         self.ui_service_listener = UIListenToServicer(ui_port)
         self.ui_service_listener.start()
+        boot_log("setup_service: messenger+listener started")
         self.ui_service_listener.on_countdown_change = self.sm.settings_screen.update_label
         self.ui_service_listener.on_changed_homescreen_widget = self.sm.settings_screen.on_changed_homescreen_widget
         if ConfigManager.get_start_on_app_launch():
             self.start_service()
+        boot_log("setup_service: done")
 
     def start_service(self):
 

@@ -12,6 +12,7 @@ from kivymd.app import MDApp
 
 from ui.widgets.layouts import LoadingLayout
 from utils.helper import appFolder
+from utils.boot_log import boot_log
 from utils.config_manager import ConfigManager
 from utils.logger import app_logger
 
@@ -42,6 +43,7 @@ if on_android_platform():
     package_name = get_package_name()
     file_provider_authority = package_name + ".fileprovider"
     ContentUris = _LazyJavaClass("ContentUris", "android.content.ContentUris")
+    boot_log("image_operations: android java init done")
 
 my_config = ConfigManager()
 app_dir = Path(appFolder())
@@ -700,3 +702,6 @@ def share_images_to_other_app(image_paths):
     except Exception as error_from_trying_to_share_images_to_other_apps:
         print("error_from_trying_to_share_images_to_other_apps", error_from_trying_to_share_images_to_other_apps)
         traceback.print_exc()
+
+
+boot_log("image_operations: module imported")
