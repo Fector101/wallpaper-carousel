@@ -415,6 +415,25 @@ def get_selected_uris_from_intent(intent):
     else:
         pass
 
+    # if uris:
+    #     return uris
+    
+    # Shared-image intents can carry streams rather than data/ClipData.  Use
+    # the literal action key so this parser remains usable in desktop tests
+    # without forcing Android classes to be initialized.
+    # stream_key = "android.intent.extra.STREAM"
+    # stream_list = intent.getParcelableArrayListExtra(stream_key)
+    # if stream_list:
+    #     return [uri for uri in stream_list if uri]
+
+    # stream = intent.getParcelableExtra(stream_key)
+    # if stream:
+    #     return [stream]
+
+    # stream_array = intent.getParcelableArrayExtra(stream_key)
+    # if stream_array:
+    #     return [uri for uri in stream_array if uri]
+
     return uris
 
 def get_selected_uris_from_cursor():
