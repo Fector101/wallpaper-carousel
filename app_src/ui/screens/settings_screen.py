@@ -76,8 +76,8 @@ value__ = 100
 def schedule_alarm():
     import time
     from android_widgets import get_package_name
-    from android_notify.config import get_python_activity_context, autoclass
-    from android_notify.internal.java_classes import PendingIntent, Intent
+    from android_notify.config import get_python_activity_context
+    from android_notify.internal.java_classes import autoclass, PendingIntent, Intent
     time_in_secs = value__ * 60
     ##p("time_in_secs", time_in_secs)
     from android_notify.internal.java_classes import String
@@ -1282,7 +1282,8 @@ class SettingsScreen(MyMDScreen):
         """
 
         import os
-        from android_notify.config import get_python_activity_context, autoclass
+        from android_notify.config import get_python_activity_context
+        from android_notify.internal.java_classes import autoclass
         # Android core
         MediaStoreImages = autoclass("android.provider.MediaStore$Images$Media")
         MediaColumns = autoclass("android.provider.MediaStore$MediaColumns")
