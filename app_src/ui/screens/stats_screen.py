@@ -118,12 +118,15 @@ class StatsScreen(MyMDScreen):
         super().on_enter(*args)
         if not self.built_ui:
             Clock.schedule_once(self._timer_set)
-            self.built_ui = True
 
     def _timer_set(self,_):
         Clock.schedule_once(self.build_ui)
 
     def build_ui(self,_):
+        if self.built_ui:
+            return
+        self.built_ui = True
+
         from kivy.uix.scrollview import ScrollView
         from kivymd.uix.button import MDIconButton
         from kivymd.uix.label import MDLabel
