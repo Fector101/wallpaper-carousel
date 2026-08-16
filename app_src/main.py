@@ -104,7 +104,9 @@ class WallpaperCarouselApp(MDApp):
             self.sm._ensure_welcome_screen()
             self.sm.current = "welcome"
         else:
+            boot_log("build_ui: moving to thumbs screen")
             self.sm.current = "thumbs"
+            boot_log("build_ui: moved to thumbs screen")
         boot_log("build_ui: has_permission() done")
 
         root_layout.add_widget(self.bottom_bar)

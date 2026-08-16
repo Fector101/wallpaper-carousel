@@ -169,9 +169,12 @@ def get_dimensions(bypass_android_version=False):
 
     try:
         WindowInsetsType = autoclass("android.view.WindowInsets$Type")
+        boot_log("sm: ui.widgets.layouts status_bar_height and nav_bar_height retrieval started")
         # +0.464s
         window = activity.getWindow()
         decor = window.getDecorView()
+        boot_log("sm: ui.widgets.layouts status_bar_height and nav_bar_height retrieved")
+
 
         insets = decor.getRootWindowInsets()
         if insets:
@@ -615,4 +618,3 @@ class AdaptiveLabel(Label):
 
         self.bind(texture_size=self.setter("size"))
 
-boot_log("sm: ui.widgets.layouts end of file")
