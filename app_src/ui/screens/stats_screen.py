@@ -1,3 +1,4 @@
+from utils.boot_log import boot_log
 from kivy.clock import Clock
 from kivy.properties import StringProperty
 from kivy.utils import get_color_from_hex
@@ -5,7 +6,6 @@ from kivy.metrics import dp
 from kivy.uix.widget import Widget
 
 from ui.widgets.layouts import MyMDScreen, GenericStatusBarSpacer, Row, Column
-
 
 
 class LineDivider(Widget):
@@ -296,3 +296,5 @@ class StatsScreen(MyMDScreen):
     def handle_going_back(self,*_):
         print("test")
         self.manager.go_to_thumbs()
+
+boot_log("sm: StatsScreen end of file")

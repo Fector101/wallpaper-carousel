@@ -86,9 +86,12 @@ def appFolder() -> str:
     if _on_pydroid_app():
         folder_path = os.getcwd()
     elif _on_android_platform():
-        from android.storage import app_storage_path  # type: ignore # , primary_external_storage_path
-        # folder_path = os.path.join(primary_external_storage_path(), 'Pictures', 'Waller')
-        folder_path = str(os.path.join(app_storage_path()))
+        android_private = os.environ.get('ANDROID_PRIVATE')
+        if android_private:
+            folder_path = android_private
+        else:
+            from android.storage import app_storage_path  # type: ignore # , primary_external_storage_path
+            folder_path = str(os.path.join(app_storage_path()))
     else:
         folder_path = os.getcwd()
 
@@ -135,10 +138,10 @@ def app_external_storage_path():
     return ext_dir.getAbsolutePath() if ext_dir else appFolder()
 	
 def write_logs_to_file(log_folder_name="logs", file_name="all_output1.txt"):
-    from utils.constants import DEV
     import os
     from datetime import datetime
-    if DEV or not _on_android_platform():
+
+    if not _on_android_platform():
         return
     try:
 

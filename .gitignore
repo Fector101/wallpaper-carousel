@@ -15,3 +15,4 @@ old_app_src
 home*
 widgets.py
 bin/
+app_src/android_notify/*

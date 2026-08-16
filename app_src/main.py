@@ -4,22 +4,24 @@ from utils.helper import write_logs_to_file
 write_logs_to_file()
 boot_log("main: write_logs_to_file imports done")
 
-import logging
-import threading
-import traceback
 
-from kivy.clock import Clock
-from kivy.core.window import Window
-from kivy.properties import StringProperty, ObjectProperty
-from kivy.utils import platform
-from kivymd.app import MDApp
-from kivymd.uix.navigationdrawer import MDNavigationLayout
+import logging, threading, traceback # +0.024s
 
+from kivy.properties import StringProperty, ObjectProperty # +0.997s
+from kivy.utils import platform # +0.001s
+from kivy.clock import Clock # +1.403s
+from kivymd.app import MDApp # +0.955s
+from kivymd.uix.navigationdrawer import MDNavigationLayout # +0.259s
+boot_log("main: kivymd/MDApp imports done")
+
+
+# +0.001s
 from android_notify import NotificationHandler, logger as android_notify_logger
 from android_notify.config import on_android_platform, on_pydroid_app
-boot_log("main: kivy/kivymd/android_notify imports done")
+boot_log("main: android_notify imports done")
 
 from ui.screens.manager import ScreenManager
+boot_log("main: local imports done3")
 from ui.widgets.android import toast
 from ui.widgets.buttons import BottomNavigationBar
 from ui.widgets.bottom_sheet import MyBtmSheet
@@ -27,9 +29,11 @@ from ui.widgets.bottom_sheet import MyBtmSheet
 from utils.android import is_device_on_light_mode
 from utils.config_manager import ConfigManager
 from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, theme_colors as _theme_colors
+boot_log("main: local imports done2")
 from utils.helper import Service, get_free_port, register_fonts, fix_input_on_linux, \
     get_stored_running_ui_server_port, get_stored_running_service_server_port
-from utils.image_operations import ImageOperation
+boot_log("main: local imports done1")
+from utils.image_operations import ImageOperation # JNI call — app_storage_path() - 0.697s
 from utils.logger import app_logger
 from utils.ui_service_bridge import UIListenToServicer, UIMessengerToService
 boot_log("main: local imports done")
@@ -38,9 +42,10 @@ android_notify_logger.setLevel(logging.DEBUG if on_android_platform() else loggi
 
 fix_input_on_linux()
 register_fonts()
-boot_log("main: module setup done")
+boot_log("--------------main: module setup done--------------")
 
 if platform == 'linux':
+    from kivy.core.window import Window # +0.738s
     Window.size = (390, 740)
 
 

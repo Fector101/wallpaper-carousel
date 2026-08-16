@@ -1,11 +1,13 @@
+from utils.boot_log import boot_log
 import time
 import traceback
 
 from kivy.uix.label import Label
 # from kivy.uix.floatlayout import FloatLayout
 from kivymd.uix.widget import MDWidget
+from kivy.properties import ObjectProperty
 
-from android_notify.config import on_android_platform, autoclass, get_python_activity_context
+from android_notify.config import on_android_platform, _get_jnius, get_python_activity_context
 from kivy.metrics import dp
 from kivy.properties import ListProperty, DictProperty, NumericProperty
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -18,7 +20,6 @@ from kivy.core.window import Window
 from kivymd.uix.floatlayout import MDFloatLayout
 
 from kivymd.app import MDApp
-
 from kivy.clock import Clock
 from kivy.graphics import Color, Line, Rotate
 from kivy.uix.widget import Widget
@@ -31,9 +32,6 @@ from utils.constants import theme_colors
 Window.softinput_mode = 'below_target' # or 'pan'
 
 if on_android_platform():
-    View = autoclass("android.view.View")
-    WindowInsetsType = autoclass("android.view.WindowInsets$Type")
-    WindowInsetsController = autoclass("android.view.WindowInsetsController")
     from jnius import PythonJavaClass, java_method
     class _SystemUiRunnable(PythonJavaClass):
         __javainterfaces__ = ['java/lang/Runnable']
@@ -47,6 +45,9 @@ if on_android_platform():
         def run(self):
             decor = get_python_activity_context().getWindow().getDecorView()
             if BuildVersion.SDK_INT >= 30:
+                _, autoclass = _get_jnius()
+                WindowInsetsController = autoclass("android.view.WindowInsetsController")
+                WindowInsetsType = autoclass("android.view.WindowInsets$Type")
                 controller = decor.getWindowInsetsController()
                 bars = WindowInsetsType.statusBars() | WindowInsetsType.navigationBars()
                 if self.hide:
@@ -57,6 +58,8 @@ if on_android_platform():
                 else:
                     controller.show(bars)
             else:
+                _, autoclass = _get_jnius()
+                View = autoclass("android.view.View")
                 flags = (
                     View.SYSTEM_UI_FLAG_FULLSCREEN
                     | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
@@ -86,6 +89,7 @@ class Column(MDBoxLayout):
         self.orientation = "vertical"
         for each_widget in self.my_widgets:
             self.add_widget(each_widget)
+# boot_log("sm: ui.widgets.layouts classes 1 defined")
 
 
 class MyPopUp(Popup):
@@ -145,23 +149,27 @@ class MyPopUp(Popup):
         self.height = dp(height) + dp(56)#sp(self.popup_title_label.height)
 
 
-from kivy.properties import ObjectProperty
-
+_cached_dimensions = None
 
 def get_dimensions(bypass_android_version=False):
+    global _cached_dimensions
+    if not bypass_android_version and _cached_dimensions is not None:
+        return _cached_dimensions
     status_bar_height = 0
     nav_bar_height = 0
+
     if not bypass_android_version and (not on_android_platform() or BuildVersion.SDK_INT < 35):
         # return [50,50]
-        return [status_bar_height, nav_bar_height]
-
-    PythonActivity = autoclass("org.kivy.android.PythonActivity")
-    activity = PythonActivity.mActivity
+        _cached_dimensions = [status_bar_height, nav_bar_height]
+        return _cached_dimensions
+    _, autoclass = _get_jnius()
+    activity = get_python_activity_context()
 
     # This First block works when user is using Buttons
 
     try:
         WindowInsetsType = autoclass("android.view.WindowInsets$Type")
+        # +0.464s
         window = activity.getWindow()
         decor = window.getDecorView()
 
@@ -174,6 +182,7 @@ def get_dimensions(bypass_android_version=False):
             nav_bar_height = insets.getInsets(
                 WindowInsetsType.navigationBars()
             ).bottom
+
     except Exception as Error_using_first_method_to_get_Status_Bar_and_Nav_Bar_Height:
         app_logger.exception(Error_using_first_method_to_get_Status_Bar_and_Nav_Bar_Height)
 
@@ -195,7 +204,10 @@ def get_dimensions(bypass_android_version=False):
         except Exception as Error_using_second_method_to_get_nav_bar_height:
             app_logger.exception(Error_using_second_method_to_get_nav_bar_height)
 
-    return [status_bar_height, nav_bar_height]
+    result = [status_bar_height, nav_bar_height]
+    if not bypass_android_version:
+        _cached_dimensions = result
+    return result
 
 
 def get_nav_bar_height(bypass_android_version=False):
@@ -284,6 +296,7 @@ class PlaceOnMainScreen:
             parent.remove_widget(self)
         return None
 
+
 # implement handle_going_back or do_not_leave_app
 
 class MyMDScreen(MDScreen):
@@ -291,10 +304,9 @@ class MyMDScreen(MDScreen):
     screen_content = ObjectProperty()
     BACK_PRESS_THRESHOLD = 0.4
     SAFETY_TIMEOUT = 2.0
-
     dimensions = get_dimensions()
-    status_bar_height = NumericProperty(get_status_bar_height())
-    nav_bar_height = NumericProperty(get_nav_bar_height())
+    status_bar_height = NumericProperty(dimensions[0])
+    nav_bar_height = NumericProperty(dimensions[1])
     status_bar_bg = ListProperty([26 / 255, 27 / 255, 27 / 255, 1])
 
     def __init__(self, **kwargs):
@@ -360,8 +372,7 @@ class MyMDScreen(MDScreen):
 
     @staticmethod
     def __get_rotation():
-        PythonActivity = autoclass("org.kivy.android.PythonActivity")
-        activity = PythonActivity.mActivity
+        activity = get_python_activity_context()
 
         try:
             # Modern method
@@ -376,6 +387,7 @@ class MyMDScreen(MDScreen):
         return display.getRotation()
 
     def __get_right_positioning(self):
+        _, autoclass = _get_jnius()
         default = self.status_bar_height, self.nav_bar_height
         if not on_android_platform():
             return default
@@ -602,3 +614,5 @@ class AdaptiveLabel(Label):
         # self.font_size = "14sp"
 
         self.bind(texture_size=self.setter("size"))
+
+boot_log("sm: ui.widgets.layouts end of file")

@@ -1,11 +1,12 @@
 import traceback
-from android_notify.config import get_python_activity_context,autoclass, on_android_platform
+from android_notify.config import get_python_activity_context,_get_jnius, on_android_platform
 from android_notify.internal.java_classes import PendingIntent, Intent, _LazyJavaClass
 
 from utils.logger import app_logger
 from ui.widgets.android import toast
 
 def add_home_screen_widget(button=None):
+    _, autoclass = _get_jnius()
     try:
         from android_widgets import get_package_name
         if not on_android_platform():
@@ -64,6 +65,7 @@ def is_device_on_light_mode():
     if not on_android_platform():
         return "dark"
     try:
+        _, autoclass = _get_jnius()
         Configuration = autoclass("android.content.res.Configuration")
         activity = get_python_activity_context()
         config = activity.getResources().getConfiguration()

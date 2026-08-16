@@ -1,3 +1,4 @@
+from utils.boot_log import boot_log
 import os, time
 import shutil
 import threading
@@ -5,21 +6,87 @@ import traceback
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
-from android_notify.internal.java_classes import String, autoclass, cast, Intent, BuildVersion, Uri, BitmapFactory, File, _LazyJavaClass
 from kivy.clock import Clock
-from android_notify.config import on_android_platform, on_pydroid_app, get_package_name
 from kivymd.app import MDApp
 
 from ui.widgets.layouts import LoadingLayout
 from utils.helper import appFolder
-from utils.boot_log import boot_log
+
 from utils.config_manager import ConfigManager
 from utils.logger import app_logger
 
 
+# Local platform checks — no jnius import at module level
+def _on_android_platform():
+    return bool(
+        os.environ.get('KIVY_BUILD') in {'android'}
+        or 'P4A_BOOTSTRAP' in os.environ
+        or 'ANDROID_ARGUMENT' in os.environ
+        or os.getenv("MAIN_ACTIVITY_HOST_CLASS_NAME")
+    )
 
-if on_android_platform():
-    PythonActivity = _LazyJavaClass("PythonActivity", "org.kivy.android.PythonActivity")
+def _on_pydroid_app():
+    return "ru.iiec.pydroid3" in os.environ.get("PYTHONHOME", "")
+
+# Local _LazyJavaClass — defers jnius import to first use, not module level
+class _LazyJavaClass:
+    __slots__ = ("_python_name", "_java_name")
+    _cache = {}
+    _lock = threading.Lock()
+
+    def __init__(self, python_name, java_name=None):
+        self._python_name = python_name
+        self._java_name = java_name
+
+    def _get(self):
+        with self._lock:
+            name = self._python_name
+            if name not in self._cache:
+                boot_log(f"image_operations: autoclass({self._java_name or name})")
+                from jnius import autoclass
+                self._cache[name] = autoclass(self._java_name or name)
+                boot_log(f"image_operations: autoclass({self._java_name or name}) done")
+            return self._cache[name]
+
+    def __getattr__(self, item):
+        return getattr(self._get(), item)
+
+    def __call__(self, *args, **kwargs):
+        return self._get()(*args, **kwargs)
+
+_mActivity = None
+_content_resolver = None
+
+def _get_mActivity():
+    global _mActivity
+    if _mActivity is None:
+        boot_log("image_operations: _get_mActivity start")
+        PythonActivity = _LazyJavaClass("PythonActivity", "org.kivy.android.PythonActivity")
+        _mActivity = PythonActivity.mActivity
+        boot_log("image_operations: _get_mActivity done")
+    return _mActivity
+
+def _get_content_resolver():
+    global _content_resolver
+    if _content_resolver is None:
+        boot_log("image_operations: _get_content_resolver start")
+        _content_resolver = _get_mActivity().getContentResolver()
+        boot_log("image_operations: _get_content_resolver done")
+    return _content_resolver
+
+def _get_package_name():
+    boot_log("image_operations: _get_package_name start")
+    from android_notify.config import get_package_name
+    result = get_package_name()
+    boot_log("image_operations: _get_package_name done")
+    return result
+
+if _on_android_platform():
+    String = _LazyJavaClass("String", "java.lang.String")
+    Intent = _LazyJavaClass("Intent", "android.content.Intent")
+    BuildVersion = _LazyJavaClass("BuildVersion", "android.os.Build$VERSION")
+    Uri = _LazyJavaClass("Uri", "android.net.Uri")
+    File = _LazyJavaClass("File", "java.io.File")
     Bitmap = _LazyJavaClass("Bitmap", "android.graphics.Bitmap")
     BitmapConfig = _LazyJavaClass("BitmapConfig", "android.graphics.Bitmap$Config")
     CompressFormat = _LazyJavaClass("CompressFormat", "android.graphics.Bitmap$CompressFormat")
@@ -33,22 +100,23 @@ if on_android_platform():
     ContentValues = _LazyJavaClass("ContentValues", "android.content.ContentValues")
     FileInputStream = _LazyJavaClass("FileInputStream", "java.io.FileInputStream")
     MediaColumns = _LazyJavaClass("MediaColumns", "android.provider.MediaStore$MediaColumns")
-    OpenableColumns = _LazyJavaClass("OpenableColumns", "android.provider.OpenableColumns")
+    OpenableColumns = _LazyJavaClass("OpenableColumns", "android.provider.MediaStore$OpenableColumns")
     Options = _LazyJavaClass("Options", "android.graphics.BitmapFactory$Options")
     FileProvider = _LazyJavaClass("FileProvider", "androidx.core.content.FileProvider")
     ClipData = _LazyJavaClass("ClipData", "android.content.ClipData")
     ArrayList = _LazyJavaClass("ArrayList", "java.util.ArrayList")
-    mActivity = PythonActivity.mActivity
-    content_resolver = mActivity.getContentResolver()
-    package_name = get_package_name()
-    file_provider_authority = package_name + ".fileprovider"
     ContentUris = _LazyJavaClass("ContentUris", "android.content.ContentUris")
-    boot_log("image_operations: android java init done")
+
+boot_log("image_operations: lazy classes created")
+
+boot_log("image_operations: creating configmanager and dirs")
 
 my_config = ConfigManager()
 app_dir = Path(appFolder())
 wallpapers_dir = app_dir / "wallpapers"
 wallpapers_dir.mkdir(parents=True, exist_ok=True)
+
+boot_log("image_operations: configmanager and dirs done")
 
 _ANDROID_THUMBNAIL_LOCK = threading.Lock()
 
@@ -74,6 +142,7 @@ def unique(destination_name):
 
 class ImageOperation:
     def __init__(self,load_saved):
+        boot_log("image_operations: ImageOperation.__init__")
         self.app = MDApp.get_running_app()
         self.load_saved = load_saved
         self._picker_request_code = 65432
@@ -87,18 +156,21 @@ class ImageOperation:
 
     def launch_file_picker(self):
         """Launch Android file picker directly, bypassing plyer's slow URI resolution."""
-        if not on_android_platform():
+        boot_log("image_operations: launch_file_picker")
+        if not _on_android_platform():
             return
+        from jnius import cast
         intent = Intent(Intent.ACTION_GET_CONTENT)
         intent.setType(String("image/*"))
         intent.addCategory(Intent.CATEGORY_OPENABLE)
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, True)
-        mActivity.startActivityForResult(
+        _get_mActivity().startActivityForResult(
             Intent.createChooser(intent, cast('java.lang.CharSequence', String("Select Images"))),
             self._picker_request_code
         )
 
     def import_images_from_plyer(self,files):
+        boot_log(f"image_operations: import_images_from_plyer {len(files)} files")
         print("files",files)
         if not files:
             self.file_picker_active = False
@@ -111,6 +183,7 @@ class ImageOperation:
         images_lock = threading.Lock()
         copy_time = time.time()
         def process_one(_,src):
+            t0 = time.time()
             with self._unique_lock:
                 dst = unique(os.path.basename(src))
             try:
@@ -121,6 +194,7 @@ class ImageOperation:
                     new_images.append(str(dst))
             except Exception as error_copying_files:
                 app_logger.exception(f"import_images_from_plyer: error importing {src}: {error_copying_files}")
+            boot_log(f"image_operations: plyer process_one done ({time.time() - t0:.3f}s)")
         with ThreadPoolExecutor(max_workers=3) as pool:
             list(pool.map(lambda args: process_one(*args), enumerate(files)))
         _add_wallpapers_to_config(new_images)
@@ -136,6 +210,7 @@ class ImageOperation:
         Query MediaStore for images accessible via limited permission.
                 Used on API 34+ when READ_MEDIA_VISUAL_USER_SELECTED is granted
                 but READ_MEDIA_IMAGES is not (system already showed its picker)."""
+        boot_log("image_operations: import_images_from_android")
         if self.processing_intent:
             return
         TAG = "mediaStore" if only_limited_access else "intent"
@@ -166,6 +241,7 @@ class ImageOperation:
 
                 def process_one(i, uri):
                     t0 = time.time()
+                    boot_log(f"image_operations: process_one [{i+1}/{len(uris)}] start")
                     try:
                         file_name, src_path = get_uri_name_and_path(uri)
                         if not file_name:
@@ -178,6 +254,7 @@ class ImageOperation:
                         t2 = time.time()
                         create_thumbnail(src_path=destination_path, destination_dir=wallpapers_dir)
                         t3 = time.time()
+                        boot_log(f"image_operations: process_one [{i+1}/{len(uris)}] meta={t1-t0:.3f}s copy={t2-t1:.3f}s thumb={t3-t2:.3f}s")
                         with images_lock:
                             new_images.append(str(destination_path))
                         # app_logger.info(
@@ -209,6 +286,7 @@ class ImageOperation:
         threading.Thread(target=_run, args=([image_uris]),daemon=True).start()
 
     def ui_things(self, _):
+        boot_log("image_operations: ui_things")
         self.file_picker_active = False
         elapsed = None
         if self._processing_start is not None:
@@ -221,10 +299,11 @@ class ImageOperation:
         self._processing_start = None
 
     def setup_share_from_others_to_app_listener(self):
-        if not on_android_platform():
+        boot_log("image_operations: setup_share_from_others_to_app_listener")
+        if not _on_android_platform():
             app_logger.warning("Can't Share Image to App, You're not on Android")
             return
-        elif on_pydroid_app():
+        elif _on_pydroid_app():
             app_logger.warning("NewIntentListener proxy can't be created on pydroid3")
             return
         try:
@@ -232,12 +311,14 @@ class ImageOperation:
             activity.bind(on_new_intent=self.handle_image_sharing_from_others_app)
 
             # Handle initial intent when app starts
-            self.handle_image_sharing_from_others_app(mActivity.getIntent())
+            self.handle_image_sharing_from_others_app(_get_mActivity().getIntent())
         except Exception as error_setup_share_from_others_to_app_listener:
             print("error_setup_share_from_others_to_app_listener",error_setup_share_from_others_to_app_listener)
             traceback.print_exc()
 
     def handle_image_sharing_from_others_app(self, intent):
+        from jnius import cast
+        boot_log("image_operations: handle_image_sharing_from_others_app")
         tag="handle_image_sharing_from_others_app"
         if intent is None:
             app_logger.warning(f"{tag}- Intent is None")
@@ -301,19 +382,22 @@ class ImageOperation:
 
 
 def grant_uri_permissions(uris):
+    boot_log(f"image_operations: grant_uri_permissions start ({len(uris)} URIs)")
     for _uri in uris:
         try:
-            mActivity.grantUriPermission(
-                package_name, _uri,
+            _get_mActivity().grantUriPermission(
+                _get_package_name(), _uri,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
         except Exception as error_grant_uri_permissions:
             app_logger.exception(error_grant_uri_permissions)
+    boot_log(f"image_operations: grant_uri_permissions done ({len(uris)} URIs)")
 
 def get_uri_name_and_path(uri):
     """Query a content:// URI once and return (display_name, real_path).
     real_path is only set when the URI resolves to an existing local file,
     so callers can use a fast native copy."""
+    t0 = time.time()
     name = None
     path = None
     try:
@@ -329,7 +413,7 @@ def get_uri_name_and_path(uri):
 
         cursor = None
         try:
-            cursor = content_resolver.query(
+            cursor = _get_content_resolver().query(
                 uri, ["_data", OpenableColumns.DISPLAY_NAME], None, None, None
             )
             if cursor and cursor.moveToFirst():
@@ -349,9 +433,11 @@ def get_uri_name_and_path(uri):
                 cursor.close()
     except Exception as e2:
         app_logger.exception(f"get_uri_name_and_path error: {e2}")
+    boot_log(f"image_operations: get_uri_name_and_path done ({time.time() - t0:.3f}s)")
     return name, path
 
 def get_selected_uris_from_intent(intent):
+    boot_log("image_operations: get_selected_uris_from_intent")
     uris = []
     if not intent:
         return uris
@@ -374,8 +460,9 @@ def get_selected_uris_from_intent(intent):
     return uris
 
 def get_selected_uris_from_cursor():
+    boot_log("image_operations: get_selected_uris_from_cursor start")
     collection = ImagesMedia.EXTERNAL_CONTENT_URI
-    cursor = content_resolver.query(
+    cursor = _get_content_resolver().query(
         collection, None, None, None, None
     )
     if cursor is None or cursor.getCount() == 0:
@@ -391,6 +478,7 @@ def get_selected_uris_from_cursor():
         )
         uris.append(item_uri)
     cursor.close()
+    boot_log(f"image_operations: get_selected_uris_from_cursor done ({len(uris)} URIs)")
     return uris
 
 def copy_image_to_internal(destination_path, uri, src_path=None):
@@ -398,6 +486,7 @@ def copy_image_to_internal(destination_path, uri, src_path=None):
     Uses native shutil.copy2 when the URI resolves to a local file,
     falling back to a Java-native (or buffered) stream copy."""
     t0 = time.time()
+    boot_log(f"image_operations: copy_image_to_internal start {os.path.basename(str(destination_path))}")
     try:
         if src_path is None:
             _, src_path = get_uri_name_and_path(uri)
@@ -410,6 +499,7 @@ def copy_image_to_internal(destination_path, uri, src_path=None):
                 f"[copy_image_to_internal: python] copy {os.path.basename(str(destination_path))} "
                 f"({time.time() - t0:.3f}s)"
             )
+            boot_log(f"image_operations: copy_image_to_internal python copy done ({time.time() - t0:.3f}s)")
             return str(destination_path)
     except PermissionError as error_copying_using_python:
         # Fails when using android picker to choose a file from gallery app
@@ -424,12 +514,14 @@ def copy_image_to_internal(destination_path, uri, src_path=None):
         f"[copy_image_to_internal: stream] copy {os.path.basename(str(destination_path))} "
         f"({time.time() - t0:.3f}s)"
     )
+    boot_log(f"image_operations: copy_image_to_internal stream copy done ({time.time() - t0:.3f}s)")
     return result
 
 def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60):
     """Create a low-resolution JPEG thumbnail for src and return its path.
     If Pillow is not available or creation fails, returns the original path string.
     """
+    boot_log(f"image_operations: create_thumbnail start {os.path.basename(str(src_path))}")
     def use_android_classes_to_create_thumbnail(src_path_, destination_path):
         max_width = size[0]
         max_height = size[1]
@@ -473,7 +565,7 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
         from PIL import Image
     except ImportError:
         Image=None
-        if not on_android_platform():
+        if not _on_android_platform():
             print("Pillow not available, cannot create thumbnail.")
             # Pillow not available and not on android -> fall back to original image path
             return str(src_path)
@@ -490,7 +582,7 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
                 im = im.convert('RGB')
                 im.thumbnail(size, Image.LANCZOS)
                 im.save(destination, format='JPEG', quality=quality)
-        elif on_android_platform():
+        elif _on_android_platform():
             # BitmapFactory/decodeFile + the JNI round-trips below are not safe to
             # run from multiple threads at once: concurrent first-use class
             # resolution made decodeFile return another thread's image, so
@@ -501,6 +593,7 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
                 except Exception as error_using_android_classes_to_create_thumbnail:
                     print("error_using_android_classes_to_create_thumbnail",error_using_android_classes_to_create_thumbnail)
                     traceback.print_exc()
+        boot_log(f"image_operations: create_thumbnail done {os.path.basename(str(src_path))}")
         return str(destination)
     except OSError as os_error:
         app_logger.exception(f"OSError creating thumbnail for: {src_path}, os_error:{os_error}")
@@ -510,21 +603,25 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
         return str(src_path)
 
 def copy_uri_to_internal(destination_name, uri):
+    boot_log(f"image_operations: copy_uri_to_internal start {destination_name}")
     if not uri:
         raise Exception("Image not found in MediaStore")
 
-    internal_dir = mActivity.getFilesDir().getAbsolutePath()
+    internal_dir = _get_mActivity().getFilesDir().getAbsolutePath()
     destination_path = os.path.join(internal_dir, destination_name)
 
-    input_stream = BufferedInputStream(content_resolver.openInputStream(uri))
+    input_stream = BufferedInputStream(_get_content_resolver().openInputStream(uri))
     try:
+        boot_log(f"image_operations: copy_uri_to_internal trying java native copy")
         if _try_java_native_copy(input_stream, destination_path):
+            boot_log(f"image_operations: copy_uri_to_internal java native copy succeeded")
             return destination_path
     finally:
         input_stream.close()
 
     # Fresh stream for the Python fallback (java copy may have consumed it).
-    input_stream = BufferedInputStream(content_resolver.openInputStream(uri))
+    boot_log(f"image_operations: copy_uri_to_internal using python stream fallback")
+    input_stream = BufferedInputStream(_get_content_resolver().openInputStream(uri))
     try:
         output_stream = BufferedOutputStream(FileOutputStream(destination_path))
         try:
@@ -561,6 +658,7 @@ def thumbnail_path_for(src, destination_dir=None):
 def _try_java_native_copy(input_stream, destination_path):
     """Copy the stream entirely inside Java (one JNI call) on API 29+.
     Returns True when the copy succeeded, False to fall back to Python."""
+    boot_log(f"image_operations: _try_java_native_copy start {os.path.basename(destination_path)}")
     output_stream = None
     try:
         if BuildVersion.SDK_INT < 29:
@@ -583,7 +681,9 @@ def _try_java_native_copy(input_stream, destination_path):
         return False
 
 def is_image_uri(uri):
-    mime = content_resolver.getType(uri)
+    boot_log(f"image_operations: is_image_uri start")
+    mime = _get_content_resolver().getType(uri)
+    boot_log(f"image_operations: is_image_uri done: {mime}")
     return mime and mime.startswith("image/")
 
 def get_or_create_thumbnail(src, destination_dir=None, size=(320, 320)):
@@ -591,6 +691,7 @@ def get_or_create_thumbnail(src, destination_dir=None, size=(320, 320)):
     return create_thumbnail(src, destination_dir=destination_dir, size=size)
 
 def get_image_info(path):
+    boot_log(f"image_operations: get_image_info {os.path.basename(path)}")
     info_dict = {
                 "Pixels": "Nil",
                 "Megapixels": "Nil",
@@ -612,7 +713,7 @@ def get_image_info(path):
         size_str = f"{size_bytes / (1024 * 1024):.2f} MB"
     info_dict["Size"] = size_str
 
-    if not on_android_platform():
+    if not _on_android_platform():
         return info_dict
 
     # Android BitmapFactory
@@ -640,17 +741,19 @@ def get_image_info(path):
     return info_dict
 
 def share_image_to_other_app(image_absolute_path):
-    if not on_android_platform():
+    boot_log(f"image_operations: share_image_to_other_app {os.path.basename(image_absolute_path)}")
+    if not _on_android_platform():
         app_logger.warning("Can't share to Another App, Not on Android.")
         return None
     try:
+        from jnius import cast
 
 
         file = File(image_absolute_path)
 
         uri = FileProvider.getUriForFile(
-            mActivity,
-            file_provider_authority,
+            _get_mActivity(),
+            _get_package_name() + ".fileprovider",
             file
         )
 
@@ -660,11 +763,11 @@ def share_image_to_other_app(image_absolute_path):
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
         # preview
-        clip = ClipData.newUri(content_resolver, String("Image"), uri)
+        clip = ClipData.newUri(_get_content_resolver(), String("Image"), uri)
         intent.setClipData(clip)
 
         chooser = Intent.createChooser(intent, String("Share Image"))
-        mActivity.startActivity(chooser)
+        _get_mActivity().startActivity(chooser)
         app_logger.info("Sharing image to other app")
 
     except Exception as error_from_trying_to_share_image_to_other_apps:
@@ -672,7 +775,8 @@ def share_image_to_other_app(image_absolute_path):
         traceback.print_exc()
 
 def share_images_to_other_app(image_paths):
-    if not on_android_platform():
+    boot_log(f"image_operations: share_images_to_other_app {len(image_paths)} images")
+    if not _on_android_platform():
         app_logger.warning("Can't share to Another App, Not on Android.")
         return None
     try:
@@ -681,8 +785,8 @@ def share_images_to_other_app(image_paths):
         for path in image_paths:
             file = File(path)
             uri = FileProvider.getUriForFile(
-                mActivity,
-                file_provider_authority,
+                _get_mActivity(),
+                _get_package_name() + ".fileprovider",
                 file
             )
             uris.add(uri)
@@ -692,11 +796,11 @@ def share_images_to_other_app(image_paths):
         intent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
-        clip = ClipData.newUri(content_resolver, String("Image"), uris.get(0))
+        clip = ClipData.newUri(_get_content_resolver(), String("Image"), uris.get(0))
         intent.setClipData(clip)
 
         chooser = Intent.createChooser(intent, String("Share Images"))
-        mActivity.startActivity(chooser)
+        _get_mActivity().startActivity(chooser)
         app_logger.info(f"Sharing {len(image_paths)} images to other app")
 
     except Exception as error_from_trying_to_share_images_to_other_apps:

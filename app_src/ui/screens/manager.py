@@ -1,4 +1,4 @@
-import os.path
+from utils.boot_log import boot_log
 import traceback
 
 from android_notify.internal.java_classes import autoclass
@@ -7,11 +7,11 @@ from android_notify.config import get_python_activity_context, on_android_platfo
 from kivy.uix.screenmanager import SlideTransition, NoTransition
 from kivymd.uix.screenmanager import MDScreenManager
 
-from android_notify import NotificationHandler
+
 from ui.screens.stats_screen import StatsScreen
 from ui.widgets.layouts import MyMDScreen
 from utils.android import DisplayListener
-from utils.boot_log import boot_log
+
 from utils.logger import app_logger
 
 from utils.model import get_app
