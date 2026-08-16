@@ -1,5 +1,5 @@
 from utils.boot_log import boot_log
-boot_log("main:-----------------imports started------------------------------")
+boot_log("main: imports started")
 from utils.helper import write_logs_to_file
 write_logs_to_file()
 boot_log("main: write_logs_to_file imports done")
