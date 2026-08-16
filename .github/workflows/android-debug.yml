@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - 'buildozer.spec'
+      - 'app_src/android/**'
 
 permissions:
   contents: read
