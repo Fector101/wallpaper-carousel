@@ -655,7 +655,7 @@ class SettingsScreen(MyMDScreen):
         super().on_enter(*args)
         if not self.built_ui:
             Clock.schedule_once(self._timer_set)
-            self.built_ui = True
+            
 
     def _timer_set(self, _):
         Clock.schedule_once(self.build_ui)
