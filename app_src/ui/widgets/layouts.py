@@ -158,9 +158,7 @@ def get_dimensions(bypass_android_version=False):
     nav_bar_height = 0
 
     if not bypass_android_version and (not on_android_platform() or BuildVersion.SDK_INT < 35):
-        # return [50,50]
-        _cached_dimensions = [status_bar_height, nav_bar_height]
-        return _cached_dimensions
+        return [status_bar_height, nav_bar_height]
     _, autoclass = _get_jnius()
     activity = get_python_activity_context()
 
@@ -173,7 +171,6 @@ def get_dimensions(bypass_android_version=False):
         window = activity.getWindow()
         decor = window.getDecorView()
         insets = decor.getRootWindowInsets()
-        boot_log("sm: ui.widgets.layouts status_bar_height and nav_bar_height retrieved")
         if insets:
             status_bar_height = insets.getInsets(
                 WindowInsetsType.statusBars()
@@ -182,6 +179,7 @@ def get_dimensions(bypass_android_version=False):
             nav_bar_height = insets.getInsets(
                 WindowInsetsType.navigationBars()
             ).bottom
+        boot_log("sm: ui.widgets.layouts status_bar_height and nav_bar_height retrieved")
 
     except Exception as Error_using_first_method_to_get_Status_Bar_and_Nav_Bar_Height:
         app_logger.exception(Error_using_first_method_to_get_Status_Bar_and_Nav_Bar_Height)

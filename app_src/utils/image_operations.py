@@ -14,64 +14,30 @@ from utils.helper import appFolder
 
 from utils.config_manager import ConfigManager
 from utils.logger import app_logger
-
-
-# Local platform checks — no jnius import at module level
-def _on_android_platform():
-    return bool(
-        os.environ.get('KIVY_BUILD') in {'android'}
-        or 'P4A_BOOTSTRAP' in os.environ
-        or 'ANDROID_ARGUMENT' in os.environ
-        or os.getenv("MAIN_ACTIVITY_HOST_CLASS_NAME")
-    )
-
-def _on_pydroid_app():
-    return "ru.iiec.pydroid3" in os.environ.get("PYTHONHOME", "")
-
-# Local _LazyJavaClass — defers jnius import to first use, not module level
-class _LazyJavaClass:
-    __slots__ = ("_python_name", "_java_name")
-    _cache = {}
-    _lock = threading.Lock()
-
-    def __init__(self, python_name, java_name=None):
-        self._python_name = python_name
-        self._java_name = java_name
-
-    def _get(self):
-        with self._lock:
-            name = self._python_name
-            if name not in self._cache:
-                boot_log(f"image_operations: autoclass({self._java_name or name})")
-                from jnius import autoclass
-                self._cache[name] = autoclass(self._java_name or name)
-                boot_log(f"image_operations: autoclass({self._java_name or name}) done")
-            return self._cache[name]
-
-    def __getattr__(self, item):
-        return getattr(self._get(), item)
-
-    def __call__(self, *args, **kwargs):
-        return self._get()(*args, **kwargs)
+from utils.platform_compat import on_android_platform as _on_android_platform, on_pydroid_app as _on_pydroid_app, LazyJavaClass as _LazyJavaClass
 
 _mActivity = None
+_mActivity_lock = threading.Lock()
 _content_resolver = None
+_content_resolver_lock = threading.Lock()
 
 def _get_mActivity():
     global _mActivity
-    if _mActivity is None:
-        boot_log("image_operations: _get_mActivity start")
-        PythonActivity = _LazyJavaClass("PythonActivity", "org.kivy.android.PythonActivity")
-        _mActivity = PythonActivity.mActivity
-        boot_log("image_operations: _get_mActivity done")
+    with _mActivity_lock:
+        if _mActivity is None:
+            boot_log("image_operations: _get_mActivity start")
+            PythonActivity = _LazyJavaClass("PythonActivity", "org.kivy.android.PythonActivity")
+            _mActivity = PythonActivity.mActivity
+            boot_log("image_operations: _get_mActivity done")
     return _mActivity
 
 def _get_content_resolver():
     global _content_resolver
-    if _content_resolver is None:
-        boot_log("image_operations: _get_content_resolver start")
-        _content_resolver = _get_mActivity().getContentResolver()
-        boot_log("image_operations: _get_content_resolver done")
+    with _content_resolver_lock:
+        if _content_resolver is None:
+            boot_log("image_operations: _get_content_resolver start")
+            _content_resolver = _get_mActivity().getContentResolver()
+            boot_log("image_operations: _get_content_resolver done")
     return _content_resolver
 
 def _get_package_name():
@@ -691,7 +657,6 @@ def get_or_create_thumbnail(src, destination_dir=None, size=(320, 320)):
     return create_thumbnail(src, destination_dir=destination_dir, size=size)
 
 def get_image_info(path):
-    import os
     boot_log(f"image_operations: get_image_info {os.path.basename(path)}")
     info_dict = {
                 "Pixels": "Nil",

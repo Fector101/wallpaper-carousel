@@ -2,8 +2,8 @@ kivy
 https://github.com/kivymd/KivyMD/archive/master.zip
 materialyoucolor
 asynckivy
-pyjnius
-android-notify
+pyjnius==1.7.0
+android-notify @ https://github.com/Fector101/android_notify/archive/ddec6efe51f02ce61dbc9242b5dd015c5e6d68ba.zip
 python-osc
 android-widgets
 git+https://github.com/kivy/plyer.git

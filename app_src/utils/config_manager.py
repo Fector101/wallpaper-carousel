@@ -4,23 +4,7 @@ import threading
 import traceback
 from pathlib import Path
 
-def toast(msg):
-    from ui.widgets.android import toast as _toast_impl
-    _toast_impl(msg)
-
-def is_platform_android():
-    # Took this from kivy to fix my logs in P4A.hook, so no need to import things I don't need by doing `from kivy.utils import platform`
-    if os.getenv("MAIN_ACTIVITY_HOST_CLASS_NAME"):
-        return True
-    kivy_build = os.environ.get('KIVY_BUILD', '')
-    if kivy_build in {'android'}:
-        return True
-    elif 'P4A_BOOTSTRAP' in os.environ:
-        return True
-    elif 'ANDROID_ARGUMENT' in os.environ:
-        return True
-
-    return False
+from utils.platform_compat import toast as _toast, on_android_platform as is_platform_android
 
 class ConfigManager:
     DEFAULT_CONFIG = {
@@ -82,9 +66,9 @@ class ConfigManager:
                 cls.write(cls.DEFAULT_CONFIG)
                 return cls.DEFAULT_CONFIG
             except PermissionError:
-                toast("PD: Cannot access config file")
+                _toast("PD: Cannot access config file")
             except Exception as e:
-                toast(str(e))
+                _toast(str(e))
                 traceback.print_exc()
     @classmethod
     def write(cls, data):
@@ -105,9 +89,9 @@ class ConfigManager:
                     pass
                 raise
         except PermissionError:
-            toast("PD: Cannot access config file")
+            _toast("PD: Cannot access config file")
         except Exception as e:
-            toast(str(e))
+            _toast(str(e))
             traceback.print_exc()
 
     # ---------- INTERVAL ----------

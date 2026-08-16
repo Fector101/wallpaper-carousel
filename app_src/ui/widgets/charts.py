@@ -29,16 +29,22 @@ class StackedBarChart(Widget):
         self._label_textures = {}
         self._value_textures = {}
         self.bind(pos=self._redraw, size=self._redraw, data=self._redraw,
-                  text_color=self._redraw, value_color=self._redraw)
+                  text_color=self._on_color_change, value_color=self._on_color_change)
+
+    def _on_color_change(self, *_):
+        self._label_textures.clear()
+        self._value_textures.clear()
+        self._redraw()
 
     def _texture(self, text, color, font_size, cache):
-        tex = cache.get(text)
+        key = (text, tuple(color), font_size)
+        tex = cache.get(key)
         if tex is None:
             label = CoreLabel(text=text, font_size=font_size, color=color,
                               font_name="RobotoMono", bold=True)
             label.refresh()
             tex = label.texture
-            cache[text] = tex
+            cache[key] = tex
         return tex
 
     def _redraw(self, *_):
@@ -75,7 +81,7 @@ class StackedBarChart(Widget):
         legend_h = legend_top - self.y
         if legend_h <= 0:
             return
-        row_h = legend_h / count
+        row_h = max(legend_h / count, 0)
         for index, (label, value, color) in enumerate(data):
             row_center = legend_top - row_h * (index + 0.5)
 

@@ -77,9 +77,6 @@ class StatsListItem(Row):  # Assuming Row inherits from horizontal MDBoxLayout
 
             # padding=[4, ]
         )
-        self.theme_height="Custom"
-        self.theme_width="Custom"
-        # self.button.width=dp(10)
         self.button.height=dp(30)
         button_container.add_widget(self.button)
         self.add_widget(self.title_label)
@@ -127,7 +124,6 @@ class StatsScreen(MyMDScreen):
         Clock.schedule_once(self.build_ui)
 
     def build_ui(self,_):
-        global MDLabel
         from kivy.uix.scrollview import ScrollView
         from kivymd.uix.button import MDIconButton
         from kivymd.uix.label import MDLabel

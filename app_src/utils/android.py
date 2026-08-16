@@ -1,6 +1,7 @@
 import traceback
 from android_notify.config import get_python_activity_context,_get_jnius, on_android_platform, get_package_name
-from android_notify.internal.java_classes import PendingIntent, Intent, _LazyJavaClass
+from android_notify.internal.java_classes import PendingIntent, Intent
+from utils.platform_compat import LazyJavaClass as _LazyJavaClass
 
 from utils.logger import app_logger
 from ui.widgets.android import toast

@@ -20,7 +20,7 @@ from android_widgets import Layout, RemoteViews, AppWidgetManager
 from utils.config_manager import ConfigManager
 from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, DEFAULT_SERVICE_PORT, \
     DEFAULT_UI_PORT, ServiceServerAddress, SERVICE_LIFESPAN_HOURS
-from utils.helper import change_wallpaper, appFolder, format_time_remaining, _service_port_store_path, _ui_port_store_path
+from utils.helper import change_wallpaper, appFolder, format_time_remaining, service_port_store_path, ui_port_store_path
 from utils.logger import app_logger
 
 _, autoclass = _get_jnius()
@@ -208,7 +208,7 @@ class ReceivedDataFromUI:
     @staticmethod
     def __store_service_port(port):
         try:
-            SERVICE_PORT_STORE_PATH=_service_port_store_path()
+            SERVICE_PORT_STORE_PATH=service_port_store_path()
             with open(SERVICE_PORT_STORE_PATH, "w") as f:
                 f.write(str(port))
             app_logger.debug(f"Stored Service Port for Java - Port: {port}, file_path: {SERVICE_PORT_STORE_PATH}")
@@ -219,7 +219,7 @@ class ReceivedDataFromUI:
     @staticmethod
     def __store_ui_port(port):
         try:
-            UI_PORT_STORE_PATH=_ui_port_store_path()
+            UI_PORT_STORE_PATH=ui_port_store_path()
             with open(UI_PORT_STORE_PATH, "w") as f:
                 f.write(str(port))
             app_logger.debug(f"Stored UI Port for Java - Port: {port}, file_path: {UI_PORT_STORE_PATH}")
@@ -625,7 +625,7 @@ def start_service_server(notification: Notification):
         # Avoiding process is bad java.lang.SecurityException
     finally:
         print('service python: The end...')
-        for path_fn in (_ui_port_store_path, _service_port_store_path):
+        for path_fn in (ui_port_store_path, service_port_store_path):
             try:
                 with open(path_fn(), "w") as port_file:
                     port_file.write("")

@@ -2,44 +2,7 @@
 import sys
 import threading
 
-def _toast(msg):
-    from ui.widgets.android import toast as _toast_impl
-    _toast_impl(msg)
-
-# Local platform checks — no jnius import at module level
-def _on_android_platform():
-    import os
-    return bool(
-        os.environ.get('KIVY_BUILD') in {'android'}
-        or 'P4A_BOOTSTRAP' in os.environ
-        or 'ANDROID_ARGUMENT' in os.environ
-        or os.getenv("MAIN_ACTIVITY_HOST_CLASS_NAME")
-    )
-
-def _on_pydroid_app():
-    import os
-    return "ru.iiec.pydroid3" in os.environ.get("PYTHONHOME", "")
-
-# Local _LazyJavaClass — defers jnius import to first use, not module level
-class _LazyJavaClass:
-    __slots__ = ("_python_name", "_java_name")
-    _cache = {}
-    _lock = threading.Lock()
-
-    def __init__(self, python_name, java_name=None):
-        self._python_name = python_name
-        self._java_name = java_name
-
-    def _get(self):
-        with self._lock:
-            name = self._python_name
-            if name not in self._cache:
-                from jnius import autoclass
-                self._cache[name] = autoclass(self._java_name or name)
-            return self._cache[name]
-
-    def __getattr__(self, item):
-        return getattr(self._get(), item)
+from utils.platform_compat import on_android_platform as _on_android_platform, on_pydroid_app as _on_pydroid_app, LazyJavaClass as _LazyJavaClass, toast as _toast
 
 if _on_android_platform():
     Log = _LazyJavaClass("Log", "android.util.Log")
@@ -443,13 +406,16 @@ def register_fonts():
     )
 
 
-def _ui_port_store_path():
+def ui_port_store_path():
     import os
     return os.path.join(appFolder(), "ui_port.txt")
 
-def _service_port_store_path():
+def service_port_store_path():
     import os
     return os.path.join(appFolder(), "port.txt")
+
+_ui_port_store_path = ui_port_store_path
+_service_port_store_path = service_port_store_path
 
 
 def get_stored_running_ui_server_port():

@@ -150,7 +150,7 @@ def main():
             raw = ""
         (outdir / f"run{i}-logcat.txt").write_text(raw, encoding="utf-8", errors="replace")
 
-        boot_lines = [l for l in raw.splitlines() if BOOT_MARKER in l]
+        boot_lines = [line for line in raw.splitlines() if BOOT_MARKER in line]
         if not boot_lines:
             print(f"  WARNING: No [BOOT] markers found — see run{i}-logcat.txt")
             continue

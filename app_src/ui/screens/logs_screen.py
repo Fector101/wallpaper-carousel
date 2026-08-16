@@ -49,7 +49,6 @@ class LogsScreen(MyMDScreen):
         if self.built_ui:
             return
         self.built_ui = True
-        global Label, Button, ScrollView, NoTransition, BoxLayout, Clipboard, deque, datetime
 
         from collections import deque
         from datetime import datetime
@@ -60,6 +59,13 @@ class LogsScreen(MyMDScreen):
         from kivy.uix.scrollview import ScrollView
         from kivy.uix.button import Button
         from kivy.uix.label import Label
+        self._deque = deque
+        self._datetime = datetime
+        self._Clipboard = Clipboard
+        self._NoTransition = NoTransition
+        self._ScrollView = ScrollView
+        self._Button = Button
+        self._Label = Label
         app = MDApp.get_running_app()
         self._file_pos = 0
         self._line_count = 0
@@ -134,7 +140,7 @@ class LogsScreen(MyMDScreen):
             return os.getcwd()
 
     def handle_going_back(self,*_):
-        self.manager.transition = NoTransition()
+        self.manager.transition = self._NoTransition()
         self.manager.current = "settings"
 
     @staticmethod
@@ -148,7 +154,7 @@ class LogsScreen(MyMDScreen):
 
     def _create_log_label(self, text):
         level = self._detect_level(text)
-        label = Label(
+        label = self._Label(
             text=text,
             color=COLORS[level],
             size_hint_x=1,
@@ -170,7 +176,7 @@ class LogsScreen(MyMDScreen):
 
         def on_double_tap(inst, touch):
             if inst.collide_point(*touch.pos) and touch.is_double_tap:
-                Clipboard.copy(inst.text)
+                self._Clipboard.copy(inst.text)
                 toast('Copied')
                 return True
             return None
@@ -181,7 +187,7 @@ class LogsScreen(MyMDScreen):
 
     # ---------- LOG HANDLING ----------
     def add_log(self, message):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = self._datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         full_log = f"[{timestamp}] {message}"
         label = self._create_log_label(full_log)
         self.logs_layout.add_widget(label)
@@ -264,7 +270,7 @@ class LogsScreen(MyMDScreen):
             self._file_pos = 0
             return
         with open(self.log_file_path, "r", encoding="utf-8", errors="ignore") as f:
-            lines = deque(f, maxlen=MAX_STARTUP_LINES)
+            lines = self._deque(f, maxlen=MAX_STARTUP_LINES)
             self._file_pos = f.tell()
         self._pending_lines = [l.rstrip() for l in lines if l.strip()]
         Clock.schedule_once(self._load_next_chunk, 0)
