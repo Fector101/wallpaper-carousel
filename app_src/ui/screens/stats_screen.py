@@ -245,7 +245,7 @@ class StatsScreen(MyMDScreen):
             md_bg_color=get_color_from_hex("2E2E2E"),
             radius=[12, 12, 12, 12],
         )
-        sections_container.bind(width=lambda x,value: setattr(self.graph_container,"width",value-2*content_inset))
+        sections_container.bind(width=lambda x,value: setattr(self.graph_container,"width",value-2*25))
         self.graph_title = MDLabel(
             text="Storage Usage",
             bold=1,
