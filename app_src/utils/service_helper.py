@@ -13,16 +13,17 @@ from datetime import datetime, time as dt_time
 
 from pythonosc import dispatcher, osc_server, udp_client
 from android_notify import Notification
-from android_notify.config import get_python_activity_context, on_android_platform, autoclass, get_python_service
+from android_notify.config import get_python_activity_context, on_android_platform, _get_jnius, get_python_service
 from android_notify.internal.java_classes import BitmapFactory
 from android_widgets import Layout, RemoteViews, AppWidgetManager
 
 from utils.config_manager import ConfigManager
 from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, DEFAULT_SERVICE_PORT, \
     DEFAULT_UI_PORT, ServiceServerAddress, SERVICE_LIFESPAN_HOURS
-from utils.helper import change_wallpaper, appFolder, format_time_remaining, SERVICE_PORT_STORE_PATH, UI_PORT_STORE_PATH
+from utils.helper import change_wallpaper, appFolder, format_time_remaining, service_port_store_path, ui_port_store_path
 from utils.logger import app_logger
 
+_, autoclass = _get_jnius()
 
 Bitmap = autoclass('android.graphics.Bitmap')
 BitmapConfig = autoclass('android.graphics.Bitmap$Config')
@@ -207,6 +208,7 @@ class ReceivedDataFromUI:
     @staticmethod
     def __store_service_port(port):
         try:
+            SERVICE_PORT_STORE_PATH=service_port_store_path()
             with open(SERVICE_PORT_STORE_PATH, "w") as f:
                 f.write(str(port))
             app_logger.debug(f"Stored Service Port for Java - Port: {port}, file_path: {SERVICE_PORT_STORE_PATH}")
@@ -217,7 +219,7 @@ class ReceivedDataFromUI:
     @staticmethod
     def __store_ui_port(port):
         try:
-
+            UI_PORT_STORE_PATH=ui_port_store_path()
             with open(UI_PORT_STORE_PATH, "w") as f:
                 f.write(str(port))
             app_logger.debug(f"Stored UI Port for Java - Port: {port}, file_path: {UI_PORT_STORE_PATH}")
@@ -623,10 +625,12 @@ def start_service_server(notification: Notification):
         # Avoiding process is bad java.lang.SecurityException
     finally:
         print('service python: The end...')
-        with open(UI_PORT_STORE_PATH, "w") as f_:
-            f_.write("")
-        with open(SERVICE_PORT_STORE_PATH, "w") as f__:
-            f__.write("")
+        for path_fn in (ui_port_store_path, service_port_store_path):
+            try:
+                with open(path_fn(), "w") as port_file:
+                    port_file.write("")
+            except OSError as error_clearing_port_file:
+                app_logger.exception(f"Error clearing port file: {error_clearing_port_file}")
 
 # foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE_TYPE_DATA_SYNC if on_android_platform() and BuildVersion.SDK_INT >= 30 else 0
 # if foreground_type:

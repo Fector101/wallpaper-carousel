@@ -1,4 +1,4 @@
-import os.path
+from utils.boot_log import boot_log
 import traceback
 
 from android_notify.internal.java_classes import autoclass
@@ -7,10 +7,11 @@ from android_notify.config import get_python_activity_context, on_android_platfo
 from kivy.uix.screenmanager import SlideTransition, NoTransition
 from kivymd.uix.screenmanager import MDScreenManager
 
-from android_notify import NotificationHandler
+
 from ui.screens.stats_screen import StatsScreen
 from ui.widgets.layouts import MyMDScreen
 from utils.android import DisplayListener
+
 from utils.logger import app_logger
 
 from utils.model import get_app
@@ -20,32 +21,47 @@ from ui.screens.full_screen import FullscreenScreen
 from ui.screens.welcome_screen import WelcomeScreen
 from ui.screens.logs_screen import LogsScreen
 from ui.screens.download_apk_screen import DownloadApkScreen
+boot_log("sm: MDScreenManager import done")
 
 
 class ScreenManager(MDScreenManager):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        boot_log("sm: init start")
         self.app = get_app()
-        self.welcome_screen = WelcomeScreen()
+        self.welcome_screen = None
         self.gallery_screen = GalleryScreen()
+        boot_log("sm: GalleryScreen done")
         self.full_screen = FullscreenScreen()
+        boot_log("sm: FullscreenScreen done")
         self.settings_screen = SettingsScreen()
+        boot_log("sm: SettingsScreen done")
         self.log_screen = LogsScreen()
+        boot_log("sm: LogsScreen done")
         self.download_apk_screen = DownloadApkScreen()
+        boot_log("sm: DownloadApkScreen done")
         self.stats_screen = StatsScreen()
+        boot_log("sm: StatsScreen done")
 
         self.add_widget(self.gallery_screen)
         self.add_widget(self.full_screen)
         self.add_widget(self.settings_screen)
-        self.add_widget(self.welcome_screen)
         self.add_widget(self.log_screen)
         self.add_widget(self.download_apk_screen)
         self.add_widget(self.stats_screen)
+        boot_log("sm: screens added")
         self.__register_rotate_listener()
+        boot_log("sm: rotate listener done")
         # self.__run_rotate_method_for_each_screen("BOTTOM")
 
         # self.current = "update_screen"
+
+    def ensure_welcome_screen(self):
+        if self.welcome_screen is None:
+            self.welcome_screen = WelcomeScreen()
+            self.add_widget(self.welcome_screen)
+            boot_log("sm: WelcomeScreen built")
     def __register_rotate_listener(self):
         if on_android_platform():
             try:
@@ -70,6 +86,8 @@ class ScreenManager(MDScreenManager):
 
     def btm_nav_patch(self, screen_name):
         is_fullscreen = screen_name in ["welcome", "fullscreen", "logs", "update_screen","stats"]
+        if screen_name == "welcome":
+            self.ensure_welcome_screen()
         if is_fullscreen and self.app.bottom_bar:
             self.app.bottom_bar.hide(animation=False, hidden_by=self)
         elif self.app.bottom_bar:
@@ -87,6 +105,7 @@ class ScreenManager(MDScreenManager):
         self.gallery_screen.ids.thumbnails_scroll_view_widget.scroll_y = 1
 
     def scroll_to_to_settings(self):
+        self.settings_screen.build_ui()
         self.settings_screen.ids.settings_scroll_view_widget.scroll_y = 1
 
     def open_image_in_full_screen(self, index):

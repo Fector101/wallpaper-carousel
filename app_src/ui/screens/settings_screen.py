@@ -1,40 +1,29 @@
 import os
-import time
 import traceback
-from pathlib import Path
 
-from android_widgets import get_package_name
-# from kivy.uix.label import Label
 from kivy.clock import Clock
+from kivy.graphics import Color, Line
 from kivy.metrics import dp, sp
 from kivy.properties import StringProperty, ListProperty, ObjectProperty, NumericProperty, BooleanProperty
-from kivy.uix.behaviors import ButtonBehavior
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-# from kivy.uix.switch import Switch
-from kivymd.app import MDApp
-from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.button import MDButtonText, MDButton, MDIconButton, MDButtonIcon
-from kivymd.uix.fitimage import FitImage
-from kivymd.uix.label import MDLabel
-from kivymd.uix.selectioncontrol import MDSwitch
 
-from android_notify.config import get_python_activity_context, autoclass
-from android_notify.internal.java_classes import PendingIntent, Intent
-from ui.screens.download_apk_screen import thread_check_for_update
+from kivy.uix.behaviors import ButtonBehavior
+from kivy.uix.label import Label
+
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.button import MDButton, MDIconButton, MDButtonIcon, MDButtonText
+from kivymd.uix.label import MDLabel, MDIcon
+
 from ui.screens.full_screen import BorderMDBoxLayout
 from ui.widgets.android import toast
-from ui.widgets.layouts import LoadingLayout, Column, MyMDScreen, AdaptiveLabel
-from ui.widgets.layouts import Row
-from ui.widgets.modals import DialogScreen
+from ui.widgets.layouts import LoadingLayout, Column, MyMDScreen, AdaptiveLabel, Row
+
+from utils.android import add_home_screen_widget
 from utils.config_manager import ConfigManager
-from utils.constants import DEV, theme_colors
-from utils.helper import Service, appFolder, smart_convert_minutes
-from utils.helper import load_kv_file  # type
+from utils.constants import DEV, theme_colors, VERSION
+from utils.helper import Service, appFolder, smart_convert_minutes, is_running_debug_build
 from utils.logger import app_logger
 from utils.model import get_app
 
-load_kv_file(py_file_absolute_path=__file__)
 my_config = ConfigManager()
 
 
@@ -85,6 +74,10 @@ value__ = 100
 
 
 def schedule_alarm():
+    import time
+    from android_widgets import get_package_name
+    from android_notify.config import get_python_activity_context
+    from android_notify.internal.java_classes import autoclass, PendingIntent, Intent
     time_in_secs = value__ * 60
     ##p("time_in_secs", time_in_secs)
     from android_notify.internal.java_classes import String
@@ -129,6 +122,7 @@ def my_with_callback():
 def show_home_screen_widget_popup1():
     from jnius import autoclass
     from android_widgets import get_package_name
+    from android_notify.internal.java_classes import PendingIntent, Intent
     try:
         # Android classes
         AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
@@ -212,6 +206,8 @@ class HomeScreenImageDisplay(MDBoxLayout):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        from kivymd.uix.fitimage import FitImage
+        from kivymd.uix.label import MDLabel
         self.orientation = "vertical"
         self.adaptive_size = True
         self.spacing = dp(5)
@@ -247,6 +243,7 @@ class IconTextButton(MDButton):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        from kivymd.uix.button import MDButtonText, MDButtonIcon
         self.app = get_app()
         self.theme_bg_color = "Custom"
         self.md_bg_color = kwargs["md_bg_color"] if "md_bg_color" in kwargs else [.2, .2, .2, 1]
@@ -277,6 +274,7 @@ class QuickSetButton(MDButton):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        from kivymd.uix.button import MDButtonText
         self.app = get_app()
 
         self.radius = 20
@@ -388,6 +386,7 @@ class ToggleSliderRow(Row):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        from kivymd.uix.selectioncontrol import MDSwitch
         self.app = get_app()
         self.sub_text_widget = None
         self.adaptive_height = True
@@ -503,6 +502,127 @@ class SettingsSection(Column):
         self.content_layout.md_bg_color = [c, c, c, ca]
 
 
+class MyMDButton(MDButton):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.app = get_app()
+        self.theme_bg_color = "Custom"
+        self.md_bg_color = theme_colors.BUTTON_BG
+        self.app.bind(device_theme=self._set_theme_color)
+
+    def _set_theme_color(self, *_):
+        self.md_bg_color = theme_colors.BUTTON_BG
+
+
+class ThemeOptionCard(ButtonBehavior, MDBoxLayout):
+    icon = StringProperty("moon-waning-crescent")
+    label = StringProperty("Dark")
+    preference_value = StringProperty("dark")
+    active = BooleanProperty(False)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.app = get_app()
+        self.orientation = "vertical"
+        self.adaptive_size = True
+        self.spacing = dp(4)
+        self.padding = [dp(12), dp(10)]
+        self.radius = [12]
+        self.width = dp(90)
+        self.bind(minimum_height=self.setter("height"))
+
+        with self.canvas.after:
+            self._card_border_color = Color(rgba=(0, 0, 0, 0))
+            self._card_border = Line(width=dp(1.5))
+        self.bind(pos=self._update_card_border, size=self._update_card_border)
+        self._update_card_border()
+
+        self.icon_widget = MDIcon(
+            icon=self.icon,
+            pos_hint={"center_x": 0.5},
+            theme_text_color="Custom",
+            theme_bg_color="Custom",
+            md_bg_color=(0, 0, 0, 0),
+        )
+        self.label_widget = MDLabel(
+            text=self.label,
+            halign="center",
+            theme_text_color="Custom",
+            font_size=sp(12),
+            adaptive_size=True,
+        )
+        self.add_widget(self.icon_widget)
+        self.add_widget(self.label_widget)
+
+        self.bind(icon=self.icon_widget.setter("icon"),
+                  label=self.label_widget.setter("text"))
+        self.bind(active=self._set_theme_color)
+        self.app.bind(device_theme=self._set_theme_color)
+        self._set_theme_color()
+
+    def _update_card_border(self, *_):
+        self._card_border.rounded_rectangle = [self.x, self.y, self.width, self.height, 12]
+
+    def _set_theme_color(self, *_):
+        if self.active:
+            md_bg = theme_colors.THEME_SELECTOR_ACCENT
+            text_color = (0.1, 0.1, 0.1, 1)
+            border_color = theme_colors.THEME_SELECTOR_ACCENT
+        else:
+            md_bg = theme_colors.THEME_SELECTOR_INACTIVE
+            text_color = "black" if self.app.device_theme == "light" else "white"
+            border_color = (0, 0, 0, 0)
+        self.md_bg_color = md_bg
+        self.icon_widget.text_color = text_color
+        self.label_widget.text_color = text_color
+        self.label_widget.bold = self.active
+        self._card_border_color.rgba = border_color
+
+
+class CarouselTools(Column):
+    settings_screen = ObjectProperty(None)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.app = get_app()
+        self.spacing = dp(15)
+        self.size_hint_y = None
+        self.bind(minimum_height=self.setter("height"))
+
+        settings_screen = self.settings_screen or self.app.sm.get_screen("settings")
+
+        button_box = MDBoxLayout(
+            spacing=dp(10),
+            size_hint_x=1,
+            adaptive_size=True,
+            pos_hint={"center_x": 0.5},
+        )
+        restart_btn = MyMDButton(radius=[5], theme_bg_color="Custom",
+                                 on_release=settings_screen.restart_service)
+        restart_text = MDButtonText(text="Restart Carousel", size_hint_y=None,
+                                    theme_text_color="Custom", height=dp(50))
+        restart_btn.add_widget(restart_text)
+        self._restart_text = restart_text
+
+        stop_btn = MyMDButton(theme_bg_color="Custom", md_bg_color=theme_colors.BUTTON_BG,
+                              radius=[5], pos_hint={"center_x": 0.5},
+                              on_release=settings_screen.terminate_carousel)
+        stop_text = MDButtonText(text="Stop Carousel", theme_text_color="Custom")
+        stop_btn.add_widget(stop_text)
+        self._stop_text = stop_text
+
+        button_box.add_widget(restart_btn)
+        button_box.add_widget(stop_btn)
+        self.add_widget(button_box)
+
+        self.app.bind(device_theme=self._set_theme_color)
+        self._set_theme_color()
+
+    def _set_theme_color(self, *_):
+        text_color = "black" if self.app.device_theme == "light" else "white"
+        self._restart_text.text_color = text_color
+        self._stop_text.text_color = text_color
+
+
 class SettingsScreen(MyMDScreen):
     current_image_source = StringProperty()
     next_image_source = StringProperty()
@@ -514,6 +634,8 @@ class SettingsScreen(MyMDScreen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        from pathlib import Path
+        from kivymd.app import MDApp
         self.interval_input = None
         self.name = "settings"
         self.app = MDApp.get_running_app()
@@ -528,40 +650,402 @@ class SettingsScreen(MyMDScreen):
         self.displayed_interval_value = smart_convert_minutes(v)
         self.interval = str(v)
         self.times_tapped = 0
+        self.built_ui = False
 
-        #
-        # # ---------- TEST BUTTONS ----------
-        if DEV:
-            for each in dev_object:
-                self.ids.main_container.add_widget(
-                    Button(text=f"test {each}", on_release=dev_object[each], size_hint_y=None, height=dp(50)))
-        #
-        # self.homeScreenWidgetControllerUI = HomeScreenWidgetControllerUI()
-        # root.add_widget(self.homeScreenWidgetControllerUI)
-        #
-        # text = MyLabel(
-        #     text=f"--- v{VERSION} ---",
-        #     size_hint_y=None,
-        #     height=dp(50),font_name="RobotoMono",
-        #     on_release=self.open_logs_screen
-        # )
-        # root.add_widget(text)
-        #
-        #
-        # scroll.add_widget(root)
-        # self.add_widget(scroll)
+    def on_enter(self, *args):
+        super().on_enter(*args)
+        if not self.built_ui:
+            Clock.schedule_once(self._timer_set)
 
-        # self.add_widget(root) for auto reload
-        # self.save_interval()
-        btn = Button(text="Check For New Version", on_release=self.check_for_update, size_hint_y=None, height=dp(50))
-        btn.background_normal = ''
-        btn.background_color = theme_colors.BUTTON_BG
-        btn.color = theme_colors.TEXT_PRIMARY
-        self._check_update_btn = btn
-        self.app.bind(device_theme=self._set_check_update_btn_theme)
-        self.ids.main_container.add_widget(btn)
+    def _timer_set(self, _):
+        Clock.schedule_once(self.build_ui)
+
+    def build_ui(self, _=None):
+        if self.built_ui:
+            return
+        self.built_ui = True
+
+        from kivy.uix.scrollview import ScrollView
+
+        app = self.app
+
+        self.md_bg_color = theme_colors.BG
+
+        root = Column(pos_hint={"top": 1})
+
+        root.add_widget(self._build_header())
+
+        scroll = ScrollView(size_hint=(1, 1))
+
+        main_container = Column(
+            size_hint_y=None,
+            padding=[dp(25), dp(25), dp(25), dp(100)],
+            spacing=dp(15),
+        )
+        main_container.bind(minimum_height=main_container.setter("height"))
+
+        main_container.add_widget(self._build_interval_editor())
+        main_container.add_widget(self._build_home_widget_card())
+        main_container.add_widget(self._build_carousel_section())
+        main_container.add_widget(self._build_autostart_section())
+        main_container.add_widget(self._build_theme_section())
+        main_container.add_widget(self._build_export_section())
+        main_container.add_widget(self._build_version_controls())
+        main_container.add_widget(self._build_update_button())
+
+        self.ids["settings_scroll_view_widget"] = scroll
+        self.ids["main_container"] = main_container
+
+        scroll.add_widget(main_container)
+        root.add_widget(scroll)
+        self.add_widget(root)
+
+        interval_input = self.ids.interval_input
+        interval_input.bind(height=self._update_interval_input_padding,
+                            line_height=self._update_interval_input_padding,
+                            focus=self._update_interval_input_colors)
+        interval_input.disabled_foreground_color = self.ids.interval_input_con.disabled_color
+        self.ids.interval_input_con.bind(disabled_color=interval_input.setter("disabled_foreground_color"))
+
+        self.ids.save_btn_text.bind(text=self._update_save_btn_theme)
+        self.bind(displayed_interval_value=self._on_displayed_interval_value_changed)
+        self.bind(is_using_on_wake=self._sync_toggles)
+        app.bind(theme_preference=self._sync_theme_cards)
+
+        self._update_interval_input_padding()
+        self._update_interval_input_colors()
+        self._update_save_btn_theme()
+        self._sync_toggles()
+        self.set_theme_color(None, app.device_theme)
+
+    def _build_header(self):
+        title_text_case = MDBoxLayout(
+            padding=[dp(25), dp(self.status_bar_height - 20 if self.status_bar_height > 20 else self.status_bar_height + 20), dp(0), dp(20)],
+            size_hint_y=None,
+            md_bg_color=theme_colors.BG_ELEVATED,
+        )
+        title_text_case.bind(minimum_height=title_text_case.setter("height"))
+        title_label = MDLabel(
+            text="Settings",
+            theme_text_color="Custom",
+            bold=True,
+            color=theme_colors.TEXT_PRIMARY,
+            adaptive_size=True,
+            theme_font_size="Custom",
+            font_name="RobotoMono",
+            font_size="22sp",
+        )
+        title_text_case.add_widget(title_label)
+        self.ids["title_text_case"] = title_text_case
+        self.title_label = title_label
+        return title_text_case
+
+    def _build_interval_editor(self):
+        from kivy.uix.textinput import TextInput
+        from kivymd.uix.gridlayout import MDGridLayout
+
+        interval_editor = Column(
+            size_hint_y=None,
+            spacing=dp(15),
+        )
+        interval_editor.bind(minimum_height=interval_editor.setter("height"))
+
+        interval_heading = MDLabel(
+            text="Wallpaper Change Interval (minutes)",
+            size_hint_y=None,
+            height=dp(30),
+            font_name="RobotoMono",
+            font_size=sp(13),
+            color=theme_colors.TEXT_PRIMARY,
+        )
+        interval_editor.add_widget(interval_heading)
+        self.interval_heading = interval_heading
+
+        interval_row = Row(spacing=dp(10), size_hint_y=None, height=dp(50))
+        interval_input_con = BorderInput(
+            padding=[dp(2)],
+            size_hint_y=1,
+            pos_hint={"center_y": 0.5},
+        )
+        interval_input_con.disabled = 1
+        interval_input = TextInput(
+            text=f"Set to {self.displayed_interval_value}",
+            multiline=False,
+            background_color=[0, 0, 0, 0],
+            input_filter="float",
+            cursor_color="blue",
+            input_type="number",
+        )
+        interval_input_con.add_widget(interval_input)
+
+        save_btn = MDButton(
+            radius=20,
+            theme_bg_color="Custom",
+            theme_line_color="Custom",
+            on_release=self.save_interval,
+        )
+        save_btn.theme_height="Custom"
+        save_btn.theme_width="Custom"
+        save_btn.width=dp(80)
+        save_btn.size_hint_y=.9
+        save_btn.pos_hint={"center_y": 0.5}
+        save_btn_text = MDButtonText(
+            text="Edit",
+            size_hint_y=None,
+            theme_text_color="Custom",
+            height=dp(50),
+            font_name="RobotoMono",
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
+        )
+        save_btn.add_widget(save_btn_text)
+
+        interval_row.add_widget(interval_input_con)
+        interval_row.add_widget(save_btn)
+        interval_editor.add_widget(interval_row)
+
+        quick_set_box = MDGridLayout(
+            cols=3,
+            adaptive_size=True,
+            spacing=dp(10),
+            pos_hint={"center_x": 0.5},
+        )
+        quick_set_box.add_widget(QuickSetButton(text="01:00"))
+        quick_set_box.add_widget(QuickSetButton(text="05:00"))
+        quick_set_box.add_widget(QuickSetButton(text="15:00"))
+        quick_set_box.add_widget(QuickSetButton(disabled=True, opacity=0))
+        quick_set_box.add_widget(QuickSetButton(text="60:00"))
+        interval_editor.add_widget(quick_set_box)
+
+        self.ids["interval_input_con"] = interval_input_con
+        self.ids["interval_input"] = interval_input
+        self.ids["save_btn"] = save_btn
+        self.ids["save_btn_text"] = save_btn_text
+        self.ids["QuickSetButtonsBox"] = quick_set_box
+
+        self.interval_input = interval_input
+        return interval_editor
+
+    def _build_home_widget_card(self):
+        from kivymd.uix.fitimage import FitImage
+
+        home_widget_section = Column(adaptive_height=True, padding=[dp(10), 0, dp(10), 0])
+        home_widget_header = MDBoxLayout(
+            size_hint_y=None,
+            height=dp(50),
+            md_bg_color=theme_colors.BG_ELEVATED,
+            radius=[dp(10), dp(10), 0, 0],
+            padding=[dp(10), 0, dp(10), 0],
+        )
+        home_widget_header_label = MDLabel(
+            text="Home Screen Carousel Widget",
+            theme_font_size="Custom",
+            font_size=sp(14),
+            pos_hint={"center_y": 0.5},
+            adaptive_size=True,
+            color=theme_colors.TEXT_PRIMARY,
+        )
+        home_widget_header.add_widget(home_widget_header_label)
+
+        home_widget_body = Column(
+            md_bg_color=theme_colors.BG_CARD,
+            adaptive_size=True,
+            size_hint_x=1,
+            spacing=dp(10),
+            padding=[dp(10)],
+            radius=[0, 0, dp(10), dp(10)],
+        )
+        countdown_label = MDLabel(
+            text="OnNext Wake" if my_config.get_on_wake_state() else "--:--",
+            pos_hint={"right": 1},
+            adaptive_size=True,
+            theme_text_color="Custom",
+            theme_font_name="Custom",
+            font_name="Roboto",
+            bold=True,
+        )
+        home_widget_body.add_widget(countdown_label)
+
         self.current_image_source = get_current_wallpaper()
         self.next_image_source = "assets/icons/icon.png"
+
+        images_row = Row(adaptive_height=True, size_hint_x=1, spacing=dp(10))
+        current_col = Column(adaptive_size=True, spacing=dp(5))
+        current_label = MDLabel(
+            text="Current",
+            adaptive_size=True,
+            theme_font_name="Custom",
+            font_name="Roboto",
+            bold=True,
+            theme_font_size="Custom",
+            font_size=sp(14),
+            theme_text_color="Custom",
+            text_color=theme_colors.PRIMARY,
+            padding=[dp(5), dp(2)],
+            radius=[dp(5)],
+            md_bg_color=theme_colors.SECONDARY,
+        )
+        current_image = FitImage(
+            source=self.current_image_source,
+            fit_mode="cover",
+            size_hint=(None, None),
+            size=(dp(120), dp(120)),
+            radius=[10],
+        )
+        current_col.add_widget(current_label)
+        current_col.add_widget(current_image)
+
+        next_col = Column(adaptive_size=True, spacing=dp(5))
+        next_label = MDLabel(
+            text="Next",
+            adaptive_size=True,
+            theme_font_name="Custom",
+            font_name="Roboto",
+            bold=True,
+            theme_font_size="Custom",
+            font_size=sp(14),
+            theme_text_color="Custom",
+            text_color=theme_colors.PRIMARY,
+            padding=[dp(5), dp(2)],
+            radius=[dp(5)],
+            md_bg_color=theme_colors.SECONDARY,
+        )
+        next_image = FitImage(
+            source=self.next_image_source,
+            fit_mode="cover",
+            size_hint=(None, None),
+            size=(dp(60), dp(60)),
+            radius=[10],
+        )
+        next_col.add_widget(next_label)
+        next_col.add_widget(next_image)
+
+        images_row.add_widget(current_col)
+        images_row.add_widget(next_col)
+        self.bind(current_image_source=current_image.setter("source"),
+                  next_image_source=next_image.setter("source"))
+        home_widget_body.add_widget(images_row)
+
+        skip_row = Row(adaptive_size=True, spacing=dp(10), pos_hint={"right": 1})
+        skip_btn = MyMDButton(radius=[5], theme_bg_color="Custom")
+        skip_btn_text = MDButtonText(text="Skip Next", theme_text_color="Custom")
+        skip_btn.add_widget(skip_btn_text)
+        skip_row.add_widget(skip_btn)
+
+        pause_row = Row(adaptive_size=True, spacing=dp(10), pos_hint={"right": 1})
+        pause_btn = MDIconButton(
+            icon="pause",
+            pos_hint={"right": 1},
+            on_release=lambda *_: self.toggle_home_screen_widget_loop(pause_btn),
+        )
+        add_btn = MyMDButton(
+            theme_bg_color="Custom",
+            md_bg_color=theme_colors.BUTTON_BG,
+            radius=[5],
+            on_release=add_home_screen_widget,
+        )
+        add_icon = MDButtonIcon(icon="plus")
+        add_text = MDButtonText(text="Add to Home Screen", theme_text_color="Custom")
+        add_btn.add_widget(add_icon)
+        add_btn.add_widget(add_text)
+        pause_row.add_widget(pause_btn)
+        pause_row.add_widget(add_btn)
+
+        home_widget_body.add_widget(skip_row)
+        home_widget_body.add_widget(pause_row)
+
+        home_widget_section.add_widget(home_widget_header)
+        home_widget_section.add_widget(home_widget_body)
+
+        self.ids["countdown_label"] = countdown_label
+        self.ids["skip_upcoming_wallpaper_button"] = skip_btn
+        self.ids["pause_home_screen_widget_loop_button"] = pause_btn
+
+        self.home_widget_header = home_widget_header
+        self.home_widget_header_label = home_widget_header_label
+        self.home_widget_body = home_widget_body
+        self.countdown_label = countdown_label
+        self.current_label = current_label
+        self.next_label = next_label
+        self._bw_widgets = [skip_btn_text, add_text]
+        self._bw_icon_widgets = [add_icon]
+        self._bw_misc = [pause_btn, countdown_label]
+        return home_widget_section
+
+    def _build_carousel_section(self):
+        carousel_section = SettingsSection(title_text="Carousel")
+        on_wake_toggle = ToggleSliderRow(change_function=self.set_using_on_wake_config)
+        on_wake_toggle.title_text = "Use On-wake"
+        on_wake_toggle.sub_title_text = 'Get a new wallpaper each time you "turn on screen".'
+        on_wake_toggle.active = self.is_using_on_wake
+        carousel_section.content_layout.add_widget(on_wake_toggle)
+
+        interval_toggle = ToggleSliderRow(change_function=self.set_using_on_wake_config)
+        interval_toggle.title_text = "Use interval"
+        interval_toggle.sub_title_text = f'Get a new wallpaper every "{self.displayed_interval_value}".'
+        interval_toggle.active = not self.is_using_on_wake
+        carousel_section.content_layout.add_widget(interval_toggle)
+        carousel_section.content_layout.add_widget(CarouselTools(settings_screen=self))
+        self._on_wake_toggle = on_wake_toggle
+        self._interval_toggle = interval_toggle
+        return carousel_section
+
+    def _build_autostart_section(self):
+        autostart_section = SettingsSection(title_text="Auto Start")
+        launch_toggle = ToggleSliderRow(change_function=self.set_start_on_app_launch_config)
+        launch_toggle.title_text = "On App Launch"
+        launch_toggle.sub_title_text = "Automatically start the carousel when you open the app."
+        launch_toggle.active = self.start_on_app_launch
+        autostart_section.content_layout.add_widget(launch_toggle)
+
+        restart_toggle = ToggleSliderRow(change_function=self.set_start_on_boot_config)
+        restart_toggle.title_text = "On Restart"
+        restart_toggle.sub_title_text = "Automatically start the carousel when your phone restarts."
+        restart_toggle.active = self.start_on_boot
+        autostart_section.content_layout.add_widget(restart_toggle)
+        return autostart_section
+
+    def _build_theme_section(self):
+        theme_section = SettingsSection(title_text="Theme")
+        theme_row = Row(adaptive_size=True, spacing=dp(10), pos_hint={"center_x": 0.5})
+        theme_dark_card = ThemeOptionCard(icon="moon-waning-crescent", label="Dark",
+                                          preference_value="dark",
+                                          active=self.app.theme_preference == "dark",
+                                                                        on_release=lambda *_: self.set_theme_preference("dark"))
+        theme_adaptive_card = ThemeOptionCard(icon="cellphone", label="Adaptive",
+                                              preference_value="adaptive",
+                                              active=self.app.theme_preference == "adaptive",
+                                              on_release=lambda *_: self.set_theme_preference("adaptive"))
+        theme_light_card = ThemeOptionCard(icon="white-balance-sunny", label="Light",
+                                           preference_value="light",
+                                           active=self.app.theme_preference == "light",
+                                           on_release=lambda *_: self.set_theme_preference("light"))
+        theme_row.add_widget(theme_dark_card)
+        theme_row.add_widget(theme_adaptive_card)
+        theme_row.add_widget(theme_light_card)
+        theme_section.content_layout.add_widget(theme_row)
+        self.ids["theme_dark_card"] = theme_dark_card
+        self.ids["theme_adaptive_card"] = theme_adaptive_card
+        self.ids["theme_light_card"] = theme_light_card
+        self._theme_cards = (theme_dark_card, theme_adaptive_card, theme_light_card)
+        return theme_section
+
+    def _build_export_section(self):
+        from ui.widgets.modals import DialogScreen
+
+        export_section = SettingsSection(title_text="Uninstalling?")
+        export_btn = MyMDButton(
+            theme_bg_color="Custom",
+            md_bg_color=theme_colors.BUTTON_BG,
+            radius=[5],
+            pos_hint={"center_x": 0.5},
+            on_release=self.show_export_dialog,
+        )
+        export_icon = MDButtonIcon(icon="export-variant")
+        export_text = MDButtonText(text="export wallpapers", theme_text_color="Custom")
+        export_btn.add_widget(export_icon)
+        export_btn.add_widget(export_text)
+        export_section.content_layout.add_widget(export_btn)
+
         self.export_dialog = DialogScreen(
             icon_name="export-variant",
             header_text="Export Wallpapers?",
@@ -571,7 +1055,104 @@ class SettingsScreen(MyMDScreen):
             ok_button_color=[0.2, 0.7, 0.3, 1.0],
         )
 
-    def show_export_dialog(self):
+        self.ids["btn_icon"] = export_icon
+        self.ids["btn_text"] = export_text
+        self._bw_widgets.append(export_text)
+        self._bw_icon_widgets.append(export_icon)
+        return export_section
+
+    def _build_version_controls(self):
+        from kivy.uix.button import Button
+
+        version_controls = Column(
+            size_hint_y=None,
+            spacing=dp(15),
+        )
+        version_controls.bind(minimum_height=version_controls.setter("height"))
+
+        version_btn = Button(
+            text=f'v{VERSION}{"-debug" if is_running_debug_build() else ""}',
+            pos_hint={"right": 1},
+            background_color=[0, 0, 0, 0],
+            size_hint=[None, None],
+            font_name="RobotoMono",
+            font_size=sp(14),
+            padding=[dp(10), dp(10)],
+            on_release=self.open_logs_screen,
+        )
+        version_btn.size = [version_btn.texture_size[0], dp(50)]
+        version_btn.bind(texture_size=self._update_version_btn_size)
+        version_controls.add_widget(version_btn)
+        self.version_btn = version_btn
+
+        if DEV:
+            for each in dev_object:
+                version_controls.add_widget(
+                    Button(text=f"test {each}", on_release=dev_object[each], size_hint_y=None, height=dp(50)))
+
+        return version_controls
+
+    def _build_update_button(self):
+        from kivy.uix.button import Button
+
+        check_update_btn = Button(text="Check For New Version", on_release=self.check_for_update,
+                                  size_hint_y=None, height=dp(50))
+        check_update_btn.background_normal = ''
+        check_update_btn.background_color = theme_colors.BUTTON_BG
+        check_update_btn.color = theme_colors.TEXT_PRIMARY
+        self._check_update_btn = check_update_btn
+        return check_update_btn
+
+    def _update_interval_input_padding(self, *_):
+        if not self.built_ui or not self.interval_input:
+            return
+        self.interval_input.padding = [dp(10), (self.interval_input.height - self.interval_input.line_height) / 2]
+
+    def _update_interval_input_colors(self, *_):
+        if not self.built_ui or not self.interval_input:
+            return
+        is_dark = self.app.device_theme == "dark"
+        if self.interval_input.focus:
+            self.interval_input.foreground_color = [1, 1, 1, 1] if is_dark else [0, 0, 0, 1]
+        else:
+            self.interval_input.foreground_color = [.8, .8, .8, 1] if is_dark else [.3, .3, .3, 1]
+
+    def _update_save_btn_theme(self, *_):
+        if not self.built_ui or not self.ids.save_btn_text:
+            return
+        is_dark = self.app.device_theme == "dark"
+        editing = self.ids.save_btn_text.text == "Edit"
+        if editing:
+            self.ids.save_btn.md_bg_color = [0.3, 0.3, 0.3, 1] if is_dark else [0.75, 0.75, 0.75, 1]
+        else:
+            self.ids.save_btn.md_bg_color = theme_colors.PRIMARY
+        self.ids.save_btn.line_color = [1, 1, 1, 1] if is_dark else [.7, .7, .7, 1]
+        self.ids.save_btn_text.text_color = ("black" if not is_dark else "white") if editing else theme_colors.SECONDARY
+
+    def _update_version_btn_size(self, instance, value):
+        instance.width = value[0]
+
+    def _on_displayed_interval_value_changed(self, *_):
+        if not self.built_ui:
+            return
+        self.ids.interval_input.text = f"Set to {self.displayed_interval_value}"
+        if getattr(self, "_interval_toggle", None):
+            self._interval_toggle.sub_title_text = f'Get a new wallpaper every "{self.displayed_interval_value}".'
+
+    def _sync_toggles(self, *_):
+        if not self.built_ui:
+            return
+        self._on_wake_toggle.active = self.is_using_on_wake
+        self._interval_toggle.active = not self.is_using_on_wake
+
+    def _sync_theme_cards(self, *_):
+        if not self.built_ui:
+            return
+        preference = self.app.theme_preference
+        for card in self._theme_cards:
+            card.active = card.preference_value == preference
+
+    def show_export_dialog(self,_):
         if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
             self.app.bottom_bar.hide(animation=False, hidden_by="export")
         self.export_dialog.dialog_box.cancel_btn.bind(on_release=lambda *_: self._restore_bottom_nav())
@@ -595,6 +1176,8 @@ class SettingsScreen(MyMDScreen):
         threading.Thread(target=_run, daemon=True).start()
 
     def toggle_home_screen_widget_loop(self, widget=None):
+        if not self.built_ui:
+            return
         widget.icon = "play" if widget.icon == "pause" else "pause"
 
         if widget.icon == "pause":
@@ -655,6 +1238,8 @@ class SettingsScreen(MyMDScreen):
         toast("Saved")
 
     def update_label(self, seconds):
+        if not self.built_ui:
+            return
         if self.ids.pause_home_screen_widget_loop_button.icon == "play":
             self.ids.countdown_label.text = "Paused"
         elif my_config.get_on_wake_state():
@@ -697,6 +1282,8 @@ class SettingsScreen(MyMDScreen):
         """
 
         import os
+        from android_notify.config import get_python_activity_context
+        from android_notify.internal.java_classes import autoclass
         # Android core
         MediaStoreImages = autoclass("android.provider.MediaStore$Images$Media")
         MediaColumns = autoclass("android.provider.MediaStore$MediaColumns")
@@ -819,11 +1406,40 @@ class SettingsScreen(MyMDScreen):
 
     def set_theme_color(self, _, value):
         self.status_bar_bg = [0.82, 0.82, 0.82, 1] if value == "light" else [0.23, 0.23, 0.23, 1]
+        if not self.built_ui:
+            return
+        is_dark = value == "dark"
+        self.md_bg_color = theme_colors.BG
+        self.ids.title_text_case.md_bg_color = theme_colors.BG_ELEVATED
+        self.title_label.color = theme_colors.TEXT_PRIMARY
+        self.interval_heading.color = theme_colors.TEXT_PRIMARY
+        self.home_widget_header.md_bg_color = theme_colors.BG_ELEVATED
+        self.home_widget_header_label.color = theme_colors.TEXT_PRIMARY
+        self.home_widget_body.md_bg_color = theme_colors.BG_CARD
+        self.current_label.text_color = theme_colors.PRIMARY
+        self.current_label.md_bg_color = theme_colors.SECONDARY
+        self.next_label.text_color = theme_colors.PRIMARY
+        self.next_label.md_bg_color = theme_colors.SECONDARY
+
+        bw = "black" if not is_dark else "white"
+        for widget in self._bw_widgets:
+            widget.text_color = bw
+        for widget in self._bw_icon_widgets:
+            widget.text_color = bw
+        for widget in self._bw_misc:
+            widget.text_color = bw
+        self.version_btn.color = bw if not is_dark else "grey"
+
+        self._update_interval_input_colors()
+        self._update_save_btn_theme()
+        self._set_check_update_btn_theme(None, value)
 
     def set_theme_preference(self, preference):
         self.app.set_theme_preference(preference)
 
     def _set_check_update_btn_theme(self, _, theme):
+        if not getattr(self, "_check_update_btn", None):
+            return
         is_dark = theme == "dark"
         self._check_update_btn.background_color = theme_colors.BUTTON_BG
         self._check_update_btn.color = theme_colors.TEXT_PRIMARY
@@ -867,6 +1483,7 @@ class SettingsScreen(MyMDScreen):
         self.start_on_boot = value
 
     def check_for_update(self, *args):
+        from ui.screens.download_apk_screen import thread_check_for_update
         spinner_layout = LoadingLayout()
 
         def DownloadApkScreen__show(new_version, release_notes, apk_size):
@@ -881,6 +1498,8 @@ class SettingsScreen(MyMDScreen):
             lambda dt: thread_check_for_update(dt, DownloadApkScreen__show, DownloadApkScreen__do_not_show))
 
     def set_widget_left_and_right_padding(self,left_padding, right_padding,rotation):
+        if not self.built_ui:
+            return
         self.ids.main_container.padding=[dp(left_padding+25), dp(25), dp(right_padding+25), dp(100)]
         self.ids.title_text_case.padding=[dp(left_padding+25), dp(self.status_bar_height-20 if self.status_bar_height>20 else self.status_bar_height+20 ), dp(0), dp(20)]
 

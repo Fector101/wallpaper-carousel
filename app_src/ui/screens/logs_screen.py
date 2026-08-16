@@ -1,17 +1,9 @@
 import os
-from datetime import datetime
-from collections import deque
 
 from kivy.clock import Clock
-from kivy.uix.label import Label
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.scrollview import ScrollView
-from kivy.uix.button import Button
 from kivy.metrics import dp, sp
-from kivy.core.clipboard import Clipboard
-from kivy.uix.screenmanager import NoTransition
-from ui.widgets.android import toast
 
+from ui.widgets.android import toast
 from ui.widgets.layouts import MyMDScreen, GenericStatusBarSpacer
 from utils.constants import theme_colors
 
@@ -32,10 +24,49 @@ class LogsScreen(MyMDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+        self._pending_lines = None
+        self.logs_layout = None
+        self.scroll = None
+        self.title_label = None
+        self.log_file_path = None
+        self.generic_status_bar_spacer = None
+        self._auto_update_started = None
+        self._line_count = None
+        self._file_pos = None
         self.name = "logs"
-        from kivymd.app import MDApp
-        app = MDApp.get_running_app()
         self.md_bg_color = [0.1, 0.1, 0.1, 1]
+        self.built_ui = False
+
+    def on_enter(self, *args):
+        super().on_enter(*args)
+        if not self.built_ui:
+            Clock.schedule_once(self._timer_set)
+
+    def _timer_set(self, _):
+        Clock.schedule_once(self.build_ui)
+
+    def build_ui(self, _):
+        if self.built_ui:
+            return
+        self.built_ui = True
+
+        from collections import deque
+        from datetime import datetime
+        from kivymd.app import MDApp
+        from kivy.uix.boxlayout import BoxLayout
+        from kivy.core.clipboard import Clipboard
+        from kivy.uix.screenmanager import NoTransition
+        from kivy.uix.scrollview import ScrollView
+        from kivy.uix.button import Button
+        from kivy.uix.label import Label
+        self._deque = deque
+        self._datetime = datetime
+        self._Clipboard = Clipboard
+        self._NoTransition = NoTransition
+        self._ScrollView = ScrollView
+        self._Button = Button
+        self._Label = Label
+        app = MDApp.get_running_app()
         self._file_pos = 0
         self._line_count = 0
         self._auto_update_started = False
@@ -50,26 +81,26 @@ class LogsScreen(MyMDScreen):
 
         # ---------- UI ----------
         main = BoxLayout(orientation="vertical", padding=dp(10), spacing=dp(10))
-        main.pos_hint = {"top":1}
+        main.pos_hint = {"top": 1}
 
         # Top bar with Start button
         top_bar = BoxLayout(size_hint_y=None, height=dp(40))
-        self.title_label = Label(text="Application Logs", color=(1,1,1,1))
+        self.title_label = Label(text="Application Logs", color=(1, 1, 1, 1))
         top_bar.add_widget(self.title_label)
         self.title_label.font_name = "RobotoMono"
 
-        start_btn = Button(text="Start Loading", size_hint_x=None, width=dp(90),font_size=sp(13))
+        start_btn = Button(text="Start Loading", size_hint_x=None, width=dp(90), font_size=sp(13))
         start_btn.bind(on_release=self.start_loading)
 
-        back_btn = Button(text="Go Back", size_hint_x=None, width=dp(70),font_size=sp(13))
+        back_btn = Button(text="Go Back", size_hint_x=None, width=dp(70), font_size=sp(13))
         back_btn.bind(on_release=self.handle_going_back)
 
         top_bar.add_widget(start_btn)
-        top_bar.add_widget(back_btn )
+        top_bar.add_widget(back_btn)
         main.add_widget(top_bar)
 
         # Scroll area
-        self.scroll = ScrollView(size_hint=(1,1))
+        self.scroll = ScrollView(size_hint=(1, 1))
         self.logs_layout = BoxLayout(
             orientation="vertical", size_hint_y=None, spacing=dp(6), padding=(0, dp(4))
         )
@@ -109,7 +140,7 @@ class LogsScreen(MyMDScreen):
             return os.getcwd()
 
     def handle_going_back(self,*_):
-        self.manager.transition = NoTransition()
+        self.manager.transition = self._NoTransition()
         self.manager.current = "settings"
 
     @staticmethod
@@ -123,7 +154,7 @@ class LogsScreen(MyMDScreen):
 
     def _create_log_label(self, text):
         level = self._detect_level(text)
-        label = Label(
+        label = self._Label(
             text=text,
             color=COLORS[level],
             size_hint_x=1,
@@ -145,7 +176,7 @@ class LogsScreen(MyMDScreen):
 
         def on_double_tap(inst, touch):
             if inst.collide_point(*touch.pos) and touch.is_double_tap:
-                Clipboard.copy(inst.text)
+                self._Clipboard.copy(inst.text)
                 toast('Copied')
                 return True
             return None
@@ -156,7 +187,7 @@ class LogsScreen(MyMDScreen):
 
     # ---------- LOG HANDLING ----------
     def add_log(self, message):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = self._datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         full_log = f"[{timestamp}] {message}"
         label = self._create_log_label(full_log)
         self.logs_layout.add_widget(label)
@@ -239,7 +270,7 @@ class LogsScreen(MyMDScreen):
             self._file_pos = 0
             return
         with open(self.log_file_path, "r", encoding="utf-8", errors="ignore") as f:
-            lines = deque(f, maxlen=MAX_STARTUP_LINES)
+            lines = self._deque(f, maxlen=MAX_STARTUP_LINES)
             self._file_pos = f.tell()
         self._pending_lines = [l.rstrip() for l in lines if l.strip()]
         Clock.schedule_once(self._load_next_chunk, 0)

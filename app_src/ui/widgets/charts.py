@@ -14,6 +14,104 @@ def format_bytes(size):
     return f"{size} B"
 
 
+class StackedBarChart(Widget):
+    """Canvas-drawn single stacked bar with a color-coded legend.
+
+    data: list of (label, value, color) tuples. Values are byte counts.
+    """
+
+    data = ListProperty([])
+    text_color = ListProperty(get_color_from_hex("FFFFFF"))
+    value_color = ListProperty(get_color_from_hex("999898"))
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._label_textures = {}
+        self._value_textures = {}
+        self.bind(pos=self._redraw, size=self._redraw, data=self._redraw,
+                  text_color=self._on_color_change, value_color=self._on_color_change)
+
+    def _on_color_change(self, *_):
+        self._label_textures.clear()
+        self._value_textures.clear()
+        self._redraw()
+
+    def _texture(self, text, color, font_size, cache):
+        key = (text, tuple(color), font_size)
+        tex = cache.get(key)
+        if tex is None:
+            label = CoreLabel(text=text, font_size=font_size, color=color,
+                              font_name="RobotoMono", bold=True)
+            label.refresh()
+            tex = label.texture
+            cache[key] = tex
+        return tex
+
+    def _redraw(self, *_):
+        self.canvas.clear()
+        data = self.data or []
+        if not data:
+            return
+        width, height = self.width, self.height
+        if width <= 0 or height <= 0:
+            return
+
+        bar_h = dp(16)
+        spacing = dp(10)
+        total = sum(value for _, value, _ in data) or 1
+        count = len(data)
+
+        bar_y = self.y + height - bar_h
+        seg_x = self.x
+        for index, (_, value, color) in enumerate(data):
+            seg_w = width * (value / total)
+            if index == 0:
+                radii = [(4, 4), (0, 0), (0, 0), (4, 4)]
+            elif index == count - 1:
+                radii = [(0, 0), (4, 4), (4, 4), (0, 0)]
+            else:
+                radii = [(0, 0), (0, 0), (0, 0), (0, 0)]
+            with self.canvas:
+                Color(*color)
+                RoundedRectangle(pos=(seg_x, bar_y), size=(seg_w, bar_h),
+                                 radius=radii)
+            seg_x += seg_w
+
+        legend_top = bar_y - spacing
+        legend_h = legend_top - self.y
+        if legend_h <= 0:
+            return
+        row_h = max(legend_h / count, 0)
+        for index, (label, value, color) in enumerate(data):
+            row_center = legend_top - row_h * (index + 0.5)
+
+            swatch_size = dp(10)
+            with self.canvas:
+                Color(*color)
+                RoundedRectangle(pos=(self.x, row_center - swatch_size / 2),
+                                 size=(swatch_size, swatch_size), radius=[2])
+
+            label_tex = self._texture(label, self.text_color, sp(13),
+                                      self._label_textures)
+            label_x = self.x + swatch_size + dp(8)
+            with self.canvas:
+                Color(1, 1, 1, 1)
+                Rectangle(texture=label_tex,
+                          pos=(label_x, row_center - label_tex.height / 2),
+                          size=label_tex.size)
+
+            percent = value / total * 100
+            value_text = f"{format_bytes(value)}  {percent:.0f}%"
+            value_tex = self._texture(value_text, self.value_color, sp(12),
+                                      self._value_textures)
+            with self.canvas:
+                Color(1, 1, 1, 1)
+                Rectangle(texture=value_tex,
+                          pos=(self.x + width - value_tex.width,
+                               row_center - value_tex.height / 2),
+                          size=value_tex.size)
+
+
 class HorizontalBarChart(Widget):
     """Canvas-drawn horizontal bar chart.
 

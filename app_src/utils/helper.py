@@ -1,19 +1,10 @@
 # DO NOT IMPORT ANY UI THING TOP GLOBAL LEVEL
-import json
-import os
-import platform
-import socket
 import sys
-import traceback
-from datetime import datetime
+import threading
 
-from android_notify.config import get_python_activity_context, from_service_file, on_android_platform, on_pydroid_app
-from android_notify.internal.java_classes import BuildVersion, BitmapFactory, autoclass, cast, _LazyJavaClass
+from utils.platform_compat import on_android_platform as _on_android_platform, on_pydroid_app as _on_pydroid_app, LazyJavaClass as _LazyJavaClass, toast as _toast
 
-from ui.widgets.android import toast
-from utils.constants import DEV, WALLPAPER_SERVICE_PATH
-
-if on_android_platform():
+if _on_android_platform():
     Log = _LazyJavaClass("Log", "android.util.Log")
     WallpaperManager = _LazyJavaClass("WallpaperManager", "android.app.WallpaperManager")
     ApplicationInfo = _LazyJavaClass("ApplicationInfo", "android.content.pm.ApplicationInfo")
@@ -26,7 +17,7 @@ def is_wine():
     """
 	Detect if the application is running under Wine.
 	"""
-    # Check environment variables set by Wine
+    import os, platform
     if "WINELOADER" in os.environ:
         return True
 
@@ -40,7 +31,7 @@ def is_wine():
 
 def makeFolder(my_folder):
     """Safely creates a folder if it doesn't exist."""
-    # Normalize path for Wine (Windows-on-Linux)
+    import os
     if is_wine():
         my_folder = my_folder.replace('\\', '/')
 
@@ -54,13 +45,16 @@ def makeFolder(my_folder):
 
 def appFolder() -> str:
     """Creates (if needed) and returns the Laner download folder path."""
-
-    if on_pydroid_app():
+    import os
+    if _on_pydroid_app():
         folder_path = os.getcwd()
-    elif on_android_platform():
-        from android.storage import app_storage_path  # type: ignore # , primary_external_storage_path
-        # folder_path = os.path.join(primary_external_storage_path(), 'Pictures', 'Waller')
-        folder_path = str(os.path.join(app_storage_path()))
+    elif _on_android_platform():
+        android_private = os.environ.get('ANDROID_PRIVATE')
+        if android_private:
+            folder_path = android_private
+        else:
+            from android.storage import app_storage_path  # type: ignore # , primary_external_storage_path
+            folder_path = str(os.path.join(app_storage_path()))
     else:
         folder_path = os.getcwd()
 
@@ -92,7 +86,7 @@ class Tee:
 
     @staticmethod
     def fix_log_to_terminal_on_android(message):
-        if on_android_platform():
+        if _on_android_platform():
 
             Log.d("python", message)
 
@@ -100,13 +94,17 @@ class Tee:
 
 
 def app_external_storage_path():
+    from android_notify.config import get_python_activity_context
     context = get_python_activity_context()
 
     ext_dir = context.getExternalFilesDir(None)
     return ext_dir.getAbsolutePath() if ext_dir else appFolder()
 	
 def write_logs_to_file(log_folder_name="logs", file_name="all_output1.txt"):
-    if DEV or not on_android_platform():
+    import os
+    from datetime import datetime
+
+    if not _on_android_platform():
         return
     try:
 
@@ -136,11 +134,12 @@ class Service:
             from android import mActivity  # type: ignore
         except (ModuleNotFoundError, ImportError):
             mActivity = None
-        self.mActivity = mActivity if not on_pydroid_app() else None
+        self.mActivity = mActivity if not _on_pydroid_app() else None
         self.args_str = args_str
         self.name = name
-        self.service = autoclass(self.get_name()) if self.mActivity else None
         self.extra = extra
+        self._method_cache = {}
+        self.service = self.__load_service_class() if self.mActivity else None
 
     def get_name(self):
         if not self.mActivity:
@@ -148,9 +147,41 @@ class Service:
         context = self.mActivity.getApplicationContext()
         return str(context.getPackageName()) + '.Service' + self.name
 
+    def __load_service_class(self):
+        # Find the app's generated service class via the app class loader so this
+        # works from background threads (JNI FindClass cannot see app dex classes
+        # on natively-attached threads). Avoids autoclass()'s slow full-hierarchy
+        # reflection and sidesteps pyjnius 1.7.0's corrupted Class.getMethod /
+        # forName signatures.
+        class_loader = self.mActivity.getClass().getClassLoader()
+        return class_loader.loadClass(self.get_name())
+
+    @staticmethod
+    def __ensure_method_invoke():
+        # The manual java.lang.reflect.Method wrapper in pyjnius 1.7.0 lacks
+        # `invoke`; add it (idempotent) before we enumerate methods and call it.
+        from jnius import JavaMethod
+        from jnius.reflect import Method
+        if not hasattr(Method, 'invoke'):
+            Method.invoke = JavaMethod('(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;')
+
+    def __get_static_method(self, method_name, argc):
+        key = (method_name, argc)
+        if key in self._method_cache:
+            return self._method_cache[key]
+        self.__ensure_method_invoke()
+        for method in self.service.getMethods():
+            if method.getName() == method_name and len(method.getParameterTypes()) == argc:
+                self._method_cache[key] = method
+                return method
+        raise Exception(
+            "No static method {0} with {1} arguments on {2}".format(method_name, argc, self.get_name()))
+
     def is_running(self):
         if not self.mActivity:
             return None
+
+        from android_notify.internal.java_classes import cast
 
         service_name = self.get_name()
         context = self.mActivity.getApplicationContext()
@@ -173,16 +204,18 @@ class Service:
                 print("Service not running")
                 return None
 
-            self.service.stop(self.mActivity)
+            self.__get_static_method('stop', 1).invoke(None, (self.mActivity,))
             return True
 
         except Exception as error_stopping_service:
             print("Error stopping service:", error_stopping_service)
+            import traceback
             traceback.print_exc()
             return False
 
     def start(self):
-        if not on_android_platform():
+        import json
+        if not _on_android_platform():
             self.__run_service_file()
             return None
         if not self.mActivity:
@@ -193,13 +226,15 @@ class Service:
 
         arg = json.dumps(self.args_str)
         try:
-            self.service.start(self.mActivity, arg)
+            self.__get_static_method('start', 2).invoke(None, (self.mActivity, arg))
         except Exception as error_starting_service:
             print("Error starting service:", error_starting_service)
+            import traceback
             traceback.print_exc()
 
     def __run_service_file(self):
-        import runpy, threading
+        import os, json, runpy, threading
+        from utils.constants import WALLPAPER_SERVICE_PATH
 
         def start_service():
             os.environ.setdefault("PYTHON_SERVICE_ARGUMENT", json.dumps(self.args_str))
@@ -245,6 +280,7 @@ def smart_convert_minutes(minutes: float) -> str:
 
 
 def get_free_port():
+    import socket
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(("", 0))  # bind to a random free port
     port = s.getsockname()[1]
@@ -254,6 +290,7 @@ def get_free_port():
 
 def change_wallpaper(wallpaper_path, do_ui_thing=None):
     """Actually set the wallpaper"""
+    import os, traceback
     def run_ui_thing():
         if do_ui_thing:
             from kivy.clock import Clock
@@ -268,6 +305,9 @@ def change_wallpaper(wallpaper_path, do_ui_thing=None):
             run_ui_thing()
             return False
 
+        from android_notify.config import get_python_activity_context, from_service_file
+        from android_notify.internal.java_classes import BuildVersion, BitmapFactory
+
         context = get_python_activity_context()
         wallpaper_manager = WallpaperManager.getInstance(context) if WallpaperManager else None
 
@@ -281,15 +321,15 @@ def change_wallpaper(wallpaper_path, do_ui_thing=None):
             FLAG_LOCK = WallpaperManager.FLAG_LOCK
             wallpaper_manager.setBitmap(bitmap, None, True, FLAG_LOCK)
             if not from_service_file():
-                toast("Changed Wallpaper")
+                _toast("Changed Wallpaper")
             # print(f"Success: Lock screen wallpaper changed to: {os.path.basename(wallpaper_path)}")
         else:
-            toast("Changed Not Supported")
+            _toast("Changed Not Supported")
             print("Fail: Lock screen wallpaper not supported on this Android version.")
         run_ui_thing()
         return True
     except Exception as e:
-        toast("Failed to Change")
+        _toast("Failed to Change")
         print("Failed to set wallpaper:", e)
         run_ui_thing()
         return False
@@ -301,15 +341,12 @@ class Font:
         self.name = name
 
     def get_type_path(self, fn_type):
-        """
-        Formats font type path
-        :param fn_type:
-        :return:
-        """
+        import os
         return os.path.join(self.base_folder, self.name + '-' + fn_type + '.ttf')
 
 
 def load_kv_file(module_name="", py_file_absolute_path=""):
+    import os
     if module_name:
         print("using absolute py path")
         return None
@@ -339,6 +376,7 @@ def toInt(text):
         return int(text)
     except ValueError as error_changing_to_int:
         print(error_changing_to_int)
+        import traceback
         traceback.print_exc()
     return None
 
@@ -368,26 +406,38 @@ def register_fonts():
     )
 
 
-# don't import appFolder() in model.py, Error: circular import.
-UI_PORT_STORE_PATH = os.path.join(appFolder(), "ui_port.txt")
-SERVICE_PORT_STORE_PATH = os.path.join(appFolder(), "port.txt")
+def ui_port_store_path():
+    import os
+    return os.path.join(appFolder(), "ui_port.txt")
+
+def service_port_store_path():
+    import os
+    return os.path.join(appFolder(), "port.txt")
+
+_ui_port_store_path = ui_port_store_path
+_service_port_store_path = service_port_store_path
 
 
 def get_stored_running_ui_server_port():
-    if os.path.exists(UI_PORT_STORE_PATH):
-        with open(UI_PORT_STORE_PATH, "r") as f:
+    import os
+    path = _ui_port_store_path()
+    if os.path.exists(path):
+        with open(path, "r") as f:
             return toInt(f.read())
     return None
 
 
 def get_stored_running_service_server_port():
-    if os.path.exists(SERVICE_PORT_STORE_PATH):
-        with open(SERVICE_PORT_STORE_PATH, "r") as f:
+    import os
+    path = _service_port_store_path()
+    if os.path.exists(path):
+        with open(path, "r") as f:
             return toInt(f.read())
     return None
 
 
 def get_current_wallpaper():
+    import os
     try:
         current_wallpaper_store_path = os.path.join(appFolder(), 'wallpaper.txt')
         with open(current_wallpaper_store_path, "r") as f:
@@ -398,7 +448,7 @@ def get_current_wallpaper():
 
 
 def is_running_debug_build():
-    if not on_android_platform():
+    if not _on_android_platform():
         return True
 
     try:

@@ -254,6 +254,7 @@
         MDFabButton:
             id: chooser_btn
             icon:"plus"
+            disabled: not app.image_operation_ready
             on_release: root.open_file_chooser()
             x: root.width * .9 - self.width
             y: (root.height * .1) + dp(22.5) + dp(25)

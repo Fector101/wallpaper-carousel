@@ -29,6 +29,7 @@ from ui.widgets.layouts import MyMDScreen, Column, Row, get_nav_bar_height, get_
     PlaceOnMainScreen, GenericStatusBarSpacer  # used in .kv file
 from utils.config_manager import ConfigManager
 from utils.helper import appFolder, load_kv_file  # type
+from utils.boot_log import boot_log
 from utils.image_operations import get_or_create_thumbnail, get_image_info, share_image_to_other_app, share_images_to_other_app
 from ui.widgets.modals import DialogScreen
 from utils.logger import app_logger
@@ -972,7 +973,9 @@ class GalleryScreen(MyMDScreen):
         # )
         #
         # self.add_widget(self.bottom_bar)
+        boot_log("gallery: initialize_tabs start")
         self.initialize_tabs(no_clock=True)
+        boot_log("gallery: initialize_tabs done")
         # self.btm_sheet = MyBtmSheet()
         # self.add_widget(self.btm_sheet)
         # self.load_saved()
@@ -1050,6 +1053,9 @@ class GalleryScreen(MyMDScreen):
 
     def open_file_chooser(self, *_):
         print(f"[DBG] open_file_chooser: entered")
+        if not self.app.image_operation_ready:
+            app_logger.warning("[DBG] open_file_chooser: ignored - image operation not ready yet")
+            return
         # file_operation = FileOperation(self.update_thumbnails_method)
         # if platform == 'android':
         #     from android import activity # type: ignore
@@ -1114,6 +1120,7 @@ class GalleryScreen(MyMDScreen):
             ask_permission_to_images(callback=on_permission_result)
 
     def generate_tab_widgets(self, tab_name, wallpapers, dt=None):
+        boot_log(f"generate_tab: {tab_name} start n={len(wallpapers)}")
         sorted_wallpapers = sorted(
             wallpapers,
             key=lambda image_path: os.stat(image_path).st_mtime,
@@ -1155,6 +1162,7 @@ class GalleryScreen(MyMDScreen):
         self.tab_instances[tab_name]["title"] = tab_title
         self.tab_instances[tab_name]["wallpapers"] = sorted_wallpapers
         self.tab_instances[tab_name]["widget"] = tab_container
+        boot_log(f"generate_tab: {tab_name} done")
         app_logger.info(f"GENERATE_TAB: tab={tab_name} wallpapers={len(sorted_wallpapers)} list_id={id(sorted_wallpapers)} swp_id={id(self.wallpapers)} batches={list(data_of_batch_dict_of_lists.keys())} widget_children={len(tab_container.children)}")
 
     def open_fullscreen_for_image(self, wallpaper_path = None, wallpaper_index = -1):

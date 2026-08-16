@@ -1,46 +1,41 @@
 import os
-import threading
-import traceback
 from pathlib import Path
 
 from kivy.clock import Clock
 from kivy.properties import ListProperty, ObjectProperty, NumericProperty
-from kivy.uix.behaviors import ButtonBehavior
-from kivy.uix.image import AsyncImage
-from kivy.uix.label import Label
 from kivy.metrics import dp, sp
-from kivy.uix.popup import Popup
+
+from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.carousel import Carousel
-from kivymd.uix.label import MDLabel
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.button import MDIconButton
 from kivymd.uix.relativelayout import MDRelativeLayout
 
-from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.floatlayout import MDFloatLayout
-from kivymd.uix.button import MDIconButton
-from kivy.graphics import Color, Line
+from ui.widgets.layouts import MyMDScreen, LoadingLayout
 
-from ui.widgets.layouts import MyPopUp, MyMDScreen, get_dimensions, LoadingLayout, GenericStatusBarSpacer, \
-    PlaceOnMainScreen
-from ui.widgets.modals import DialogScreen
-from utils.image_operations import thumbnail_path_for, get_image_info, share_image_to_other_app
-from utils.helper import appFolder, change_wallpaper
 from utils.config_manager import ConfigManager
-# from utils.constants import DEV
 from utils.model import get_app, GalleryTabs
-from kivy.loader import  Loader
 from utils.logger import app_logger
-from kivy.core.window import Window
-from android_notify.internal.java_classes import autoclass
-from android_notify.config import get_python_activity_context, on_android_platform
 
 
 my_config=ConfigManager()
+
+
+def format_size(bytes_size):
+    """
+    Convert bytes to human-readable size.
+    """
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if bytes_size < 1024:
+            return f"{bytes_size:.2f} {unit}"
+        bytes_size /= 1024
 
 
 class BorderMDBoxLayout(MDBoxLayout):
     line_width = NumericProperty(1)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        from kivy.graphics import Color, Line
 
         with self.canvas.after:
             c = .5
@@ -61,14 +56,6 @@ class MyCarousel(Carousel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-def format_size(bytes_size):
-    """
-    Convert bytes to human-readable size.
-    """
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if bytes_size < 1024:
-            return f"{bytes_size:.2f} {unit}"
-        bytes_size /= 1024
 
 class MyMDIconButton(MDIconButton):
     def __init__(self, **kwargs):
@@ -88,6 +75,7 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
     fullscreen = ObjectProperty()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        from kivy.uix.image import AsyncImage
         self.app = get_app()
         self.elevation = 0
         self.img = AsyncImage()
@@ -181,19 +169,59 @@ class FullscreenScreen(MyMDScreen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.name = "fullscreen"
+        self.btm_btn_layout_root = None
+        self.share_btn = None
+        self.carousel = None
+        self.text_container = None
+        self.header_title = None
+        self.day_noon_both_button = None
+        self.btn_delete=None
+        self.btn_info=None
+        self.btn_fullscreen=None
+        self.original_carousel_pos_hint = None
+        self.original_carousel_size_hint = None
+        self.set_wallpaper_btn = None
+        self.btn_layout = None
+        self.header_file_size = None
+        self.btn_close = None
+        self.btn_toggle = None
+        self.header_layout = None
+        self.layout = None
+        self.generic_status_bar_spacer = None
         self.info_popup = None
         self.showing_info_modal = False
         self.carousel_has_images = None
-        self.app = get_app()
         self.clock_for_higher_format = None
         self.clock_for_side_by_side = None
-        self.app_dir = Path(appFolder())
-        self.wallpapers_dir = self.app_dir / "wallpapers"
-
-        self.name = "fullscreen"
         self.md_bg_color =[0, 0, 0, 1]
         self.bottom_height = 0.12
         self.is_fullscreen = False
+        
+        from utils.helper import appFolder
+        self.app = get_app()
+        self.app_dir = Path(appFolder())
+        self.wallpapers_dir = self.app_dir / "wallpapers"
+        self.built_ui = False
+
+    def on_enter(self, *args):
+        super().on_enter(*args)
+        if not self.built_ui:
+            Clock.schedule_once(self._timer_set)
+
+    def _timer_set(self, _):
+        Clock.schedule_once(self.build_ui)
+
+    def build_ui(self, _=None):
+        if self.built_ui:
+            return
+        self.built_ui = True
+
+        from kivymd.uix.label import MDLabel
+        from kivymd.uix.floatlayout import MDFloatLayout
+        from ui.widgets.layouts import get_dimensions, GenericStatusBarSpacer
+        from ui.widgets.modals import DialogScreen
+        from utils.image_operations import share_image_to_other_app
 
         self.generic_status_bar_spacer=GenericStatusBarSpacer(
             status_bar_height=self.status_bar_height,
@@ -283,7 +311,7 @@ class FullscreenScreen(MyMDScreen):
         left_btm_box.add_widget(self.set_wallpaper_btn)
         self.btn_delete = MyMDIconButton(icon="trash-can-outline", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
         self.btn_info = MyMDIconButton(icon="information-outline", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
-        self.btn_fullscreen = MyMDIconButton(icon="aspect-ratio", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
+        self.btn_fullscreen = MyMDIconButton(icon="fullscreen", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
         right_btm_box= MDBoxLayout(
             pos_hint={'center_x': .9, 'center_y': .549},
             adaptive_size=True,
@@ -370,11 +398,13 @@ class FullscreenScreen(MyMDScreen):
         else:
             self.back_to_gallery_screen()
     
-    def set_as_wallpaper(self, *args):
+    def set_as_wallpaper(self, *_):
+        import threading
+        from utils.helper import change_wallpaper
         spinner_layout = LoadingLayout()
-        def remove_spinner(dt):
+        def remove_spinner(_):
             spinner_layout.remove()
-        threading.Thread(target=change_wallpaper, args=[self.carousel.current_slide.higher_format, remove_spinner]).start()
+        threading.Thread(target=change_wallpaper, args=[self.carousel.current_slide.higher_format, remove_spinner], daemon=True).start()
         
     def delete_current(self, *_):
         spinner_layout = LoadingLayout()
@@ -423,6 +453,8 @@ class FullscreenScreen(MyMDScreen):
     #               IMAGE INFO POPUP
     # ====================================================================
     def show_info(self, *_):
+        from ui.widgets.layouts import MyPopUp
+        from utils.image_operations import get_image_info
         self.showing_info_modal = True
         gallery_screen = self.manager.gallery_screen
 
@@ -442,11 +474,14 @@ class FullscreenScreen(MyMDScreen):
 
     def update_images(self,index=None):
         """Rebuild carousel anytime wallpapers change."""
+        from kivy.uix.image import AsyncImage
+        from utils.image_operations import thumbnail_path_for
+        self.build_ui()
         self.carousel.unbind(current_slide=self.on_current_slide)
+        self.carousel.clear_widgets()
         self.carousel_has_images = False
         gallery_screen = self.manager.gallery_screen
-        self.carousel.clear_widgets()
-        
+
         # for hot_reload
         # self.data = ["/home/fabian/Pictures/test.jpg"]
         # for p in self.data:
@@ -517,6 +552,7 @@ class FullscreenScreen(MyMDScreen):
         """
         Set High res img for left and right side.
         """
+        from kivy.loader import Loader
         # AsyncImage(on_load=self.set_side_by_side) not calling right
         # p(str(self.carousel.current_slide.higher_format) != str(self.carousel.current_slide.source))
 
@@ -582,6 +618,8 @@ def patch_resolution(proxy_image, image_object):
     image_object.texture = proxy_image.image.texture
 
 def hide_nav_btn_and_status_bar():
+    from android_notify.internal.java_classes import autoclass
+    from android_notify.config import get_python_activity_context, on_android_platform
     if not on_android_platform():
         return
     try:

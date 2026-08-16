@@ -19,7 +19,7 @@ def _new_op():
 
 
 def test_import_images_from_plyer_copies_and_creates_thumbnails(tmp_path, monkeypatch):
-    monkeypatch.setattr(ConfigManager, "config_path", tmp_path / "config.json")
+    monkeypatch.setattr(ConfigManager, "_cached_config_path", tmp_path / "config.json")
     ConfigManager.write(ConfigManager.DEFAULT_CONFIG)
 
     src = tmp_path / "src"
@@ -41,7 +41,7 @@ def test_import_images_from_plyer_copies_and_creates_thumbnails(tmp_path, monkey
 
 
 def test_import_images_from_plyer_no_files(tmp_path, monkeypatch):
-    monkeypatch.setattr(ConfigManager, "config_path", tmp_path / "config.json")
+    monkeypatch.setattr(ConfigManager, "_cached_config_path", tmp_path / "config.json")
     saved = {}
     op = io.ImageOperation(load_saved=lambda **kw: saved.update(kw))
     op.app = mock.MagicMock()
@@ -107,7 +107,7 @@ def test_get_uri_name_and_path_skips_unreadable_file(tmp_path):
 
 
 def test_copy_image_to_internal_file_scheme(tmp_path, monkeypatch):
-    monkeypatch.setattr(ConfigManager, "config_path", tmp_path / "config.json")
+    monkeypatch.setattr(ConfigManager, "_cached_config_path", tmp_path / "config.json")
     src = tmp_path / "a.png"
     _make_image(src, "red")
     dst = io.wallpapers_dir / "a.png"
@@ -139,8 +139,7 @@ def test_get_selected_uris_from_intent_prefers_clip_data(tmp_path):
     assert [u.getPath() for u in uris] == [str(a)]
 
 
-def test_get_selected_uris_from_intent_reads_extra_stream_list(tmp_path, monkeypatch):
-    monkeypatch.setattr(io, "cast", lambda *args: args[-1])
+def test_get_selected_uris_from_intent_reads_extra_stream_list(tmp_path):
     a = tmp_path / "a.png"
     b = tmp_path / "b.png"
     a.write_bytes(b"x")
@@ -150,8 +149,7 @@ def test_get_selected_uris_from_intent_reads_extra_stream_list(tmp_path, monkeyp
     assert [u.getPath() for u in uris] == [str(a), str(b)]
 
 
-def test_get_selected_uris_from_intent_reads_single_extra_stream(tmp_path, monkeypatch):
-    monkeypatch.setattr(io, "cast", lambda *args: args[-1])
+def test_get_selected_uris_from_intent_reads_single_extra_stream(tmp_path):
     a = tmp_path / "a.png"
     a.write_bytes(b"x")
     intent = _FakeIntent(stream=_FakeUri("file", str(a)))
@@ -159,8 +157,7 @@ def test_get_selected_uris_from_intent_reads_single_extra_stream(tmp_path, monke
     assert [u.getPath() for u in uris] == [str(a)]
 
 
-def test_get_selected_uris_from_intent_reads_extra_stream_array(tmp_path, monkeypatch):
-    monkeypatch.setattr(io, "cast", lambda *args: args[-1])
+def test_get_selected_uris_from_intent_reads_extra_stream_array(tmp_path):
     a = tmp_path / "a.png"
     b = tmp_path / "b.png"
     a.write_bytes(b"x")
@@ -173,5 +170,3 @@ def test_get_selected_uris_from_intent_reads_extra_stream_array(tmp_path, monkey
 def test_get_selected_uris_from_intent_returns_empty_without_carriers():
     assert io.get_selected_uris_from_intent(_FakeIntent()) == []
     assert io.get_selected_uris_from_intent(None) == []
-
-
