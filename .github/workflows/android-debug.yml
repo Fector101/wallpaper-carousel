@@ -3,6 +3,8 @@ name: Build Debug APK
 on:
   workflow_dispatch:
   pull_request:
+    paths:
+      - 'buildozer.spec'
 
 permissions:
   contents: read
