@@ -57,7 +57,7 @@ class ScreenManager(MDScreenManager):
 
         # self.current = "update_screen"
 
-    def _ensure_welcome_screen(self):
+    def ensure_welcome_screen(self):
         if self.welcome_screen is None:
             self.welcome_screen = WelcomeScreen()
             self.add_widget(self.welcome_screen)
@@ -87,7 +87,7 @@ class ScreenManager(MDScreenManager):
     def btm_nav_patch(self, screen_name):
         is_fullscreen = screen_name in ["welcome", "fullscreen", "logs", "update_screen","stats"]
         if screen_name == "welcome":
-            self._ensure_welcome_screen()
+            self.ensure_welcome_screen()
         if is_fullscreen and self.app.bottom_bar:
             self.app.bottom_bar.hide(animation=False, hidden_by=self)
         elif self.app.bottom_bar:

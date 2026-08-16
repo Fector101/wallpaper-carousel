@@ -23,7 +23,7 @@ class MyTextButton(MDButton):
     text_color = ListProperty("")
     adaptive_size = BooleanProperty(False)
     font_name = StringProperty("")
-    font_size = StringProperty("")
+    font_size = ObjectProperty("")
     size_padding = NumericProperty(10)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -70,7 +70,9 @@ class MyTextButton(MDButton):
         self.txt.text_color = value
 
     def fix_text_out_of_bounds_width_on_android(self,_,v):
-        self.width = dp(v+self.size_padding)
+        # fix_text_out_of_bounds_width_on_android receives v as the MDButtonText width, which Kivy already reports in device pixels.
+        #  Wrapping it in dp() scales it a second time, so the button becomes roughly density times too wide on high-density screens.
+        self.width = v + dp(self.size_padding)
 
         # p(self.txt.texture_size[0] + 10,v,"used")
 

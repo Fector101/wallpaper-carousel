@@ -35,18 +35,19 @@ class LogsScreen(MyMDScreen):
         self._file_pos = None
         self.name = "logs"
         self.md_bg_color = [0.1, 0.1, 0.1, 1]
-        self.built_ui = None
+        self.built_ui = False
 
     def on_enter(self, *args):
         super().on_enter(*args)
         if not self.built_ui:
             Clock.schedule_once(self._timer_set)
-            self.built_ui = True
 
     def _timer_set(self, _):
         Clock.schedule_once(self.build_ui)
 
     def build_ui(self, _):
+        if self.built_ui:
+            return
         self.built_ui = True
         global Label, Button, ScrollView, NoTransition, BoxLayout, Clipboard, deque, datetime
 

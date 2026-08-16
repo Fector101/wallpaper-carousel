@@ -406,7 +406,7 @@ class FullscreenScreen(MyMDScreen):
         spinner_layout = LoadingLayout()
         def remove_spinner(_):
             spinner_layout.remove()
-        threading.Thread(target=change_wallpaper, args=[self.carousel.current_slide.higher_format, remove_spinner]).start()
+        threading.Thread(target=change_wallpaper, args=[self.carousel.current_slide.higher_format, remove_spinner], daemon=True).start()
         
     def delete_current(self, *_):
         spinner_layout = LoadingLayout()

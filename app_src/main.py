@@ -1,5 +1,5 @@
 from utils.boot_log import boot_log
-boot_log("[BOOT] main:-----------------imports started------------------------------")
+boot_log("main:-----------------imports started------------------------------")
 from utils.helper import write_logs_to_file
 write_logs_to_file()
 boot_log("main: write_logs_to_file imports done")
@@ -7,7 +7,7 @@ boot_log("main: write_logs_to_file imports done")
 
 import logging, threading, traceback # +0.024s
 
-from kivy.properties import StringProperty, ObjectProperty # +0.997s
+from kivy.properties import BooleanProperty, StringProperty, ObjectProperty # +0.997s
 from kivy.utils import platform # +0.001s
 from kivy.clock import Clock # +1.403s
 from kivymd.app import MDApp # +0.955s
@@ -53,6 +53,9 @@ class WallpaperCarouselApp(MDApp):
     device_theme = StringProperty("dark")
     theme_preference = StringProperty(ConfigManager.get_theme_preference())
     theme_colors = ObjectProperty(_theme_colors)
+    # True only after file_operation is created AND bind_plyer_fix + share
+    # listener are wired up; gates the picker entry point and early results.
+    image_operation_ready = BooleanProperty(False)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -101,7 +104,7 @@ class WallpaperCarouselApp(MDApp):
 
         boot_log("build_ui: has_permission() start")
         if not NotificationHandler.has_permission():
-            self.sm._ensure_welcome_screen()
+            self.sm.ensure_welcome_screen()
             self.sm.current = "welcome"
         else:
             boot_log("build_ui: moving to thumbs screen")
@@ -156,6 +159,7 @@ class WallpaperCarouselApp(MDApp):
             boot_log("build: bind_plyer_fix done")
             self.file_operation.setup_share_from_others_to_app_listener()
             boot_log("build: share listener done")
+            self.image_operation_ready = True
         except Exception as error_finish_image_operation_init:
             traceback.print_exc()
             error_message = str(error_finish_image_operation_init)
@@ -235,6 +239,9 @@ class WallpaperCarouselApp(MDApp):
         if on_android_platform() and not on_pydroid_app():
             from android import activity  # type: ignore
             def set_intent_for_file_operation_class(activity_id, some_int, intent):
+                if not self.image_operation_ready:
+                    app_logger.warning("bind_plyer_fix: ignoring early activity result before image operation ready")
+                    return
                 if not some_int:
                     # Fix for Half Screen Popup When no file is picked.
                     # some_int is usually -1 when a file is chosen and 0 when no file is chosen

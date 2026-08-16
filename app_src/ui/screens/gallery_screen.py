@@ -1053,6 +1053,9 @@ class GalleryScreen(MyMDScreen):
 
     def open_file_chooser(self, *_):
         print(f"[DBG] open_file_chooser: entered")
+        if not self.app.image_operation_ready:
+            app_logger.warning("[DBG] open_file_chooser: ignored - image operation not ready yet")
+            return
         # file_operation = FileOperation(self.update_thumbnails_method)
         # if platform == 'android':
         #     from android import activity # type: ignore

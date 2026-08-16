@@ -612,15 +612,15 @@ def copy_uri_to_internal(destination_name, uri):
 
     input_stream = BufferedInputStream(_get_content_resolver().openInputStream(uri))
     try:
-        boot_log(f"image_operations: copy_uri_to_internal trying java native copy")
+        boot_log("image_operations: copy_uri_to_internal trying java native copy")
         if _try_java_native_copy(input_stream, destination_path):
-            boot_log(f"image_operations: copy_uri_to_internal java native copy succeeded")
+            boot_log("image_operations: copy_uri_to_internal java native copy succeeded")
             return destination_path
     finally:
         input_stream.close()
 
     # Fresh stream for the Python fallback (java copy may have consumed it).
-    boot_log(f"image_operations: copy_uri_to_internal using python stream fallback")
+    boot_log("image_operations: copy_uri_to_internal using python stream fallback")
     input_stream = BufferedInputStream(_get_content_resolver().openInputStream(uri))
     try:
         output_stream = BufferedOutputStream(FileOutputStream(destination_path))
@@ -691,6 +691,7 @@ def get_or_create_thumbnail(src, destination_dir=None, size=(320, 320)):
     return create_thumbnail(src, destination_dir=destination_dir, size=size)
 
 def get_image_info(path):
+    import os
     boot_log(f"image_operations: get_image_info {os.path.basename(path)}")
     info_dict = {
                 "Pixels": "Nil",
@@ -700,7 +701,6 @@ def get_image_info(path):
             }
 
     # Check if file exists
-    import os
     if not os.path.exists(path):
         return info_dict
 

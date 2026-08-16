@@ -34,6 +34,7 @@ class StatsListItem(Row):  # Assuming Row inherits from horizontal MDBoxLayout
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         from ui.widgets.modals import MyTextButton
+        from kivymd.uix.label import MDLabel
         grey_color=get_color_from_hex("999898")
         self.spacing=dp(10)
         self.title_label = MDLabel(
@@ -91,11 +92,6 @@ class StatsListItem(Row):  # Assuming Row inherits from horizontal MDBoxLayout
         self.size_hint_y=None
         self.height = dp(40)
 
-        # self.button_text.bind(width=self.fix_text_out_of_bounds_width_on_android)
-
-    def fix_text_out_of_bounds_width_on_android(self,_,v):
-        self.button.width = dp(v+10)
-
 
 class StatsScreen(MyMDScreen):
     def __init__(self, **kwargs):
@@ -130,16 +126,16 @@ class StatsScreen(MyMDScreen):
     def _timer_set(self,_):
         Clock.schedule_once(self.build_ui)
 
-    @staticmethod
-    def update_line(parent_widget, widget):
-        # Keeps the Y coordinate identical (self.center_y) to ensure it stays perfectly flat
-        widget.points = [parent_widget.x, parent_widget.center_y, parent_widget.x + parent_widget.width, parent_widget.center_y]
-
     def build_ui(self,_):
         global MDLabel
         from kivy.uix.scrollview import ScrollView
         from kivymd.uix.button import MDIconButton
         from kivymd.uix.label import MDLabel
+
+        # Horizontal inset (per side) of section content inside sections_container.
+        # The graph width binding subtracts both sides (2 * this) from the container
+        # width, and the section paddings below use the same per-side value.
+        content_inset = dp(25)
 
         self.status_bar_spacer = GenericStatusBarSpacer(
             status_bar_height=self.status_bar_height,
@@ -192,7 +188,7 @@ class StatsScreen(MyMDScreen):
                                      # padding=[10,10],
                                      adaptive_height=True,
                                      spacing=dp(10),
-                                    padding=[25, 10, 25, 20],
+                                    padding=[content_inset, 10, content_inset, 20],
 
             # md_bg_color=[1, 1, .1, 1]
                                      )
@@ -212,7 +208,7 @@ class StatsScreen(MyMDScreen):
 
 
         self.section_layout_2 = Column(
-                                       padding=[25,10,25,20],
+                                       padding=[content_inset,10,content_inset,20],
                                        adaptive_height=True,
                                        spacing=dp(10),
                                        # md_bg_color=[1, .1, .1, 1]
@@ -250,7 +246,7 @@ class StatsScreen(MyMDScreen):
             md_bg_color=get_color_from_hex("2E2E2E"),
             radius=[12, 12, 12, 12],
         )
-        sections_container.bind(width=lambda x,value: setattr(self.graph_container,"width",value-50))
+        sections_container.bind(width=lambda x,value: setattr(self.graph_container,"width",value-2*content_inset))
         self.graph_title = MDLabel(
             text="Storage Usage",
             bold=1,
@@ -294,7 +290,6 @@ class StatsScreen(MyMDScreen):
         return True
 
     def handle_going_back(self,*_):
-        print("test")
         self.manager.go_to_thumbs()
 
 boot_log("sm: StatsScreen end of file")

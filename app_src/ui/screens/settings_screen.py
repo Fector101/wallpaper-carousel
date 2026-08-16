@@ -580,6 +580,7 @@ class ThemeOptionCard(ButtonBehavior, MDBoxLayout):
 
 
 class CarouselTools(Column):
+    settings_screen = ObjectProperty(None)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.app = get_app()
@@ -587,7 +588,7 @@ class CarouselTools(Column):
         self.size_hint_y = None
         self.bind(minimum_height=self.setter("height"))
 
-        settings_screen = self.app.sm.get_screen("settings")
+        settings_screen = self.settings_screen or self.app.sm.get_screen("settings")
 
         button_box = MDBoxLayout(
             spacing=dp(10),
@@ -655,7 +656,6 @@ class SettingsScreen(MyMDScreen):
         super().on_enter(*args)
         if not self.built_ui:
             Clock.schedule_once(self._timer_set)
-            
 
     def _timer_set(self, _):
         Clock.schedule_once(self.build_ui)
@@ -665,12 +665,7 @@ class SettingsScreen(MyMDScreen):
             return
         self.built_ui = True
 
-        from kivy.uix.button import Button
         from kivy.uix.scrollview import ScrollView
-        from kivy.uix.textinput import TextInput
-        from kivymd.uix.fitimage import FitImage
-        from kivymd.uix.gridlayout import MDGridLayout
-        from ui.widgets.modals import DialogScreen
 
         app = self.app
 
@@ -678,6 +673,52 @@ class SettingsScreen(MyMDScreen):
 
         root = Column(pos_hint={"top": 1})
 
+        root.add_widget(self._build_header())
+
+        scroll = ScrollView(size_hint=(1, 1))
+
+        main_container = Column(
+            size_hint_y=None,
+            padding=[dp(25), dp(25), dp(25), dp(100)],
+            spacing=dp(15),
+        )
+        main_container.bind(minimum_height=main_container.setter("height"))
+
+        main_container.add_widget(self._build_interval_editor())
+        main_container.add_widget(self._build_home_widget_card())
+        main_container.add_widget(self._build_carousel_section())
+        main_container.add_widget(self._build_autostart_section())
+        main_container.add_widget(self._build_theme_section())
+        main_container.add_widget(self._build_export_section())
+        main_container.add_widget(self._build_version_controls())
+        main_container.add_widget(self._build_update_button())
+
+        self.ids["settings_scroll_view_widget"] = scroll
+        self.ids["main_container"] = main_container
+
+        scroll.add_widget(main_container)
+        root.add_widget(scroll)
+        self.add_widget(root)
+
+        interval_input = self.ids.interval_input
+        interval_input.bind(height=self._update_interval_input_padding,
+                            line_height=self._update_interval_input_padding,
+                            focus=self._update_interval_input_colors)
+        interval_input.disabled_foreground_color = self.ids.interval_input_con.disabled_color
+        self.ids.interval_input_con.bind(disabled_color=interval_input.setter("disabled_foreground_color"))
+
+        self.ids.save_btn_text.bind(text=self._update_save_btn_theme)
+        self.bind(displayed_interval_value=self._on_displayed_interval_value_changed)
+        self.bind(is_using_on_wake=self._sync_toggles)
+        app.bind(theme_preference=self._sync_theme_cards)
+
+        self._update_interval_input_padding()
+        self._update_interval_input_colors()
+        self._update_save_btn_theme()
+        self._sync_toggles()
+        self.set_theme_color(None, app.device_theme)
+
+    def _build_header(self):
         title_text_case = MDBoxLayout(
             padding=[dp(25), dp(self.status_bar_height - 20 if self.status_bar_height > 20 else self.status_bar_height + 20), dp(0), dp(20)],
             size_hint_y=None,
@@ -695,16 +736,19 @@ class SettingsScreen(MyMDScreen):
             font_size="22sp",
         )
         title_text_case.add_widget(title_label)
-        root.add_widget(title_text_case)
+        self.ids["title_text_case"] = title_text_case
+        self.title_label = title_label
+        return title_text_case
 
-        scroll = ScrollView(size_hint=(1, 1))
+    def _build_interval_editor(self):
+        from kivy.uix.textinput import TextInput
+        from kivymd.uix.gridlayout import MDGridLayout
 
-        main_container = Column(
+        interval_editor = Column(
             size_hint_y=None,
-            padding=[dp(25), dp(25), dp(25), dp(100)],
             spacing=dp(15),
         )
-        main_container.bind(minimum_height=main_container.setter("height"))
+        interval_editor.bind(minimum_height=interval_editor.setter("height"))
 
         interval_heading = MDLabel(
             text="Wallpaper Change Interval (minutes)",
@@ -714,7 +758,8 @@ class SettingsScreen(MyMDScreen):
             font_size=sp(13),
             color=theme_colors.TEXT_PRIMARY,
         )
-        main_container.add_widget(interval_heading)
+        interval_editor.add_widget(interval_heading)
+        self.interval_heading = interval_heading
 
         interval_row = Row(spacing=dp(10), size_hint_y=None, height=dp(50))
         interval_input_con = BorderInput(
@@ -736,7 +781,6 @@ class SettingsScreen(MyMDScreen):
         save_btn = MDButton(
             radius=20,
             theme_bg_color="Custom",
-            
             theme_line_color="Custom",
             on_release=self.save_interval,
         )
@@ -757,7 +801,7 @@ class SettingsScreen(MyMDScreen):
 
         interval_row.add_widget(interval_input_con)
         interval_row.add_widget(save_btn)
-        main_container.add_widget(interval_row)
+        interval_editor.add_widget(interval_row)
 
         quick_set_box = MDGridLayout(
             cols=3,
@@ -770,7 +814,19 @@ class SettingsScreen(MyMDScreen):
         quick_set_box.add_widget(QuickSetButton(text="15:00"))
         quick_set_box.add_widget(QuickSetButton(disabled=True, opacity=0))
         quick_set_box.add_widget(QuickSetButton(text="60:00"))
-        main_container.add_widget(quick_set_box)
+        interval_editor.add_widget(quick_set_box)
+
+        self.ids["interval_input_con"] = interval_input_con
+        self.ids["interval_input"] = interval_input
+        self.ids["save_btn"] = save_btn
+        self.ids["save_btn_text"] = save_btn_text
+        self.ids["QuickSetButtonsBox"] = quick_set_box
+
+        self.interval_input = interval_input
+        return interval_editor
+
+    def _build_home_widget_card(self):
+        from kivymd.uix.fitimage import FitImage
 
         home_widget_section = Column(adaptive_height=True, padding=[dp(10), 0, dp(10), 0])
         home_widget_header = MDBoxLayout(
@@ -879,7 +935,7 @@ class SettingsScreen(MyMDScreen):
         pause_btn = MDIconButton(
             icon="pause",
             pos_hint={"right": 1},
-            on_release=lambda: self.toggle_home_screen_widget_loop(pause_btn),
+            on_release=lambda *_: self.toggle_home_screen_widget_loop(pause_btn),
         )
         add_btn = MyMDButton(
             theme_bg_color="Custom",
@@ -899,8 +955,23 @@ class SettingsScreen(MyMDScreen):
 
         home_widget_section.add_widget(home_widget_header)
         home_widget_section.add_widget(home_widget_body)
-        main_container.add_widget(home_widget_section)
 
+        self.ids["countdown_label"] = countdown_label
+        self.ids["skip_upcoming_wallpaper_button"] = skip_btn
+        self.ids["pause_home_screen_widget_loop_button"] = pause_btn
+
+        self.home_widget_header = home_widget_header
+        self.home_widget_header_label = home_widget_header_label
+        self.home_widget_body = home_widget_body
+        self.countdown_label = countdown_label
+        self.current_label = current_label
+        self.next_label = next_label
+        self._bw_widgets = [skip_btn_text, add_text]
+        self._bw_icon_widgets = [add_icon]
+        self._bw_misc = [pause_btn, countdown_label]
+        return home_widget_section
+
+    def _build_carousel_section(self):
         carousel_section = SettingsSection(title_text="Carousel")
         on_wake_toggle = ToggleSliderRow(change_function=self.set_using_on_wake_config)
         on_wake_toggle.title_text = "Use On-wake"
@@ -913,11 +984,12 @@ class SettingsScreen(MyMDScreen):
         interval_toggle.sub_title_text = f'Get a new wallpaper every "{self.displayed_interval_value}".'
         interval_toggle.active = not self.is_using_on_wake
         carousel_section.content_layout.add_widget(interval_toggle)
-        carousel_section.content_layout.add_widget(CarouselTools())
+        carousel_section.content_layout.add_widget(CarouselTools(settings_screen=self))
         self._on_wake_toggle = on_wake_toggle
         self._interval_toggle = interval_toggle
-        main_container.add_widget(carousel_section)
+        return carousel_section
 
+    def _build_autostart_section(self):
         autostart_section = SettingsSection(title_text="Auto Start")
         launch_toggle = ToggleSliderRow(change_function=self.set_start_on_app_launch_config)
         launch_toggle.title_text = "On App Launch"
@@ -930,27 +1002,35 @@ class SettingsScreen(MyMDScreen):
         restart_toggle.sub_title_text = "Automatically start the carousel when your phone restarts."
         restart_toggle.active = self.start_on_boot
         autostart_section.content_layout.add_widget(restart_toggle)
-        main_container.add_widget(autostart_section)
+        return autostart_section
 
+    def _build_theme_section(self):
         theme_section = SettingsSection(title_text="Theme")
         theme_row = Row(adaptive_size=True, spacing=dp(10), pos_hint={"center_x": 0.5})
         theme_dark_card = ThemeOptionCard(icon="moon-waning-crescent", label="Dark",
                                           preference_value="dark",
                                           active=self.app.theme_preference == "dark",
-                                          on_release=lambda: self.set_theme_preference("dark"))
+                                                                        on_release=lambda *_: self.set_theme_preference("dark"))
         theme_adaptive_card = ThemeOptionCard(icon="cellphone", label="Adaptive",
                                               preference_value="adaptive",
                                               active=self.app.theme_preference == "adaptive",
-                                              on_release=lambda: self.set_theme_preference("adaptive"))
+                                              on_release=lambda *_: self.set_theme_preference("adaptive"))
         theme_light_card = ThemeOptionCard(icon="white-balance-sunny", label="Light",
                                            preference_value="light",
                                            active=self.app.theme_preference == "light",
-                                           on_release=lambda: self.set_theme_preference("light"))
+                                           on_release=lambda *_: self.set_theme_preference("light"))
         theme_row.add_widget(theme_dark_card)
         theme_row.add_widget(theme_adaptive_card)
         theme_row.add_widget(theme_light_card)
         theme_section.content_layout.add_widget(theme_row)
-        main_container.add_widget(theme_section)
+        self.ids["theme_dark_card"] = theme_dark_card
+        self.ids["theme_adaptive_card"] = theme_adaptive_card
+        self.ids["theme_light_card"] = theme_light_card
+        self._theme_cards = (theme_dark_card, theme_adaptive_card, theme_light_card)
+        return theme_section
+
+    def _build_export_section(self):
+        from ui.widgets.modals import DialogScreen
 
         export_section = SettingsSection(title_text="Uninstalling?")
         export_btn = MyMDButton(
@@ -965,7 +1045,30 @@ class SettingsScreen(MyMDScreen):
         export_btn.add_widget(export_icon)
         export_btn.add_widget(export_text)
         export_section.content_layout.add_widget(export_btn)
-        main_container.add_widget(export_section)
+
+        self.export_dialog = DialogScreen(
+            icon_name="export-variant",
+            header_text="Export Wallpapers?",
+            subtitle_text="All wallpapers will be copied to your public Pictures/Waller folder",
+            ok_callback=self._export_in_thread,
+            ok_button_text="Yes, Copy",
+            ok_button_color=[0.2, 0.7, 0.3, 1.0],
+        )
+
+        self.ids["btn_icon"] = export_icon
+        self.ids["btn_text"] = export_text
+        self._bw_widgets.append(export_text)
+        self._bw_icon_widgets.append(export_icon)
+        return export_section
+
+    def _build_version_controls(self):
+        from kivy.uix.button import Button
+
+        version_controls = Column(
+            size_hint_y=None,
+            spacing=dp(15),
+        )
+        version_controls.bind(minimum_height=version_controls.setter("height"))
 
         version_btn = Button(
             text=f'v{VERSION}{"-debug" if is_running_debug_build() else ""}',
@@ -979,12 +1082,18 @@ class SettingsScreen(MyMDScreen):
         )
         version_btn.size = [version_btn.texture_size[0], dp(50)]
         version_btn.bind(texture_size=self._update_version_btn_size)
-        main_container.add_widget(version_btn)
+        version_controls.add_widget(version_btn)
+        self.version_btn = version_btn
 
         if DEV:
             for each in dev_object:
-                main_container.add_widget(
+                version_controls.add_widget(
                     Button(text=f"test {each}", on_release=dev_object[each], size_hint_y=None, height=dp(50)))
+
+        return version_controls
+
+    def _build_update_button(self):
+        from kivy.uix.button import Button
 
         check_update_btn = Button(text="Check For New Version", on_release=self.check_for_update,
                                   size_hint_y=None, height=dp(50))
@@ -992,69 +1101,7 @@ class SettingsScreen(MyMDScreen):
         check_update_btn.background_color = theme_colors.BUTTON_BG
         check_update_btn.color = theme_colors.TEXT_PRIMARY
         self._check_update_btn = check_update_btn
-        main_container.add_widget(check_update_btn)
-
-        self.export_dialog = DialogScreen(
-            icon_name="export-variant",
-            header_text="Export Wallpapers?",
-            subtitle_text="All wallpapers will be copied to your public Pictures/Waller folder",
-            ok_callback=self._export_in_thread,
-            ok_button_text="Yes, Copy",
-            ok_button_color=[0.2, 0.7, 0.3, 1.0],
-        )
-
-        scroll.add_widget(main_container)
-        root.add_widget(scroll)
-        self.add_widget(root)
-
-        self.ids["title_text_case"] = title_text_case
-        self.ids["settings_scroll_view_widget"] = scroll
-        self.ids["main_container"] = main_container
-        self.ids["interval_input_con"] = interval_input_con
-        self.ids["interval_input"] = interval_input
-        self.ids["save_btn"] = save_btn
-        self.ids["save_btn_text"] = save_btn_text
-        self.ids["QuickSetButtonsBox"] = quick_set_box
-        self.ids["countdown_label"] = countdown_label
-        self.ids["skip_upcoming_wallpaper_button"] = skip_btn
-        self.ids["pause_home_screen_widget_loop_button"] = pause_btn
-        self.ids["theme_dark_card"] = theme_dark_card
-        self.ids["theme_adaptive_card"] = theme_adaptive_card
-        self.ids["theme_light_card"] = theme_light_card
-        self.ids["btn_icon"] = export_icon
-        self.ids["btn_text"] = export_text
-
-        self.interval_input = interval_input
-        self.title_label = title_label
-        self.interval_heading = interval_heading
-        self.home_widget_header = home_widget_header
-        self.home_widget_header_label = home_widget_header_label
-        self.home_widget_body = home_widget_body
-        self.countdown_label = countdown_label
-        self.current_label = current_label
-        self.next_label = next_label
-        self.version_btn = version_btn
-        self._bw_widgets = [skip_btn_text, add_text, export_text]
-        self._bw_icon_widgets = [add_icon, export_icon]
-        self._bw_misc = [pause_btn, countdown_label]
-        self._theme_cards = (theme_dark_card, theme_adaptive_card, theme_light_card)
-
-        interval_input.bind(height=self._update_interval_input_padding,
-                            line_height=self._update_interval_input_padding,
-                            focus=self._update_interval_input_colors)
-        interval_input.disabled_foreground_color = interval_input_con.disabled_color
-        interval_input_con.bind(disabled_color=interval_input.setter("disabled_foreground_color"))
-
-        save_btn_text.bind(text=self._update_save_btn_theme)
-        self.bind(displayed_interval_value=self._on_displayed_interval_value_changed)
-        self.bind(is_using_on_wake=self._sync_toggles)
-        app.bind(theme_preference=self._sync_theme_cards)
-
-        self._update_interval_input_padding()
-        self._update_interval_input_colors()
-        self._update_save_btn_theme()
-        self._sync_toggles()
-        self.set_theme_color(None, app.device_theme)
+        return check_update_btn
 
     def _update_interval_input_padding(self, *_):
         if not self.built_ui or not self.interval_input:
@@ -1105,7 +1152,7 @@ class SettingsScreen(MyMDScreen):
         for card in self._theme_cards:
             card.active = card.preference_value == preference
 
-    def show_export_dialog(self):
+    def show_export_dialog(self,_):
         if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
             self.app.bottom_bar.hide(animation=False, hidden_by="export")
         self.export_dialog.dialog_box.cancel_btn.bind(on_release=lambda *_: self._restore_bottom_nav())

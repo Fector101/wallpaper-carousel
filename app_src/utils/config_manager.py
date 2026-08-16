@@ -200,11 +200,12 @@ class ConfigManager:
     @property
     def get_use_group_by_date(self):
         with ConfigManager._lock:
-            if "use_group_by_date" in self.read():
-                return self.read().get("use_group_by_date", True)
-            else:
-                self.set_use_group_by_date(True)
-                return True
+            data = self.read() or {}
+            if "use_group_by_date" in data:
+                return data["use_group_by_date"]
+            self.set_use_group_by_date(True)
+            return True
+
     def set_use_group_by_date(self, state: bool):
         with ConfigManager._lock:
             data = self.read()

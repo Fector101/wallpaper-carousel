@@ -625,10 +625,12 @@ def start_service_server(notification: Notification):
         # Avoiding process is bad java.lang.SecurityException
     finally:
         print('service python: The end...')
-        with open(_ui_port_store_path(), "w") as f_:
-            f_.write("")
-        with open(_service_port_store_path(), "w") as f__:
-            f__.write("")
+        for path_fn in (_ui_port_store_path, _service_port_store_path):
+            try:
+                with open(path_fn(), "w") as port_file:
+                    port_file.write("")
+            except OSError as error_clearing_port_file:
+                app_logger.exception(f"Error clearing port file: {error_clearing_port_file}")
 
 # foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE_TYPE_DATA_SYNC if on_android_platform() and BuildVersion.SDK_INT >= 30 else 0
 # if foreground_type:

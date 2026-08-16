@@ -89,7 +89,6 @@ class Column(MDBoxLayout):
         self.orientation = "vertical"
         for each_widget in self.my_widgets:
             self.add_widget(each_widget)
-# boot_log("sm: ui.widgets.layouts classes 1 defined")
 
 
 class MyPopUp(Popup):
@@ -173,10 +172,8 @@ def get_dimensions(bypass_android_version=False):
         # +0.464s
         window = activity.getWindow()
         decor = window.getDecorView()
-        boot_log("sm: ui.widgets.layouts status_bar_height and nav_bar_height retrieved")
-
-
         insets = decor.getRootWindowInsets()
+        boot_log("sm: ui.widgets.layouts status_bar_height and nav_bar_height retrieved")
         if insets:
             status_bar_height = insets.getInsets(
                 WindowInsetsType.statusBars()

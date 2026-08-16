@@ -1,17 +1,16 @@
 import traceback
-from android_notify.config import get_python_activity_context,_get_jnius, on_android_platform
+from android_notify.config import get_python_activity_context,_get_jnius, on_android_platform, get_package_name
 from android_notify.internal.java_classes import PendingIntent, Intent, _LazyJavaClass
 
 from utils.logger import app_logger
 from ui.widgets.android import toast
 
 def add_home_screen_widget(button=None):
-    _, autoclass = _get_jnius()
+    if not on_android_platform():
+        app_logger.warning("Can't add Home Screen Widget, Not on Android.")
+        return
     try:
-        from android_widgets import get_package_name
-        if not on_android_platform():
-            app_logger.warning("Can't add Home Screen Widget, Not on Android.")
-            return
+        _, autoclass = _get_jnius()
 
         # Android classes
         AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')

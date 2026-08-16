@@ -376,9 +376,9 @@ class DownloadApkScreen(MyMDScreen):
 
     def start_download(self,_=None):
        #p("Clicked start download...")
-        import threading
         if not self.built_ui:
             return
+        import threading
 
         if self.update_button.clicked:
             app_logger.warning("Already Clicked Download.")

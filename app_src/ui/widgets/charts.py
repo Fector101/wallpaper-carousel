@@ -72,7 +72,10 @@ class StackedBarChart(Widget):
             seg_x += seg_w
 
         legend_top = bar_y - spacing
-        row_h = (legend_top - self.y) / count
+        legend_h = legend_top - self.y
+        if legend_h <= 0:
+            return
+        row_h = legend_h / count
         for index, (label, value, color) in enumerate(data):
             row_center = legend_top - row_h * (index + 0.5)
 

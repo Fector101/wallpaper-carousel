@@ -12,7 +12,7 @@ costliest-operations breakdown, and tars the results into
 """
 
 import argparse
-import math
+import shutil
 import os
 import re
 import subprocess
@@ -42,9 +42,12 @@ def find_adb():
     env = os.environ.get("ADB")
     if env:
         return Path(env)
-    which = subprocess.run(["which", "adb"], capture_output=True, text=True)
-    if which.returncode == 0 and which.stdout.strip():
-        return Path(which.stdout.strip())
+    # which = subprocess.run(["which", "adb"], capture_output=True, text=True)
+    found = shutil.which("adb")
+    if found:
+        return Path(found)
+    # if which.returncode == 0 and which.stdout.strip():
+    #     return Path(which.stdout.strip())
     if DEFAULT_ADB.exists():
         return DEFAULT_ADB
     raise FileNotFoundError(
@@ -207,12 +210,14 @@ def main():
         print_breakdown("===== Aggregate breakdown (avg per operation, top 12) =====", breakdown(all_entries))
 
     # Write summary.txt
+    def _avg(values):
+        return f"{sum(values) / len(values):.2f}s" if values else "?"
     summary = (
         f"Waller cold-start boot test — {runs} runs — {datetime.now()}\n"
         f"Build_ui times (s): {' '.join(f'{t:.3f}' for t in build_times) or '?'}\n"
         f"Full boot times (s): {' '.join(f'{t:.3f}' for t in full_times) or '?'}\n"
-        f"Average build_ui: {sum(build_times) / len(build_times):.2f}s\n"
-        f"Average full boot: {sum(full_times) / len(full_times):.2f}s\n"
+        f"Average build_ui: {_avg(build_times)}\n"
+        f"Average full boot: {_avg(full_times)}\n"
     )
     (outdir / "summary.txt").write_text(summary, encoding="utf-8")
 
