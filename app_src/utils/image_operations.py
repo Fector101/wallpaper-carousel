@@ -123,7 +123,6 @@ class ImageOperation:
 
     def launch_file_picker(self):
         """Launch Android file picker directly, bypassing plyer's slow URI resolution."""
-        boot_log("image_operations: launch_file_picker")
         if not _on_android_platform():
             return
         from jnius import cast
@@ -137,7 +136,6 @@ class ImageOperation:
         )
 
     def import_images_from_plyer(self,files):
-        boot_log(f"image_operations: import_images_from_plyer {len(files)} files")
         print("files",files)
         if not files:
             self.file_picker_active = False
@@ -161,7 +159,7 @@ class ImageOperation:
                     new_images.append(str(dst))
             except Exception as error_copying_files:
                 app_logger.exception(f"import_images_from_plyer: error importing {src}: {error_copying_files}")
-            boot_log(f"image_operations: plyer process_one done ({time.time() - t0:.3f}s)")
+            pass
         with ThreadPoolExecutor(max_workers=3) as pool:
             list(pool.map(lambda args: process_one(*args), enumerate(files)))
         _add_wallpapers_to_config(new_images)
@@ -177,7 +175,6 @@ class ImageOperation:
         Query MediaStore for images accessible via limited permission.
                 Used on API 34+ when READ_MEDIA_VISUAL_USER_SELECTED is granted
                 but READ_MEDIA_IMAGES is not (system already showed its picker)."""
-        boot_log("image_operations: import_images_from_android")
         if self.processing_intent:
             return
         TAG = "mediaStore" if only_limited_access else "intent"
@@ -208,7 +205,6 @@ class ImageOperation:
 
                 def process_one(i, uri):
                     t0 = time.time()
-                    boot_log(f"image_operations: process_one [{i+1}/{len(uris)}] start")
                     try:
                         file_name, src_path = get_uri_name_and_path(uri)
                         if not file_name:
@@ -221,7 +217,7 @@ class ImageOperation:
                         t2 = time.time()
                         create_thumbnail(src_path=destination_path, destination_dir=wallpapers_dir)
                         t3 = time.time()
-                        boot_log(f"image_operations: process_one [{i+1}/{len(uris)}] meta={t1-t0:.3f}s copy={t2-t1:.3f}s thumb={t3-t2:.3f}s")
+                        print(f"image_operations: process_one [{i+1}/{len(uris)}] meta={t1-t0:.3f}s copy={t2-t1:.3f}s thumb={t3-t2:.3f}s")
                         with images_lock:
                             new_images.append(str(destination_path))
                         # app_logger.info(
@@ -253,7 +249,6 @@ class ImageOperation:
         threading.Thread(target=_run, args=([image_uris]),daemon=True).start()
 
     def ui_things(self, _):
-        boot_log("image_operations: ui_things")
         self.file_picker_active = False
         elapsed = None
         if self._processing_start is not None:
@@ -349,7 +344,6 @@ class ImageOperation:
 
 
 def grant_uri_permissions(uris):
-    boot_log(f"image_operations: grant_uri_permissions start ({len(uris)} URIs)")
     for _uri in uris:
         try:
             _get_mActivity().grantUriPermission(
@@ -358,7 +352,6 @@ def grant_uri_permissions(uris):
             )
         except Exception as error_grant_uri_permissions:
             app_logger.exception(error_grant_uri_permissions)
-    boot_log(f"image_operations: grant_uri_permissions done ({len(uris)} URIs)")
 
 def get_uri_name_and_path(uri):
     """Query a content:// URI once and return (display_name, real_path).
@@ -400,11 +393,9 @@ def get_uri_name_and_path(uri):
                 cursor.close()
     except Exception as e2:
         app_logger.exception(f"get_uri_name_and_path error: {e2}")
-    boot_log(f"image_operations: get_uri_name_and_path done ({time.time() - t0:.3f}s)")
     return name, path
 
 def get_selected_uris_from_intent(intent):
-    boot_log("image_operations: get_selected_uris_from_intent")
     uris = []
     if not intent:
         return uris
@@ -427,7 +418,6 @@ def get_selected_uris_from_intent(intent):
     return uris
 
 def get_selected_uris_from_cursor():
-    boot_log("image_operations: get_selected_uris_from_cursor start")
     collection = ImagesMedia.EXTERNAL_CONTENT_URI
     cursor = _get_content_resolver().query(
         collection, None, None, None, None
@@ -445,7 +435,6 @@ def get_selected_uris_from_cursor():
         )
         uris.append(item_uri)
     cursor.close()
-    boot_log(f"image_operations: get_selected_uris_from_cursor done ({len(uris)} URIs)")
     return uris
 
 def copy_image_to_internal(destination_path, uri, src_path=None):
@@ -453,7 +442,6 @@ def copy_image_to_internal(destination_path, uri, src_path=None):
     Uses native shutil.copy2 when the URI resolves to a local file,
     falling back to a Java-native (or buffered) stream copy."""
     t0 = time.time()
-    boot_log(f"image_operations: copy_image_to_internal start {os.path.basename(str(destination_path))}")
     try:
         if src_path is None:
             _, src_path = get_uri_name_and_path(uri)
@@ -466,7 +454,6 @@ def copy_image_to_internal(destination_path, uri, src_path=None):
                 f"[copy_image_to_internal: python] copy {os.path.basename(str(destination_path))} "
                 f"({time.time() - t0:.3f}s)"
             )
-            boot_log(f"image_operations: copy_image_to_internal python copy done ({time.time() - t0:.3f}s)")
             return str(destination_path)
     except PermissionError as error_copying_using_python:
         # Fails when using android picker to choose a file from gallery app
@@ -481,15 +468,16 @@ def copy_image_to_internal(destination_path, uri, src_path=None):
         f"[copy_image_to_internal: stream] copy {os.path.basename(str(destination_path))} "
         f"({time.time() - t0:.3f}s)"
     )
-    boot_log(f"image_operations: copy_image_to_internal stream copy done ({time.time() - t0:.3f}s)")
     return result
 
 def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60):
     """Create a low-resolution JPEG thumbnail for src and return its path.
     If Pillow is not available or creation fails, returns the original path string.
     """
-    boot_log(f"image_operations: create_thumbnail start {os.path.basename(str(src_path))}")
+    # _thumb_t0 = time.time()
+    # print(f"image_operations: create_thumbnail start {os.path.basename(str(src_path))}")
     def use_android_classes_to_create_thumbnail(src_path_, destination_path):
+        # _t = time.time()
         max_width = size[0]
         max_height = size[1]
 
@@ -497,11 +485,15 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
         bitmap = BitmapFactory.decodeFile(src_path_)
         if bitmap is None:
             raise Exception("Failed to decode image")
+        # print(f"  [thumb] decodeFile {time.time()-_t:.3f}s")
 
+        # _t2 = time.time()
         # 2. Convert to RGB (ARGB_8888 ≈ RGB)
         bitmap = bitmap.copy(BitmapConfig.ARGB_8888, False)
+        # print(f"  [thumb] bitmap.copy {time.time()-_t2:.3f}s")
 
         # 3. Compute thumbnail size (keep aspect ratio)
+        # _t2 = time.time()
         width = bitmap.getWidth()
         height = bitmap.getHeight()
 
@@ -515,15 +507,19 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
 
         # High-quality resize (Android internal filter)
         resized = Bitmap.createScaledBitmap(bitmap, new_w, new_h, True)
+        # print(f"  [thumb] createScaledBitmap {time.time()-_t2:.3f}s")
 
         # 4. Save as JPEG
+        # _t2 = time.time()
         out = FileOutputStream(destination_path)
         resized.compress(CompressFormat.JPEG, quality, out)
         out.close()
+        # print(f"  [thumb] compress+write {time.time()-_t2:.3f}s")
 
         # Cleanup
         bitmap.recycle()
         resized.recycle()
+        # print(f"  [thumb] android total {time.time()-_t:.3f}s")
 
     if str(src_path).endswith(".webp"):
         return str(src_path)
@@ -539,28 +535,40 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
 
     try:
         src_path = Path(src_path)
+        # _thumb_t1 = time.time()
         destination = thumbnail_path_for(src_path, destination_dir)
+        # print(f"  [thumb] thumbnail_path_for {time.time()-_thumb_t1:.3f}s")
         # If thumbnail already exists and is newer than source, reuse it
         if destination.exists() and destination.stat().st_mtime >= src_path.stat().st_mtime:
+            # print(f"  [thumb] reused existing thumbnail in {time.time()-_thumb_t0:.3f}s")
             return str(destination)
 
         if Image:
+            # _thumb_t2 = time.time()
             with Image.open(src_path) as im:
                 im = im.convert('RGB')
+                # print(f"  [thumb] PIL open+convert {time.time()-_thumb_t2:.3f}s")
+                # _thumb_t3 = time.time()
                 im.thumbnail(size, Image.LANCZOS)
+                # print(f"  [thumb] PIL thumbnail {time.time()-_thumb_t3:.3f}s")
+                # _thumb_t4 = time.time()
                 im.save(destination, format='JPEG', quality=quality)
+                # print(f"  [thumb] PIL save {time.time()-_thumb_t4:.3f}s")
+            # print(f"  [thumb] pillow total {time.time()-_thumb_t2:.3f}s")
         elif _on_android_platform():
             # BitmapFactory/decodeFile + the JNI round-trips below are not safe to
             # run from multiple threads at once: concurrent first-use class
             # resolution made decodeFile return another thread's image, so
             # thumbnails ended up as copies of a different wallpaper. Serialize it.
+            # _thumb_t2 = time.time()
             with _ANDROID_THUMBNAIL_LOCK:
+                # print(f"  [thumb] lock wait {time.time()-_thumb_t2:.3f}s")
                 try:
                     use_android_classes_to_create_thumbnail(str(src_path), str(destination))
                 except Exception as error_using_android_classes_to_create_thumbnail:
                     print("error_using_android_classes_to_create_thumbnail",error_using_android_classes_to_create_thumbnail)
                     traceback.print_exc()
-        boot_log(f"image_operations: create_thumbnail done {os.path.basename(str(src_path))}")
+        # print(f"  [thumb] create_thumbnail done in {time.time()-_thumb_t0:.3f}s")
         return str(destination)
     except OSError as os_error:
         app_logger.exception(f"OSError creating thumbnail for: {src_path}, os_error:{os_error}")
@@ -570,7 +578,6 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
         return str(src_path)
 
 def copy_uri_to_internal(destination_name, uri):
-    boot_log(f"image_operations: copy_uri_to_internal start {destination_name}")
     if not uri:
         raise Exception("Image not found in MediaStore")
 
@@ -579,15 +586,12 @@ def copy_uri_to_internal(destination_name, uri):
 
     input_stream = BufferedInputStream(_get_content_resolver().openInputStream(uri))
     try:
-        boot_log("image_operations: copy_uri_to_internal trying java native copy")
         if _try_java_native_copy(input_stream, destination_path):
-            boot_log("image_operations: copy_uri_to_internal java native copy succeeded")
             return destination_path
     finally:
         input_stream.close()
 
     # Fresh stream for the Python fallback (java copy may have consumed it).
-    boot_log("image_operations: copy_uri_to_internal using python stream fallback")
     input_stream = BufferedInputStream(_get_content_resolver().openInputStream(uri))
     try:
         output_stream = BufferedOutputStream(FileOutputStream(destination_path))
@@ -625,7 +629,6 @@ def thumbnail_path_for(src, destination_dir=None):
 def _try_java_native_copy(input_stream, destination_path):
     """Copy the stream entirely inside Java (one JNI call) on API 29+.
     Returns True when the copy succeeded, False to fall back to Python."""
-    boot_log(f"image_operations: _try_java_native_copy start {os.path.basename(destination_path)}")
     output_stream = None
     try:
         if BuildVersion.SDK_INT < 29:
@@ -648,9 +651,7 @@ def _try_java_native_copy(input_stream, destination_path):
         return False
 
 def is_image_uri(uri):
-    boot_log(f"image_operations: is_image_uri start")
     mime = _get_content_resolver().getType(uri)
-    boot_log(f"image_operations: is_image_uri done: {mime}")
     return mime and mime.startswith("image/")
 
 def get_or_create_thumbnail(src, destination_dir=None, size=(320, 320)):
@@ -658,7 +659,6 @@ def get_or_create_thumbnail(src, destination_dir=None, size=(320, 320)):
     return create_thumbnail(src, destination_dir=destination_dir, size=size)
 
 def get_image_info(path):
-    boot_log(f"image_operations: get_image_info {os.path.basename(path)}")
     info_dict = {
                 "Pixels": "Nil",
                 "Megapixels": "Nil",
@@ -707,7 +707,6 @@ def get_image_info(path):
     return info_dict
 
 def share_image_to_other_app(image_absolute_path):
-    boot_log(f"image_operations: share_image_to_other_app {os.path.basename(image_absolute_path)}")
     if not _on_android_platform():
         app_logger.warning("Can't share to Another App, Not on Android.")
         return None
@@ -741,7 +740,6 @@ def share_image_to_other_app(image_absolute_path):
         traceback.print_exc()
 
 def share_images_to_other_app(image_paths):
-    boot_log(f"image_operations: share_images_to_other_app {len(image_paths)} images")
     if not _on_android_platform():
         app_logger.warning("Can't share to Another App, Not on Android.")
         return None
