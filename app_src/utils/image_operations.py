@@ -682,7 +682,9 @@ def get_image_info(path):
                 "Pixels": "Nil",
                 "Megapixels": "Nil",
                 "Size": "Nil",
-                "MIME": "Nil"
+                "MIME": "Nil",
+                "long_date": "Nil", # Monday, 12th Oct 2026
+                "time": "Nil", # 12:30PM
             }
 
     # Check if file exists
@@ -697,6 +699,13 @@ def get_image_info(path):
     else:
         size_str = f"{size_bytes / (1024 * 1024):.2f} MB"
     info_dict["Size"] = size_str
+
+    from datetime import datetime
+    ctime_timestamp = os.path.getctime(path)
+    creation_date = datetime.fromtimestamp(ctime_timestamp)
+    # Separate into two format strings
+    info_dict["long_date"] = creation_date.strftime("%A, %B %d, %Y")  # August 25, 2026
+    info_dict["time"] = creation_date.strftime("%I:%M %p")  # 12:06 PM
 
     if not _on_android_platform():
         return info_dict

@@ -162,10 +162,11 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
         self.img.source = self.images[self.i]
         self.img.size = [dp(self.img_sizes[self.i]), dp(self.img_sizes[self.i])]
 
-# dialog_popup = DialogScreen(ok_callback = self.delete_current)
+# delete_dialog_popup = DialogScreen(ok_callback = self.delete_current)
+
 
 class FullscreenScreen(MyMDScreen):
-    current_image: str # used in toggle btn
+    current_image: str = "" # used in toggle btn
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -190,7 +191,6 @@ class FullscreenScreen(MyMDScreen):
         self.layout = None
         self.generic_status_bar_spacer = None
         self.info_popup = None
-        self.showing_info_modal = False
         self.carousel_has_images = None
         self.clock_for_higher_format = None
         self.clock_for_side_by_side = None
@@ -220,7 +220,7 @@ class FullscreenScreen(MyMDScreen):
         from kivymd.uix.label import MDLabel
         from kivymd.uix.floatlayout import MDFloatLayout
         from ui.widgets.layouts import get_dimensions, GenericStatusBarSpacer
-        from ui.widgets.modals import DialogScreen
+        from ui.widgets.modals import DialogScreen, InfoPopUpModal
         from utils.image_operations import share_image_to_other_app
 
         self.generic_status_bar_spacer=GenericStatusBarSpacer(
@@ -229,7 +229,8 @@ class FullscreenScreen(MyMDScreen):
         self.add_widget(self.generic_status_bar_spacer)
         sub_text = "This wallpaper will be permanently removed from App Storage"
         header_text = "Remove Image?"
-        dialog_popup = DialogScreen(header_text=header_text, subtitle_text=sub_text, ok_callback = self.delete_current)
+        delete_dialog_popup = DialogScreen(header_text=header_text, subtitle_text=sub_text, ok_callback = self.delete_current)
+        self.info_popup = InfoPopUpModal()
         # Main layout container
         self.layout = MDFloatLayout(md_bg_color=[0, 0, 0, 1])
         self.layout.pos_hint ={"top":1}
@@ -346,8 +347,10 @@ class FullscreenScreen(MyMDScreen):
         self.layout.add_widget(self.btm_btn_layout_root)
 
         # Bind events
-        self.btn_delete.bind(on_release=lambda x:dialog_popup.show(img_texture=self.carousel.current_slide.texture))
-        self.btn_info.bind(on_release=self.show_info)
+
+        self.btn_delete.bind(on_release=lambda x:delete_dialog_popup.show(img_texture=self.carousel.current_slide.texture))
+        self.btn_info.bind(on_release=lambda x:self.info_popup.show(image_abs_path=self.current_image,img_texture=self.carousel.current_slide.texture))
+
         self.btn_fullscreen.bind(on_release=self.enter_preview_mode)
 
         # self.set_wallpaper_btn.bind(on_release=lambda x: change_wallpaper(self.carousel.current_slide.higher_format))
@@ -452,25 +455,22 @@ class FullscreenScreen(MyMDScreen):
     # ====================================================================
     #               IMAGE INFO POPUP
     # ====================================================================
-    def show_info(self, *_):
-        from ui.widgets.layouts import MyPopUp
-        from utils.image_operations import get_image_info
-        self.showing_info_modal = True
-        gallery_screen = self.manager.gallery_screen
+    # def show_info(self, *_):
+    #     print("self.showing_info_modal = True")
 
-        if not gallery_screen.wallpapers:
-            return
 
-        idx = self.carousel.index
-        path = gallery_screen.wallpapers[idx]
-
-        self.info_popup = MyPopUp(
-            info = get_image_info(path)
-            # title="Image Info",
-            # content=Label(text=f"Path:\n{path}"),
-            # size_hint=(0.8, 0.4)
-        )
-        self.info_popup.open()
+        # from utils.image_operations import get_image_info
+        # gallery_screen = self.manager.gallery_screen
+        # idx = self.carousel.index
+        # path = gallery_screen.wallpapers[idx]
+        #
+        # self.info_popup = MyPopUp(
+        #     info = get_image_info(path)
+        #     # title="Image Info",
+        #     # content=Label(text=f"Path:\n{path}"),
+        #     # size_hint=(0.8, 0.4)
+        # )
+        # self.info_popup.open()
 
     def update_images(self,index=None):
         """Rebuild carousel anytime wallpapers change."""
@@ -606,12 +606,9 @@ class FullscreenScreen(MyMDScreen):
         self.generic_status_bar_spacer.status_bar_height=self.status_bar_height
 
     def back_to_gallery_screen(self,*_):
-        if self.showing_info_modal:
-            self.info_popup.dismiss()
-            self.showing_info_modal=False
-        else:
-            self.app.sm.gallery_screen.refresh_gallery_screen()
-            self.manager.current = "thumbs"
+
+        self.app.sm.gallery_screen.refresh_gallery_screen()
+        self.manager.current = "thumbs"
 
 
 def patch_resolution(proxy_image, image_object):
