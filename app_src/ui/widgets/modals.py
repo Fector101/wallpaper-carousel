@@ -1,6 +1,7 @@
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.properties import ListProperty, StringProperty, BooleanProperty, ObjectProperty, NumericProperty
+from kivy.uix.widget import Widget
 from kivymd.uix.button import MDButtonText, MDButton
 from kivymd.uix.fitimage import FitImage
 from kivymd.uix.floatlayout import MDFloatLayout
@@ -361,17 +362,18 @@ class InfoPopUpContent(Column,PlaceOnMainScreen):
             theme_text_color="Custom",
             text_color=get_color_from_hex("#86EFF3"),
             bold=True,
-            # adaptive_size=1,
+            adaptive_size=1,
             theme_font_name="Custom",
             font_name="RobotoMono",
-            pos_hint={"center_y": .5}
+            pos_hint={"center_y": .5},
+            # md_bg_color=[1,0,0,1]
         )
         self.when_text.size_hint=(None,None)
         self.when_text.bind(texture_size= lambda i,v: setattr(self.when_text,"size",v))
         self.total_usage_layout = Column(
             # md_bg_color=[.1,0.4,1,1],
             md_bg_color=get_color_from_hex("#2D2D30"),
-            adaptive_height=1,
+            adaptive_size=1,
             padding=dp(6),
             radius=[dp(5)]
             # r
@@ -453,7 +455,7 @@ class InfoPopUpContent(Column,PlaceOnMainScreen):
             md_bg_color=get_color_from_hex("#2D2D30"),
             pos_hint={"top": 1},
             # padding=5,
-            padding=dp(8),
+            padding=dp(5),
             spacing=dp(5),
             rows=3,
             adaptive_size=True,
@@ -502,12 +504,13 @@ class InfoPopUpContent(Column,PlaceOnMainScreen):
 
         self.first_row.add_widget(self.img)
         self.first_row.add_widget(self.when_text)
+        self.first_row.add_widget(Widget())
 
         self.total_usage_data_layout.add_widget(self.times_changed_card)
         self.total_usage_data_layout.add_widget(self.times_skipped_card)
 
         self.total_usage_layout.add_widget(MDLabel(
-            text="Total Usage",adaptive_size=1,
+            text="Analytics",adaptive_size=1,
             theme_text_color="Custom", text_color=get_color_from_hex("#8E8E93"),
             theme_font_name="Custom", font_name="RobotoMono",
             theme_font_size="Custom", font_size=sp(13),
@@ -530,7 +533,9 @@ class InfoPopUpContent(Column,PlaceOnMainScreen):
             theme_text_color="Custom", text_color=get_color_from_hex("#8E8E93"),
             theme_font_name="Custom", font_name="RobotoMono",
             theme_font_size="Custom", font_size=sp(13),
-            bold=True
+            bold=True,pos_hint={"top":1},
+            # md_bg_color=[1,0,1,1]
+
         ))
 
 
