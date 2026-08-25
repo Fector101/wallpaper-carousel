@@ -704,7 +704,7 @@ def get_image_info(path):
     ctime_timestamp = os.path.getctime(path)
     creation_date = datetime.fromtimestamp(ctime_timestamp)
     # Separate into two format strings
-    info_dict["long_date"] = creation_date.strftime("%A, %B %d, %Y")  # August 25, 2026
+    info_dict["long_date"] = creation_date.strftime("%A, %d %B %Y")  # August 25, 2026
     info_dict["time"] = creation_date.strftime("%I:%M %p")  # 12:06 PM
 
     if not _on_android_platform():
