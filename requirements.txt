@@ -1,9 +1,11 @@
 kivy
-https://github.com/kivymd/KivyMD/archive/master.zip
+kivymd==2.0.0
 materialyoucolor
 asynckivy
 pyjnius==1.7.0
 android-notify @ https://github.com/Fector101/android_notify/archive/ddec6efe51f02ce61dbc9242b5dd015c5e6d68ba.zip
 python-osc
 android-widgets
-git+https://github.com/kivy/plyer.git
+https://github.com/fector101/plyer/archive/feature/file-type-parser.zip
+buildozer
+cython==0.29.34
