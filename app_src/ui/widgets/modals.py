@@ -1,5 +1,3 @@
-import os
-
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.properties import ListProperty, StringProperty, BooleanProperty, ObjectProperty, NumericProperty
@@ -590,7 +588,9 @@ class InfoPopUpModal(MDRelativeLayout,PlaceOnMainScreen):
             pos_hint={"center_x":.5,"center_y":.5},
         )
         self.add_widget(self.dialog_box)
+
     def on_image_abs_path(self,_,path):
+        import os
         if not os.path.exists(path):
             return
         info_dict = get_image_info(path)
@@ -616,3 +616,7 @@ class InfoPopUpModal(MDRelativeLayout,PlaceOnMainScreen):
 
     def hide(self, *_):
         super().hide()
+
+    def on_touch_down(self, touch):
+        super().on_touch_down(touch)# for the children touch
+        return True # consume the touch for self

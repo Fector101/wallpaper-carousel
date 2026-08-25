@@ -166,7 +166,7 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
 
 
 class FullscreenScreen(MyMDScreen):
-    current_image: str = "" # used in toggle btn
+    current_image: str # used in toggle btn
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -347,10 +347,8 @@ class FullscreenScreen(MyMDScreen):
         self.layout.add_widget(self.btm_btn_layout_root)
 
         # Bind events
-
         self.btn_delete.bind(on_release=lambda x:delete_dialog_popup.show(img_texture=self.carousel.current_slide.texture))
         self.btn_info.bind(on_release=lambda x:self.info_popup.show(image_abs_path=self.current_image,img_texture=self.carousel.current_slide.texture))
-
         self.btn_fullscreen.bind(on_release=self.enter_preview_mode)
 
         # self.set_wallpaper_btn.bind(on_release=lambda x: change_wallpaper(self.carousel.current_slide.higher_format))
@@ -452,25 +450,6 @@ class FullscreenScreen(MyMDScreen):
         self.carousel.index = new_index
         self.__patch_for_first_not_getting_called_by_on_current_slide(index=new_index)
         spinner_layout.remove()
-    # ====================================================================
-    #               IMAGE INFO POPUP
-    # ====================================================================
-    # def show_info(self, *_):
-    #     print("self.showing_info_modal = True")
-
-
-        # from utils.image_operations import get_image_info
-        # gallery_screen = self.manager.gallery_screen
-        # idx = self.carousel.index
-        # path = gallery_screen.wallpapers[idx]
-        #
-        # self.info_popup = MyPopUp(
-        #     info = get_image_info(path)
-        #     # title="Image Info",
-        #     # content=Label(text=f"Path:\n{path}"),
-        #     # size_hint=(0.8, 0.4)
-        # )
-        # self.info_popup.open()
 
     def update_images(self,index=None):
         """Rebuild carousel anytime wallpapers change."""
@@ -606,7 +585,6 @@ class FullscreenScreen(MyMDScreen):
         self.generic_status_bar_spacer.status_bar_height=self.status_bar_height
 
     def back_to_gallery_screen(self,*_):
-
         self.app.sm.gallery_screen.refresh_gallery_screen()
         self.manager.current = "thumbs"
 
