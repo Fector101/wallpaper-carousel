@@ -75,13 +75,17 @@ class WallpaperCarouselApp(MDApp):
         Builder.load_string("""
 <MDButton>:
     theme_elevation_level: "Custom"
-    elevation_level: 0
     theme_shadow_softness: "Custom"
+    theme_shadow_color: "Custom"
+    elevation_level: 0
+    shadow_color: [0,0,0,0]
     shadow_softness: 0
 <MDIconButton>:
     theme_elevation_level: "Custom"
-    elevation_level: 0
     theme_shadow_softness: "Custom"
+    theme_shadow_color: "Custom"
+    elevation_level: 0
+    shadow_color: [0,0,0,0]
     shadow_softness: 0
 """)
         boot_log("build_ui: Builder.load_string done")

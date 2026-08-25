@@ -996,6 +996,12 @@ class GalleryScreen(MyMDScreen):
                     items=self._menu_items_data,
                     width_mult=4,
                     theme_bg_color="Custom",
+                    theme_elevation_level= "Custom",
+                    theme_shadow_softness= "Custom",
+                    theme_shadow_color= "Custom",
+                    elevation_level= 0,
+                    shadow_color= [0, 0, 0, 0],
+                    shadow_softness= 0,
                 )
         self._update_menu_theme(None, self.app.device_theme)
         self.app.bind(device_theme=self._update_menu_theme)
