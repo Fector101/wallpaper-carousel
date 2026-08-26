@@ -32,6 +32,7 @@ class MyTextButton(MDButton):
     font_name = StringProperty("")
     font_size = ObjectProperty("")
     size_padding = NumericProperty(10)
+    bold = BooleanProperty(True)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.elevation_level = 1
@@ -39,7 +40,9 @@ class MyTextButton(MDButton):
         self.theme_height = "Custom"
         self.txt = MDButtonText(text=self.text,
                                 theme_text_color='Custom',
-                                pos_hint={"center_x": .5, "center_y": .5})
+                                pos_hint={"center_x": .5, "center_y": .5},
+                                bold=self.bold
+                                )
 
         # p(self.adaptive_size)
         if self.adaptive_size:
@@ -144,9 +147,12 @@ class MyDialogBox(Column,PlaceOnMainScreen):
         #     spacing=dp(1),
         #     pos_hint={"center_y": .5}
         # )
-        self.subtext = AdaptiveLabel(text=self.subtitle_text,font_name="RobotoMono",size_hint=[None, None])
+        self.subtext = AdaptiveLabel(
+            text=self.subtitle_text,
+            font_name="RobotoMono",size_hint=[None, None],
+            font_size = "12sp"
+        )
         self.bind(subtitle_text=lambda _,v: setattr(self.subtext,"text",v))
-        self.subtext.font_size="13sp"
         self.subtext.pos_hint={"center_x":0.5,"center_y":0.5}
         self.subtext.color = (0.302, 0.278, 0.278, 1.0)
         self.subtext.valign="center"
@@ -167,7 +173,12 @@ class MyDialogBox(Column,PlaceOnMainScreen):
 
         self.buttons_box.add_widget(self.cancel_btn)
         if self.show_ok_button:
-            self.ok_btn = MyTextButton(text=self.ok_button_text,md_bg_color=self.ok_button_color,theme_bg_color="Custom",text_color=[0,0,0,1],radius=[5],on_release=self.ok)
+            self.ok_btn = MyTextButton(
+                text=self.ok_button_text,
+                md_bg_color=get_color_from_hex("D83D3D"),theme_bg_color="Custom",
+                text_color=[0,0,0,1],radius=[5],
+                on_release=self.ok
+            )
             self.ok_btn.pos_hint = {"right":1}
             self.buttons_box.add_widget(self.ok_btn)
         self.add_widget(self.buttons_box)
@@ -180,7 +191,7 @@ class MyDialogBox(Column,PlaceOnMainScreen):
 
     def wrap_text_width(self, i, v):
         # p(f"self.text_layout {self.text_layout.width}, dp:{dp(self.text_layout.width)}") # self.text_layout 470.0, dp:940.0
-        self.subtext.text_size = [self.width, None]
+        self.subtext.text_size = [self.width - 40, None]
 
     def set_theme(self, _, theme):
         if theme == "light":
