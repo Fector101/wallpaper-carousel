@@ -618,8 +618,9 @@ class InfoPopUpModal(MDRelativeLayout,PlaceOnMainScreen):
                 set_count, skip_count, last_set, last_skipped, tab = stats
                 self.dialog_box.times_changed_card.title = str(set_count or 0)
                 self.dialog_box.times_skipped_card.title = str(skip_count or 0)
-                tab_labels = {"both": "Both", "day": "Day", "noon": "Noon"}
-                self.dialog_box.when_text.text = tab_labels.get(tab or "both", "Both")
+                # tab_labels = {"both": "Both", "day": "Day", "noon": "Noon"}
+                
+                self.dialog_box.when_text.text = tab or "Both" #tab_labels.get(tab or "both", "Both")
         except Exception as error_get_analyticis:
             app_logger.exception("Error getting image analytics:", exc_info=error_get_analyticis)
             traceback.print_exc()
