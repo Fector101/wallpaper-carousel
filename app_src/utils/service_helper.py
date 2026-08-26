@@ -23,22 +23,23 @@ from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_
 from utils.helper import change_wallpaper, appFolder, format_time_remaining, service_port_store_path, ui_port_store_path
 from utils.logger import app_logger
 
-_, autoclass = _get_jnius()
+if on_android_platform():
+    _, autoclass = _get_jnius()
 
-Bitmap = autoclass('android.graphics.Bitmap')
-BitmapConfig = autoclass('android.graphics.Bitmap$Config')
-Canvas = autoclass('android.graphics.Canvas')
-Paint = autoclass('android.graphics.Paint')
-Rect = autoclass('android.graphics.Rect')
-RectF = autoclass('android.graphics.RectF')
-PorterDuffMode = autoclass('android.graphics.PorterDuff$Mode')
-PorterDuffXfermode = autoclass('android.graphics.PorterDuffXfermode')
-BitmapFactoryOptions = autoclass('android.graphics.BitmapFactory$Options')
-AppWidgetManager_ = autoclass('android.appwidget.AppWidgetManager')
-ComponentName = autoclass('android.content.ComponentName')
-RemoteViews_ = autoclass('android.widget.RemoteViews')
-View = autoclass('android.view.View')
-IntentFilter = autoclass('android.content.IntentFilter')
+    Bitmap = autoclass('android.graphics.Bitmap')
+    BitmapConfig = autoclass('android.graphics.Bitmap$Config')
+    Canvas = autoclass('android.graphics.Canvas')
+    Paint = autoclass('android.graphics.Paint')
+    Rect = autoclass('android.graphics.Rect')
+    RectF = autoclass('android.graphics.RectF')
+    PorterDuffMode = autoclass('android.graphics.PorterDuff$Mode')
+    PorterDuffXfermode = autoclass('android.graphics.PorterDuffXfermode')
+    BitmapFactoryOptions = autoclass('android.graphics.BitmapFactory$Options')
+    AppWidgetManager_ = autoclass('android.appwidget.AppWidgetManager')
+    ComponentName = autoclass('android.content.ComponentName')
+    RemoteViews_ = autoclass('android.widget.RemoteViews')
+    View = autoclass('android.view.View')
+    IntentFilter = autoclass('android.content.IntentFilter')
 
 
 my_config = ConfigManager()
@@ -471,7 +472,14 @@ class WallpaperServerReceiver:
         pass
 
     def receiveClientChangeNext(self, *_):
+        skipped_path = self.next_wallpaper_path
         self.choseAndShowPreviewForNextWallpaper()
+        if skipped_path:
+            try:
+                from utils.database import ImageDatabase
+                ImageDatabase().record_skip(skipped_path)
+            except Exception:
+                pass
         # if my_config.get_on_wake_state():
         #     # Only Change Next Wallpaper and Not Clear Loops that results to choosing new Wallpaper
         #     self.choseAndShowPreviewForNextWallpaper()

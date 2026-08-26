@@ -320,6 +320,11 @@ def change_wallpaper(wallpaper_path, do_ui_thing=None):
             bitmap = BitmapFactory.decodeFile(wallpaper_path)
             FLAG_LOCK = WallpaperManager.FLAG_LOCK
             wallpaper_manager.setBitmap(bitmap, None, True, FLAG_LOCK)
+            try:
+                from utils.database import ImageDatabase
+                ImageDatabase().record_wallpaper_set(wallpaper_path)
+            except Exception:
+                pass
             if not from_service_file():
                 _toast("Changed Wallpaper")
             # print(f"Success: Lock screen wallpaper changed to: {os.path.basename(wallpaper_path)}")

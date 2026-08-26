@@ -13,6 +13,7 @@ from ui.widgets.layouts import LoadingLayout
 from utils.helper import appFolder
 
 from utils.config_manager import ConfigManager
+from utils.database import ImageDatabase
 from utils.logger import app_logger
 from utils.platform_compat import on_android_platform as _on_android_platform, on_pydroid_app as _on_pydroid_app, LazyJavaClass as _LazyJavaClass
 
@@ -163,6 +164,7 @@ class ImageOperation:
         with ThreadPoolExecutor(max_workers=3) as pool:
             list(pool.map(lambda args: process_one(*args), enumerate(files)))
         _add_wallpapers_to_config(new_images)
+        ImageDatabase().insert_images(new_images)
         self.file_picker_active = False
         self.processing_intent = False
         Clock.schedule_once(self.ui_things, 0)
@@ -235,6 +237,7 @@ class ImageOperation:
 
                 app_logger.info(f"import_from_{TAG}: imported- {len(new_images)}/{len(uris)} images")
                 _add_wallpapers_to_config(new_images)
+                ImageDatabase().insert_images(new_images)
                 self._file_picker_active = False
                 self.processing_intent = False
                 Clock.schedule_once(lambda dt: self.ui_things(dt), 0)
@@ -682,7 +685,9 @@ def get_image_info(path):
                 "Pixels": "Nil",
                 "Megapixels": "Nil",
                 "Size": "Nil",
-                "MIME": "Nil"
+                "MIME": "Nil",
+                "long_date": "Nil", # Monday, 12th Oct 2026
+                "time": "Nil", # 12:30PM
             }
 
     # Check if file exists
@@ -697,6 +702,13 @@ def get_image_info(path):
     else:
         size_str = f"{size_bytes / (1024 * 1024):.2f} MB"
     info_dict["Size"] = size_str
+
+    from datetime import datetime
+    ctime_timestamp = os.path.getctime(path)
+    creation_date = datetime.fromtimestamp(ctime_timestamp)
+    # Separate into two format strings
+    info_dict["long_date"] = creation_date.strftime("%A, %d %B %Y")  # August 25, 2026
+    info_dict["time"] = creation_date.strftime("%I:%M %p")  # 12:06 PM
 
     if not _on_android_platform():
         return info_dict

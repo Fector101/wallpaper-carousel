@@ -1,33 +1,14 @@
+from ui.widgets.generic import LineDivider
 from utils.boot_log import boot_log
 from kivy.clock import Clock
 from kivy.properties import StringProperty
 from kivy.utils import get_color_from_hex
 from kivy.metrics import dp
-from kivy.uix.widget import Widget
 
 from ui.widgets.layouts import MyMDScreen, GenericStatusBarSpacer, Row, Column
 
 
-class LineDivider(Widget):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        from kivy.graphics import Color, Line
-        self.size_hint_y = None
-        self.height = 2  # Set line thickness space area
-
-        with self.canvas:
-            Color(*get_color_from_hex("5E5E5E"))
-            self.line = Line(points=[], width=0.5)
-
-        # Bind it to its own size/position changes
-        self.bind(pos=self.update_line, size=self.update_line)
-
-    def update_line(self, *_):
-        # Keeps the line perfectly straight along its own layout position
-        self.line.points = [self.x, self.y, self.x + self.width, self.y]
-
-
-class StatsListItem(Row):  # Assuming Row inherits from horizontal MDBoxLayout
+class StatsListItem(Row):
     title = StringProperty()
     size_txt = StringProperty()
 

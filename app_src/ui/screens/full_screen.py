@@ -148,6 +148,12 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
         elif new_tab == GalleryTabs.DAY.value:
             my_config.add_wallpaper_to_day_wallpapers(current_image)
 
+        try:
+            from utils.database import ImageDatabase
+            ImageDatabase().update_tab(current_image, new_tab)
+        except Exception:
+            pass
+
 
     def set_day_image(self):
         self.i = 2
@@ -162,7 +168,8 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
         self.img.source = self.images[self.i]
         self.img.size = [dp(self.img_sizes[self.i]), dp(self.img_sizes[self.i])]
 
-# dialog_popup = DialogScreen(ok_callback = self.delete_current)
+# delete_dialog_popup = DialogScreen(ok_callback = self.delete_current)
+
 
 class FullscreenScreen(MyMDScreen):
     current_image: str # used in toggle btn
@@ -190,7 +197,6 @@ class FullscreenScreen(MyMDScreen):
         self.layout = None
         self.generic_status_bar_spacer = None
         self.info_popup = None
-        self.showing_info_modal = False
         self.carousel_has_images = None
         self.clock_for_higher_format = None
         self.clock_for_side_by_side = None
@@ -203,6 +209,7 @@ class FullscreenScreen(MyMDScreen):
         self.app_dir = Path(appFolder())
         self.wallpapers_dir = self.app_dir / "wallpapers"
         self.built_ui = False
+        # self.build_ui()# hot_reload
 
     def on_enter(self, *args):
         super().on_enter(*args)
@@ -220,7 +227,7 @@ class FullscreenScreen(MyMDScreen):
         from kivymd.uix.label import MDLabel
         from kivymd.uix.floatlayout import MDFloatLayout
         from ui.widgets.layouts import get_dimensions, GenericStatusBarSpacer
-        from ui.widgets.modals import DialogScreen
+        from ui.widgets.modals import DialogScreen, InfoPopUpModal
         from utils.image_operations import share_image_to_other_app
 
         self.generic_status_bar_spacer=GenericStatusBarSpacer(
@@ -229,7 +236,9 @@ class FullscreenScreen(MyMDScreen):
         self.add_widget(self.generic_status_bar_spacer)
         sub_text = "This wallpaper will be permanently removed from App Storage"
         header_text = "Remove Image?"
-        dialog_popup = DialogScreen(header_text=header_text, subtitle_text=sub_text, ok_callback = self.delete_current)
+        delete_dialog_popup = DialogScreen(header_text=header_text, subtitle_text=sub_text, ok_callback = self.delete_current)
+        self.info_popup = InfoPopUpModal()
+        # self.add_widget(self.info_popup) # hot_reload
         # Main layout container
         self.layout = MDFloatLayout(md_bg_color=[0, 0, 0, 1])
         self.layout.pos_hint ={"top":1}
@@ -346,8 +355,8 @@ class FullscreenScreen(MyMDScreen):
         self.layout.add_widget(self.btm_btn_layout_root)
 
         # Bind events
-        self.btn_delete.bind(on_release=lambda x:dialog_popup.show(img_texture=self.carousel.current_slide.texture))
-        self.btn_info.bind(on_release=self.show_info)
+        self.btn_delete.bind(on_release=lambda x:delete_dialog_popup.show(img_texture=self.carousel.current_slide.texture))
+        self.btn_info.bind(on_release=lambda x:self.info_popup.show(image_abs_path=self.current_image,img_texture=self.carousel.current_slide.texture))
         self.btn_fullscreen.bind(on_release=self.enter_preview_mode)
 
         # self.set_wallpaper_btn.bind(on_release=lambda x: change_wallpaper(self.carousel.current_slide.higher_format))
@@ -425,6 +434,11 @@ class FullscreenScreen(MyMDScreen):
         if path and os.path.exists(path):
             os.remove(path)
             try:
+                from utils.database import ImageDatabase
+                ImageDatabase().remove_image(path)
+            except Exception:
+                pass
+            try:
                 thumb = Path(path).parent / "thumbs" / f"{Path(path).stem}_thumb.jpg"
                 if thumb.exists():
                     thumb.unlink()
@@ -449,28 +463,6 @@ class FullscreenScreen(MyMDScreen):
         self.carousel.index = new_index
         self.__patch_for_first_not_getting_called_by_on_current_slide(index=new_index)
         spinner_layout.remove()
-    # ====================================================================
-    #               IMAGE INFO POPUP
-    # ====================================================================
-    def show_info(self, *_):
-        from ui.widgets.layouts import MyPopUp
-        from utils.image_operations import get_image_info
-        self.showing_info_modal = True
-        gallery_screen = self.manager.gallery_screen
-
-        if not gallery_screen.wallpapers:
-            return
-
-        idx = self.carousel.index
-        path = gallery_screen.wallpapers[idx]
-
-        self.info_popup = MyPopUp(
-            info = get_image_info(path)
-            # title="Image Info",
-            # content=Label(text=f"Path:\n{path}"),
-            # size_hint=(0.8, 0.4)
-        )
-        self.info_popup.open()
 
     def update_images(self,index=None):
         """Rebuild carousel anytime wallpapers change."""
@@ -606,12 +598,8 @@ class FullscreenScreen(MyMDScreen):
         self.generic_status_bar_spacer.status_bar_height=self.status_bar_height
 
     def back_to_gallery_screen(self,*_):
-        if self.showing_info_modal:
-            self.info_popup.dismiss()
-            self.showing_info_modal=False
-        else:
-            self.app.sm.gallery_screen.refresh_gallery_screen()
-            self.manager.current = "thumbs"
+        self.app.sm.gallery_screen.refresh_gallery_screen()
+        self.manager.current = "thumbs"
 
 
 def patch_resolution(proxy_image, image_object):
