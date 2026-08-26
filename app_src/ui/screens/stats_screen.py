@@ -371,6 +371,7 @@ class StatsScreen(MyMDScreen):
         if count == 0:
             return
         dialog = DialogScreen(
+            icon_name="trash-can-outline",
             header_text=f"Remove {count} {'Image' if count == 1 else 'Images'}?",
             subtitle_text=f"This will permanently remove all {label} wallpapers from storage",
             ok_callback=lambda: self._do_remove_wallpapers(config_key, paths),
@@ -400,14 +401,15 @@ class StatsScreen(MyMDScreen):
         self._refresh_thumbs_screen()
 
     def _clear_cache(self):
-        from pathlib import Path as _P
-        thumb_dir = _P(appFolder()) / "wallpapers" / "thumbs"
+        from pathlib import Path
+        thumb_dir = Path(appFolder()) / "wallpapers" / "thumbs"
         if not thumb_dir.exists():
             return
         count = sum(1 for _ in thumb_dir.iterdir())
         if count == 0:
             return
         dialog = DialogScreen(
+            icon_name="broom",
             header_text=f"Clear {count} {'thumbnail' if count == 1 else 'thumbnails'}?",
             subtitle_text="This will permanently remove all cached thumbnails",
             ok_callback=lambda: self._do_clear_cache(thumb_dir),
@@ -422,6 +424,7 @@ class StatsScreen(MyMDScreen):
 
     def _clear_config(self):
         dialog = DialogScreen(
+            icon_name="cog",
             header_text="Reset app data?",
             subtitle_text="This will reset config and clear image history",
             ok_callback=self._do_clear_config,
