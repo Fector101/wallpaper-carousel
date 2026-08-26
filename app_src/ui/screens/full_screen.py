@@ -148,6 +148,12 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
         elif new_tab == GalleryTabs.DAY.value:
             my_config.add_wallpaper_to_day_wallpapers(current_image)
 
+        try:
+            from utils.database import ImageDatabase
+            ImageDatabase().update_tab(current_image, new_tab)
+        except Exception:
+            pass
+
 
     def set_day_image(self):
         self.i = 2
@@ -203,6 +209,7 @@ class FullscreenScreen(MyMDScreen):
         self.app_dir = Path(appFolder())
         self.wallpapers_dir = self.app_dir / "wallpapers"
         self.built_ui = False
+        # self.build_ui()# hot_reload
 
     def on_enter(self, *args):
         super().on_enter(*args)
@@ -231,6 +238,7 @@ class FullscreenScreen(MyMDScreen):
         header_text = "Remove Image?"
         delete_dialog_popup = DialogScreen(header_text=header_text, subtitle_text=sub_text, ok_callback = self.delete_current)
         self.info_popup = InfoPopUpModal()
+        # self.add_widget(self.info_popup) # hot_reload
         # Main layout container
         self.layout = MDFloatLayout(md_bg_color=[0, 0, 0, 1])
         self.layout.pos_hint ={"top":1}
@@ -425,6 +433,11 @@ class FullscreenScreen(MyMDScreen):
 
         if path and os.path.exists(path):
             os.remove(path)
+            try:
+                from utils.database import ImageDatabase
+                ImageDatabase().remove_image(path)
+            except Exception:
+                pass
             try:
                 thumb = Path(path).parent / "thumbs" / f"{Path(path).stem}_thumb.jpg"
                 if thumb.exists():

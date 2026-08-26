@@ -878,6 +878,12 @@ class MultiselectBottom(Row):
                 my_config.remove_wallpaper_to_from("noon_wallpapers", path)
             except Exception as error_removing_data1:
                 app_logger.exception(error_removing_data1)
+
+        try:
+            from utils.database import ImageDatabase
+            ImageDatabase().remove_images(paths)
+        except Exception:
+            pass
         
         if self.hide:
             self.hide()

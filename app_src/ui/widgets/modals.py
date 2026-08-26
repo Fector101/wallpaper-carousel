@@ -1,3 +1,5 @@
+import traceback
+
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.properties import ListProperty, StringProperty, BooleanProperty, ObjectProperty, NumericProperty
@@ -306,6 +308,8 @@ class IconCard(Row):
             theme_text_color="Custom", text_color=get_color_from_hex("#8E8E93"),
 
         )
+        self.bind(title=lambda _, value: setattr(self.title_label, "text", value))
+        self.bind(subtext=lambda _, value: setattr(self.subtext_label, "text", value))
 
         self.add_widget(self.icon_widget)
         self.text_layout.add_widget(self.title_label)
@@ -385,9 +389,9 @@ class InfoPopUpContent(Column,PlaceOnMainScreen):
             adaptive_size=1,
             spacing=dp(5)
         )
-        self.times_changed_card = IconCard(icon="clock",title="6",subtext="Usage")
+        self.times_changed_card = IconCard(icon="clock",title="--",subtext="Usage")
         self.times_skipped_card = IconCard(
-            icon="skip-next",title="30",subtext="Skips"
+            icon="skip-next",title="--",subtext="Skips"
         )
 
 
@@ -605,7 +609,21 @@ class InfoPopUpModal(MDRelativeLayout,PlaceOnMainScreen):
         self.dialog_box.file_res_label.text=info_dict["Pixels"]
         self.dialog_box.date_label_one.text=info_dict["long_date"]
         self.dialog_box.date_label_two.text=info_dict["time"]
-        print("self.dialog_box.file_name_label.text=v")
+
+        try:
+            from utils.database import ImageDatabase
+            stats = ImageDatabase().get_image_stats(path)
+            print(f"stats: {stats}")
+            if stats:
+                set_count, skip_count, last_set, last_skipped, tab = stats
+                self.dialog_box.times_changed_card.title = str(set_count or 0)
+                self.dialog_box.times_skipped_card.title = str(skip_count or 0)
+                tab_labels = {"both": "Both", "day": "Day", "noon": "Noon"}
+                self.dialog_box.when_text.text = tab_labels.get(tab or "both", "Both")
+        except Exception as error_get_analyticis:
+            app_logger.exception("Error getting image analytics:", exc_info=error_get_analyticis)
+            traceback.print_exc()
+            pass
 
 
     def show(self,image_abs_path,img_texture,*_):

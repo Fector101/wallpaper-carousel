@@ -472,7 +472,14 @@ class WallpaperServerReceiver:
         pass
 
     def receiveClientChangeNext(self, *_):
+        skipped_path = self.next_wallpaper_path
         self.choseAndShowPreviewForNextWallpaper()
+        if skipped_path:
+            try:
+                from utils.database import ImageDatabase
+                ImageDatabase().record_skip(skipped_path)
+            except Exception:
+                pass
         # if my_config.get_on_wake_state():
         #     # Only Change Next Wallpaper and Not Clear Loops that results to choosing new Wallpaper
         #     self.choseAndShowPreviewForNextWallpaper()
