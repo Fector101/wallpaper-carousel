@@ -4,7 +4,6 @@ import traceback
 from pathlib import Path
 
 from utils.helper import appFolder
-from utils.platform_compat import on_android_platform as _on_android_platform
 
 _SCHEMA = """CREATE TABLE IF NOT EXISTS images (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -88,22 +87,27 @@ class ImageDatabase:
 
     def record_wallpaper_set(self, path):
         self._execute(
-            "UPDATE images SET last_set_at = CURRENT_TIMESTAMP, set_count = set_count + 1 "
-            "WHERE image_path = ?",
+            "INSERT INTO images (image_path, last_set_at, set_count) "
+            "VALUES (?, CURRENT_TIMESTAMP, 1) "
+            "ON CONFLICT(image_path) DO UPDATE SET "
+            "last_set_at = CURRENT_TIMESTAMP, set_count = set_count + 1",
             (path,),
         )
 
     def record_skip(self, path):
         self._execute(
-            "UPDATE images SET last_skipped_at = CURRENT_TIMESTAMP, skip_count = skip_count + 1 "
-            "WHERE image_path = ?",
+            "INSERT INTO images (image_path, last_skipped_at, skip_count) "
+            "VALUES (?, CURRENT_TIMESTAMP, 1) "
+            "ON CONFLICT(image_path) DO UPDATE SET "
+            "last_skipped_at = CURRENT_TIMESTAMP, skip_count = skip_count + 1",
             (path,),
         )
 
     def update_tab(self, path, tab):
         self._execute(
-            "UPDATE images SET tab = ? WHERE image_path = ?",
-            (tab, path),
+            "INSERT INTO images (image_path, tab) VALUES (?, ?) "
+            "ON CONFLICT(image_path) DO UPDATE SET tab = ?",
+            (path, tab, tab),
         )
 
     def remove_image(self, path):
