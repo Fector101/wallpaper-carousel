@@ -51,13 +51,20 @@ class StackedBarChart(Widget):
 
         bar_h = dp(16)
         spacing = dp(10)
+        min_seg = dp(6)
         total = sum(value for _, value, _ in data) or 1
         count = len(data)
 
+        raw_widths = [width * (v / total) for _, v, _ in data]
+        shortfall = sum(max(min_seg - w, 0) for w in raw_widths)
+        if shortfall > 0:
+            big_idx = max(range(count), key=lambda i: data[i][1])
+            raw_widths[big_idx] = max(raw_widths[big_idx] - shortfall, min_seg)
+        widths = [max(w, min_seg) for w in raw_widths]
+
         bar_y = self.y + height - bar_h
         seg_x = self.x
-        for index, (_, value, color) in enumerate(data):
-            seg_w = width * (value / total)
+        for index, ((_, value, color), seg_w) in enumerate(zip(data, widths)):
             if index == 0:
                 radii = [(4, 4), (0, 0), (0, 0), (4, 4)]
             elif index == count - 1:
