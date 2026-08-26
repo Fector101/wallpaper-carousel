@@ -597,7 +597,7 @@ class InfoPopUpModal(MDRelativeLayout,PlaceOnMainScreen):
 
     def on_image_abs_path(self,_,path):
         import os
-        if not os.path.exists(path):
+        if not path or not os.path.exists(path):
             return
         info_dict = get_image_info(path)
 
@@ -636,6 +636,7 @@ class InfoPopUpModal(MDRelativeLayout,PlaceOnMainScreen):
         super().show()
 
     def hide(self, *_):
+        self.image_abs_path=""
         super().hide()
 
     def on_touch_down(self, touch):
