@@ -16,3 +16,8 @@ home*
 widgets.py
 bin/
 app_src/android_notify/
+tools/
+test_dev*
+*.db*
+*.json
+ImageDataBase error: _conn
