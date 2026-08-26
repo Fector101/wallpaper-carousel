@@ -502,7 +502,7 @@ class InfoPopUpContent(Column,PlaceOnMainScreen):
             # bold=True,
         )
         # self.file_name_label.size_hint=(None, None)
-        self.third_row.bind(width=lambda _,v: setattr(self.file_name_label,"text_size",[v,self.file_name_label.text_size[1]]))
+        self.third_row.bind(width=lambda _,v: setattr(self.file_name_label,"text_size",[v - dp(20) if v else v,self.file_name_label.text_size[1]]))
         # self.file_name_label.
 
 
@@ -619,8 +619,8 @@ class InfoPopUpModal(MDRelativeLayout,PlaceOnMainScreen):
                 self.dialog_box.times_changed_card.title = str(set_count or 0)
                 self.dialog_box.times_skipped_card.title = str(skip_count or 0)
                 # tab_labels = {"both": "Both", "day": "Day", "noon": "Noon"}
-                
-                self.dialog_box.when_text.text = tab or "Both" #tab_labels.get(tab or "both", "Both")
+                tab = tab or "Both"
+                self.dialog_box.when_text.text = tab.capitalize() #tab_labels.get(tab or "both", "Both")
         except Exception as error_get_analyticis:
             app_logger.exception("Error getting image analytics:", exc_info=error_get_analyticis)
             traceback.print_exc()
