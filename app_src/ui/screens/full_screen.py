@@ -14,21 +14,13 @@ from kivymd.uix.relativelayout import MDRelativeLayout
 from ui.widgets.layouts import MyMDScreen, LoadingLayout
 
 from utils.config_manager import ConfigManager
+from utils.helper import format_size
 from utils.model import get_app, GalleryTabs
 from utils.logger import app_logger
 
 
 my_config=ConfigManager()
 
-
-def format_size(bytes_size):
-    """
-    Convert bytes to human-readable size.
-    """
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if bytes_size < 1024:
-            return f"{bytes_size:.2f} {unit}"
-        bytes_size /= 1024
 
 
 class BorderMDBoxLayout(MDBoxLayout):
@@ -242,6 +234,7 @@ class FullscreenScreen(MyMDScreen):
         # Main layout container
         self.layout = MDFloatLayout(md_bg_color=[0, 0, 0, 1])
         self.layout.pos_hint ={"top":1}
+
 
         self.header_layout = BorderMDBoxLayout(
             orientation="horizontal", radius=[25],

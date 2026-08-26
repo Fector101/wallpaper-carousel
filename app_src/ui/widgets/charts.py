@@ -4,14 +4,7 @@ from kivy.metrics import dp, sp
 from kivy.properties import ListProperty
 from kivy.utils import get_color_from_hex
 from kivy.uix.widget import Widget
-
-
-def format_bytes(size):
-    if size >= 1024 * 1024:
-        return f"{size / (1024 * 1024):.1f} MB"
-    if size >= 1024:
-        return f"{int(round(size / 1024))} KB"
-    return f"{size} B"
+from utils.helper import format_size
 
 
 class StackedBarChart(Widget):
@@ -21,7 +14,7 @@ class StackedBarChart(Widget):
     """
 
     data = ListProperty([])
-    text_color = ListProperty(get_color_from_hex("FFFFFF"))
+    text_color = ListProperty(get_color_from_hex("ffffff"))
     value_color = ListProperty(get_color_from_hex("999898"))
 
     def __init__(self, **kwargs):
@@ -101,7 +94,8 @@ class StackedBarChart(Widget):
                           size=label_tex.size)
 
             percent = value / total * 100
-            value_text = f"{format_bytes(value)}  {percent:.0f}%"
+            value_text = f"{format_size(value)}  {percent:.2f}%"
+
             value_tex = self._texture(value_text, self.value_color, sp(12),
                                       self._value_textures)
             with self.canvas:
@@ -193,7 +187,7 @@ class HorizontalBarChart(Widget):
                                row_center - label_tex.height / 2),
                           size=label_tex.size)
 
-            value_text = format_bytes(value)
+            value_text = format_size(value)
             value_tex = self._texture(value_text, self.value_color, sp(12),
                                       self._value_textures)
             value_x = min(plot_x + bar_w + dp(8),

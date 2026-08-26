@@ -1,6 +1,5 @@
 # DO NOT IMPORT ANY UI THING TOP GLOBAL LEVEL
 import sys
-import threading
 
 from utils.platform_compat import on_android_platform as _on_android_platform, on_pydroid_app as _on_pydroid_app, LazyJavaClass as _LazyJavaClass, toast as _toast
 
@@ -465,3 +464,34 @@ def is_running_debug_build():
     except Exception as e:
         print(f"Error checking debuggable status: {e}")
         return False
+
+
+def format_size(bytes_size):
+    """
+    Convert bytes to human-readable size.
+    """
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if bytes_size < 1024:
+            return f"{bytes_size:.2f} {unit}"
+        bytes_size /= 1024
+
+
+def get_folder_size(folder_path):
+    import os
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(folder_path):
+        for filename in filenames:
+            file_path = os.path.join(dirpath, filename)
+            # Skip broken symbolic links to avoid errors
+            if not os.path.islink(file_path):
+                total_size += os.path.getsize(file_path)
+    return total_size
+
+def get_files_size(files:list) -> int:
+    import os
+    total_size = 0
+    for each_file_path in files:
+        # Skip broken symbolic links to avoid errors
+        if not os.path.islink(each_file_path):
+            total_size += os.path.getsize(each_file_path)
+    return total_size
