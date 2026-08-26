@@ -131,8 +131,20 @@ class ConfigManager:
     def get_noon_wallpapers(self):
         return self.read().get("noon_wallpapers", [])
 
+    def set_noon_wallpapers(self, lst):
+        with ConfigManager._lock:
+            data = self.read()
+            data["noon_wallpapers"] = lst
+            self.write(data)
+
     def get_day_wallpapers(self):
         return self.read().get("day_wallpapers", [])
+
+    def set_day_wallpapers(self, lst):
+        with ConfigManager._lock:
+            data = self.read()
+            data["day_wallpapers"] = lst
+            self.write(data)
 
     def add_wallpaper_to_day_wallpapers(self, path):
         with ConfigManager._lock:

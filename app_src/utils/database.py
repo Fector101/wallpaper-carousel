@@ -5,6 +5,7 @@ from pathlib import Path
 
 from utils.helper import appFolder
 
+
 _SCHEMA = """CREATE TABLE IF NOT EXISTS images (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     image_path TEXT UNIQUE NOT NULL,
@@ -18,6 +19,8 @@ _SCHEMA = """CREATE TABLE IF NOT EXISTS images (
 
 
 class ImageDatabase:
+    _cached_config_dir = None
+    _cached_config_path = None
     _instance = None
     _class_lock = threading.Lock()
 
@@ -33,12 +36,26 @@ class ImageDatabase:
             return
         self._initialized = True
         self._lock = threading.RLock()
-        db_path = Path(appFolder()) / "image_history.db"
+        db_path = self.config_path()
         print(f"ImageDatabase initialized at {db_path}")
         self._conn = sqlite3.connect(str(db_path), check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute(_SCHEMA)
         self._conn.commit()
+
+    @classmethod
+    def config_dir(cls):
+        if cls._cached_config_dir is not None:
+            return cls._cached_config_dir
+        cls._cached_config_dir = appFolder()
+        return cls._cached_config_dir
+
+    @classmethod
+    def config_path(cls):
+        if cls._cached_config_path is not None:
+            return cls._cached_config_path
+        cls._cached_config_path = Path(cls.config_dir()) / "image_history.db"
+        return cls._cached_config_path
 
     def _execute(self, sql, params=()):
         with self._lock:
@@ -115,6 +132,9 @@ class ImageDatabase:
             "DELETE FROM images WHERE image_path = ?",
             (path,),
         )
+
+    def clear_all(self):
+        self._execute("DELETE FROM images")
 
     def remove_images(self, paths):
         with self._lock:
