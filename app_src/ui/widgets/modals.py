@@ -567,7 +567,7 @@ class InfoPopUpContent(Column,PlaceOnMainScreen):
         self.add_widget(self.second_row)
         self.add_widget(self.third_row)
         self.btn_widget = MyTextButton(
-            text="Copy",
+            text="Close",
             # style="outlined",
             pos_hint={"right":1},
             adaptive_size=True,
@@ -610,21 +610,21 @@ class InfoPopUpModal(MDRelativeLayout,PlaceOnMainScreen):
         self.dialog_box.date_label_one.text=info_dict["long_date"]
         self.dialog_box.date_label_two.text=info_dict["time"]
 
+        self.dialog_box.times_changed_card.title = "0"
+        self.dialog_box.times_skipped_card.title = "0"
+        self.dialog_box.when_text.text = "Both"
+
         try:
             from utils.database import ImageDatabase
             stats = ImageDatabase().get_image_stats(path)
-            print(f"stats: {stats}")
             if stats:
-                set_count, skip_count, last_set, last_skipped, tab = stats
+                set_count, skip_count, _last_set, _last_skipped, tab = stats
                 self.dialog_box.times_changed_card.title = str(set_count or 0)
                 self.dialog_box.times_skipped_card.title = str(skip_count or 0)
-                # tab_labels = {"both": "Both", "day": "Day", "noon": "Noon"}
-                tab = tab or "Both"
-                self.dialog_box.when_text.text = tab.capitalize() #tab_labels.get(tab or "both", "Both")
+                self.dialog_box.when_text.text = (tab or "both").capitalize()
         except Exception as error_get_analyticis:
             app_logger.exception("Error getting image analytics:", exc_info=error_get_analyticis)
             traceback.print_exc()
-            pass
 
 
     def show(self,image_abs_path,img_texture,*_):
