@@ -109,6 +109,8 @@ class StatsScreen(MyMDScreen):
         super().on_enter(*args)
         if not self.built_ui:
             Clock.schedule_once(self._timer_set)
+        else:
+            self.refresh_storage_data()
 
     def _timer_set(self,_):
         Clock.schedule_once(self.build_ui)
@@ -326,7 +328,7 @@ class StatsScreen(MyMDScreen):
         cm2_file_path=ImageDatabase.config_path() #config.json v2
 
         cm1_file_path_size = os.path.getsize(cm1_file_path)
-        cm2_file_path_size = os.path.getsize(cm2_file_path)
+        cm2_file_path_size = os.path.getsize(cm2_file_path) if os.path.exists(cm2_file_path) else 0
         config_total_bytes=cm1_file_path_size+cm2_file_path_size
 
         both_wallpapers_file_paths=cm.get_wallpapers()
