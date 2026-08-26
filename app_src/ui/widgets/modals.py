@@ -1,7 +1,7 @@
 import traceback
 
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.properties import ListProperty, StringProperty, BooleanProperty, ObjectProperty, NumericProperty
 from kivy.uix.widget import Widget
 from kivymd.uix.button import MDButtonText, MDButton
@@ -10,6 +10,8 @@ from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.label import MDLabel, MDIcon
 from kivymd.uix.relativelayout import MDRelativeLayout
 from ui.widgets.generic import LineDivider
+from kivy.utils import get_color_from_hex
+from kivymd.uix.gridlayout import MDGridLayout
 
 from ui.widgets.layouts import Column, AdaptiveLabel, Row, PlaceOnMainScreen
 from utils.helper import load_kv_file  # type
@@ -22,7 +24,6 @@ load_kv_file(py_file_absolute_path=__file__)
 # with open(os.path.join(appFolder(),"ui","components","templates.kv"), encoding="utf-8") as kv_file:
 #     Builder.load_string(kv_file.read(), filename="MyBtmSheet.kv")
 
-# class
 
 class MyTextButton(MDButton):
     text = StringProperty("")
@@ -87,6 +88,7 @@ class MyTextButton(MDButton):
 
     def fix_width(self, *_):
         self.adjust_width()
+
 
 class MyDialogBox(Column,PlaceOnMainScreen):
     # source = StringProperty()
@@ -214,6 +216,7 @@ class MyDialogBox(Column,PlaceOnMainScreen):
         if self.show_ok_button:
             self.ok_btn.set_width_to_parent_width()
 
+
 class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
     icon_name=StringProperty("")
     header_text=StringProperty("_")
@@ -265,13 +268,6 @@ class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
     def on_touch_down(self, touch):
         super().on_touch_down(touch)# for the children touch
         return True # consume the touch for self
-
-
-from kivy.metrics import dp, sp
-from kivy.utils import get_color_from_hex
-from kivymd.uix.fitimage import FitImage
-from kivymd.uix.gridlayout import MDGridLayout
-from kivymd.uix.label import MDLabel, MDIcon
 
 
 class IconCard(Row):
@@ -585,6 +581,7 @@ class InfoPopUpContent(Column,PlaceOnMainScreen):
         # self.btn_widget.size = [20,50]
         # self.btn_widget.padding=
         self.add_widget(self.btn_widget)
+
 
 class InfoPopUpModal(MDRelativeLayout,PlaceOnMainScreen):
     image_abs_path=StringProperty("")
