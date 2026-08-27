@@ -4,8 +4,6 @@ from android_notify.config import on_android_platform
 
 from utils.logger import app_logger
 
-WORK_TAG = "update_check_work"
-
 
 def schedule_update_check():
     """Schedule periodic background update check via WorkManager."""
@@ -19,8 +17,9 @@ def schedule_update_check():
 
         WorkScheduler = autoclass("org.wally.waller.WorkScheduler")
         WorkScheduler.scheduleUpdateCheck(context)
-        app_logger.info("Update check WorkManager task scheduled (15min interval, network required)")
+        app_logger.info("Update check WorkManager task scheduled (7 day interval, network required)")
     except Exception:
+        traceback.print_exc()
         app_logger.exception("Failed to schedule update check WorkManager task")
 
 
