@@ -191,7 +191,6 @@ class FullscreenScreen(MyMDScreen):
         self.info_popup = None
         self.carousel_has_images = None
         self.clock_for_higher_format = None
-        self.clock_for_side_by_side = None
         self.md_bg_color =[0, 0, 0, 1]
         self.bottom_height = 0.12
         self.is_fullscreen = False
@@ -219,7 +218,6 @@ class FullscreenScreen(MyMDScreen):
             return
         current_slide._high_res_loaded = False
         self._load_high_res(current_slide)
-        self._preload_neighbors(None)
 
     def build_ui(self, _=None):
         if self.built_ui:
@@ -518,16 +516,13 @@ class FullscreenScreen(MyMDScreen):
         if hasattr(current_slide, "higher_format"):
             self.current_image = current_slide.higher_format
 
-        if self.clock_for_side_by_side:
-            self.clock_for_side_by_side.cancel()
-            self.clock_for_side_by_side = None
         if self.clock_for_higher_format:
             self.clock_for_higher_format.cancel()
             self.clock_for_higher_format = None
 
         self.update_header_texts(current_slide.higher_format)
-        self._load_high_res(current_slide)
-        self.clock_for_side_by_side = Clock.schedule_once(self._preload_neighbors, 0.2)
+        self.clock_for_higher_format = Clock.schedule_once(
+            lambda dt: self._load_high_res(current_slide), 0.3)
         return None
 
     def _load_high_res(self, slide):
@@ -549,16 +544,6 @@ class FullscreenScreen(MyMDScreen):
             slide.texture = proxy_image.image.texture
             slide.source = str(slide.higher_format)
             slide._high_res_loaded = True
-
-    def _preload_neighbors(self, _):
-        slides = self.carousel.slides
-        n = len(slides)
-        if n < 2:
-            return
-        current_index = self.carousel.index
-        for offset in (-1, 1):
-            idx = (current_index + offset) % n
-            self._load_high_res(slides[idx])
 
     def leave_preview_mode(self,*_):
         self.carousel.size_hint = self.original_carousel_size_hint
