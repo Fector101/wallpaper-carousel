@@ -1,3 +1,5 @@
+import traceback
+
 from android_notify.config import on_android_platform
 
 from utils.logger import app_logger
@@ -12,34 +14,11 @@ def schedule_update_check():
     try:
         from android_notify.internal.java_classes import autoclass
 
-        Context = autoclass("android.content.Context")
         PythonActivity = autoclass("org.kivy.android.PythonActivity")
         context = PythonActivity.mActivity.getApplicationContext()
 
-        WorkManager = autoclass("androidx.work.WorkManager")
-        PeriodicWorkRequest = autoclass("androidx.work.PeriodicWorkRequest")
-        Constraints = autoclass("androidx.work.Constraints")
-        NetworkType = autoclass("androidx.work.NetworkType")
-        ExistingPeriodicWorkPolicy = autoclass("androidx.work.ExistingPeriodicWorkPolicy")
-        TimeUnit = autoclass("java.util.concurrent.TimeUnit")
-        UpdateCheckWorker = autoclass("org.wally.waller.UpdateCheckWorker")
-
-        constraints = (Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build())
-
-        work_request = (PeriodicWorkRequest.Builder(
-            UpdateCheckWorker, 15, TimeUnit.MINUTES)
-            .setConstraints(constraints)
-            .addTag(WORK_TAG)
-            .build())
-
-        work_manager = WorkManager.getInstance(context)
-        work_manager.enqueueUniquePeriodicWork(
-            WORK_TAG,
-            ExistingPeriodicWorkPolicy.KEEP,
-            work_request)
-
+        WorkScheduler = autoclass("org.wally.waller.WorkScheduler")
+        WorkScheduler.scheduleUpdateCheck(context)
         app_logger.info("Update check WorkManager task scheduled (15min interval, network required)")
     except Exception:
         app_logger.exception("Failed to schedule update check WorkManager task")

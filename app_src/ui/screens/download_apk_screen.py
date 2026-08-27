@@ -244,7 +244,7 @@ class DownloadApkScreen(MyMDScreen):
         get_app().bind(device_theme=self._set_theme)
 
         from utils.helper import is_running_debug_build
-        if not is_running_debug_build():
+        if not is_running_debug_build():#0:
             Clock.schedule_once(lambda dt: thread_check_for_update(dt, self.show),3)
 
     def on_enter(self, *args):
@@ -504,12 +504,19 @@ def check_update(download_apk_screen__show,download_apk_screen__do_not_show=None
                 traceback.print_exc()
             Clock.schedule_once(lambda dt: do_not_go_to_update_screen("Already up to date."))
 
+    except requests.exceptions.ConnectionError:
+        msg_ = "No internet connection"
+        print(msg_)
+        Clock.schedule_once(lambda dt: do_not_go_to_update_screen(msg_))
+
     except requests.exceptions.ReadTimeout:
         msg_ = "Timeout Error, Slow internet Connection"
+        print(msg_)
         Clock.schedule_once(lambda dt: do_not_go_to_update_screen(msg_))
        #p(msg_)
 
     except Exception as e:
+        print(f"Error name: {e}")
         traceback.print_exc()
         Clock.schedule_once(lambda dt, e=e: do_not_go_to_update_screen(f"Failed:{e}"))
 
