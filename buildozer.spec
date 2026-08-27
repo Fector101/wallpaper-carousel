@@ -36,9 +36,8 @@ android.permissions = RECEIVE_BOOT_COMPLETED, INTERNET, VIBRATE, USE_EXACT_ALARM
 android.add_src = %(source.dir)s/android/src
 android.add_resources = %(source.dir)s/android/res
 #android.gradle_dependencies = androidx.core:core:1.12.0, com.google.android.material:material:1.12.0
-android.gradle_dependencies = androidx.core:core-ktx:1.12.0, com.google.android.material:material:1.12.0
-
-#android.gradle_dependencies = com.google.android.material:material:1.6.0, androidx.core:core-ktx:1.15.0, androidx.core:core:1.6.0, androidx.work:work-runtime:2.9.0
+#android.gradle_dependencies = androidx.core:core-ktx:1.12.0, com.google.android.material:material:1.12.0
+android.gradle_dependencies = androidx.core:core-ktx:1.12.0, com.google.android.material:material:1.12.0, androidx.work:work-runtime:2.9.0
 android.enable_androidx = True
 p4a.hook = %(source.dir)s/android/p4a/hook.py
 

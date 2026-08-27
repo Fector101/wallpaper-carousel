@@ -174,9 +174,11 @@ class WallpaperCarouselApp(MDApp):
         Clock.schedule_once(lambda dt: self.setup_service(), 2)
         Clock.schedule_interval(lambda dt: self.monitor_dark_and_light_device_change(), 1)
         if on_android_platform():
+            from utils.update_checker import schedule_update_check, handle_update_intent
             Clock.schedule_once(lambda dt: self._register_connectivity_receiver(), 0)
-        from utils.update_checker import handle_update_intent
-        Clock.schedule_once(lambda dt: handle_update_intent(self), 1)
+            Clock.schedule_once(lambda dt: self._bind_update_intent_listener(), 0)
+            Clock.schedule_once(lambda dt: schedule_update_check(), 0)
+            Clock.schedule_once(lambda dt: handle_update_intent(self), 1)
 
     def _register_connectivity_receiver(self):
         if not on_android_platform():
@@ -187,7 +189,6 @@ class WallpaperCarouselApp(MDApp):
             ConnectivityReceiver = autoclass('org.wally.waller.ConnectivityReceiver')
             receiver = ConnectivityReceiver()
             IntentFilter = autoclass('android.content.IntentFilter')
-            Intent = autoclass('android.content.Intent')
             filter_ = IntentFilter()
             filter_.addAction("android.net.conn.CONNECTIVITY_CHANGE")
             filter_.addAction("android.net.wifi.WIFI_STATE_CHANGED")
@@ -195,6 +196,20 @@ class WallpaperCarouselApp(MDApp):
             app_logger.info("ConnectivityReceiver registered dynamically")
         except Exception as e:
             app_logger.exception(f"Failed to register ConnectivityReceiver: {e}")
+
+    def _bind_update_intent_listener(self):
+        try:
+            from android import activity
+            from utils.update_checker import handle_update_intent
+
+            def on_new_intent_handler(intent):
+                app_logger.info(f"_bind_update_intent_listener: on_new_intent fired, intent={intent}")
+                handle_update_intent(self, intent=intent)
+
+            activity.bind(on_new_intent=on_new_intent_handler)
+            app_logger.info("_bind_update_intent_listener: bound successfully")
+        except Exception as e:
+            app_logger.exception(f"Failed to bind update intent listener: {e}")
 
     def setup_service(self):
         boot_log("setup_service: start")
