@@ -104,13 +104,14 @@ class StatsScreen(MyMDScreen):
         self.status_bar_spacer = None
         self.section_layout = None
         self.built_ui = False
+        self.md_bg_color = theme_colors.BG
 
     def on_enter(self, *args):
         super().on_enter(*args)
         if not self.built_ui:
             Clock.schedule_once(self._timer_set)
         else:
-            self.refresh_storage_data()
+            Clock.schedule_once(self.refresh_storage_data,0)
 
     def _timer_set(self,_):
         Clock.schedule_once(self.build_ui)
@@ -124,7 +125,6 @@ class StatsScreen(MyMDScreen):
         from kivymd.uix.button import MDIconButton
         from kivymd.uix.label import MDLabel
 
-        self.md_bg_color = theme_colors.BG
         # Horizontal inset (per side) of section content inside sections_container.
         # The graph width binding subtracts both sides (2 * this) from the container
         # width, and the section paddings below use the same per-side value.
@@ -296,7 +296,7 @@ class StatsScreen(MyMDScreen):
         scroll.add_widget(sections_container)
         self.add_widget(self.header_section)
         self.add_widget(scroll)
-        self.refresh_storage_data()
+        Clock.schedule_once(self.refresh_storage_data,0)
         return True
 
     def handle_going_back(self,*_):
