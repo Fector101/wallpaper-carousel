@@ -207,9 +207,19 @@ class FullscreenScreen(MyMDScreen):
         super().on_enter(*args)
         if not self.built_ui:
             Clock.schedule_once(self._timer_set)
+        else:
+            self._reload_high_res_on_reenter()
 
     def _timer_set(self, _):
         Clock.schedule_once(self.build_ui)
+
+    def _reload_high_res_on_reenter(self):
+        current_slide = self.carousel.current_slide
+        if not current_slide:
+            return
+        current_slide._high_res_loaded = False
+        self._load_high_res(current_slide)
+        self._preload_neighbors(None)
 
     def build_ui(self, _=None):
         if self.built_ui:
@@ -459,7 +469,7 @@ class FullscreenScreen(MyMDScreen):
 
     def update_images(self,index=None):
         """Rebuild carousel anytime wallpapers change."""
-        from kivy.uix.image import AsyncImage
+        from kivy.uix.image import Image
         from utils.image_operations import thumbnail_path_for
         self.build_ui()
         self.carousel.unbind(current_slide=self.on_current_slide)
@@ -467,24 +477,16 @@ class FullscreenScreen(MyMDScreen):
         self.carousel_has_images = False
         gallery_screen = self.manager.gallery_screen
 
-        # for hot_reload
-        # self.data = ["/home/fabian/Pictures/test.jpg"]
-        # for p in self.data:
         for p in gallery_screen.wallpapers:
-            # p("thumbnail_path_for(p)", str(thumbnail_path_for(p)))
-            img = AsyncImage(
-                source=str(thumbnail_path_for(p)),  # p,
-                # allow_stretch=True,
-                # keep_ratio=True,
-                fit_mode="contain",
-                # on_load=self.set_side_by_side1
+            img = Image(
+                source=str(thumbnail_path_for(p)),
+                fit_mode="cover" if self.is_fullscreen else "contain",
             )
             img.higher_format = p
             self.carousel_has_images = True
             self.carousel.add_widget(img)
         self.carousel.bind(current_slide=self.on_current_slide)
 
-        # Setting data when entering Carousel From first slide because self.carousel.bind(current_slide=self.on_current_slide) isn't called
         self.__patch_for_first_not_getting_called_by_on_current_slide(index)
 
     def __patch_for_first_not_getting_called_by_on_current_slide(self,index):
@@ -508,15 +510,13 @@ class FullscreenScreen(MyMDScreen):
 
     def on_current_slide(self, carousel, index): # type: ignore
         """Using on_current_slide instead of on_index to prevent multiple Calls"""
-        # p("self.carousel_has_images",self.carousel_has_images)
-        if not self.carousel_has_images or not carousel.current_slide: # From self.carousel.clear_widgets() changes current_slide Carousel.clear_widgets.remove_widget
+        if not self.carousel_has_images or not carousel.current_slide:
             return None
 
         current_slide = carousel.current_slide
 
-        if hasattr(self.carousel.current_slide,"higher_format"):
-            self.current_image = self.carousel.current_slide.higher_format
-        # p('there',self.carousel.current_slide.higher_format, current_slide.higher_format, self.clock_for_side_by_side,self.clock_for_higher_format)
+        if hasattr(current_slide, "higher_format"):
+            self.current_image = current_slide.higher_format
 
         if self.clock_for_side_by_side:
             self.clock_for_side_by_side.cancel()
@@ -525,47 +525,40 @@ class FullscreenScreen(MyMDScreen):
             self.clock_for_higher_format.cancel()
             self.clock_for_higher_format = None
 
-        def change_img(_):
-            current_slide.source = str(current_slide.higher_format)
-
         self.update_header_texts(current_slide.higher_format)
-        self.clock_for_higher_format = Clock.schedule_once(change_img, 1)
-        self.clock_for_side_by_side = Clock.schedule_once(self.set_side_by_side, 1.5)
+        self._load_high_res(current_slide)
+        self.clock_for_side_by_side = Clock.schedule_once(self._preload_neighbors, 0.2)
         return None
 
-    def set_side_by_side(self, *_):
-        """
-        Set High res img for left and right side.
-        """
+    def _load_high_res(self, slide):
         from kivy.loader import Loader
-        # AsyncImage(on_load=self.set_side_by_side) not calling right
-        # p(str(self.carousel.current_slide.higher_format) != str(self.carousel.current_slide.source))
+        if getattr(slide, '_high_res_loaded', False):
+            return
+        hf = str(slide.higher_format)
+        if slide.source == hf:
+            slide._high_res_loaded = True
+            return
+        slide._high_res_loaded = True
+        proxy = Loader.image(hf)
+        proxy.bind(on_load=lambda p, obj=slide: self._apply_high_res(p, obj))
+        if proxy.image is not None and proxy.image.texture:
+            self._apply_high_res(proxy, slide)
 
-        if str(self.carousel.current_slide.higher_format) != str(self.carousel.current_slide.source):
-            # Not setting for high format image, so return
-            return None
+    def _apply_high_res(self, proxy_image, slide):
+        if proxy_image.image.texture:
+            slide.texture = proxy_image.image.texture
+            slide.source = str(slide.higher_format)
+            slide._high_res_loaded = True
 
-        current_slide_index = self.carousel.index
-        first_img = self.carousel.slides[0]
-        last_img = self.carousel.slides[-1]
-
-        left_side_img = self.carousel.slides[current_slide_index - 1] if current_slide_index - 1 >= 0 else last_img
-        right_side_img = self.carousel.slides[current_slide_index + 1] if current_slide_index + 1 < len(
-            self.carousel.slides) else first_img
-
-        # p("left_side_img source:", os.path.basename(left_side_img.source), "left_side_img hf:",
-        #       os.path.basename(left_side_img.higher_format))
-        if left_side_img and left_side_img.source != str(left_side_img.higher_format):
-                # p('left...')
-                proxyImage = Loader.image(str(left_side_img.higher_format))
-                proxyImage.bind(on_load= lambda proxy_image, image_object=left_side_img: patch_resolution(proxy_image,image_object))
-                # left_side_img.source = str(left_side_img.higher_format)
-
-        if right_side_img and right_side_img.source != str(right_side_img.higher_format):
-                proxyImage = Loader.image(str(right_side_img.higher_format))
-                proxyImage.bind(on_load=lambda proxy_image, image_object=right_side_img: patch_resolution(proxy_image, image_object))
-                # right_side_img.source = str(right_side_img.higher_format)
-        return None
+    def _preload_neighbors(self, _):
+        slides = self.carousel.slides
+        n = len(slides)
+        if n < 2:
+            return
+        current_index = self.carousel.index
+        for offset in (-1, 1):
+            idx = (current_index + offset) % n
+            self._load_high_res(slides[idx])
 
     def leave_preview_mode(self,*_):
         self.carousel.size_hint = self.original_carousel_size_hint
@@ -595,8 +588,11 @@ class FullscreenScreen(MyMDScreen):
         self.manager.current = "thumbs"
 
 
-def patch_resolution(proxy_image, image_object):
-    image_object.texture = proxy_image.image.texture
+def patch_resolution(proxy_image, image_object, higher_format):
+    if proxy_image.image.texture:
+        image_object.texture = proxy_image.image.texture
+        image_object.source = higher_format
+        image_object._high_res_loaded = True
 
 def hide_nav_btn_and_status_bar():
     from android_notify.internal.java_classes import autoclass
@@ -618,3 +614,5 @@ def hide_nav_btn_and_status_bar():
         app_logger.exception(error_hiding_nav_btn_and_status_bar)
 
 
+def thing(*_):
+    print(f"bad img: {_}")
