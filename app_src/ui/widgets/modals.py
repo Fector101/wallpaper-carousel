@@ -61,12 +61,17 @@ class MyTextButton(MDButton):
         # Clock.schedule_once(self.fix_width,2)
         Clock.schedule_once(self.add_text_widget)
 
+    def on_parent(self,*_):
+        if not self.adaptive_size:
+            self.set_width_to_parent_width()
+
     def set_width_to_parent_width(self,*_):
         # self.height = self.parent.height
-        padding = self.parent.spacing#10
-        available_width = self.parent.width - padding
-        # p(f"available_width: {available_width}")
-        self.width = int(available_width/2)
+        if self.parent:
+            padding = self.parent.spacing#10
+            available_width = self.parent.width - padding
+            # p(f"available_width: {available_width}")
+            self.width = int(available_width/2)
 
     def add_text_widget(self, _=None):
         self.add_widget(self.txt)
