@@ -16,6 +16,7 @@ from kivymd.uix.label import MDLabel, MDIcon
 from ui.screens.full_screen import BorderMDBoxLayout
 from ui.widgets.android import toast
 from ui.widgets.layouts import LoadingLayout, Column, MyMDScreen, AdaptiveLabel, Row
+from ui.widgets.modals import CarouselConfirmPopup
 
 from utils.android import add_home_screen_widget
 from utils.config_manager import ConfigManager
@@ -1233,6 +1234,16 @@ class SettingsScreen(MyMDScreen):
             self.times_tapped = 0
 
     def terminate_carousel(self, *_):
+        CarouselConfirmPopup(
+            title="Stop Carousel?",
+            message="Stopping the carousel frequently can make Android block it from "
+                    "starting again.\n\nStop anyway?",
+            confirm_button_text="Stop",
+            danger=True,
+            on_confirm=self._terminate_carousel_confirm,
+        ).show()
+
+    def _terminate_carousel_confirm(self):
         self.set_service_status(ServiceStatus.STOPPING)
         try:
             Service(name="Wallpapercarousel").stop()
@@ -1289,6 +1300,24 @@ class SettingsScreen(MyMDScreen):
             self.ids.countdown_label.text = seconds
 
     def restart_service(self, *_):
+        try:
+            running = Service(name="Wallpapercarousel").is_running()
+        except Exception:
+            running = None
+
+        if running:
+            CarouselConfirmPopup(
+                title="Restart Carousel?",
+                message="Restarting the carousel frequently can make Android block it "
+                        "from starting again.\n\nRestart anyway?",
+                confirm_button_text="Restart",
+                on_confirm=self._restart_service_confirm,
+            ).show()
+            return
+
+        self._restart_service_confirm()
+
+    def _restart_service_confirm(self):
         self.set_service_status(ServiceStatus.RESTARTING)
 
         def after_stop(*_):

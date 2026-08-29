@@ -281,6 +281,147 @@ class DialogScreen(MDFloatLayout,PlaceOnMainScreen):
         return True # consume the touch for self
 
 
+class CarouselConfirmPopup(MDRelativeLayout, PlaceOnMainScreen):
+    def __init__(self, *, title, message, confirm_button_text, on_confirm=None, danger=False, **kwargs):
+        super().__init__(**kwargs)
+        self.app = get_app()
+        self.md_bg_color = [0, 0, 0, 0.6]
+        self.on_confirm_callback = on_confirm
+        self.danger = danger
+
+        self.dialog_box = Column(
+            adaptive_height=True,
+            size_hint_x=None,
+            md_bg_color=(0.984, 0.984, 0.984, 1.0),
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
+            radius=10,
+            spacing=dp(15),
+            padding=[dp(20), dp(30), dp(20), dp(20)],
+        )
+        self.bind(width=lambda _, v: setattr(self.dialog_box, "width", (v - dp(70)) if v else 0))
+
+        self.title_widget = MDLabel(
+            text=title,
+            adaptive_size=True,
+            theme_font_name="Custom",
+            font_name="RobotoMono",
+            theme_font_size="Custom",
+            font_size="19sp",
+            bold=True,
+            theme_text_color="Custom",
+            text_color=[0, 0, 0, 1],
+            padding=[0, 0, 0, 0],
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
+        )
+        self.message_label = AdaptiveLabel(
+            text=message,
+            font_name="RobotoMono",
+            size_hint=(None, None),
+            font_size="12sp",
+            color=(0.302, 0.278, 0.278, 1.0),
+            valign="center",
+            halign="center",
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
+        )
+        self.dialog_box.bind(width=self.wrap_message_width)
+        Clock.schedule_once(lambda _: self.wrap_message_width(0, 0), 0)
+
+        self.buttons_row = Row(
+            spacing=dp(10),
+            padding=[0, dp(10), 0, 0],
+            pos_hint={"center_x": 0.5},
+            size_hint_x=1,
+            adaptive_height=1,
+        )
+        self.cancel_btn = MyTextButton(
+            text="Cancel",
+            md_bg_color=(0.851, 0.851, 0.851, 1.0),
+            theme_bg_color="Custom",
+            text_color=[0, 0, 0, 1],
+            radius=[5],
+            on_release=self.close,
+        )
+        self.confirm_btn = MyTextButton(
+            text=confirm_button_text,
+            md_bg_color=get_color_from_hex("D83D3D") if danger else (0.851, 0.851, 0.851, 1.0),
+            theme_bg_color="Custom",
+            text_color=[0, 0, 0, 1],
+            radius=[5],
+            on_release=self.ok,
+        )
+        self.buttons_row.add_widget(self.cancel_btn)
+        self.buttons_row.add_widget(self.confirm_btn)
+        self.buttons_row.bind(width=self.fix_buttons_width)
+
+        self.dialog_box.add_widget(self.title_widget)
+        self.dialog_box.add_widget(self.message_label)
+        self.dialog_box.add_widget(self.buttons_row)
+        self.add_widget(self.dialog_box)
+
+        self.app.bind(device_theme=self.set_theme)
+        self.set_theme(None, self.app.device_theme)
+
+    def wrap_message_width(self, *_):
+        self.message_label.text_size = [max(self.dialog_box.width - dp(40), 0), None]
+
+    def fix_buttons_width(self, *_):
+        self.cancel_btn.set_width_to_parent_width()
+        self.confirm_btn.set_width_to_parent_width()
+
+    def set_theme(self, _, theme):
+        if theme == "light":
+            self.dialog_box.md_bg_color = (0.984, 0.984, 0.984, 1.0)
+            self.title_widget.text_color = [0, 0, 0, 1]
+            self.message_label.color = (0.302, 0.278, 0.278, 1.0)
+            self.cancel_btn.md_bg_color = (0.851, 0.851, 0.851, 1.0)
+            self.cancel_btn.text_color = [0, 0, 0, 1]
+            if self.danger:
+                self.confirm_btn.md_bg_color = get_color_from_hex("D83D3D")
+                self.confirm_btn.text_color = [0, 0, 0, 1]
+            else:
+                self.confirm_btn.md_bg_color = (0.851, 0.851, 0.851, 1.0)
+                self.confirm_btn.text_color = [0, 0, 0, 1]
+        else:
+            self.dialog_box.md_bg_color = [0.1, 0.1, 0.1, 1]
+            self.title_widget.text_color = [1, 1, 1, 1]
+            self.message_label.color = [0.7, 0.7, 0.7, 1.0]
+            self.cancel_btn.md_bg_color = [0.2, 0.2, 0.2, 1]
+            self.cancel_btn.text_color = [1, 1, 1, 1]
+            if self.danger:
+                self.confirm_btn.md_bg_color = get_color_from_hex("D83D3D")
+                self.confirm_btn.text_color = [1, 1, 1, 1]
+            else:
+                self.confirm_btn.md_bg_color = [0.2, 0.2, 0.2, 1]
+                self.confirm_btn.text_color = [1, 1, 1, 1]
+
+    def show(self, *_):
+        if hasattr(self.app, "sm"):
+            current_screen = self.app.sm.current_screen
+        else:
+            app_logger.warning("CarouselConfirmPopup only usable when on hot reload")
+            return
+        current_screen.add_widget(self)
+        super().show()
+
+    def hide(self, *_):
+        super().hide()
+
+    def close(self, *_):
+        self.hide()
+
+    def ok(self, *_):
+        self.hide()
+        if self.on_confirm_callback:
+            try:
+                self.on_confirm_callback()
+            except Exception:
+                traceback.print_exc()
+
+    def on_touch_down(self, touch):
+        super().on_touch_down(touch)
+        return True
+
+
 class IconCard(Row):
     icon=StringProperty("clock")
     title=StringProperty("clock")
