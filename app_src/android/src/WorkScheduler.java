@@ -20,13 +20,13 @@ public class WorkScheduler {
                 .build();
 
         // PeriodicWorkRequest workRequest = new PeriodicWorkRequest.Builder(
-        //         UpdateCheckWorker.class, 7, TimeUnit.DAYS)
+        //         UpdateCheckWorker.class, 15, TimeUnit.MINUTES) // For testing purposes, using a shorter interval
         //         .setConstraints(constraints)
         //         .addTag(WORK_TAG)
         //         .build();
 
         PeriodicWorkRequest workRequest = new PeriodicWorkRequest.Builder(
-                UpdateCheckWorker.class, 15, TimeUnit.MINUTES)  // TODO: testing interval
+                UpdateCheckWorker.class, 7, TimeUnit.DAYS)
                 .setConstraints(constraints)
                 .addTag(WORK_TAG)
                 .build();
