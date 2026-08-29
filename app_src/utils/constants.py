@@ -134,9 +134,19 @@ class ServiceServerAddress(Enum):
     SET_WALLPAPER = "/set-wallpaper"
     TOGGLE_HOME_SCREEN_WIDGET_CHANGES = "/toggle_home_screen_widget_changes"
     APPLY_NEXT_WALLPAPER = "/apply_next_wallpaper"
+    SERVICE_STATUS = "/service_status"
 
     RESUME_USING_INTERVAL_LOOP = "/resume_using_interval_loop"
     RESUME_USING_ON_WAKE = "/pause_using_interval_loop"
+
+
+class ServiceStatus(Enum):
+    STARTING = "starting"
+    RUNNING = "running"
+    STOPPING = "stopping"
+    STOPPED = "stopped"
+    FAILED = "failed"
+    RESTARTING = "restarting"
 
 DEV=0
 VERSION="1.0.9.1"

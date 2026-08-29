@@ -19,7 +19,7 @@ from android_widgets import Layout, RemoteViews, AppWidgetManager
 
 from utils.config_manager import ConfigManager
 from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, DEFAULT_SERVICE_PORT, \
-    DEFAULT_UI_PORT, ServiceServerAddress, SERVICE_LIFESPAN_HOURS
+    DEFAULT_UI_PORT, ServiceServerAddress, ServiceStatus, SERVICE_LIFESPAN_HOURS
 from utils.helper import change_wallpaper, appFolder, format_time_remaining, service_port_store_path, ui_port_store_path
 from utils.logger import app_logger
 
@@ -280,6 +280,8 @@ class WallpaperServerReceiver:
     def loop_for_using_on_wake(self):
         self.live = True
         self.running_on_wake_loop = True
+        self.__send_data_to_ui(ServiceServerAddress.SERVICE_STATUS.value,
+                               {"status": ServiceStatus.RUNNING.value})
         if not self.next_wallpaper_path:  # check if wallpaper already set from on wake
             self.choseAndShowPreviewForNextWallpaper()
 
@@ -307,6 +309,8 @@ class WallpaperServerReceiver:
         app_logger.debug("running interval")
         self.live = True
         self.running_on_interval_loop = True
+        self.__send_data_to_ui(ServiceServerAddress.SERVICE_STATUS.value,
+                               {"status": ServiceStatus.RUNNING.value})
         self.skip_now = False
         marked_time = time.monotonic()
         while self.live and self.running_on_interval_loop:
@@ -453,11 +457,15 @@ class WallpaperServerReceiver:
     def stop(self, *args):
         app_logger.info(f"stop args: {args}")
         self.notification.updateTitle("Stopping Service...")
+        self.__send_data_to_ui(ServiceServerAddress.SERVICE_STATUS.value,
+                               {"status": ServiceStatus.STOPPING.value})
         self.running_on_wake_loop = False
         self.running_on_interval_loop = False
         self.stop_ongoing_loop()
         self.__server_thread.join()
         self.__send_data_to_ui("/stopped", {})
+        self.__send_data_to_ui(ServiceServerAddress.SERVICE_STATUS.value,
+                               {"status": ServiceStatus.STOPPED.value})
         server.shutdown()  # type: ignore
         service.setAutoRestartService(False)
         # Trying to Avoid- D ProcessStarter: proc frequent died! proc = org.wally.waller:service_Wallpapercarousel callerPkg = org.wally.waller
@@ -601,7 +609,17 @@ server = None
 
 def start_service_server(notification: Notification):
     global server
-    wallpaperServerReceiver = WallpaperServerReceiver(notification)
+    try:
+        wallpaperServerReceiver = WallpaperServerReceiver(notification)
+    except Exception as error_starting_receiver:
+        app_logger.exception(f"WallpaperServerReceiver Failed: {error_starting_receiver}")
+        traceback.print_exc()
+        try:
+            client.send_message(ServiceServerAddress.SERVICE_STATUS.value,
+                                json.dumps({"status": ServiceStatus.FAILED.value}))
+        except Exception as error_sending_failed_status:
+            app_logger.exception(f"Error sending failed status: {error_sending_failed_status}")
+        raise
     myDispatcher = dispatcher.Dispatcher()
     myDispatcher.map(ServiceServerAddress.START.value, wallpaperServerReceiver.start)
     myDispatcher.map(ServiceServerAddress.PAUSE.value, wallpaperServerReceiver.pause)

@@ -216,7 +216,7 @@ class Service:
         import json
         if not _on_android_platform():
             self.__run_service_file()
-            return None
+            return True
         if not self.mActivity:
             return None
 
@@ -230,6 +230,8 @@ class Service:
             print("Error starting service:", error_starting_service)
             import traceback
             traceback.print_exc()
+            return False
+        return True
 
     def __run_service_file(self):
         import os, json, runpy, threading

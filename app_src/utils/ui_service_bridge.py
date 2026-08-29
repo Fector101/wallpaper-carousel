@@ -1,6 +1,7 @@
 import json
 import threading
 import traceback
+from kivy.clock import Clock
 from pythonosc import dispatcher, osc_server, udp_client
 
 from utils.helper import get_free_port
@@ -16,6 +17,7 @@ class UIListenToServicer:
     on_changed_homescreen_widget = None
     on_countdown_change = None
     on_stopped_all = None
+    on_service_status = None
 
     def __init__(self,ui_port):
         self.dispatcher = None
@@ -27,6 +29,7 @@ class UIListenToServicer:
         self.dispatcher.map("/changed_wallpaper", self.changed_wallpaper)
         self.dispatcher.map("/changed_homescreen_widget", self.changed_homescreen_widget)
         self.dispatcher.map("/stopped", self.stopped_all)
+        self.dispatcher.map(ServiceServerAddress.SERVICE_STATUS.value, self.service_status)
 
     def __listen(self):
         server = osc_server.ThreadingOSCUDPServer(
@@ -144,6 +147,25 @@ class UIListenToServicer:
             except Exception as error_on_stopped_all:
                 app_logger.exception(error_on_stopped_all)
                 traceback.print_exc()
+
+        return None
+
+    def service_status(self, _, data):
+        TAG = "service_status"
+        app_logger.info(f"[{TAG}] data: {data}")
+        if not data:
+            return None
+
+        json_data = self.__parse_data(data)
+        if not json_data:
+            return None
+
+        status = json_data["status"] if "status" in json_data else None
+
+        if self.on_service_status:
+            # This handler runs on the OSC server thread; forward to the UI
+            # loop so widget updates happen on the main thread.
+            Clock.schedule_once(lambda *_args: self.on_service_status(status), 0)
 
         return None
 
