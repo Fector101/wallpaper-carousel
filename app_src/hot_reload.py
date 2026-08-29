@@ -50,7 +50,7 @@ class MDLive(App,MDApp):
     KV_FILES=[
         "ui.screens.welcome_screen".replace(".","/") + ".kv",
         "ui.screens.gallery_screen".replace(".","/") + ".kv",
-        "ui.screens.settings_screen".replace(".","/") + ".kv",
+        # "ui.screens.settings_screen".replace(".","/") + ".kv",
         "ui.widgets.modals".replace(".","/") + ".kv",
 
     ]
@@ -78,7 +78,7 @@ class MDLive(App,MDApp):
     def build_app(self, *args):
         # return Factory.MyPopUp()
         # return Factory.DialogScreen(ok_callback=None)
-        return Factory.StatsScreen()
+        return Factory.SettingsScreen()
 
     def on_start(self):
         # self.theme_cls.theme_style = "Light"

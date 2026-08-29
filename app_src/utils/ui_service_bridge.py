@@ -1,6 +1,7 @@
 import json
 import threading
 import traceback
+from kivy.clock import Clock
 from pythonosc import dispatcher, osc_server, udp_client
 
 from utils.helper import get_free_port
@@ -162,11 +163,9 @@ class UIListenToServicer:
         status = json_data["status"] if "status" in json_data else None
 
         if self.on_service_status:
-            try:
-                self.on_service_status(status)
-            except Exception as error_on_service_status:
-                app_logger.exception(error_on_service_status)
-                traceback.print_exc()
+            # This handler runs on the OSC server thread; forward to the UI
+            # loop so widget updates happen on the main thread.
+            Clock.schedule_once(lambda *_args: self.on_service_status(status), 0)
 
         return None
 

@@ -16,11 +16,11 @@ from kivymd.uix.label import MDLabel, MDIcon
 from ui.screens.full_screen import BorderMDBoxLayout
 from ui.widgets.android import toast
 from ui.widgets.layouts import LoadingLayout, Column, MyMDScreen, AdaptiveLabel, Row
-from ui.widgets.modals import CarouselConfirmPopup
+from ui.widgets.modals import CarouselConfirmPopup, MyTextButton
 
 from utils.android import add_home_screen_widget
 from utils.config_manager import ConfigManager
-from utils.constants import DEV, ServiceStatus, theme_colors, VERSION
+from utils.constants import DEV, ServiceStatus, theme_colors, VERSION, _rgba
 from utils.helper import Service, appFolder, smart_convert_minutes, is_running_debug_build
 from utils.logger import app_logger
 from utils.model import get_app
@@ -101,7 +101,7 @@ def schedule_alarm():
 
 def my_with_callback():
     def android_print(text):
-       print(text)
+        print(text)
 
     try:
 
@@ -594,25 +594,29 @@ class CarouselTools(Column):
         button_box = MDBoxLayout(
             spacing=dp(10),
             size_hint_x=1,
-            adaptive_size=True,
+            adaptive_height=True,
             pos_hint={"center_x": 0.5},
         )
-        restart_btn = MyMDButton(radius=[5], theme_bg_color="Custom",
-                                 on_release=settings_screen.restart_service)
-        restart_text = MDButtonText(text="Restart Carousel", size_hint_y=None,
-                                    theme_text_color="Custom", height=dp(50))
-        restart_btn.add_widget(restart_text)
-        self._restart_text = restart_text
 
-        stop_btn = MyMDButton(theme_bg_color="Custom", md_bg_color=theme_colors.BUTTON_BG,
-                              radius=[5], pos_hint={"center_x": 0.5},
-                              on_release=settings_screen.terminate_carousel)
-        stop_text = MDButtonText(text="Stop Carousel", theme_text_color="Custom")
-        stop_btn.add_widget(stop_text)
-        self._stop_text = stop_text
+        self.restart_btn = MyTextButton(
+            text="Restart Carousel",
+            radius=[5],
+            theme_bg_color="Custom", md_bg_color=theme_colors.BUTTON_BG,
+            on_release=settings_screen.restart_service,
+            text_color="white",
+            size_hint_x=1
+        )
+        self.stop_btn = MyTextButton(
+            text="Stop Carousel",
+            theme_bg_color="Custom", md_bg_color=theme_colors.BUTTON_BG,
+            radius=[5], pos_hint={"center_x": 0.5},
+            on_release=settings_screen.terminate_carousel,
+            text_color="white",
+            size_hint_x=1
 
-        button_box.add_widget(restart_btn)
-        button_box.add_widget(stop_btn)
+        )
+        button_box.add_widget(self.restart_btn)
+        button_box.add_widget(self.stop_btn)
         self.add_widget(button_box)
 
         self.app.bind(device_theme=self._set_theme_color)
@@ -620,8 +624,8 @@ class CarouselTools(Column):
 
     def _set_theme_color(self, *_):
         text_color = "black" if self.app.device_theme == "light" else "white"
-        self._restart_text.text_color = text_color
-        self._stop_text.text_color = text_color
+        self.restart_btn.txt.text_color = text_color
+        self.stop_btn.txt.text_color = text_color
 
 
 class SettingsScreen(MyMDScreen):
@@ -635,14 +639,24 @@ class SettingsScreen(MyMDScreen):
 
     # (dot color, label text) per ServiceStatus
     _SERVICE_STATUS_STATE = {
-        ServiceStatus.STARTING:   ([1.0, 0.76, 0.03, 1], "Starting..."),
-        ServiceStatus.RUNNING:    ([0.2, 0.72, 0.36, 1], "Running"),
-        ServiceStatus.STOPPING:   ([1.0, 0.52, 0.1, 1], "Stopping..."),
-        ServiceStatus.STOPPED:    ([0.62, 0.62, 0.62, 1], "Stopped"),
-        ServiceStatus.FAILED:     ([0.9, 0.28, 0.25, 1], "Failed to start"),
+        ServiceStatus.STARTING: ([1.0, 0.76, 0.03, 1], "Starting..."),
+        ServiceStatus.RUNNING: ([0.2, 0.72, 0.36, 1], "Running"),
+        ServiceStatus.STOPPING: ([1.0, 0.52, 0.1, 1], "Stopping..."),
+        ServiceStatus.STOPPED: ([0.62, 0.62, 0.62, 1], "Stopped"),
+        ServiceStatus.FAILED: ([0.9, 0.28, 0.25, 1], "Failed to start"),
         ServiceStatus.RESTARTING: ([1.0, 0.76, 0.03, 1], "Restarting..."),
     }
+    # (restart button label, stop button label) per ServiceStatus
+    _CAROUSEL_TOOLS_LABELS = {
+        ServiceStatus.STARTING: ("Starting...", "Stop Carousel"),
+        ServiceStatus.RUNNING: ("Restart Carousel", "Stop Carousel"),
+        ServiceStatus.STOPPING: ("Restart Carousel", "Stopping..."),
+        ServiceStatus.STOPPED: ("Restart Carousel", "Stop Carousel"),
+        ServiceStatus.FAILED: ("Failed to start", "Stop Carousel"),
+        ServiceStatus.RESTARTING: ("Restarting...", "Stop Carousel"),
+    }
     STARTUP_TIMEOUT_SECONDS = 15
+    STOP_TIMEOUT_SECONDS = 10
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -664,8 +678,12 @@ class SettingsScreen(MyMDScreen):
         self.times_tapped = 0
         self.built_ui = False
         self._startup_timeout_event = None
+        self._stop_timeout_event = None
         self._carousel_status_dot = None
         self._carousel_status_label = None
+        self.carousel_tools = None
+        self._bw_widgets = None
+        # self.build_ui()  # hot_reloader
 
     def on_enter(self, *args):
         super().on_enter(*args)
@@ -1025,7 +1043,8 @@ class SettingsScreen(MyMDScreen):
         interval_toggle.sub_title_text = f'Get a new wallpaper every "{self.displayed_interval_value}".'
         interval_toggle.active = not self.is_using_on_wake
         carousel_section.content_layout.add_widget(interval_toggle)
-        carousel_section.content_layout.add_widget(CarouselTools(settings_screen=self))
+        self.carousel_tools = CarouselTools(settings_screen=self)
+        carousel_section.content_layout.add_widget(self.carousel_tools)
         self._on_wake_toggle = on_wake_toggle
         self._interval_toggle = interval_toggle
         return carousel_section
@@ -1051,7 +1070,7 @@ class SettingsScreen(MyMDScreen):
         theme_dark_card = ThemeOptionCard(icon="moon-waning-crescent", label="Dark",
                                           preference_value="dark",
                                           active=self.app.theme_preference == "dark",
-                                                                        on_release=lambda *_: self.set_theme_preference("dark"))
+                                          on_release=lambda *_: self.set_theme_preference("dark"))
         theme_adaptive_card = ThemeOptionCard(icon="cellphone", label="Adaptive",
                                               preference_value="adaptive",
                                               active=self.app.theme_preference == "adaptive",
@@ -1098,8 +1117,9 @@ class SettingsScreen(MyMDScreen):
 
         self.ids["btn_icon"] = export_icon
         self.ids["btn_text"] = export_text
-        self._bw_widgets.append(export_text)
-        self._bw_icon_widgets.append(export_icon)
+        if self._bw_widgets is not None:
+            self._bw_widgets.append(export_text)
+            self._bw_icon_widgets.append(export_icon)
         return export_section
 
     def _build_version_controls(self):
@@ -1363,19 +1383,38 @@ class SettingsScreen(MyMDScreen):
         if self._carousel_status_label is not None:
             self._carousel_status_label.text = text
 
+        if self.carousel_tools is not None:
+            restart_label, stop_label = self._CAROUSEL_TOOLS_LABELS[status]
+            self.carousel_tools.restart_btn.txt.text = restart_label
+            self.carousel_tools.stop_btn.txt.text = stop_label
+            # self.carousel_tools.set_busy( status in (ServiceStatus.STARTING, ServiceStatus.STOPPING, ServiceStatus.RESTARTING))
+
         self._cancel_startup_timeout()
+        self._cancel_stop_timeout()
         if status in (ServiceStatus.STARTING, ServiceStatus.RESTARTING):
             self._startup_timeout_event = Clock.schedule_once(
                 self._on_startup_timeout, self.STARTUP_TIMEOUT_SECONDS)
+        elif status == ServiceStatus.STOPPING:
+            self._stop_timeout_event = Clock.schedule_once(
+                self._on_stop_timeout, self.STOP_TIMEOUT_SECONDS)
 
     def _cancel_startup_timeout(self):
         if self._startup_timeout_event:
             self._startup_timeout_event.cancel()
             self._startup_timeout_event = None
 
+    def _cancel_stop_timeout(self):
+        if self._stop_timeout_event:
+            self._stop_timeout_event.cancel()
+            self._stop_timeout_event = None
+
     def _on_startup_timeout(self, _dt):
         self._startup_timeout_event = None
         self.set_service_status(ServiceStatus.FAILED)
+
+    def _on_stop_timeout(self, _dt):
+        self._stop_timeout_event = None
+        self.set_service_status(ServiceStatus.STOPPED)
 
     @staticmethod
     def export_waller_folder(_=None):
@@ -1459,7 +1498,7 @@ class SettingsScreen(MyMDScreen):
                     exported_uris.append(dest_path)
 
                 except Exception as e:
-                   app_logger.exception(f"Pre-29 export error:{e}")
+                    app_logger.exception(f"Pre-29 export error:{e}")
 
                 continue
 
