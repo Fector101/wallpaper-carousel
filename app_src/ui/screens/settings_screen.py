@@ -19,7 +19,7 @@ from ui.widgets.layouts import LoadingLayout, Column, MyMDScreen, AdaptiveLabel,
 
 from utils.android import add_home_screen_widget
 from utils.config_manager import ConfigManager
-from utils.constants import DEV, theme_colors, VERSION
+from utils.constants import DEV, ServiceStatus, theme_colors, VERSION
 from utils.helper import Service, appFolder, smart_convert_minutes, is_running_debug_build
 from utils.logger import app_logger
 from utils.model import get_app
@@ -632,6 +632,17 @@ class SettingsScreen(MyMDScreen):
     start_on_app_launch = BooleanProperty(ConfigManager.get_start_on_app_launch())
     start_on_boot = BooleanProperty(ConfigManager.get_start_on_boot())
 
+    # (dot color, label text) per ServiceStatus
+    _SERVICE_STATUS_STATE = {
+        ServiceStatus.STARTING:   ([1.0, 0.76, 0.03, 1], "Starting..."),
+        ServiceStatus.RUNNING:    ([0.2, 0.72, 0.36, 1], "Running"),
+        ServiceStatus.STOPPING:   ([1.0, 0.52, 0.1, 1], "Stopping..."),
+        ServiceStatus.STOPPED:    ([0.62, 0.62, 0.62, 1], "Stopped"),
+        ServiceStatus.FAILED:     ([0.9, 0.28, 0.25, 1], "Failed to start"),
+        ServiceStatus.RESTARTING: ([1.0, 0.76, 0.03, 1], "Restarting..."),
+    }
+    STARTUP_TIMEOUT_SECONDS = 15
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         from pathlib import Path
@@ -651,6 +662,9 @@ class SettingsScreen(MyMDScreen):
         self.interval = str(v)
         self.times_tapped = 0
         self.built_ui = False
+        self._startup_timeout_event = None
+        self._carousel_status_dot = None
+        self._carousel_status_label = None
 
     def on_enter(self, *args):
         super().on_enter(*args)
@@ -973,6 +987,32 @@ class SettingsScreen(MyMDScreen):
 
     def _build_carousel_section(self):
         carousel_section = SettingsSection(title_text="Carousel")
+
+        status_row = Row(adaptive_height=True, spacing=dp(10), padding=[dp(2), dp(2), dp(2), dp(2)])
+        status_dot = MDBoxLayout(
+            size_hint=(None, None),
+            size=(dp(12), dp(12)),
+            radius=[dp(6)],
+            pos_hint={"center_y": 0.5},
+            md_bg_color=self._SERVICE_STATUS_STATE[ServiceStatus.STOPPED][0],
+        )
+        status_label = MDLabel(
+            text=self._SERVICE_STATUS_STATE[ServiceStatus.STOPPED][1],
+            adaptive_size=True,
+            theme_text_color="Custom",
+            text_color=theme_colors.TEXT_PRIMARY,
+            theme_font_name="Custom",
+            font_name="Roboto",
+            bold=True,
+        )
+        status_row.add_widget(status_dot)
+        status_row.add_widget(status_label)
+        carousel_section.content_layout.add_widget(status_row)
+        self._carousel_status_dot = status_dot
+        self._carousel_status_label = status_label
+        if self._bw_widgets is not None:
+            self._bw_widgets.append(status_label)
+
         on_wake_toggle = ToggleSliderRow(change_function=self.set_using_on_wake_config)
         on_wake_toggle.title_text = "Use On-wake"
         on_wake_toggle.sub_title_text = 'Get a new wallpaper each time you "turn on screen".'
@@ -1192,12 +1232,13 @@ class SettingsScreen(MyMDScreen):
             self.manager.current = "logs"
             self.times_tapped = 0
 
-    @staticmethod
-    def terminate_carousel(*_):
+    def terminate_carousel(self, *_):
+        self.set_service_status(ServiceStatus.STOPPING)
         try:
             Service(name="Wallpapercarousel").stop()
             toast("Successfully Terminated")
         except Exception as e:
+            self.set_service_status(ServiceStatus.FAILED)
             toast("Stop failed", e)
 
     def save_interval(self, widget):
@@ -1248,6 +1289,7 @@ class SettingsScreen(MyMDScreen):
             self.ids.countdown_label.text = seconds
 
     def restart_service(self, *_):
+        self.set_service_status(ServiceStatus.RESTARTING)
 
         def after_stop(*_):
             try:
@@ -1258,6 +1300,7 @@ class SettingsScreen(MyMDScreen):
                #p(error_starting_service)
                 traceback.print_exc()
                 toast("Start failed")
+                self.set_service_status(ServiceStatus.FAILED)
 
         try:
             # TODO call service server to stop, so it an end thread and avoid SECURITY ERROR when starting service
@@ -1267,6 +1310,43 @@ class SettingsScreen(MyMDScreen):
            #p(error_stoping_service)
             traceback.print_exc()
             toast("Stop failed")
+            self.set_service_status(ServiceStatus.FAILED)
+
+    def on_service_status(self, status):
+        self.set_service_status(status)
+
+    def on_service_stopped(self):
+        self.set_service_status(ServiceStatus.STOPPED)
+
+    def set_service_status(self, status):
+        if not self.built_ui:
+            return
+        if isinstance(status, str):
+            try:
+                status = ServiceStatus(status)
+            except ValueError:
+                app_logger.exception(f"Unknown service status: {status}")
+                return
+
+        color, text = self._SERVICE_STATUS_STATE[status]
+        if self._carousel_status_dot is not None:
+            self._carousel_status_dot.md_bg_color = color
+        if self._carousel_status_label is not None:
+            self._carousel_status_label.text = text
+
+        self._cancel_startup_timeout()
+        if status in (ServiceStatus.STARTING, ServiceStatus.RESTARTING):
+            self._startup_timeout_event = Clock.schedule_once(
+                self._on_startup_timeout, self.STARTUP_TIMEOUT_SECONDS)
+
+    def _cancel_startup_timeout(self):
+        if self._startup_timeout_event:
+            self._startup_timeout_event.cancel()
+            self._startup_timeout_event = None
+
+    def _on_startup_timeout(self, _dt):
+        self._startup_timeout_event = None
+        self.set_service_status(ServiceStatus.FAILED)
 
     @staticmethod
     def export_waller_folder(_=None):

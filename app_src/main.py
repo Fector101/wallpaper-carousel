@@ -28,7 +28,8 @@ from ui.widgets.bottom_sheet import MyBtmSheet
 
 from utils.android import is_device_on_light_mode
 from utils.config_manager import ConfigManager
-from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, theme_colors as _theme_colors
+from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, ServiceStatus, \
+    theme_colors as _theme_colors
 boot_log("main: local imports done2")
 from utils.helper import Service, get_free_port, register_fonts, fix_input_on_linux, \
     get_stored_running_ui_server_port, get_stored_running_service_server_port
@@ -224,10 +225,12 @@ class WallpaperCarouselApp(MDApp):
         try:
             service = Service(name='Wallpapercarousel')
             service_port = ui_port = None
+            self.service_was_running = False
 
             if service.is_running():
                 ui_port = get_stored_running_ui_server_port()
                 service_port = get_stored_running_service_server_port()
+                self.service_was_running = True
 
             self.service_port = service_port or get_free_port()
             boot_log("setup_service: service/ports done")
@@ -250,6 +253,10 @@ class WallpaperCarouselApp(MDApp):
 
             self.ui_service_listener.on_countdown_change = self.sm.settings_screen.update_label
             self.ui_service_listener.on_changed_homescreen_widget = self.sm.settings_screen.on_changed_homescreen_widget
+            self.ui_service_listener.on_service_status = self.sm.settings_screen.on_service_status
+            self.ui_service_listener.on_stopped_all = self.sm.settings_screen.on_service_stopped
+            if getattr(self, "service_was_running", False):
+                self.sm.settings_screen.set_service_status(ServiceStatus.RUNNING)
             if ConfigManager.get_start_on_app_launch():
                 self.start_service()
             boot_log("setup_service: done")
@@ -259,14 +266,22 @@ class WallpaperCarouselApp(MDApp):
 
     def start_service(self):
 
-        Service(
-            name='Wallpapercarousel',
-            args_str={
-                SERVICE_PORT_ARGUMENT_KEY: self.service_port,
-                SERVICE_UI_PORT_ARGUMENT_KEY: self.ui_service_listener.UI_PORT,
-            },
+        settings_screen = getattr(self.sm, "settings_screen", None)
+        if settings_screen is not None:
+            settings_screen.set_service_status(ServiceStatus.STARTING)
 
-        ).start()
+        try:
+            Service(
+                name='Wallpapercarousel',
+                args_str={
+                    SERVICE_PORT_ARGUMENT_KEY: self.service_port,
+                    SERVICE_UI_PORT_ARGUMENT_KEY: self.ui_service_listener.UI_PORT,
+                },
+            ).start()
+        except Exception as error_starting_service:
+            if settings_screen is not None:
+                settings_screen.set_service_status(ServiceStatus.FAILED)
+            raise
 
     def on_resume(self):
         from utils.update_checker import handle_update_intent
