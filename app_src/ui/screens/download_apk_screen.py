@@ -229,6 +229,7 @@ class DownloadApkScreen(MyMDScreen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.checking_for_new_version_clock = None
         self.new_version = ''
         self.clock_for_progress_update=None
         self.apk_size = 0
@@ -244,8 +245,8 @@ class DownloadApkScreen(MyMDScreen):
         get_app().bind(device_theme=self._set_theme)
 
         from utils.helper import is_running_debug_build
-        if not is_running_debug_build():
-            Clock.schedule_once(lambda dt: thread_check_for_update(dt, self.show),3)
+        if not is_running_debug_build():#0:
+            self.checking_for_new_version_clock = Clock.schedule_once(lambda dt: thread_check_for_update(dt, self.show),3)
 
     def on_enter(self, *args):
         super().on_enter(*args)
@@ -436,7 +437,7 @@ class DownloadApkScreen(MyMDScreen):
         self.update_button.streak.unbind(on_release = self.start_install)
         # self.update_button.function = lambda x:do_android_install(apk_path)
 
-    def handle_going_back(self):
+    def handle_going_back(self,*_):
         manager = self.manager
         if manager:
             self.manager.current = "thumbs"
@@ -444,6 +445,9 @@ class DownloadApkScreen(MyMDScreen):
             app_logger.warning("On Hot Reload Can't go to gallery screen")
 
     def show(self, new_version, release_notes, apk_size):
+        if self.checking_for_new_version_clock is not None:
+            self.checking_for_new_version_clock.cancel()
+
         self.build_ui()
         self.disabled=True
         Clock.schedule_once(lambda dt: setattr(self, "disabled", False),1)
@@ -504,12 +508,19 @@ def check_update(download_apk_screen__show,download_apk_screen__do_not_show=None
                 traceback.print_exc()
             Clock.schedule_once(lambda dt: do_not_go_to_update_screen("Already up to date."))
 
+    except requests.exceptions.ConnectionError:
+        msg_ = "No internet connection"
+        print(msg_)
+        Clock.schedule_once(lambda dt: do_not_go_to_update_screen(msg_))
+
     except requests.exceptions.ReadTimeout:
         msg_ = "Timeout Error, Slow internet Connection"
+        print(msg_)
         Clock.schedule_once(lambda dt: do_not_go_to_update_screen(msg_))
        #p(msg_)
 
     except Exception as e:
+        print(f"Error name: {e}")
         traceback.print_exc()
         Clock.schedule_once(lambda dt, e=e: do_not_go_to_update_screen(f"Failed:{e}"))
 

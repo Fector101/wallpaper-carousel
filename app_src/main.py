@@ -17,7 +17,7 @@ boot_log("main: kivymd/MDApp imports done")
 
 # +0.001s
 from android_notify import NotificationHandler, logger as android_notify_logger
-from android_notify.config import on_android_platform, on_pydroid_app
+from android_notify.config import on_android_platform, on_pydroid_app, get_python_activity_context
 boot_log("main: android_notify imports done")
 
 from ui.screens.manager import ScreenManager
@@ -173,6 +173,43 @@ class WallpaperCarouselApp(MDApp):
         boot_log("on_start: scheduling")
         Clock.schedule_once(lambda dt: self.setup_service(), 2)
         Clock.schedule_interval(lambda dt: self.monitor_dark_and_light_device_change(), 1)
+        if on_android_platform():
+            from utils.update_checker import schedule_update_check, handle_update_intent
+            Clock.schedule_once(lambda dt: self._register_connectivity_receiver(), 0)
+            Clock.schedule_once(lambda dt: self._bind_update_intent_listener(), 0)
+            Clock.schedule_once(lambda dt: schedule_update_check(), 0)
+            Clock.schedule_once(lambda dt: handle_update_intent(self), 1)
+
+    def _register_connectivity_receiver(self):
+        if not on_android_platform():
+            return
+        try:
+            from android_notify.internal.java_classes import autoclass
+            context = get_python_activity_context()
+            ConnectivityReceiver = autoclass('org.wally.waller.ConnectivityReceiver')
+            receiver = ConnectivityReceiver()
+            IntentFilter = autoclass('android.content.IntentFilter')
+            filter_ = IntentFilter()
+            filter_.addAction("android.net.conn.CONNECTIVITY_CHANGE")
+            filter_.addAction("android.net.wifi.WIFI_STATE_CHANGED")
+            context.registerReceiver(receiver, filter_)
+            app_logger.info("ConnectivityReceiver registered dynamically")
+        except Exception as e:
+            app_logger.exception(f"Failed to register ConnectivityReceiver: {e}")
+
+    def _bind_update_intent_listener(self):
+        try:
+            from android import activity
+            from utils.update_checker import handle_update_intent
+
+            def on_new_intent_handler(intent):
+                app_logger.info(f"_bind_update_intent_listener: on_new_intent fired, intent={intent}")
+                handle_update_intent(self, intent=intent)
+
+            activity.bind(on_new_intent=on_new_intent_handler)
+            app_logger.info("_bind_update_intent_listener: bound successfully")
+        except Exception as e:
+            app_logger.exception(f"Failed to bind update intent listener: {e}")
 
     def setup_service(self):
         boot_log("setup_service: start")
@@ -232,6 +269,8 @@ class WallpaperCarouselApp(MDApp):
         ).start()
 
     def on_resume(self):
+        from utils.update_checker import handle_update_intent
+        handle_update_intent(self)
         if self.file_operation and self.file_operation.showing_loading_screen and not self.file_operation._file_picker_active:
             print("on_resume: cleaning up spinner left from permission settings redirect")
             self.file_operation.hide_spinner()

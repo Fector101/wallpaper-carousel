@@ -50,7 +50,14 @@ def generate_receivers(package_: str = None) -> str:
         Receiver(
             name="BootReceiver",
             actions=["android.intent.action.BOOT_COMPLETED"]
-        )
+        ),
+        Receiver(
+            name="ConnectivityReceiver",
+            actions=[
+                "android.net.conn.CONNECTIVITY_CHANGE",
+                "android.net.wifi.WIFI_STATE_CHANGED",
+            ],
+        ),
 
     ]
 

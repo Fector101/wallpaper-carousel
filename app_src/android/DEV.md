@@ -8,8 +8,8 @@ So if new assets added it doesn't add new files
 ```shell
 adb shell
 run-as org.wally.waller
-ls -l files
 cd files
+ls -l
 ```
 How to see WAKE INTENT
 ```shell
@@ -129,11 +129,15 @@ python3 -m http.server 8000
 keytool -genkey -v -keystore my-release-key.jks -alias key-stuff -keyalg RSA -keysize 2048 -validity 10000 -storepass 12345 -keypass 12345 -dname "CN=Fabian, OU=Mobile, O=FabianCorp, L=New York, ST=NY, C=US"
 
 
+
+```shell
+sudo apt install zipalign apksigner
 buildozer -v android release
 zipalign -v -p 4 bin/waller-1.0.6-arm64-v8a_armeabi-v7a-release-unsigned.apk bin/waller-aligned.apk
 apksigner sign --ks my-release-key.jks --ks-key-alias key-stuff --ks-pass pass:123456789 --key-pass pass:123456789 --out bin/waller-signed.apk bin/waller-aligned.apk
 apksigner verify --verbose bin/waller-signed.apk
 adb install -r bin/waller-signed.apk
+```
 
 ## On GitHub Actions
 Create my-release-key.jks Locally by running
