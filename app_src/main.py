@@ -271,7 +271,7 @@ class WallpaperCarouselApp(MDApp):
             settings_screen.set_service_status(ServiceStatus.STARTING)
 
         try:
-            Service(
+            result = Service(
                 name='Wallpapercarousel',
                 args_str={
                     SERVICE_PORT_ARGUMENT_KEY: self.service_port,
@@ -282,6 +282,9 @@ class WallpaperCarouselApp(MDApp):
             if settings_screen is not None:
                 settings_screen.set_service_status(ServiceStatus.FAILED)
             raise
+        if result is False and settings_screen is not None:
+            settings_screen.set_service_status(ServiceStatus.FAILED)
+            raise Exception("Failed to start carousel service")
 
     def on_resume(self):
         from utils.update_checker import handle_update_intent

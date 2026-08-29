@@ -1266,11 +1266,19 @@ class SettingsScreen(MyMDScreen):
     def _terminate_carousel_confirm(self):
         self.set_service_status(ServiceStatus.STOPPING)
         try:
-            Service(name="Wallpapercarousel").stop()
-            toast("Successfully Terminated")
+            result = Service(name="Wallpapercarousel").stop()
         except Exception as e:
+            toast("Stop failed")
             self.set_service_status(ServiceStatus.FAILED)
-            toast("Stop failed", e)
+            return
+
+        if result is None:
+            # service was not running -> already stopped
+            self.set_service_status(ServiceStatus.STOPPED)
+            toast("Already stopped")
+        elif result is False:
+            self.set_service_status(ServiceStatus.FAILED)
+            toast("Stop failed")
 
     def save_interval(self, widget):
         ##p("saving interval")
@@ -1320,12 +1328,16 @@ class SettingsScreen(MyMDScreen):
             self.ids.countdown_label.text = seconds
 
     def restart_service(self, *_):
+        running = None
+        query_failed = False
         try:
             running = Service(name="Wallpapercarousel").is_running()
         except Exception:
             running = None
+            query_failed = True
 
-        if running:
+        if running is True or query_failed:
+            # running, or we could not tell -> confirm before restarting
             CarouselConfirmPopup(
                 title="Restart Carousel?",
                 message="Restarting the carousel frequently can make Android block it "
