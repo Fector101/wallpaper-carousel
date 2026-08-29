@@ -179,7 +179,8 @@ public class UpdateNotifier {
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                if (!nm.canPostNotifications()) {
+                if (context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                        != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     Log.w(TAG, "POST_NOTIFICATIONS permission not granted");
                     return false;
                 }
