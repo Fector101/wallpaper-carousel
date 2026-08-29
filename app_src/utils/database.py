@@ -15,6 +15,10 @@ _SCHEMA = """CREATE TABLE IF NOT EXISTS images (
     tab TEXT DEFAULT 'both',
     last_skipped_at TIMESTAMP,
     skip_count INTEGER DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS widget_images (
+    app_widget_id INTEGER PRIMARY KEY,
+    image_path TEXT NOT NULL
 )"""
 
 
@@ -40,7 +44,7 @@ class ImageDatabase:
         print(f"ImageDatabase initialized at {db_path}")
         self._conn = sqlite3.connect(str(db_path), check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
-        self._conn.execute(_SCHEMA)
+        self._conn.executescript(_SCHEMA)
         self._conn.commit()
 
     @classmethod
@@ -129,16 +133,63 @@ class ImageDatabase:
 
     def remove_image(self, path):
         self._execute(
+            "DELETE FROM widget_images WHERE image_path = ?",
+            (path,),
+        )
+        self._execute(
             "DELETE FROM images WHERE image_path = ?",
             (path,),
         )
 
+    def set_widget_image(self, app_widget_id, image_path):
+        self._execute(
+            "INSERT INTO widget_images (app_widget_id, image_path) VALUES (?, ?) "
+            "ON CONFLICT(app_widget_id) DO UPDATE SET image_path = excluded.image_path",
+            (app_widget_id, image_path),
+        )
+
+    def get_widget_image(self, app_widget_id):
+        row = self._fetchone(
+            "SELECT image_path FROM widget_images WHERE app_widget_id = ?",
+            (app_widget_id,),
+        )
+        return row[0] if row else None
+
+    def remove_widget(self, app_widget_id):
+        self._execute(
+            "DELETE FROM widget_images WHERE app_widget_id = ?",
+            (app_widget_id,),
+        )
+
+    def remove_widgets(self, app_widget_ids):
+        with self._lock:
+            try:
+                self._conn.executemany(
+                    "DELETE FROM widget_images WHERE app_widget_id = ?",
+                    [(w,) for w in app_widget_ids],
+                )
+                self._conn.commit()
+            except Exception as e:
+                print(f"ImageDatabase batch widget delete error: {e}")
+                traceback.print_exc()
+
+    def get_all_widget_images(self):
+        rows = self._fetchall(
+            "SELECT app_widget_id, image_path FROM widget_images"
+        )
+        return {int(widget_id): image_path for widget_id, image_path in rows}
+
     def clear_all(self):
+        self._execute("DELETE FROM widget_images")
         self._execute("DELETE FROM images")
 
     def remove_images(self, paths):
         with self._lock:
             try:
+                self._conn.executemany(
+                    "DELETE FROM widget_images WHERE image_path = ?",
+                    [(p,) for p in paths],
+                )
                 self._conn.executemany(
                     "DELETE FROM images WHERE image_path = ?",
                     [(p,) for p in paths],

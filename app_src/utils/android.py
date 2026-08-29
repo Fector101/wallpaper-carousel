@@ -6,11 +6,23 @@ from utils.platform_compat import LazyJavaClass as _LazyJavaClass
 from utils.logger import app_logger
 from ui.widgets.android import toast
 
-def add_home_screen_widget(button=None):
+def add_home_screen_widget(button=None, image_path=None):
     if not on_android_platform():
         app_logger.warning("Can't add Home Screen Widget, Not on Android.")
         return
     try:
+        # Image-specific widget: write a pending file so the newly pinned
+        # widget claims this image (see ImageWidgetProvider).
+        # A carousel widget (no image_path) clears any leftover pending request.
+        from utils.helper import appFolder
+        import os
+        pending_path = os.path.join(appFolder(), "pending_widget_image.txt")
+        if image_path and os.path.exists(image_path):
+            with open(pending_path, "w") as pending_file:
+                pending_file.write(image_path)
+        elif os.path.exists(pending_path):
+            os.remove(pending_path)
+
         _, autoclass = _get_jnius()
 
         # Android classes
@@ -19,8 +31,9 @@ def add_home_screen_widget(button=None):
 
 
         # Your widget provider class (Java side)
-        CarouselWidgetProvider = autoclass(
-            f'{get_package_name()}.CarouselWidgetProvider'
+        provider_name = "ImageWidgetProvider" if image_path else "CarouselWidgetProvider"
+        WidgetProvider = autoclass(
+            f'{get_package_name()}.{provider_name}'
         )
 
         # # Get current Android activity context
@@ -32,12 +45,12 @@ def add_home_screen_widget(button=None):
         appWidgetManager = AppWidgetManager.getInstance(context)
 
         # ComponentName for your widget provider
-        myProvider = ComponentName(context, CarouselWidgetProvider)
+        myProvider = ComponentName(context, WidgetProvider)
 
         # Check if pinning is supported
         if appWidgetManager.isRequestPinAppWidgetSupported():
             # Optional: callback when widget is pinned
-            intent = Intent(context, CarouselWidgetProvider)
+            intent = Intent(context, WidgetProvider)
 
             successCallback = PendingIntent.getBroadcast(
                 context,
@@ -53,9 +66,11 @@ def add_home_screen_widget(button=None):
                 None,
                 successCallback
             )
-            msg="Added Home Screen Widget"
+            msg="Widget Added to Home Screen" if image_path else "Added Home Screen Widget"
             app_logger.info(msg)
             toast(msg)
+        else:
+            app_logger.warning("Request Pin Widget not supported on this device.")
     except Exception as error_adding_home_screen_widget:
         print("error_adding_home_screen_widget",error_adding_home_screen_widget)
         traceback.print_exc()

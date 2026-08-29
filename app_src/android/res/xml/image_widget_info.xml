@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_image_description"
+    android:initialKeyguardLayout="@layout/carousel_widget"
+    android:initialLayout="@layout/carousel_widget"
+    android:minWidth="80dp"
+    android:minHeight="80dp"
+    android:minResizeWidth="40dp"
+    android:minResizeHeight="40dp"
+    android:maxResizeWidth="120dp"
+    android:maxResizeHeight="120dp"
+    android:previewImage="@drawable/mountain"
+    android:previewLayout="@layout/carousel_widget"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="3600000"
+    android:widgetCategory="home_screen" />

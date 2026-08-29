@@ -181,6 +181,7 @@ class FullscreenScreen(MyMDScreen):
         self.original_carousel_pos_hint = None
         self.original_carousel_size_hint = None
         self.set_wallpaper_btn = None
+        self.btn_home_widget = None
         self.btn_layout = None
         self.header_file_size = None
         self.btn_close = None
@@ -319,6 +320,8 @@ class FullscreenScreen(MyMDScreen):
         )
         self.set_wallpaper_btn = MyMDIconButton(icon="wall", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
         left_btm_box.add_widget(self.set_wallpaper_btn)
+        self.btn_home_widget = MyMDIconButton(icon="home", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
+        left_btm_box.add_widget(self.btn_home_widget)
         self.btn_delete = MyMDIconButton(icon="trash-can-outline", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
         self.btn_info = MyMDIconButton(icon="information-outline", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
         self.btn_fullscreen = MyMDIconButton(icon="fullscreen", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
@@ -362,6 +365,7 @@ class FullscreenScreen(MyMDScreen):
 
         # self.set_wallpaper_btn.bind(on_release=lambda x: change_wallpaper(self.carousel.current_slide.higher_format))
         self.set_wallpaper_btn.bind(on_release=self.set_as_wallpaper)
+        self.btn_home_widget.bind(on_release=self.add_widget_to_home_screen)
         # p("using hot reload stuff")
         # self.update_images(0)  # for hot_reload
 
@@ -378,6 +382,7 @@ class FullscreenScreen(MyMDScreen):
         self.btn_toggle.text_color = tc
         self.header_title.text_color = tc
         self.set_wallpaper_btn.icon_color = tc
+        self.btn_home_widget.icon_color = tc
         self.btn_delete.icon_color = tc
         self.btn_info.icon_color = tc
         self.btn_fullscreen.icon_color = tc
@@ -415,7 +420,13 @@ class FullscreenScreen(MyMDScreen):
         def remove_spinner(_):
             spinner_layout.remove()
         threading.Thread(target=change_wallpaper, args=[self.carousel.current_slide.higher_format, remove_spinner], daemon=True).start()
-        
+
+    def add_widget_to_home_screen(self, *_):
+        from utils.android import add_home_screen_widget
+        current_slide = self.carousel.current_slide
+        image_path = current_slide.higher_format if current_slide else None
+        add_home_screen_widget(image_path=image_path)
+
     def delete_current(self, *_):
         spinner_layout = LoadingLayout()
 
@@ -556,6 +567,7 @@ class FullscreenScreen(MyMDScreen):
         self.btm_btn_layout_root.pos_hint = {"y": 0}
 
         self.set_wallpaper_btn.icon_color = [1,1,1,1] if self.app.device_theme == "dark" else [0,0,0,1]
+        self.btn_home_widget.icon_color = self.set_wallpaper_btn.icon_color
         self.btn_delete.icon_color = self.set_wallpaper_btn.icon_color
         self.btn_info.icon_color = self.set_wallpaper_btn.icon_color
         self.btn_fullscreen.icon_color = self.set_wallpaper_btn.icon_color

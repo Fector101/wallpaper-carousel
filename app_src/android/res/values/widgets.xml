@@ -9,4 +9,7 @@
     <string name="widget_carousel_description">
 View Lock screen wallpaper on Home screen 
     </string>
+    <string name="widget_image_description">
+A fixed wallpaper image of your choice on the Home screen
+    </string>
 </resources>

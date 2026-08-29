@@ -30,6 +30,12 @@ def generate_receivers(package_: str = None) -> str:
             meta_resource="@xml/carousel_widget_info",
         ),
         Receiver(
+            name="ImageWidgetProvider",
+            label="Waller Image Widget",
+            actions=["android.appwidget.action.APPWIDGET_UPDATE"],
+            meta_resource="@xml/image_widget_info",
+        ),
+        Receiver(
             name="SimpleWidget",
             label="Simple Text",
             actions=["android.appwidget.action.APPWIDGET_UPDATE"],
