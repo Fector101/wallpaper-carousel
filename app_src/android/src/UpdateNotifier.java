@@ -76,7 +76,11 @@ public class UpdateNotifier {
 
             Log.d(TAG, "New version available: " + latestVersion);
             String releaseNotes = fetchReleaseNotes(latestVersion);
-            sendNotification(context, latestVersion, releaseNotes);
+            boolean posted = sendNotification(context, latestVersion, releaseNotes);
+            if (!posted) {
+                Log.w(TAG, "Notification not eligible to post, cooldown timestamp NOT saved");
+                return true;
+            }
 
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                     .edit().putLong(KEY_LAST_NOTIFIED, System.currentTimeMillis()).apply();
@@ -166,19 +170,55 @@ public class UpdateNotifier {
         }
     }
 
-    private static void sendNotification(Context context, String version, String releaseNotes) {
-        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (nm == null) return;
+    private static boolean canPostNotification(Context context) {
+        try {
+            NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm == null) {
+                Log.w(TAG, "NotificationManager unavailable, cannot post");
+                return false;
+            }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH);
-            channel.setDescription("Notifications for app updates");
-            nm.createNotificationChannel(channel);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (!nm.canPostNotifications()) {
+                    Log.w(TAG, "POST_NOTIFICATIONS permission not granted");
+                    return false;
+                }
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                if (!nm.areNotificationsEnabled()) {
+                    Log.w(TAG, "Notifications disabled for app");
+                    return false;
+                }
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NotificationChannel channel = new NotificationChannel(
+                        CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH);
+                channel.setDescription("Notifications for app updates");
+                nm.createNotificationChannel(channel);
+
+                NotificationChannel created = nm.getNotificationChannel(CHANNEL_ID);
+                if (created == null || created.getImportance() == NotificationManager.IMPORTANCE_NONE) {
+                    Log.w(TAG, "Update channel disabled, cannot post");
+                    return false;
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Notification eligibility check failed", e);
+            return false;
+        }
+    }
+
+    private static boolean sendNotification(Context context, String version, String releaseNotes) {
+        if (!canPostNotification(context)) {
+            return false;
         }
 
+        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) return false;
+
         Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
-        if (launchIntent == null) return;
+        if (launchIntent == null) return false;
         launchIntent.putExtra("action", "open_update");
         launchIntent.putExtra("version", version);
         launchIntent.putExtra("release_notes", releaseNotes);
@@ -198,5 +238,6 @@ public class UpdateNotifier {
 
         nm.notify(NOTIFICATION_ID, builder.build());
         Log.d(TAG, "Notification sent for v" + version);
+        return true;
     }
 }
