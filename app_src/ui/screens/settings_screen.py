@@ -643,7 +643,7 @@ class SettingsScreen(MyMDScreen):
         ServiceStatus.RUNNING: ([0.2, 0.72, 0.36, 1], "Running"),
         ServiceStatus.STOPPING: ([1.0, 0.52, 0.1, 1], "Stopping..."),
         ServiceStatus.STOPPED: ([0.62, 0.62, 0.62, 1], "Stopped"),
-        ServiceStatus.FAILED: ([0.9, 0.28, 0.25, 1], "Failed to start"),
+        ServiceStatus.FAILED: ([0.9, 0.28, 0.25, 1], "Failed"),
         ServiceStatus.RESTARTING: ([1.0, 0.76, 0.03, 1], "Restarting..."),
     }
     # (restart button label, stop button label) per ServiceStatus
@@ -652,7 +652,7 @@ class SettingsScreen(MyMDScreen):
         ServiceStatus.RUNNING: ("Restart Carousel", "Stop Carousel"),
         ServiceStatus.STOPPING: ("Restart Carousel", "Stopping..."),
         ServiceStatus.STOPPED: ("Restart Carousel", "Stop Carousel"),
-        ServiceStatus.FAILED: ("Failed to start", "Stop Carousel"),
+        ServiceStatus.FAILED: ("Restart Carousel", "Stop Carousel"),
         ServiceStatus.RESTARTING: ("Restarting...", "Stop Carousel"),
     }
     STARTUP_TIMEOUT_SECONDS = 15

@@ -100,7 +100,7 @@ def test_terminate_stop_false_is_failed():
          mock.patch.object(settings_module, "toast") as toast:
         fake_cls.return_value.stop.return_value = False
         screen._terminate_carousel_confirm()
-        assert screen._carousel_status_label.text == "Failed to start"
+        assert screen._carousel_status_label.text == "Failed"
         toast.assert_called_once_with("Stop failed")
 
 
