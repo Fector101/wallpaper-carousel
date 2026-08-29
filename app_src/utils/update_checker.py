@@ -46,23 +46,25 @@ def handle_update_intent(app, intent=None):
         action = extras.getString("action")
         if action == "open_update":
             version = extras.getString("version", "")
+            release_notes = extras.getString("release_notes", "")
             app_logger.info(f"handle_update_intent: navigating to update screen for version={version}")
             intent.replaceExtras(None)
-            _navigate_to_update_screen(app, version)
+            _navigate_to_update_screen(app, version, release_notes)
 
     except Exception:
         app_logger.exception("Failed to handle update intent")
 
 
-def _navigate_to_update_screen(app, version):
-    def _go(_):
+def _navigate_to_update_screen(app, version, release_notes=""):
+
+    def _go(notes):
         if not hasattr(app, "sm") or app.sm is None:
             return
         try:
             screen = app.sm.download_apk_screen
             screen.show(
                 new_version=version,
-                release_notes=f"Version {version} is available.",
+                release_notes=notes or f"Version {version} is available.",
                 apk_size=0,
             )
         except Exception:
@@ -70,4 +72,4 @@ def _navigate_to_update_screen(app, version):
 
     from kivy.clock import Clock
 
-    Clock.schedule_once(_go, 0.5)
+    Clock.schedule_once(lambda dt: _go(release_notes), 0.5)
