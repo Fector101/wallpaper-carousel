@@ -347,7 +347,8 @@ class FullscreenScreen(MyMDScreen):
         )
         self.set_wallpaper_btn = MyMDIconButton(icon="wall", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
         left_btm_box.add_widget(self.set_wallpaper_btn)
-        self.btn_home_widget = MyMDIconButton(icon="home", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
+        # home-plus-outline, shape-plus, or widgets-outline.
+        self.btn_home_widget = MyMDIconButton(icon="home-plus", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
         self.btn_fullscreen = MyMDIconButton(icon="fullscreen", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
         right_btm_box= MDBoxLayout(
             pos_hint={'center_x': .9, 'center_y': .549},
@@ -420,12 +421,14 @@ class FullscreenScreen(MyMDScreen):
             self.header_dropdown_menu.dismiss()
         action()
 
-    def _update_menu_theme(self, bg_color):
+    def _update_menu_theme(self, bg_color, text_color):
         if self.header_dropdown_menu is None:
             return
         self.header_dropdown_menu.md_bg_color = bg_color
         for item in self._menu_items_data:
             item["md_bg_color"] = bg_color
+            item["text_color"] = text_color
+            item["leading_icon_color"] = text_color
         self.header_dropdown_menu.items = self._menu_items_data
 
     def _set_theme_color(self, _, theme):
@@ -446,7 +449,7 @@ class FullscreenScreen(MyMDScreen):
         self.btn_fullscreen.icon_color = tc
         self.share_btn.icon_color = tc
         self.dropdown_btn.icon_color = tc
-        self._update_menu_theme(menu_bg)
+        self._update_menu_theme(menu_bg, tc)
 
     def enter_preview_mode(self, *_):
         self.is_fullscreen = True
