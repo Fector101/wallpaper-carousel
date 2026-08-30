@@ -15,6 +15,7 @@ from utils.helper import appFolder
 from utils.config_manager import ConfigManager
 from utils.database import ImageDatabase
 from utils.logger import app_logger
+from utils.widget_intent import assign_picked_images_to_widget, clear_pending_widget_pick
 from utils.platform_compat import on_android_platform as _on_android_platform, on_pydroid_app as _on_pydroid_app, LazyJavaClass as _LazyJavaClass
 
 _mActivity = None
@@ -141,6 +142,7 @@ class ImageOperation:
         if not files:
             self.file_picker_active = False
             self.processing_intent = False
+            clear_pending_widget_pick(self.app)
             Clock.schedule_once(lambda dt: self.load_saved(has_files=False))
             self.hide_spinner()
             return
@@ -165,6 +167,7 @@ class ImageOperation:
             list(pool.map(lambda args: process_one(*args), enumerate(files)))
         _add_wallpapers_to_config(new_images)
         ImageDatabase().insert_images(new_images)
+        assign_picked_images_to_widget(self.app, new_images)
         self.file_picker_active = False
         self.processing_intent = False
         Clock.schedule_once(self.ui_things, 0)
@@ -193,6 +196,7 @@ class ImageOperation:
                     if not uris:
                         self._file_picker_active = False
                         self.processing_intent = False
+                        clear_pending_widget_pick(self.app)
                         Clock.schedule_once(lambda dt: self.hide_spinner(), 0)
                         return
 
@@ -238,6 +242,7 @@ class ImageOperation:
                 app_logger.info(f"import_from_{TAG}: imported- {len(new_images)}/{len(uris)} images")
                 _add_wallpapers_to_config(new_images)
                 ImageDatabase().insert_images(new_images)
+                assign_picked_images_to_widget(self.app, new_images)
                 self._file_picker_active = False
                 self.processing_intent = False
                 Clock.schedule_once(lambda dt: self.ui_things(dt), 0)

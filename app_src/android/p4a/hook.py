@@ -23,6 +23,7 @@ def generate_receivers(package_: str = None) -> str:
         ),
         Receiver(
             name="CarouselWidgetProvider",
+            label="Waller Carousel Widget",
             actions=[
                 "android.intent.action.BOOT_COMPLETED",
                 "android.appwidget.action.APPWIDGET_UPDATE",

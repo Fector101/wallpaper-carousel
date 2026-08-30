@@ -60,6 +60,8 @@ public class ImageWidgetProvider extends AppWidgetProvider {
                     R.layout.carousel_widget
             );
 
+            String imagePath = getWidgetImagePath(context, appWidgetId);
+
             Intent intent = new Intent(Intent.ACTION_MAIN);
             intent.setComponent(new ComponentName(context, "org.kivy.android.PythonActivity"));
             intent.addCategory(Intent.CATEGORY_LAUNCHER);
@@ -68,6 +70,14 @@ public class ImageWidgetProvider extends AppWidgetProvider {
                     Intent.FLAG_ACTIVITY_CLEAR_TOP
             );
             intent.putExtra("from_widget", true);
+            intent.putExtra("app_widget_id", appWidgetId);
+            intent.putExtra("widget_provider", "ImageWidgetProvider");
+            if (imagePath == null || imagePath.trim().isEmpty()) {
+                intent.putExtra("action", "open_widget_picker");
+            } else {
+                intent.putExtra("action", "open_widget_image");
+                intent.putExtra("image_path", imagePath.trim());
+            }
 
             int flags = PendingIntent.FLAG_UPDATE_CURRENT;
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
@@ -77,8 +87,6 @@ public class ImageWidgetProvider extends AppWidgetProvider {
 
             views.setOnClickPendingIntent(R.id.widget_root, pendingIntent);
             views.setOnClickPendingIntent(R.id.test_image, pendingIntent);
-
-            String imagePath = getWidgetImagePath(context, appWidgetId);
 
             if (imagePath == null || imagePath.trim().isEmpty()) {
                 Log.e(TAG, "No image path for widgetId=" + appWidgetId);

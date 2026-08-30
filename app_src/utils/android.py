@@ -80,6 +80,25 @@ def add_home_screen_widget(button=None, image_path=None):
         traceback.print_exc()
 
 
+def refresh_widget(provider_name, app_widget_id):
+    """Trigger an AppWidget onUpdate for a specific widget via WidgetUpdater."""
+    if not on_android_platform():
+        return
+
+    def _do_refresh(_dt):
+        try:
+            from android_notify.internal.java_classes import autoclass
+            context = get_python_activity_context()
+            WidgetUpdater = autoclass(f'{get_package_name()}.WidgetUpdater')
+            WidgetUpdater.requestUpdate(context, provider_name, int(app_widget_id))
+            app_logger.info(f"refresh_widget: requested update for {provider_name} id={app_widget_id}")
+        except Exception as error_refreshing_widget:
+            app_logger.exception(f"refresh_widget: failed: {error_refreshing_widget}")
+
+    from kivy.clock import Clock
+    Clock.schedule_once(_do_refresh, 0)
+
+
 def is_device_on_light_mode():
     if not on_android_platform():
         return "dark"
