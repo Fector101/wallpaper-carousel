@@ -61,6 +61,10 @@ public class ImageWidgetProvider extends AppWidgetProvider {
             );
 
             String imagePath = getWidgetImagePath(context, appWidgetId);
+            File imageFile = (imagePath == null || imagePath.trim().isEmpty())
+                    ? null
+                    : new File(imagePath.trim());
+            boolean hasValidImage = imageFile != null && imageFile.exists();
 
             Intent intent = new Intent(Intent.ACTION_MAIN);
             intent.setComponent(new ComponentName(context, "org.kivy.android.PythonActivity"));
@@ -72,11 +76,11 @@ public class ImageWidgetProvider extends AppWidgetProvider {
             intent.putExtra("from_widget", true);
             intent.putExtra("app_widget_id", appWidgetId);
             intent.putExtra("widget_provider", "ImageWidgetProvider");
-            if (imagePath == null || imagePath.trim().isEmpty()) {
-                intent.putExtra("action", "open_widget_picker");
-            } else {
+            if (hasValidImage) {
                 intent.putExtra("action", "open_widget_image");
                 intent.putExtra("image_path", imagePath.trim());
+            } else {
+                intent.putExtra("action", "open_widget_picker");
             }
 
             int flags = PendingIntent.FLAG_UPDATE_CURRENT;
@@ -88,25 +92,15 @@ public class ImageWidgetProvider extends AppWidgetProvider {
             views.setOnClickPendingIntent(R.id.widget_root, pendingIntent);
             views.setOnClickPendingIntent(R.id.test_image, pendingIntent);
 
-            if (imagePath == null || imagePath.trim().isEmpty()) {
-                Log.e(TAG, "No image path for widgetId=" + appWidgetId);
+            if (!hasValidImage) {
+                Log.e(TAG, "No image for widgetId=" + appWidgetId);
                 views.setViewVisibility(R.id.test_image, View.GONE);
                 views.setViewVisibility(R.id.placeholder_text, View.VISIBLE);
                 appWidgetManager.updateAppWidget(appWidgetId, views);
                 continue;
             }
-
-            File imageFile = new File(imagePath.trim());
 
             Log.d(TAG, "Resolved image path: " + imageFile.getAbsolutePath());
-
-            if (!imageFile.exists()) {
-                Log.e(TAG, "Image file does not exist");
-                views.setViewVisibility(R.id.test_image, View.GONE);
-                views.setViewVisibility(R.id.placeholder_text, View.VISIBLE);
-                appWidgetManager.updateAppWidget(appWidgetId, views);
-                continue;
-            }
 
             BitmapFactory.Options opts = new BitmapFactory.Options();
             opts.inSampleSize = 4; // reduce memory usage

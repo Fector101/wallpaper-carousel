@@ -21,7 +21,6 @@ import android.util.TypedValue;
 import android.graphics.Color;
 
 import android.content.ComponentName;
-import android.content.ContentValues;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -40,7 +39,6 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
 
     private static final String DB_NAME = "image_history.db";
     private static final String TABLE_WIDGET_IMAGES = "widget_images";
-    private static final String PENDING_WIDGET_IMAGE = "pending_widget_image.txt";
 
     @Override
     public void onUpdate(
@@ -225,8 +223,7 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
     /**
      * Resolves a per-widget image assigned via the app's file chooser:
      * 1. Existing mapping in the widget_images DB table.
-     * 2. A pending image written by the app right before pinning (claimed once).
-     * 3. Otherwise null (caller falls back to wallpaper.txt).
+     * 2. Otherwise null (caller falls back to wallpaper.txt).
      */
     private String getWidgetImagePath(Context context, int appWidgetId) {
         File dbFile = new File(context.getFilesDir(), DB_NAME);
@@ -254,23 +251,7 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
                     cursor.close();
                 }
             }
-            File pendingFile = new File(context.getFilesDir(), PENDING_WIDGET_IMAGE);
-            if (!pendingFile.exists()) {
-                return null;
-            }
-            String pending = readText(pendingFile);
-            if (pending == null || pending.trim().isEmpty()) {
-                return null;
-            }
-            ContentValues values = new ContentValues();
-            values.put("app_widget_id", appWidgetId);
-            values.put("image_path", pending);
-            db.insertWithOnConflict(
-                    TABLE_WIDGET_IMAGES, null, values, SQLiteDatabase.CONFLICT_REPLACE
-            );
-            pendingFile.delete();
-            Log.d(TAG, "Claimed pending image for widgetId=" + appWidgetId + " -> " + pending);
-            return pending;
+            return null;
         } catch (Exception e) {
             Log.e(TAG, "Error resolving widget image", e);
             return null;
@@ -278,19 +259,6 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
             if (db != null && db.isOpen()) {
                 db.close();
             }
-        }
-    }
-
-    private String readText(File file) {
-        if (!file.exists()) {
-            return null;
-        }
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            String line = br.readLine();
-            return line == null ? null : line.trim();
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to read " + file.getName(), e);
-            return null;
         }
     }
 }

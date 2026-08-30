@@ -95,7 +95,8 @@ def _open_file_chooser_from_widget(app):
                 app_logger.exception("Failed to open file chooser from widget")
             return
         if _attempts < 30:
-            Clock.schedule_once(_go, 0.3, _attempts + 1)
+            next_attempt = _attempts + 1
+            Clock.schedule_once(lambda dt, a=next_attempt: _go(dt, a), 0.3)
 
     Clock.schedule_once(_go, 0.5)
 
@@ -107,7 +108,8 @@ def _open_image_from_widget(app, image_path):
         gallery = getattr(getattr(app, "sm", None), "gallery_screen", None)
         if gallery is None or not getattr(gallery, "wallpapers", None):
             if _attempts < 30:
-                Clock.schedule_once(_go, 0.3, _attempts + 1)
+                next_attempt = _attempts + 1
+                Clock.schedule_once(lambda dt, a=next_attempt: _go(dt, a), 0.3)
             return
         try:
             if not image_path or not os.path.exists(image_path):
