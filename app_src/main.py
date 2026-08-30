@@ -69,6 +69,7 @@ class WallpaperCarouselApp(MDApp):
         self.root_layout = None
         self.sm = None
         self.bottom_bar = None
+        self._widget_pick_pending = None
 
     def build_ui(self):
         from kivy.lang import Builder
@@ -176,10 +177,12 @@ class WallpaperCarouselApp(MDApp):
         Clock.schedule_interval(lambda dt: self.monitor_dark_and_light_device_change(), 1)
         if on_android_platform():
             from utils.update_checker import schedule_update_check, handle_update_intent
+            from utils.widget_intent import handle_widget_intent
             Clock.schedule_once(lambda dt: self._register_connectivity_receiver(), 0)
             Clock.schedule_once(lambda dt: self._bind_update_intent_listener(), 0)
             Clock.schedule_once(lambda dt: schedule_update_check(), 0)
             Clock.schedule_once(lambda dt: handle_update_intent(self), 1)
+            Clock.schedule_once(lambda dt: handle_widget_intent(self), 1)
 
     def _register_connectivity_receiver(self):
         if not on_android_platform():
@@ -202,10 +205,12 @@ class WallpaperCarouselApp(MDApp):
         try:
             from android import activity
             from utils.update_checker import handle_update_intent
+            from utils.widget_intent import handle_widget_intent
 
             def on_new_intent_handler(intent):
                 app_logger.info(f"_bind_update_intent_listener: on_new_intent fired, intent={intent}")
                 handle_update_intent(self, intent=intent)
+                handle_widget_intent(self, intent=intent)
 
             activity.bind(on_new_intent=on_new_intent_handler)
             app_logger.info("_bind_update_intent_listener: bound successfully")
@@ -288,7 +293,9 @@ class WallpaperCarouselApp(MDApp):
 
     def on_resume(self):
         from utils.update_checker import handle_update_intent
+        from utils.widget_intent import handle_widget_intent
         handle_update_intent(self)
+        handle_widget_intent(self)
         if self.file_operation and self.file_operation.showing_loading_screen and not self.file_operation._file_picker_active:
             print("on_resume: cleaning up spinner left from permission settings redirect")
             self.file_operation.hide_spinner()
@@ -307,6 +314,7 @@ class WallpaperCarouselApp(MDApp):
                     # Fix for Half Screen Popup When no file is picked.
                     # some_int is usually -1 when a file is chosen and 0 when no file is chosen
                     self.file_operation._file_picker_active = False
+                    self._widget_pick_pending = None
                     if self.file_operation.showing_loading_screen:
                         self.file_operation.hide_spinner()
                         self.bottom_bar.show(hidden_by="pic")

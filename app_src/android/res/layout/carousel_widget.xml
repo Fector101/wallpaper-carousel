@@ -20,7 +20,7 @@
         android:id="@+id/placeholder_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="waiting for\nwallpaper change"
+        android:text="Tap to add an image"
         android:gravity="center"
         android:textSize="16sp"
         android:visibility="gone"

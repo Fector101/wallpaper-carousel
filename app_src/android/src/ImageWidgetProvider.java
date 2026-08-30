@@ -1,11 +1,11 @@
-// package app.vercel.androidnotify;
 package org.wally.waller;
 
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.app.PendingIntent;
-import android.content.Intent;
+import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -17,8 +17,6 @@ import android.graphics.PorterDuffXfermode;
 import android.util.Log;
 import android.widget.RemoteViews;
 import android.view.View;
-import android.util.TypedValue;
-import android.graphics.Color;
 
 import android.content.ComponentName;
 
@@ -30,15 +28,20 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 
-// import app.vercel.androidnotify.R;
 import org.wally.waller.R;
 
-public class CarouselWidgetProvider extends AppWidgetProvider {
+/**
+ * A widget that shows one fixed image pinned by the user from the app.
+ * The image per widget instance is stored in the widget_images table of the
+ * app's image_history.db (app_widget_id -> image_path).
+ */
+public class ImageWidgetProvider extends AppWidgetProvider {
 
-    private static final String TAG = "CarouselWidgetProvider";
+    private static final String TAG = "ImageWidgetProvider";
 
     private static final String DB_NAME = "image_history.db";
     private static final String TABLE_WIDGET_IMAGES = "widget_images";
+    private static final String PENDING_WIDGET_IMAGE = "pending_widget_image.txt";
 
     @Override
     public void onUpdate(
@@ -46,43 +49,22 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
             AppWidgetManager appWidgetManager,
             int[] appWidgetIds
     ) {
-
         Log.d(TAG, "onUpdate() called, widget count=" + appWidgetIds.length);
 
         for (int appWidgetId : appWidgetIds) {
 
-            Log.d(TAG, "Updating widgetId=" + appWidgetId);
+            Log.d(TAG, "Updating image widgetId=" + appWidgetId);
 
             RemoteViews views = new RemoteViews(
                     context.getPackageName(),
                     R.layout.carousel_widget
             );
 
-            // Per-widget image assigned from the app's file chooser takes
-            // priority; otherwise fall back to the shared wallpaper.txt.
             String imagePath = getWidgetImagePath(context, appWidgetId);
-            if (imagePath == null) {
-                File txtFile = new File(
-                        context.getFilesDir().getAbsolutePath() + "/wallpaper.txt"
-                );
-                if (txtFile.exists()) {
-                    try (BufferedReader br = new BufferedReader(new FileReader(txtFile))) {
-                        imagePath = br.readLine();
-                    } catch (IOException e) {
-                        Log.e(TAG, "Failed to read wallpaper.txt", e);
-                    }
-                } else {
-                    Log.e(TAG, "wallpaper.txt does not exist");
-                }
-            }
-
-            // WIDGET CLICK → APP LAUNCH (explicit intent works even when app is force-stopped)
-            // If we have a valid image, open it in the app's fullscreen viewer.
-            // Widgets added from outside the app (long-press app icon → Widgets)
-            // have no image yet, so open the file chooser instead.
-            File resolvedImageFile = (imagePath != null && !imagePath.trim().isEmpty())
-                    ? new File(imagePath.trim())
-                    : null;
+            File imageFile = (imagePath == null || imagePath.trim().isEmpty())
+                    ? null
+                    : new File(imagePath.trim());
+            boolean hasValidImage = imageFile != null && imageFile.exists();
 
             Intent intent = new Intent(Intent.ACTION_MAIN);
             intent.setComponent(new ComponentName(context, "org.kivy.android.PythonActivity"));
@@ -93,8 +75,8 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
             );
             intent.putExtra("from_widget", true);
             intent.putExtra("app_widget_id", appWidgetId);
-            intent.putExtra("widget_provider", "CarouselWidgetProvider");
-            if (resolvedImageFile != null && resolvedImageFile.exists()) {
+            intent.putExtra("widget_provider", "ImageWidgetProvider");
+            if (hasValidImage) {
                 intent.putExtra("action", "open_widget_image");
                 intent.putExtra("image_path", imagePath.trim());
             } else {
@@ -109,30 +91,17 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
 
             views.setOnClickPendingIntent(R.id.widget_root, pendingIntent);
             views.setOnClickPendingIntent(R.id.test_image, pendingIntent);
-            Log.d(TAG, "PendingIntent set for widgetId=" + appWidgetId);
 
-            if (resolvedImageFile == null) {
-                Log.e(TAG, "Image path is empty");
-                // Show placeholder text, hide image
+            if (!hasValidImage) {
+                Log.e(TAG, "No image for widgetId=" + appWidgetId);
                 views.setViewVisibility(R.id.test_image, View.GONE);
                 views.setViewVisibility(R.id.placeholder_text, View.VISIBLE);
                 appWidgetManager.updateAppWidget(appWidgetId, views);
                 continue;
             }
-
-            File imageFile = resolvedImageFile;
 
             Log.d(TAG, "Resolved image path: " + imageFile.getAbsolutePath());
 
-            if (!imageFile.exists()) {
-                Log.e(TAG, "Image file does not exist");
-                views.setViewVisibility(R.id.test_image, View.GONE);
-                views.setViewVisibility(R.id.placeholder_text, View.VISIBLE);
-                appWidgetManager.updateAppWidget(appWidgetId, views);
-                continue;
-            }
-
-            // Decode bitmap safely (widgets are memory-sensitive)
             BitmapFactory.Options opts = new BitmapFactory.Options();
             opts.inSampleSize = 4; // reduce memory usage
             Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath(), opts);
@@ -142,8 +111,6 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
                 appWidgetManager.updateAppWidget(appWidgetId, views);
                 continue;
             }
-
-            Log.d(TAG, "Bitmap decoded: " + bitmap.getWidth() + "x" + bitmap.getHeight());
 
             int size = Math.min(bitmap.getWidth(), bitmap.getHeight());
             int x = (bitmap.getWidth() - size) / 2;
@@ -183,14 +150,12 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
             canvas.drawBitmap(scaledBitmap, rect, rect, paint);
 
             views.setImageViewBitmap(R.id.test_image, output);
-            Log.d(TAG, "Bitmap rendered and set on widget");
-            // Show image, hide placeholder
+            Log.d(TAG, "Bitmap rendered and set on image widget");
             views.setViewVisibility(R.id.test_image, View.VISIBLE);
             views.setViewVisibility(R.id.placeholder_text, View.GONE);
 
-            // UPDATE WIDGET
             appWidgetManager.updateAppWidget(appWidgetId, views);
-            Log.d(TAG, "Widget update pushed");
+            Log.d(TAG, "Image widget pushed");
         }
     }
 
@@ -209,7 +174,7 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
                 db.delete(TABLE_WIDGET_IMAGES, "app_widget_id = ?",
                         new String[]{String.valueOf(appWidgetId)});
             }
-            Log.d(TAG, "Cleaned up widget_images for deleted carousel widgets");
+            Log.d(TAG, "Cleaned up widget_images for deleted widgets");
         } catch (Exception e) {
             Log.e(TAG, "Failed to clean up widget_images", e);
         } finally {
@@ -220,10 +185,24 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
         super.onDeleted(context, appWidgetIds);
     }
 
+    private String readText(File file) {
+        if (!file.exists()) {
+            return null;
+        }
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            String line = br.readLine();
+            return line == null ? null : line.trim();
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to read " + file.getName(), e);
+            return null;
+        }
+    }
+
     /**
-     * Resolves a per-widget image assigned via the app's file chooser:
+     * Resolves the fixed image for a widget:
      * 1. Existing mapping in the widget_images DB table.
-     * 2. Otherwise null (caller falls back to wallpaper.txt).
+     * 2. A pending image written by the app right before pinning (claimed once).
+     * 3. Otherwise null (widget shows placeholder).
      */
     private String getWidgetImagePath(Context context, int appWidgetId) {
         File dbFile = new File(context.getFilesDir(), DB_NAME);
@@ -251,7 +230,23 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
                     cursor.close();
                 }
             }
-            return null;
+            File pendingFile = new File(context.getFilesDir(), PENDING_WIDGET_IMAGE);
+            if (!pendingFile.exists()) {
+                return null;
+            }
+            String pending = readText(pendingFile);
+            if (pending == null || pending.trim().isEmpty()) {
+                return null;
+            }
+            ContentValues values = new ContentValues();
+            values.put("app_widget_id", appWidgetId);
+            values.put("image_path", pending);
+            db.insertWithOnConflict(
+                    TABLE_WIDGET_IMAGES, null, values, SQLiteDatabase.CONFLICT_REPLACE
+            );
+            pendingFile.delete();
+            Log.d(TAG, "Claimed pending image for widgetId=" + appWidgetId + " -> " + pending);
+            return pending;
         } catch (Exception e) {
             Log.e(TAG, "Error resolving widget image", e);
             return null;
