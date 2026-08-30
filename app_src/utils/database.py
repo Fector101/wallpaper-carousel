@@ -184,6 +184,7 @@ class ImageDatabase:
         self._execute("DELETE FROM images")
 
     def remove_images(self, paths):
+        paths = list(paths)
         with self._lock:
             try:
                 self._conn.executemany(

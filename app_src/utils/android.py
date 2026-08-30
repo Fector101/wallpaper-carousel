@@ -23,6 +23,10 @@ def add_home_screen_widget(button=None, image_path=None):
         elif os.path.exists(pending_path):
             os.remove(pending_path)
 
+        if image_path and not os.path.exists(image_path):
+            app_logger.warning(f"Can't add Image Home Screen Widget, image does not exist: {image_path}")
+            return
+
         _, autoclass = _get_jnius()
 
         # Android classes
