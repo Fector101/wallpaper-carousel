@@ -42,6 +42,7 @@ if on_android_platform():
     IntentFilter = autoclass('android.content.IntentFilter')
     Intent = autoclass('android.content.Intent')
     PendingIntent = autoclass('android.app.PendingIntent')
+    Bundle = autoclass('android.os.Bundle')
 
 
 my_config = ConfigManager()
@@ -608,11 +609,14 @@ class WallpaperServerReceiver:
                     Intent.FLAG_ACTIVITY_NEW_TASK |
                     Intent.FLAG_ACTIVITY_CLEAR_TOP
             )
-            intent.putExtra("from_widget", True)
-            intent.putExtra("app_widget_id", app_widget_id)
-            intent.putExtra("widget_provider", "CarouselWidgetProvider")
-            intent.putExtra("action", "open_widget_image")
-            intent.putExtra("image_path", wallpaper_path)
+            
+            bundle = Bundle()
+            bundle.putBoolean("from_widget", True)
+            bundle.putInt("app_widget_id", app_widget_id)
+            bundle.putString("widget_provider", "CarouselWidgetProvider")
+            bundle.putString("action", "open_widget_image")
+            bundle.putString("image_path", wallpaper_path)
+            intent.putExtras(bundle)
 
             flags = PendingIntent.FLAG_UPDATE_CURRENT
             if BuildVersion.SDK_INT >= 31:
