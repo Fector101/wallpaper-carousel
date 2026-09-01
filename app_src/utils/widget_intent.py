@@ -9,6 +9,8 @@ def handle_widget_intent(app, intent=None):
     """Read activity intent extras and react to home-screen widget clicks."""
     if not on_android_platform():
         return
+    from android_notify.internal.intents import get_data_object_added_to_intent
+    print(f"ane {get_data_object_added_to_intent(intent)}")
 
     try:
         from android_notify.internal.java_classes import autoclass

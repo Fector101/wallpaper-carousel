@@ -14,7 +14,7 @@ from datetime import datetime, time as dt_time
 from pythonosc import dispatcher, osc_server, udp_client
 from android_notify import Notification
 from android_notify.config import get_python_activity_context, on_android_platform, _get_jnius, get_python_service
-from android_notify.internal.java_classes import BitmapFactory
+from android_notify.internal.java_classes import BitmapFactory, BuildVersion
 from android_widgets import Layout, RemoteViews, AppWidgetManager
 
 from utils.config_manager import ConfigManager
@@ -40,6 +40,8 @@ if on_android_platform():
     RemoteViews_ = autoclass('android.widget.RemoteViews')
     View = autoclass('android.view.View')
     IntentFilter = autoclass('android.content.IntentFilter')
+    Intent = autoclass('android.content.Intent')
+    PendingIntent = autoclass('android.app.PendingIntent')
 
 
 my_config = ConfigManager()
@@ -396,6 +398,8 @@ class WallpaperServerReceiver:
         try:
             if not self.is_home_screen_widget_changes_paused:
                 self.update_widget_image(wallpaper_path)
+                app_logger.warning("Home Screen Widget Changing...")
+
             else:
                 app_logger.warning("Home Screen Widget Changes Paused...")
         except Exception as error_updating_widget:
@@ -591,6 +595,31 @@ class WallpaperServerReceiver:
 
         views.setViewVisibility(image_id, View.VISIBLE)
         views.setViewVisibility(placeholder_id, View.GONE)
+
+        # Update click intent to use current wallpaper path
+        widget_root_id = resources.getIdentifier("widget_root", "id", package_name)
+        test_image_id = resources.getIdentifier("test_image", "id", package_name)
+        for app_widget_id in AppWidgetManager_.getInstance(context).getAppWidgetIds(
+                ComponentName(context, f"{package_name}.CarouselWidgetProvider")):
+            intent = Intent(Intent.ACTION_MAIN)
+            intent.setComponent(ComponentName(context, "org.kivy.android.PythonActivity"))
+            intent.addCategory(Intent.CATEGORY_LAUNCHER)
+            intent.setFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK |
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP
+            )
+            intent.putExtra("from_widget", True)
+            intent.putExtra("app_widget_id", app_widget_id)
+            intent.putExtra("widget_provider", "CarouselWidgetProvider")
+            intent.putExtra("action", "open_widget_image")
+            intent.putExtra("image_path", wallpaper_path)
+
+            flags = PendingIntent.FLAG_UPDATE_CURRENT
+            if BuildVersion.SDK_INT >= 31:
+                flags |= PendingIntent.FLAG_IMMUTABLE
+            pending_intent = PendingIntent.getActivity(context, app_widget_id, intent, flags)
+            views.setOnClickPendingIntent(widget_root_id, pending_intent)
+            views.setOnClickPendingIntent(test_image_id, pending_intent)
 
         component = ComponentName(context, f"{package_name}.CarouselWidgetProvider")
         appWidgetManager = AppWidgetManager_.getInstance(context)

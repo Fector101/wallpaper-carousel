@@ -268,36 +268,16 @@ class ImageOperation:
         self.hide_spinner()
         self._processing_start = None
 
-    def setup_share_from_others_to_app_listener(self):
-        boot_log("image_operations: setup_share_from_others_to_app_listener")
-        if not _on_android_platform():
-            app_logger.warning("Can't Share Image to App, You're not on Android")
-            return
-        elif _on_pydroid_app():
-            app_logger.warning("NewIntentListener proxy can't be created on pydroid3")
-            return
-        try:
-            from android import activity  # type: ignore
-            activity.bind(on_new_intent=self.handle_image_sharing_from_others_app)
-
-            # Handle initial intent when app starts
-            self.handle_image_sharing_from_others_app(_get_mActivity().getIntent())
-        except Exception as error_setup_share_from_others_to_app_listener:
-            print("error_setup_share_from_others_to_app_listener",error_setup_share_from_others_to_app_listener)
-            traceback.print_exc()
-
     def handle_image_sharing_from_others_app(self, intent):
         from jnius import cast
-        boot_log("image_operations: handle_image_sharing_from_others_app")
         tag="handle_image_sharing_from_others_app"
         if intent is None:
             app_logger.warning(f"{tag}- Intent is None")
-            return None
+            return False
         try:
             action = intent.getAction()
             type_ = intent.getType()
 
-            # print(f"{tag} -start {len(os.listdir(self.wallpapers_dir))}, action:{action},type_{type_}")
             if action == Intent.ACTION_SEND:
                 uri = intent.getParcelableExtra(Intent.EXTRA_STREAM)
                 if uri:
@@ -305,26 +285,32 @@ class ImageOperation:
                 else:
                     uri = intent.getData()
                 if not uri or not is_image_uri(uri):
-                    return None
+                    return False
                 image_uris=[uri]
             elif action == Intent.ACTION_SEND_MULTIPLE:
                 uris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)
                 image_uris = [u for u in uris if is_image_uri(u)]
             else:
-                app_logger.warning(f"Didn't recognize intent action: {action}, type:{type_}")
-                return None
+                return False
+
+            # Clear the intent so it doesn't get reprocessed
+            try:
+                intent.replaceExtras(None)
+            except Exception as error_clearing_intent_extras:
+                app_logger.exception(f"Error clearing intent extras: {error_clearing_intent_extras}")
+                traceback.print_exc()
 
             self.hide_nav_btns()
             self.show_spinner()
             def start_thread(_):
                 threading.Thread(target=self.import_images_from_android,args=(False,image_uris),daemon=True).start()
             Clock.schedule_once(start_thread, 0)
-
-
+            return True
 
         except Exception as error_handle_image_sharing_from_others_app:
             print(f"error_{tag}",error_handle_image_sharing_from_others_app)
             traceback.print_exc()
+            return False
 
     def hide_nav_btns(self):
         def ui_thing(*_):

@@ -4,8 +4,8 @@ package org.wally.waller;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.app.PendingIntent;
-import android.content.Intent;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -22,9 +22,6 @@ import android.graphics.Color;
 
 import android.content.ComponentName;
 
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -36,9 +33,6 @@ import org.wally.waller.R;
 public class CarouselWidgetProvider extends AppWidgetProvider {
 
     private static final String TAG = "CarouselWidgetProvider";
-
-    private static final String DB_NAME = "image_history.db";
-    private static final String TABLE_WIDGET_IMAGES = "widget_images";
 
     @Override
     public void onUpdate(
@@ -58,28 +52,23 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
                     R.layout.carousel_widget
             );
 
-            // Per-widget image assigned from the app's file chooser takes
-            // priority; otherwise fall back to the shared wallpaper.txt.
-            String imagePath = getWidgetImagePath(context, appWidgetId);
-            if (imagePath == null) {
-                File txtFile = new File(
-                        context.getFilesDir().getAbsolutePath() + "/wallpaper.txt"
-                );
-                if (txtFile.exists()) {
-                    try (BufferedReader br = new BufferedReader(new FileReader(txtFile))) {
-                        imagePath = br.readLine();
-                    } catch (IOException e) {
-                        Log.e(TAG, "Failed to read wallpaper.txt", e);
-                    }
-                } else {
-                    Log.e(TAG, "wallpaper.txt does not exist");
+            // Carousel widget always uses the shared wallpaper.txt (current carousel wallpaper)
+            // Users cannot pick a specific image for carousel widgets
+            String imagePath = null;
+            File txtFile = new File(
+                    context.getFilesDir().getAbsolutePath() + "/wallpaper.txt"
+            );
+            if (txtFile.exists()) {
+                try (BufferedReader br = new BufferedReader(new FileReader(txtFile))) {
+                    imagePath = br.readLine();
+                } catch (IOException e) {
+                    Log.e(TAG, "Failed to read wallpaper.txt", e);
                 }
+            } else {
+                Log.e(TAG, "wallpaper.txt does not exist");
             }
 
             // WIDGET CLICK → APP LAUNCH (explicit intent works even when app is force-stopped)
-            // If we have a valid image, open it in the app's fullscreen viewer.
-            // Widgets added from outside the app (long-press app icon → Widgets)
-            // have no image yet, so open the file chooser instead.
             File resolvedImageFile = (imagePath != null && !imagePath.trim().isEmpty())
                     ? new File(imagePath.trim())
                     : null;
@@ -112,8 +101,7 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
             Log.d(TAG, "PendingIntent set for widgetId=" + appWidgetId);
 
             if (resolvedImageFile == null) {
-                Log.e(TAG, "Image path is empty");
-                // Show placeholder text, hide image
+                Log.e(TAG, "No image path from wallpaper.txt for widgetId=" + appWidgetId);
                 views.setViewVisibility(R.id.test_image, View.GONE);
                 views.setViewVisibility(R.id.placeholder_text, View.VISIBLE);
                 appWidgetManager.updateAppWidget(appWidgetId, views);
@@ -122,10 +110,10 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
 
             File imageFile = resolvedImageFile;
 
-            Log.d(TAG, "Resolved image path: " + imageFile.getAbsolutePath());
+            Log.d(TAG, "Resolved image path from wallpaper.txt: " + imageFile.getAbsolutePath());
 
             if (!imageFile.exists()) {
-                Log.e(TAG, "Image file does not exist");
+                Log.e(TAG, "Image file does not exist: " + imageFile.getAbsolutePath());
                 views.setViewVisibility(R.id.test_image, View.GONE);
                 views.setViewVisibility(R.id.placeholder_text, View.VISIBLE);
                 appWidgetManager.updateAppWidget(appWidgetId, views);
@@ -184,11 +172,9 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
 
             views.setImageViewBitmap(R.id.test_image, output);
             Log.d(TAG, "Bitmap rendered and set on widget");
-            // Show image, hide placeholder
             views.setViewVisibility(R.id.test_image, View.VISIBLE);
             views.setViewVisibility(R.id.placeholder_text, View.GONE);
 
-            // UPDATE WIDGET
             appWidgetManager.updateAppWidget(appWidgetId, views);
             Log.d(TAG, "Widget update pushed");
         }
@@ -196,69 +182,6 @@ public class CarouselWidgetProvider extends AppWidgetProvider {
 
     @Override
     public void onDeleted(Context context, int[] appWidgetIds) {
-        File dbFile = new File(context.getFilesDir(), DB_NAME);
-        if (!dbFile.exists()) {
-            return;
-        }
-        SQLiteDatabase db = null;
-        try {
-            db = SQLiteDatabase.openDatabase(
-                    dbFile.getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE
-            );
-            for (int appWidgetId : appWidgetIds) {
-                db.delete(TABLE_WIDGET_IMAGES, "app_widget_id = ?",
-                        new String[]{String.valueOf(appWidgetId)});
-            }
-            Log.d(TAG, "Cleaned up widget_images for deleted carousel widgets");
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to clean up widget_images", e);
-        } finally {
-            if (db != null && db.isOpen()) {
-                db.close();
-            }
-        }
         super.onDeleted(context, appWidgetIds);
-    }
-
-    /**
-     * Resolves a per-widget image assigned via the app's file chooser:
-     * 1. Existing mapping in the widget_images DB table.
-     * 2. Otherwise null (caller falls back to wallpaper.txt).
-     */
-    private String getWidgetImagePath(Context context, int appWidgetId) {
-        File dbFile = new File(context.getFilesDir(), DB_NAME);
-        if (!dbFile.exists()) {
-            return null;
-        }
-        SQLiteDatabase db = null;
-        try {
-            db = SQLiteDatabase.openDatabase(
-                    dbFile.getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE
-            );
-            db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_WIDGET_IMAGES +
-                    " (app_widget_id INTEGER PRIMARY KEY, image_path TEXT NOT NULL)");
-            Cursor cursor = null;
-            try {
-                cursor = db.rawQuery(
-                        "SELECT image_path FROM widget_images WHERE app_widget_id = ?",
-                        new String[]{String.valueOf(appWidgetId)}
-                );
-                if (cursor.moveToFirst()) {
-                    return cursor.getString(0);
-                }
-            } finally {
-                if (cursor != null) {
-                    cursor.close();
-                }
-            }
-            return null;
-        } catch (Exception e) {
-            Log.e(TAG, "Error resolving widget image", e);
-            return null;
-        } finally {
-            if (db != null && db.isOpen()) {
-                db.close();
-            }
-        }
     }
 }

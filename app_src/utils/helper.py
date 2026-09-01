@@ -128,7 +128,7 @@ def write_logs_to_file(log_folder_name="logs", file_name="all_output1.txt"):
 
 
 class Service:
-    def __init__(self, name, args_str="", extra=True):
+    def __init__(self, name, args_str="", extra=True, on_finish=None):
         try:
             from android import mActivity  # type: ignore
         except (ModuleNotFoundError, ImportError):
@@ -136,6 +136,7 @@ class Service:
         self.mActivity = mActivity if not _on_pydroid_app() else None
         self.args_str = args_str
         self.name = name
+        self.on_finish = on_finish
         self.extra = extra
         self._method_cache = {}
         self.service = self.__load_service_class() if self.mActivity else None
@@ -221,9 +222,16 @@ class Service:
             return None
 
         state = self.is_running()
-        print(f"service name: {self.get_name()}, state: {state}, passed in name: {self.name}")
+        print(f"service name: {self.get_name()}, state: {state}, passed in name: {self.name}---")
 
         arg = json.dumps(self.args_str)
+        if state:
+            print("Service already running, sending new args")
+            if self.on_finish:
+                from utils.constants import ServiceStatus
+                self.on_finish(ServiceStatus.RUNNING)
+            return True
+        
         try:
             self.__get_static_method('start', 2).invoke(None, (self.mActivity, arg))
         except Exception as error_starting_service:

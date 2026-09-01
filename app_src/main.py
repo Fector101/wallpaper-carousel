@@ -163,8 +163,6 @@ class WallpaperCarouselApp(MDApp):
         try:
             self.bind_plyer_fix()
             boot_log("build: bind_plyer_fix done")
-            self.file_operation.setup_share_from_others_to_app_listener()
-            boot_log("build: share listener done")
             self.image_operation_ready = True
         except Exception as error_finish_image_operation_init:
             traceback.print_exc()
@@ -176,13 +174,12 @@ class WallpaperCarouselApp(MDApp):
         Clock.schedule_once(lambda dt: self.setup_service(), 2)
         Clock.schedule_interval(lambda dt: self.monitor_dark_and_light_device_change(), 1)
         if on_android_platform():
-            from utils.update_checker import schedule_update_check, handle_update_intent
-            from utils.widget_intent import handle_widget_intent
+            from utils.update_checker import schedule_update_check
             Clock.schedule_once(lambda dt: self._register_connectivity_receiver(), 0)
             Clock.schedule_once(lambda dt: self._bind_update_intent_listener(), 0)
             Clock.schedule_once(lambda dt: schedule_update_check(), 0)
-            Clock.schedule_once(lambda dt: handle_update_intent(self), 1)
-            Clock.schedule_once(lambda dt: handle_widget_intent(self), 1)
+            # Handle initial intent if app was launched via share/widget/update
+            Clock.schedule_once(lambda dt: self._handle_initial_intent(), 1)
 
     def _register_connectivity_receiver(self):
         if not on_android_platform():
@@ -209,6 +206,14 @@ class WallpaperCarouselApp(MDApp):
 
             def on_new_intent_handler(intent):
                 app_logger.info(f"_bind_update_intent_listener: on_new_intent fired, intent={intent}")
+                if intent is None:
+                    return
+                # Handle share intent first (ACTION_SEND / ACTION_SEND_MULTIPLE with image/*)
+                share_handled = False
+                if self.file_operation and self.image_operation_ready:
+                    share_handled = self.file_operation.handle_image_sharing_from_others_app(intent)
+                if share_handled:
+                    return
                 handle_update_intent(self, intent=intent)
                 handle_widget_intent(self, intent=intent)
 
@@ -216,6 +221,31 @@ class WallpaperCarouselApp(MDApp):
             app_logger.info("_bind_update_intent_listener: bound successfully")
         except Exception as e:
             app_logger.exception(f"Failed to bind update intent listener: {e}")
+
+    def _handle_initial_intent(self):
+        """Handle initial intent if app was launched via share, widget, or update notification."""
+        if not on_android_platform():
+            return
+        try:
+            from android_notify.config import get_python_activity_context
+            from android_notify.internal.java_classes import autoclass
+            PythonActivity = autoclass("org.kivy.android.PythonActivity")
+            activity = PythonActivity.mActivity
+            intent = activity.getIntent()
+            if intent is None:
+                return
+            # Delegate to the same handler logic
+            share_handled = False
+            if self.file_operation and self.image_operation_ready:
+                share_handled = self.file_operation.handle_image_sharing_from_others_app(intent)
+            if share_handled:
+                return
+            from utils.update_checker import handle_update_intent
+            from utils.widget_intent import handle_widget_intent
+            handle_update_intent(self, intent=intent)
+            handle_widget_intent(self, intent=intent)
+        except Exception as e:
+            app_logger.exception(f"Failed to handle initial intent: {e}")
 
     def setup_service(self):
         boot_log("setup_service: start")
@@ -260,14 +290,17 @@ class WallpaperCarouselApp(MDApp):
             self.ui_service_listener.on_changed_homescreen_widget = self.sm.settings_screen.on_changed_homescreen_widget
             self.ui_service_listener.on_service_status = self.sm.settings_screen.on_service_status
             self.ui_service_listener.on_stopped_all = self.sm.settings_screen.on_service_stopped
-            if getattr(self, "service_was_running", False):
-                self.sm.settings_screen.set_service_status(ServiceStatus.RUNNING)
+            
             if ConfigManager.get_start_on_app_launch():
                 self.start_service()
             boot_log("setup_service: done")
         except Exception as error_call_service_on_start:
             toast(str(error_call_service_on_start))
             traceback.print_exc()
+
+    def self_settings_screen_service_state(self, status):
+        if self.sm and getattr(self.sm, "settings_screen", None) is not None:
+            self.sm.settings_screen.set_service_status(status)
 
     def start_service(self):
 
@@ -282,6 +315,7 @@ class WallpaperCarouselApp(MDApp):
                     SERVICE_PORT_ARGUMENT_KEY: self.service_port,
                     SERVICE_UI_PORT_ARGUMENT_KEY: self.ui_service_listener.UI_PORT,
                 },
+                on_finish=self.self_settings_screen_service_state
             ).start()
         except Exception as error_starting_service:
             if settings_screen is not None:
@@ -292,10 +326,6 @@ class WallpaperCarouselApp(MDApp):
             raise Exception("Failed to start carousel service")
 
     def on_resume(self):
-        from utils.update_checker import handle_update_intent
-        from utils.widget_intent import handle_widget_intent
-        handle_update_intent(self)
-        handle_widget_intent(self)
         if self.file_operation and self.file_operation.showing_loading_screen and not self.file_operation._file_picker_active:
             print("on_resume: cleaning up spinner left from permission settings redirect")
             self.file_operation.hide_spinner()

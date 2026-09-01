@@ -6,25 +6,32 @@ from utils.platform_compat import LazyJavaClass as _LazyJavaClass
 from utils.logger import app_logger
 from ui.widgets.android import toast
 
-def add_home_screen_widget(button=None, image_path=None):
+def add_home_screen_widget(button=None, image_path=None, provider_name=None):
     if not on_android_platform():
         app_logger.warning("Can't add Home Screen Widget, Not on Android.")
         return
     try:
-        # Image-specific widget: write a pending file so the newly pinned
-        # widget claims this image (see ImageWidgetProvider).
-        # A carousel widget (no image_path) clears any leftover pending request.
         from utils.helper import appFolder
         import os
-        pending_path = os.path.join(appFolder(), "pending_widget_image.txt")
-        if image_path and os.path.exists(image_path):
-            with open(pending_path, "w") as pending_file:
-                pending_file.write(image_path)
-        elif os.path.exists(pending_path):
-            os.remove(pending_path)
+
+        # Determine widget provider
+        if provider_name is None:
+            provider_name = "ImageWidgetProvider" if image_path else "CarouselWidgetProvider"
+
+        # ImageWidgetProvider: write pending file for user-picked image
+        # CarouselWidgetProvider: never uses pending file (always reads wallpaper.txt)
+        is_image_widget = provider_name == "ImageWidgetProvider"
+        if is_image_widget:
+            pending_path = os.path.join(appFolder(), "pending_widget_image.txt")
+            if image_path and os.path.exists(image_path):
+                with open(pending_path, "w") as pending_file:
+                    pending_file.write(image_path)
+                app_logger.info(f"Wrote pending image for {provider_name}: {image_path}")
+            elif os.path.exists(pending_path):
+                os.remove(pending_path)
 
         if image_path and not os.path.exists(image_path):
-            app_logger.warning(f"Can't add Image Home Screen Widget, image does not exist: {image_path}")
+            app_logger.warning(f"Can't add Home Screen Widget, image does not exist: {image_path}")
             return
 
         _, autoclass = _get_jnius()
@@ -33,9 +40,6 @@ def add_home_screen_widget(button=None, image_path=None):
         AppWidgetManager = autoclass('android.appwidget.AppWidgetManager')
         ComponentName = autoclass('android.content.ComponentName')
 
-
-        # Your widget provider class (Java side)
-        provider_name = "ImageWidgetProvider" if image_path else "CarouselWidgetProvider"
         WidgetProvider = autoclass(
             f'{get_package_name()}.{provider_name}'
         )
