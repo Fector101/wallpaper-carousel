@@ -389,7 +389,7 @@ class WallpaperServerReceiver:
         if not wallpaper_path:
             return
         if not os.path.exists(wallpaper_path):
-            app_logger.error(f"Image - {wallpaper_path} does not exist, can't store path")
+            app_logger.error(f"Image - {os.path.abspath(wallpaper_path)} does not exist, can't store path")
             return
 
         current_wallpaper_store_path = os.path.join(appFolder(), 'wallpaper.txt')

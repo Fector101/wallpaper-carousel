@@ -493,7 +493,7 @@ def get_folder_size(folder_path):
         for filename in filenames:
             file_path = os.path.join(dirpath, filename)
             # Skip broken symbolic links to avoid errors
-            if not os.path.islink(file_path):
+            if os.path.exists(file_path) and not os.path.islink(file_path):
                 total_size += os.path.getsize(file_path)
     return total_size
 
@@ -502,6 +502,6 @@ def get_files_size(files:list) -> int:
     total_size = 0
     for each_file_path in files:
         # Skip broken symbolic links to avoid errors
-        if not os.path.islink(each_file_path):
+        if os.path.exists(each_file_path) and not os.path.islink(each_file_path):
             total_size += os.path.getsize(each_file_path)
     return total_size
