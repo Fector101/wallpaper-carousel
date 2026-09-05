@@ -89,13 +89,13 @@ class StatsScreen(MyMDScreen):
         self.graph_title = None
         self.storage_chart = None
         self.graph_container = None
-        self.sub_text_4 = None
-        self.sub_text_5 = None
+        self.cache_item_widget = None
+        self.config_item_widget = None
         self.section_title_2 = None
         self.section_layout_2 = None
-        self.sub_text_1 = None
-        self.sub_text_2 = None
-        self.sub_text_3 = None
+        self.both_item_widget = None
+        self.day_item_widget = None
+        self.noon_item_widget = None
         self.section_title_1 = None
         self.header_btn_2 = None
         self.header_label = None
@@ -201,14 +201,14 @@ class StatsScreen(MyMDScreen):
             # padding=[20,10]
 
         )
-        self.sub_text_1 = StatsListItem(title="Both", size_txt="70KB",button_text="Remove")
-        self.sub_text_2 = StatsListItem(title="Day", size_txt="5MB",button_text="Remove")
-        self.sub_text_3 = StatsListItem(title="Noon", size_txt="200KB",button_text="Remove")
-        self.sub_text_1.button.bind(on_release=lambda *_: self._remove_wallpapers("wallpapers", "Both"))
-        self.sub_text_2.button.bind(on_release=lambda *_: self._remove_wallpapers("day_wallpapers", "Day"))
-        self.sub_text_3.button.bind(on_release=lambda *_: self._remove_wallpapers("noon_wallpapers", "Noon"))
-        self.sub_text_3.padding=[10,0,10,10]
-        self.sub_text_3.height=dp(50)
+        self.both_item_widget = StatsListItem(title="Both", size_txt="70KB",button_text="Remove")
+        self.day_item_widget = StatsListItem(title="Day", size_txt="5MB",button_text="Remove")
+        self.noon_item_widget = StatsListItem(title="Noon", size_txt="200KB",button_text="Remove")
+        self.both_item_widget.button.bind(on_release=lambda *_: self._remove_wallpapers("wallpapers", "Both"))
+        self.day_item_widget.button.bind(on_release=lambda *_: self._remove_wallpapers("day_wallpapers", "Day"))
+        self.noon_item_widget.button.bind(on_release=lambda *_: self._remove_wallpapers("noon_wallpapers", "Noon"))
+        self.noon_item_widget.padding=[10,0,10,10]
+        self.noon_item_widget.height=dp(50)
 
 
         self.section_layout_2 = Column(
@@ -225,12 +225,12 @@ class StatsScreen(MyMDScreen):
             # padding=[10]
 
         )
-        self.sub_text_4 = StatsListItem(title="Cache", size_txt="100KB",button_text="Clear")
-        self.sub_text_5 = StatsListItem(title="Config", size_txt="50KB",button_text="Clear")
-        self.sub_text_4.button.bind(on_release=lambda *_: self._clear_cache())
-        self.sub_text_5.button.bind(on_release=lambda *_: self._clear_config())
-        self.sub_text_5.padding = [10, 0, 10, 10]
-        self.sub_text_5.height = dp(50)
+        self.cache_item_widget = StatsListItem(title="Cache", size_txt="100KB",button_text="Clear")
+        self.config_item_widget = StatsListItem(title="Config", size_txt="50KB",button_text="Clear")
+        self.cache_item_widget.button.bind(on_release=lambda *_: self._clear_cache())
+        self.config_item_widget.button.bind(on_release=lambda *_: self._clear_config())
+        self.config_item_widget.padding = [10, 0, 10, 10]
+        self.config_item_widget.height = dp(50)
 
 
 
@@ -281,16 +281,16 @@ class StatsScreen(MyMDScreen):
         sections_container.add_widget(self.graph_container)
         sections_container.add_widget(LineDivider())
         self.section_layout.add_widget(self.section_title_1)
-        self.section_layout.add_widget(self.sub_text_1)
-        self.section_layout.add_widget(self.sub_text_2)
-        self.section_layout.add_widget(self.sub_text_3)
+        self.section_layout.add_widget(self.both_item_widget)
+        self.section_layout.add_widget(self.day_item_widget)
+        self.section_layout.add_widget(self.noon_item_widget)
         sections_container.add_widget(self.section_layout)
 
         # Section 2
         sections_container.add_widget(LineDivider())
         self.section_layout_2.add_widget(self.section_title_2)
-        self.section_layout_2.add_widget(self.sub_text_4)
-        self.section_layout_2.add_widget(self.sub_text_5)
+        self.section_layout_2.add_widget(self.cache_item_widget)
+        self.section_layout_2.add_widget(self.config_item_widget)
         sections_container.add_widget(self.section_layout_2)
 
         scroll.add_widget(sections_container)
@@ -331,6 +331,20 @@ class StatsScreen(MyMDScreen):
         cm2_file_path_size = os.path.getsize(cm2_file_path) if os.path.exists(cm2_file_path) else 0
         config_total_bytes=cm1_file_path_size+cm2_file_path_size
 
+        try:
+            from android_notify.internal.java_classes import autoclass
+            PythonActivity = autoclass("org.kivy.android.PythonActivity")
+            context = PythonActivity.mActivity.getApplicationContext()
+            prefs = context.getSharedPreferences("update_checker_prefs", 0)
+            prefs_file_path = context.getFilesDir().getParent() + "/shared_prefs/update_checker_prefs.xml"
+            prefs_file_size = os.path.getsize(prefs_file_path) if os.path.exists(prefs_file_path) else 0
+            config_total_bytes += prefs_file_size
+        except:
+            prefs_file_size=0
+            traceback.print_exc()
+
+        # print(f"json: {format_size(cm1_file_path_size)}, db: {format_size(cm2_file_path_size)}, shared_pref:{format_size(prefs_file_size)}")
+
         both_wallpapers_file_paths=cm.get_wallpapers()
         # print(f"both re {both_wallpapers_file_paths}")
         noon_wallpapers_file_paths=cm.get_noon_wallpapers()
@@ -350,12 +364,12 @@ class StatsScreen(MyMDScreen):
         if os.path.exists(wallpapers_thumbs_src):
             others_total_bytes = get_folder_size(wallpapers_thumbs_src)
 
-        print(f"total_known_data_size:{format_size(others_total_bytes)}")
-        self.sub_text_1.size_txt= format_size(both_bytes)
-        self.sub_text_2.size_txt= format_size(day_bytes)
-        self.sub_text_3.size_txt= format_size(noon_bytes)
-        self.sub_text_4.size_txt= format_size(others_total_bytes)
-        self.sub_text_5.size_txt= format_size(config_total_bytes)
+        # print(f"total_known_data_size:{format_size(others_total_bytes)}")
+        self.both_item_widget.size_txt= format_size(both_bytes)
+        self.day_item_widget.size_txt= format_size(day_bytes)
+        self.noon_item_widget.size_txt= format_size(noon_bytes)
+        self.cache_item_widget.size_txt= format_size(others_total_bytes)
+        self.config_item_widget.size_txt= format_size(config_total_bytes)
 
     def _refresh_thumbs_screen(self):
         try:
@@ -439,6 +453,14 @@ class StatsScreen(MyMDScreen):
         ConfigManager.write_default_data()
         db = ImageDatabase()
         db.clear_all()
+        try:
+            from android_notify.internal.java_classes import autoclass
+            PythonActivity = autoclass("org.kivy.android.PythonActivity")
+            context = PythonActivity.mActivity.getApplicationContext()
+            prefs = context.getSharedPreferences("update_checker_prefs", 0)
+            prefs.edit().clear().apply()
+        except Exception:
+            traceback.print_exc()
         self.refresh_storage_data()
         self._refresh_thumbs_screen()
 
