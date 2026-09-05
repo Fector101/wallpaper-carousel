@@ -376,7 +376,12 @@ class DownloadApkScreen(MyMDScreen):
 
     def start_download(self,_=None):
        #p("Clicked start download...")
-        if not self.built_ui:
+        """
+       Start downloading the update APK or switch to installation when a valid cached APK is available.
+       
+       The download runs in a background thread and updates the progress button as data arrives.
+       """
+       if not self.built_ui:
             return
         import threading
 
@@ -390,6 +395,9 @@ class DownloadApkScreen(MyMDScreen):
                 self.clock_for_progress_update.cancel()
             self.clock_for_progress_update = Clock.schedule_once(lambda dt: self.update_button.update_progress(percent))
         def worker():
+            """
+            Download the selected release APK and switch the download control to installation mode when successful.
+            """
             filename = get_apk_filename(self.new_version)
             apk_path__ = download_apk(
                 get_apk_download_url(self.new_version),
@@ -526,7 +534,16 @@ def check_update(download_apk_screen__show,download_apk_screen__do_not_show=None
         Clock.schedule_once(lambda dt, e=e: do_not_go_to_update_screen(f"Failed:{e}"))
 
 def get_release_note_txt(data,latest_version):
-    """Check GitHub latest release version"""
+    """
+    Retrieve release notes for a specific version from the release assets.
+    
+    Parameters:
+        data (dict): GitHub release metadata containing an ``assets`` collection.
+        latest_version (str): Version used to identify the release-notes asset.
+    
+    Returns:
+        str: Downloaded release notes, or default release notes when the asset is unavailable or cannot be downloaded.
+    """
     import time
     import traceback
     import requests
@@ -557,13 +574,40 @@ def get_release_note_txt(data,latest_version):
     return release_notes or DEFAULT_RELEASE_NOTE
 
 def get_apk_filename(version):
+    """
+    Build the filename for a versioned APK.
+    
+    Parameters:
+    	version: The APK version identifier.
+    
+    Returns:
+    	str: The versioned APK filename.
+    """
     return f"waller-v{version}.apk"
 
 def get_apk_download_url(version):
+    """
+    Build the GitHub release URL for a versioned APK.
+    
+    Parameters:
+    	version: The APK release version.
+    
+    Returns:
+    	str: The download URL for the versioned APK.
+    """
     filename = get_apk_filename(version)
     return f"https://github.com/Fector101/wallpaper-carousel/releases/download/v{version}/{filename}"
 
 def get_apk_size(data):
+    """
+    Finds the size of the first APK asset in release metadata.
+    
+    Parameters:
+    	data (dict): Release metadata containing an `assets` collection.
+    
+    Returns:
+    	int: The APK file size in bytes, or `0` if no APK asset is found.
+    """
     for asset in data["assets"]:
         if asset["name"].endswith(".apk"):
             size = asset["size"]

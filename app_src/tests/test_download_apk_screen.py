@@ -46,6 +46,12 @@ def test_apk_is_valid_rejects_wrong_size(tmp_path):
 
 class _FakeResponse:
     def __init__(self, content):
+        """
+        Initialize a response with content and its byte length.
+        
+        Parameters:
+            content: The response content.
+        """
         self.content = content
         self.headers = {"content-length": str(len(content))}
 
@@ -53,11 +59,22 @@ class _FakeResponse:
         return None
 
     def iter_content(self, _):
+        """Yield the response content as a single chunk."""
         yield self.content
 
 
 @pytest.fixture
 def fake_download_dir(tmp_path, monkeypatch):
+    """
+    Configure APK downloads to use a temporary directory.
+    
+    Parameters:
+    	tmp_path: Temporary directory used as the APK download location.
+    	monkeypatch: Fixture used to replace the APK directory resolver.
+    
+    Returns:
+    	The configured temporary directory.
+    """
     monkeypatch.setattr(d, "get_apk_directory", lambda: str(tmp_path))
     return tmp_path
 
@@ -106,6 +123,7 @@ class _FakeStreak:
 
 class _FakeUpdateButton:
     def __init__(self):
+        """Initialize the fake button with an unclicked state and a fake streak."""
         self.clicked = False
         self.streak = _FakeStreak()
 
@@ -118,6 +136,7 @@ class _FakeLaterButton:
 
 
 def _instantiate_screen():
+    """Create a download screen with mocked application dependencies for testing."""
     from kivy.event import EventDispatcher
     from kivy.properties import StringProperty
     from kivymd.app import MDApp
@@ -148,9 +167,17 @@ def test_start_download_uses_versioned_url_and_filename():
 
     class _FakeThread:
         def __init__(self, target=None, daemon=None):
+            """
+            Capture the callable provided as the thread target.
+            
+            Parameters:
+                target (callable, optional): Callable assigned as the thread target.
+                daemon (bool, optional): Thread daemon setting.
+            """
             captured["target"] = target
 
         def start(self):
+            """Run the captured target function."""
             captured["target"]()
 
     with mock.patch("threading.Thread", _FakeThread), \
