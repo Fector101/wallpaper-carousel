@@ -115,14 +115,18 @@ jobs:
             --ks-key-alias ${{ secrets.ALIAS_NAME }} \
             --ks-pass pass:${{ secrets.KS_PASS }} \
             --key-pass pass:${{ secrets.KEY_PASS }} \
-            --out bin/waller.apk \
+            --out bin/waller-v${{ steps.version.outputs.VERSION }}.apk \
             bin/aligned.apk
+
+      - name: Copy legacy APK name
+        if: inputs.build_type == 'release'
+        run: cp bin/waller-v${{ steps.version.outputs.VERSION }}.apk bin/waller.apk
 
       - name: Verify APK
         if: inputs.build_type == 'release'
         run: |
           BUILD_TOOLS=$(ls -d ~/.buildozer/android/platform/android-sdk/build-tools/* | sort -V | tail -n1)
-          "$BUILD_TOOLS/apksigner" verify --verbose bin/waller.apk
+          "$BUILD_TOOLS/apksigner" verify --verbose bin/waller-v${{ steps.version.outputs.VERSION }}.apk
 
       - name: Create GitHub Release
         if: inputs.build_type == 'release'
@@ -132,6 +136,7 @@ jobs:
           name: Release v${{ steps.version.outputs.VERSION }}
           body_path: .github/version-notes/release-note-v${{ steps.version.outputs.VERSION }}.txt
           files: |
+            bin/waller-v${{ steps.version.outputs.VERSION }}.apk
             bin/waller.apk
             .github/version-notes/update-note-v${{ steps.version.outputs.VERSION }}.txt
 

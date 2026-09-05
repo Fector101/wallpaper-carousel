@@ -390,10 +390,11 @@ class DownloadApkScreen(MyMDScreen):
                 self.clock_for_progress_update.cancel()
             self.clock_for_progress_update = Clock.schedule_once(lambda dt: self.update_button.update_progress(percent))
         def worker():
+            filename = get_apk_filename(self.new_version)
             apk_path__ = download_apk(
-                "https://github.com/Fector101/wallpaper-carousel/releases/latest/download/waller.apk",
+                get_apk_download_url(self.new_version),
                 progress_callback=progress,
-                filename=get_apk_filename(self.new_version)
+                filename=filename
             )
             app_logger.info(f"Downloaded apk_path:{apk_path__}")
             if apk_path__:
@@ -556,7 +557,11 @@ def get_release_note_txt(data,latest_version):
     return release_notes or DEFAULT_RELEASE_NOTE
 
 def get_apk_filename(version):
-    return f"waller-{version}.apk"
+    return f"waller-v{version}.apk"
+
+def get_apk_download_url(version):
+    filename = get_apk_filename(version)
+    return f"https://github.com/Fector101/wallpaper-carousel/releases/download/v{version}/{filename}"
 
 def get_apk_size(data):
     for asset in data["assets"]:

@@ -1,0 +1,17 @@
+# Waller V1.0.10
+
+## New
+- Per-image Home Screen Widget: add any wallpaper as its own widget and it opens straight to that image (#81)
+- New Stats screen to manage storage (#70)
+- Carousel service status indicator in Settings (#80)
+- Background update notifications: checks weekly, notifies you when a new version is out, and jumps you to the update screen (#78)
+- Version-numbered APK downloads: release APKs are named `waller-v1.0.10.apk` (#51)
+
+## Improvements
+- Redesigned Info modal, rebuilt Settings screen, and a new self-contained image-stats DB (rollback journal)
+- Quicker app start with boot logging (parsing out black screen) (#72)
+- Removed loading GIF before displaying high res img (#76)
+
+## Fixes
+- Shadow at the back of buttons in light mode
+- Widget stability and error-handling improvements

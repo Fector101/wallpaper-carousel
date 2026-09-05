@@ -1,0 +1,13 @@
+[color=#4CAF50][b]New[/b][/color]
+• Per-image Home Screen Widget
+• Stats screen for managing storage
+• Carousel status indicator in Settings
+
+[color=#4CAF50][b]Improvements[/b][/color]
+• No more loading GIF before displaying high res img
+• Redesigned Info modal for single images
+• Quicker app start, parsing out black screen
+
+[color=#4CAF50][b]Fixes[/b][/color]
+• Info modal breaking back btn logic
+• Removed weird shadows at the back of tab buttons in light mode
