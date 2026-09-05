@@ -10,7 +10,7 @@ package.domain = org.wally
 author = Fabian © Copyright Info
 # Don't use pattern 0.0.0.0 i get some Gradle Error "can't find application path waller." unless using android.numeric_version
 version = 1.0.10
-android.numeric_version = 102410010
+android.numeric_version = 102410011
 
 source.dir = app_src
 
