@@ -149,4 +149,4 @@ class ServiceStatus(Enum):
     RESTARTING = "restarting"
 
 DEV=0
-VERSION="1.0.9.1"
+VERSION="1.0.10"
