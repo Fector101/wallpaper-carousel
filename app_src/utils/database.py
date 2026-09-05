@@ -45,7 +45,14 @@ class ImageDatabase:
         db_path = self.config_path()
         app_logger.info(f"[ImageDatabase] initialized at {db_path}")
         self._conn = sqlite3.connect(str(db_path), check_same_thread=False, timeout=10)
-        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA busy_timeout=10000")
+        try:
+            self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        except sqlite3.Error as e:
+            print(f"ImageDatabase wal_checkpoint skipped: {e}")
+        self._conn.execute("PRAGMA journal_mode=DELETE")
+        journal_mode = self._conn.execute("PRAGMA journal_mode").fetchone()[0]
+        app_logger.info(f"[ImageDatabase] journal_mode={journal_mode}")
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
 
