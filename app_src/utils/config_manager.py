@@ -32,7 +32,7 @@ class ConfigManager:
         wallpapers_dir=os.path.join(cls.config_dir(),"wallpapers")
         existing_wallpapers=[]
         if os.path.exists(wallpapers_dir):
-            existing_wallpapers=[os.path.join(wallpapers_dir, f) for f in os.listdir(wallpapers_dir)]
+            existing_wallpapers=[os.path.join(wallpapers_dir, f) for f in os.listdir(wallpapers_dir) if os.path.isfile(os.path.join(wallpapers_dir, f))]
         if existing_wallpapers:
             print(f"writing {len(existing_wallpapers)} missing wallpapers into config...")
 
