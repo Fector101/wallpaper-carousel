@@ -28,6 +28,20 @@ class ConfigManager:
     _lock = threading.RLock()
 
     @classmethod
+    def write_default_data(cls):
+        wallpapers_dir=os.path.join(cls.config_dir(),"wallpapers")
+        existing_wallpapers=[]
+        if os.path.exists(wallpapers_dir):
+            existing_wallpapers=[os.path.join(wallpapers_dir, f) for f in os.listdir(wallpapers_dir)]
+        if existing_wallpapers:
+            print(f"writing {len(existing_wallpapers)} missing wallpapers into config...")
+
+        data={**cls.DEFAULT_CONFIG,"wallpapers":existing_wallpapers}
+        cls.write(data)
+        return data
+
+
+    @classmethod
     def config_dir(cls):
         if cls._cached_config_dir is not None:
             return cls._cached_config_dir
@@ -52,10 +66,11 @@ class ConfigManager:
     def _ensure_config(self):
         with ConfigManager._lock:
             if not self.config_path().exists():
-                self.write(self.DEFAULT_CONFIG)
+                self.write_default_data()
 
     @classmethod
-    def read(cls):
+    def read(cls)-> dict:
+        data = {}
         try:
             with open(cls.config_path(), "r") as f:
                 return json.load(f)
@@ -63,13 +78,13 @@ class ConfigManager:
             print(f"error reading config file: {error_reading_config_file}")
             traceback.print_exc()
             try:
-                cls.write(cls.DEFAULT_CONFIG)
-                return cls.DEFAULT_CONFIG
+                return cls.write_default_data()
             except PermissionError:
                 _toast("PD: Cannot access config file")
             except Exception as e:
                 _toast(str(e))
                 traceback.print_exc()
+        return data
     @classmethod
     def write(cls, data):
         try:
@@ -183,8 +198,9 @@ class ConfigManager:
 
     @classmethod
     def get_cols(cls):
-        s=cls.read().get("cols", cls.DEFAULT_CONFIG["cols"])
-        return s
+        s: dict =cls.read()
+        num_cols = s.get("cols", cls.DEFAULT_CONFIG["cols"])
+        return num_cols
 
     @classmethod
     def set_cols(cls, cols: int):

@@ -332,6 +332,7 @@ class StatsScreen(MyMDScreen):
         config_total_bytes=cm1_file_path_size+cm2_file_path_size
 
         both_wallpapers_file_paths=cm.get_wallpapers()
+        # print(f"both re {both_wallpapers_file_paths}")
         noon_wallpapers_file_paths=cm.get_noon_wallpapers()
         day_wallpapers_file_paths=cm.get_day_wallpapers()
 
@@ -339,6 +340,7 @@ class StatsScreen(MyMDScreen):
         day_bytes=get_files_size(day_wallpapers_file_paths)
         noon_bytes=get_files_size(noon_wallpapers_file_paths)
 
+        # print(f"json config size: {format_size(cm1_file_path_size)}")
         # User can't clear running app cache
         # total_known_data_size=both_bytes + day_bytes + noon_bytes+config_total_bytes
         # others_total_bytes = v["waller"]-total_known_data_size
@@ -434,7 +436,7 @@ class StatsScreen(MyMDScreen):
         dialog.show(img_texture=None)
 
     def _do_clear_config(self):
-        ConfigManager.write(ConfigManager.DEFAULT_CONFIG)
+        ConfigManager.write_default_data()
         db = ImageDatabase()
         db.clear_all()
         self.refresh_storage_data()
