@@ -1,20 +1,13 @@
 [color=#4CAF50][b]New[/b][/color]
-• Per-image Home Screen Widget: add any
-  wallpaper as its own widget
-• Carousel service status indicator in
-  Settings
-• Update notifications with release notes
-  shown before downloading
+• Per-image Home Screen Widget
+• Stats screen for managing storage
+• Carousel status indicator in Settings
 
 [color=#4CAF50][b]Improvements[/b][/color]
-• Faster image previews, no more loading GIF
-• Redesigned Info modal and Stats screen
-• Quicker app start, no black/loading screen
-• Smoother home screen widget updates
+• No more loading GIF before displaying high res img
+• Redesigned Info modal for single images
+• Quicker app start, parsing out black screen
 
 [color=#4CAF50][b]Fixes[/b][/color]
-• Home screen widget reverting to placeholder
-• Widget opening the wrong image
-• Missing wallpapers after clearing config
-• "Thumbs" folder showing up as an image
-• Button shadow artifact at screen bottom
+• Info modal breaking back btn logic
+• Removed weird shadows at the back of tab buttons in light mode

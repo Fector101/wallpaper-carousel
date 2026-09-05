@@ -2,22 +2,16 @@
 
 ## New
 - Per-image Home Screen Widget: add any wallpaper as its own widget and it opens straight to that image (#81)
+- New Stats screen to manage storage (#70)
 - Carousel service status indicator in Settings (#80)
-- In-app update notifications — you're alerted when an update is available, with release notes shown before downloading (#78)
-- Version-numbered APK downloads: release APKs are named `waller-v1.0.10.apk`, and the in-app updater fetches the exact asset for its own version (#51)
+- Background update notifications: checks weekly, notifies you when a new version is out, and jumps you to the update screen (#78)
+- Version-numbered APK downloads: release APKs are named `waller-v1.0.10.apk` (#51)
 
 ## Improvements
-- Faster image previews — removed side-by-side preload and the loading GIF so high-res wallpapers appear immediately (#76)
-- Redesigned Info modal and Stats screen with human-readable sizes and accurate values, even on a fresh install
-- Quicker app start, no black/loading screen
-- Clearer fullscreen icon on the preview screen
-- Home screen widget DB now uses a rollback journal to reduce lock contention
-- Smaller Android footprint (no plyer on Android builds)
+- Redesigned Info modal, rebuilt Settings screen, and a new self-contained image-stats DB (rollback journal)
+- Quicker app start with boot logging (parsing out black screen) (#72)
+- Removed loading GIF before displaying high res img (#76)
 
 ## Fixes
-- Home screen widget reverting to its placeholder (SQLite busy/lock contention)
-- Widget opening the wrong image or gallery position
-- Missing wallpapers after clearing the app config
-- "Thumbs" folder showing up as an image in the gallery
-- Button shadow artifact at the bottom of some screens
-- Widget stability and error handling improvements
+- Shadow at the back of buttons in light mode
+- Widget stability and error-handling improvements
