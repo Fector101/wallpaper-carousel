@@ -7,8 +7,8 @@ import ui.screens.download_apk_screen as d
 VERSION = "1.0.10"
 EXPECTED_FILENAME = f"waller-v{VERSION}.apk"
 EXPECTED_URL = (
-    "https://github.com/Fector101/wallpaper-carousel/releases/latest/download/"
-    f"{EXPECTED_FILENAME}"
+    "https://github.com/Fector101/wallpaper-carousel/releases/download/"
+    f"v{VERSION}/{EXPECTED_FILENAME}"
 )
 
 

@@ -561,7 +561,7 @@ def get_apk_filename(version):
 
 def get_apk_download_url(version):
     filename = get_apk_filename(version)
-    return f"https://github.com/Fector101/wallpaper-carousel/releases/latest/download/{filename}"
+    return f"https://github.com/Fector101/wallpaper-carousel/releases/download/v{version}/{filename}"
 
 def get_apk_size(data):
     for asset in data["assets"]:
