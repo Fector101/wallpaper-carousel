@@ -293,8 +293,17 @@ public class ImageWidgetProvider extends AppWidgetProvider {
                     new File(context.getFilesDir(), DB_NAME).getAbsolutePath(),
                     null, SQLiteDatabase.OPEN_READWRITE
             );
-            db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_WIDGET_IMAGES +
-                    " (app_widget_id INTEGER PRIMARY KEY, image_path TEXT NOT NULL)");
+            Cursor pragma = db.rawQuery("PRAGMA busy_timeout=10000", null);
+            if (pragma != null) {
+                pragma.moveToFirst();
+                pragma.close();
+            }
+            try {
+                db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_WIDGET_IMAGES +
+                        " (app_widget_id INTEGER PRIMARY KEY, image_path TEXT NOT NULL)");
+            } catch (Exception tableError) {
+                Log.e(TAG, "widget table ensure failed (non-fatal)", tableError);
+            }
             Cursor cursor = null;
             try {
                 cursor = db.rawQuery(

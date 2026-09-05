@@ -1,5 +1,6 @@
 import sqlite3
 import threading
+import time
 import traceback
 from pathlib import Path
 
@@ -43,7 +44,7 @@ class ImageDatabase:
         self._lock = threading.RLock()
         db_path = self.config_path()
         app_logger.info(f"[ImageDatabase] initialized at {db_path}")
-        self._conn = sqlite3.connect(str(db_path), check_same_thread=False)
+        self._conn = sqlite3.connect(str(db_path), check_same_thread=False, timeout=10)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
@@ -62,32 +63,55 @@ class ImageDatabase:
         cls._cached_config_path = Path(cls.config_dir()) / "image_history.db"
         return cls._cached_config_path
 
-    def _execute(self, sql, params=()):
+    def _retry_busy(self, fn):
+        """Run fn, retrying transient SQLITE_BUSY/SQLITE_LOCKED failures.
+        Rollback is issued after each failure so the next attempt starts clean."""
         with self._lock:
-            try:
-                self._conn.execute(sql, params)
-                self._conn.commit()
-            except Exception as e:
-                print(f"ImageDatabase error: {e}")
-                traceback.print_exc()
+            for attempt in range(1, 4):
+                try:
+                    return fn()
+                except sqlite3.OperationalError as e:
+                    try:
+                        self._conn.rollback()
+                    except sqlite3.Error:
+                        pass
+                    if "locked" in str(e).lower() or "busy" in str(e).lower():
+                        if attempt < 3:
+                            app_logger.error(
+                                f"[ImageDatabase] busy/locked (attempt {attempt}/3): {e} - retrying"
+                            )
+                            time.sleep(0.2 * attempt)
+                            continue
+                    raise
+
+    def _execute(self, sql, params=()):
+        try:
+            self._retry_busy(
+                lambda: (self._conn.execute(sql, params), self._conn.commit())
+            )
+        except Exception as e:
+            app_logger.error(f"[ImageDatabase] _execute error: {e}")
+            traceback.print_exc()
 
     def _fetchone(self, sql, params=()):
-        with self._lock:
-            try:
-                return self._conn.execute(sql, params).fetchone()
-            except Exception as e:
-                print(f"ImageDatabase fetch error: {e}")
-                traceback.print_exc()
-                return None
+        try:
+            return self._retry_busy(
+                lambda: self._conn.execute(sql, params).fetchone()
+            )
+        except Exception as e:
+            print(f"ImageDatabase fetch error: {e}")
+            traceback.print_exc()
+            return None
 
     def _fetchall(self, sql, params=()):
-        with self._lock:
-            try:
-                return self._conn.execute(sql, params).fetchall()
-            except Exception as e:
-                print(f"ImageDatabase fetch error: {e}")
-                traceback.print_exc()
-                return []
+        try:
+            return self._retry_busy(
+                lambda: self._conn.execute(sql, params).fetchall()
+            )
+        except Exception as e:
+            print(f"ImageDatabase fetch error: {e}")
+            traceback.print_exc()
+            return []
 
     def insert_image(self, path):
         self._execute(
@@ -150,6 +174,12 @@ class ImageDatabase:
             (app_widget_id, image_path),
         )
         app_logger.info(f"[widget_images] set app_widget_id={app_widget_id} -> {image_path}")
+        stored = self.get_widget_image(app_widget_id)
+        if stored != image_path:
+            app_logger.error(
+                f"[widget_images] VERIFY_FAILED widget {app_widget_id} "
+                f"stored={stored!r} expected={image_path!r}"
+            )
 
     def get_widget_image(self, app_widget_id):
         row = self._fetchone(

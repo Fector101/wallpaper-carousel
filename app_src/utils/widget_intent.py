@@ -72,15 +72,35 @@ def assign_picked_images_to_widget(app, new_images):
     if not new_images:
         return
     image_path = str(new_images[0])
+    widget_id = pending["app_widget_id"]
+    provider = pending["widget_provider"]
     try:
         from utils.database import ImageDatabase
-        ImageDatabase().set_widget_image(pending["app_widget_id"], image_path)
+        ImageDatabase().set_widget_image(widget_id, image_path)
         app_logger.info(
             f"widget pick: assigned {image_path} to widget "
-            f"{pending['app_widget_id']} ({pending['widget_provider']})"
+            f"{widget_id} ({provider})"
         )
         from utils.android import refresh_widget
-        refresh_widget(pending["widget_provider"], pending["app_widget_id"])
+        refresh_widget(provider, widget_id)
+
+        from kivy.clock import Clock
+
+        def _repush_if_mapped(_dt, wid=widget_id, prov=provider):
+            try:
+                from utils.database import ImageDatabase
+                if ImageDatabase().get_widget_image(wid):
+                    from utils.android import refresh_widget
+                    refresh_widget(prov, wid)
+                    app_logger.info(f"widget pick: delayed re-push for {prov} id={wid}")
+                else:
+                    app_logger.error(
+                        f"widget pick: delayed re-push skipped, mapping missing for widget {wid}"
+                    )
+            except Exception:
+                app_logger.exception("widget pick: delayed re-push failed")
+
+        Clock.schedule_once(_repush_if_mapped, 2.0)
     except Exception:
         app_logger.exception("Failed to assign picked image to widget")
 
