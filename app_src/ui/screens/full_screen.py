@@ -596,7 +596,7 @@ class FullscreenScreen(MyMDScreen):
 
         self.update_header_texts(current_slide.higher_format)
         self.clock_for_higher_format = Clock.schedule_once(
-            lambda dt: self._load_high_res(current_slide), 0.3)
+            lambda dt: self._load_high_res(current_slide), 0.8)
         return None
 
     def _load_high_res(self, slide):
