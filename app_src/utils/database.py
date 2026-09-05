@@ -4,6 +4,7 @@ import traceback
 from pathlib import Path
 
 from utils.helper import appFolder
+from utils.logger import app_logger
 
 
 _SCHEMA = """CREATE TABLE IF NOT EXISTS images (
@@ -41,7 +42,7 @@ class ImageDatabase:
         self._initialized = True
         self._lock = threading.RLock()
         db_path = self.config_path()
-        print(f"ImageDatabase initialized at {db_path}")
+        app_logger.info(f"[ImageDatabase] initialized at {db_path}")
         self._conn = sqlite3.connect(str(db_path), check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.executescript(_SCHEMA)
@@ -140,6 +141,7 @@ class ImageDatabase:
             "DELETE FROM images WHERE image_path = ?",
             (path,),
         )
+        app_logger.info(f"[widget_images] remove_image cleaned rows referencing {path}")
 
     def set_widget_image(self, app_widget_id, image_path):
         self._execute(
@@ -147,19 +149,23 @@ class ImageDatabase:
             "ON CONFLICT(app_widget_id) DO UPDATE SET image_path = excluded.image_path",
             (app_widget_id, image_path),
         )
+        app_logger.info(f"[widget_images] set app_widget_id={app_widget_id} -> {image_path}")
 
     def get_widget_image(self, app_widget_id):
         row = self._fetchone(
             "SELECT image_path FROM widget_images WHERE app_widget_id = ?",
             (app_widget_id,),
         )
-        return row[0] if row else None
+        result = row[0] if row else None
+        app_logger.info(f"[widget_images] get app_widget_id={app_widget_id} -> {result}")
+        return result
 
     def remove_widget(self, app_widget_id):
         self._execute(
             "DELETE FROM widget_images WHERE app_widget_id = ?",
             (app_widget_id,),
         )
+        app_logger.warning(f"[widget_images] remove_widget app_widget_id={app_widget_id}")
 
     def remove_widgets(self, app_widget_ids):
         with self._lock:
@@ -169,6 +175,7 @@ class ImageDatabase:
                     [(w,) for w in app_widget_ids],
                 )
                 self._conn.commit()
+                app_logger.warning(f"[widget_images] remove_widgets ids={app_widget_ids}")
             except Exception as e:
                 print(f"ImageDatabase batch widget delete error: {e}")
                 traceback.print_exc()
@@ -177,11 +184,13 @@ class ImageDatabase:
         rows = self._fetchall(
             "SELECT app_widget_id, image_path FROM widget_images"
         )
+        app_logger.info(f"[widget_images] get_all -> {len(rows)} row(s)")
         return {int(widget_id): image_path for widget_id, image_path in rows}
 
     def clear_all(self):
         self._execute("DELETE FROM widget_images")
         self._execute("DELETE FROM images")
+        app_logger.warning("[widget_images] clear_all called - widget_images emptied")
 
     def remove_images(self, paths):
         paths = list(paths)
@@ -196,6 +205,7 @@ class ImageDatabase:
                     [(p,) for p in paths],
                 )
                 self._conn.commit()
+                app_logger.warning(f"[widget_images] remove_images cleaned rows for {len(paths)} path(s)")
             except Exception as e:
                 print(f"ImageDatabase batch delete error: {e}")
                 traceback.print_exc()

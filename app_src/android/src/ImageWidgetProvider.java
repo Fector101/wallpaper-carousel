@@ -25,6 +25,7 @@ import android.database.sqlite.SQLiteDatabase;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 
@@ -39,9 +40,42 @@ public class ImageWidgetProvider extends AppWidgetProvider {
 
     private static final String TAG = "ImageWidgetProvider";
 
+    private static final Object LOG_LOCK = new Object();
+
     private static final String DB_NAME = "image_history.db";
     private static final String TABLE_WIDGET_IMAGES = "widget_images";
     private static final String PENDING_WIDGET_IMAGE = "pending_widget_image.txt";
+
+    /**
+     * Append a diagnostic line to the app's on-device log file
+     * (external files dir /logs/all_output1.txt), the same file the in-app
+     * Logs screen tails, so widget reversion events surface there too.
+     */
+    private void appendAppLog(Context context, String message) {
+        synchronized (LOG_LOCK) {
+            FileOutputStream fos = null;
+            try {
+                File logsDir = new File(context.getExternalFilesDir(null), "logs");
+                if (!logsDir.exists()) {
+                    logsDir.mkdirs();
+                }
+                fos = new FileOutputStream(new File(logsDir, "all_output1.txt"), true);
+                String ts = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                        .format(new java.util.Date());
+                fos.write((ts + " [ImageWidgetProvider] " + message + "\n")
+                        .getBytes("UTF-8"));
+            } catch (Exception e) {
+                Log.e(TAG, "appendAppLog failed", e);
+            } finally {
+                if (fos != null) {
+                    try {
+                        fos.close();
+                    } catch (IOException ignored) {
+                    }
+                }
+            }
+        }
+    }
 
     @Override
     public void onUpdate(
@@ -93,12 +127,18 @@ public class ImageWidgetProvider extends AppWidgetProvider {
             views.setOnClickPendingIntent(R.id.test_image, pendingIntent);
 
             if (!hasValidImage) {
-                Log.e(TAG, "No image for widgetId=" + appWidgetId);
+                String why = (imagePath == null || imagePath.trim().isEmpty())
+                        ? "no_db_mapping"
+                        : ("mapped_file_missing path=" + imagePath.trim());
+                Log.e(TAG, "No image for widgetId=" + appWidgetId + " (" + why + ")");
+                appendAppLog(context, "RENDER->PLACEHOLDER widgetId=" + appWidgetId + " " + why);
                 views.setViewVisibility(R.id.test_image, View.GONE);
                 views.setViewVisibility(R.id.placeholder_text, View.VISIBLE);
                 appWidgetManager.updateAppWidget(appWidgetId, views);
                 continue;
             }
+
+            appendAppLog(context, "RENDER->image widgetId=" + appWidgetId + " path=" + imagePath.trim());
 
             Log.d(TAG, "Resolved image path: " + imageFile.getAbsolutePath());
 
@@ -108,6 +148,8 @@ public class ImageWidgetProvider extends AppWidgetProvider {
 
             if (bitmap == null) {
                 Log.e(TAG, "Bitmap decode failed");
+                appendAppLog(context, "RENDER->PLACEHOLDER widgetId=" + appWidgetId
+                        + " bitmap_decode_failed path=" + imageFile.getAbsolutePath());
                 appWidgetManager.updateAppWidget(appWidgetId, views);
                 continue;
             }
@@ -206,13 +248,50 @@ public class ImageWidgetProvider extends AppWidgetProvider {
      */
     private String getWidgetImagePath(Context context, int appWidgetId) {
         File dbFile = new File(context.getFilesDir(), DB_NAME);
+        Log.d(TAG, "getWidgetImagePath widgetId=" + appWidgetId
+                + " db=" + dbFile.getAbsolutePath() + " dbExists=" + dbFile.exists());
         if (!dbFile.exists()) {
+            Log.e(TAG, "DB_MISSING for widgetId=" + appWidgetId + " -> placeholder");
+            appendAppLog(context, "DB_MISSING widgetId=" + appWidgetId + " -> placeholder");
             return null;
         }
+
+        String resolved = null;
+        Exception lastError = null;
+        for (int attempt = 1; attempt <= 3 && resolved == null; attempt++) {
+            try {
+                resolved = resolveWidgetImagePath(context, appWidgetId);
+            } catch (Exception e) {
+                lastError = e;
+                Log.e(TAG, "resolve attempt " + attempt + "/3 failed for widgetId="
+                        + appWidgetId, e);
+                if (attempt < 3) {
+                    try {
+                        Thread.sleep(150L * attempt);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
+        if (resolved == null && lastError != null) {
+            appendAppLog(context, "DB_EXCEPTION widgetId=" + appWidgetId + " "
+                    + lastError.toString() + " after 3 attempts");
+        }
+        return resolved;
+    }
+
+    /**
+     * Single DB round-trip for the widget mapping; transient busy/lock errors
+     * are retried by getWidgetImagePath.
+     */
+    private String resolveWidgetImagePath(Context context, int appWidgetId) throws Exception {
         SQLiteDatabase db = null;
         try {
             db = SQLiteDatabase.openDatabase(
-                    dbFile.getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE
+                    new File(context.getFilesDir(), DB_NAME).getAbsolutePath(),
+                    null, SQLiteDatabase.OPEN_READWRITE
             );
             db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_WIDGET_IMAGES +
                     " (app_widget_id INTEGER PRIMARY KEY, image_path TEXT NOT NULL)");
@@ -223,8 +302,11 @@ public class ImageWidgetProvider extends AppWidgetProvider {
                         new String[]{String.valueOf(appWidgetId)}
                 );
                 if (cursor.moveToFirst()) {
-                    return cursor.getString(0);
+                    String found = cursor.getString(0);
+                    Log.d(TAG, "ROW_FOUND widgetId=" + appWidgetId + " path=" + found);
+                    return found;
                 }
+                Log.e(TAG, "ROW_NOT_FOUND for widgetId=" + appWidgetId + " -> pending fallback");
             } finally {
                 if (cursor != null) {
                     cursor.close();
@@ -232,10 +314,14 @@ public class ImageWidgetProvider extends AppWidgetProvider {
             }
             File pendingFile = new File(context.getFilesDir(), PENDING_WIDGET_IMAGE);
             if (!pendingFile.exists()) {
+                Log.e(TAG, "NO_PENDING_FILE for widgetId=" + appWidgetId + " -> placeholder");
+                appendAppLog(context, "ROW_NOT_FOUND+NO_PENDING widgetId=" + appWidgetId + " -> placeholder");
                 return null;
             }
             String pending = readText(pendingFile);
             if (pending == null || pending.trim().isEmpty()) {
+                Log.e(TAG, "PENDING_EMPTY for widgetId=" + appWidgetId + " -> placeholder");
+                appendAppLog(context, "PENDING_EMPTY widgetId=" + appWidgetId + " -> placeholder");
                 return null;
             }
             ContentValues values = new ContentValues();
@@ -246,10 +332,8 @@ public class ImageWidgetProvider extends AppWidgetProvider {
             );
             pendingFile.delete();
             Log.d(TAG, "Claimed pending image for widgetId=" + appWidgetId + " -> " + pending);
+            appendAppLog(context, "PENDING_CLAIMED widgetId=" + appWidgetId + " -> " + pending);
             return pending;
-        } catch (Exception e) {
-            Log.e(TAG, "Error resolving widget image", e);
-            return null;
         } finally {
             if (db != null && db.isOpen()) {
                 db.close();
