@@ -23,7 +23,7 @@ def generate_receivers(package_: str = None) -> str:
         ),
         Receiver(
             name="CarouselWidgetProvider",
-            label="Waller Carousel Widget",
+            label="Carousel Widget",
             actions=[
                 "android.intent.action.BOOT_COMPLETED",
                 "android.appwidget.action.APPWIDGET_UPDATE",
@@ -32,7 +32,7 @@ def generate_receivers(package_: str = None) -> str:
         ),
         Receiver(
             name="ImageWidgetProvider",
-            label="Waller Image Widget",
+            label="Image Widget",
             actions=["android.appwidget.action.APPWIDGET_UPDATE"],
             meta_resource="@xml/image_widget_info",
         ),
