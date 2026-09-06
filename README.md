@@ -47,8 +47,8 @@ Wally automatically rotates your wallpapers using images you choose.
 
 ## Permissions
 
-* Images only — no unnecessary access
-* Notifications — for controls and previews
+* Images only: no unnecessary access
+* Notifications: for carousel controls and previews
 
 ---
 
@@ -90,12 +90,19 @@ Wally automatically rotates your wallpapers using images you choose.
 
 ### Image Share Features
 
-| Share To other apps                                             | Share From other Apps                                               |
-| ------------------------------------------------------ | ---------------------------------------------------------- |
-| ![share-to-modal](.github/docs-imgs/share-modal.jpg) | ![share-from-modal](.github/docs-imgs/share-from-modal.jpg) |
+| Share From other Apps | Share To other apps |
+|-----------------------|---------------------|
+| ![share-from-modal](.github/docs-imgs/share-from-modal.jpg) | ![share-to-modal](.github/docs-imgs/share-modal.jpg) |
 
 ---
 
+## In-App Update and Batch Actions
+
+| Update screen | Multiselect mode |
+|---------------|------------------|
+| ![update-screen](.github/docs-imgs/update-screen.jpg) | ![multiselect-mode](.github/docs-imgs/multiselect-mode.jpg) |
+
+---
 
 ## Why Waller?
 
