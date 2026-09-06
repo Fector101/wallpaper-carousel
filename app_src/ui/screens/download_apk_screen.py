@@ -31,7 +31,7 @@ def download_apk(url, filename="waller.apk", progress_callback=None):
     import requests
     try:
         sent_percent = 0
-       #p("Entered download apk:", url)
+        app_logger.info(f"Entered download apk: {url}")
 
         files_dir = get_apk_directory()
         apk_path = os.path.join(files_dir, filename)
@@ -40,7 +40,7 @@ def download_apk(url, filename="waller.apk", progress_callback=None):
         existing_size = 0
         if os.path.exists(apk_path):
             existing_size = os.path.getsize(apk_path)
-           #p("Resuming download from:", existing_size)
+            app_logger.info(f"Resuming download from: {existing_size}")
 
         headers = {}
         if existing_size > 0:
@@ -68,6 +68,7 @@ def download_apk(url, filename="waller.apk", progress_callback=None):
                             sent_percent=percent
                             progress_callback(percent)
 
+        app_logger.info(f"Download completed: {apk_path}")
         return apk_path
 
     except Exception as e:
@@ -82,7 +83,7 @@ def install_apk15(apk_path):
     from android import mActivity #type: ignore
 
     if not os.path.exists(apk_path):
-       #p("APK not found:", apk_path)
+        app_logger.info(f"APK not found: {apk_path}")
         return
 
     context = mActivity.getApplicationContext()
@@ -122,7 +123,7 @@ def install_apk(apk_path):
     mActivity.startActivity(intent)
 
 def do_android_install(apk_path):
-   #p("Called do_android_install")
+    app_logger.info(f"Called do_android_install: {apk_path}")
     try:
         install_apk15(apk_path)
     except Exception as e:
@@ -518,7 +519,6 @@ def check_update(download_apk_screen__show,download_apk_screen__do_not_show=None
         msg_ = "Timeout Error, Slow internet Connection"
         print(msg_)
         Clock.schedule_once(lambda dt: do_not_go_to_update_screen(msg_))
-       #p(msg_)
 
     except Exception as e:
         print(f"Error name: {e}")
@@ -586,14 +586,19 @@ def find_and_delete_unused_apks(latest_version):
     def safe_del(path):
         if os.path.exists(path):
             os.remove(path)
-           #p(f"deleted: {path}")
+            app_logger.info(f"Deleted unused APK: {path}")
+
     abs_apk_path = get_apk_path(latest_version)
+    app_logger.info(f"Trying to delete unused APK: {abs_apk_path}")
     safe_del(abs_apk_path)
 
-    versions_with_no_delete_logic = ["1.0.7","1.0.6","1.0.5","1.0.4"]
-    for each_version in versions_with_no_delete_logic:
-        abs_apk_path = get_apk_path(each_version)
+    download_dir = get_apk_directory()
+    apks_in_dir = [f for f in os.listdir(download_dir) if f.endswith(".apk")]
+    for each_apk in apks_in_dir:
+        abs_apk_path = os.path.join(download_dir, each_apk)
         safe_del(abs_apk_path)
+
+
 DEFAULT_RELEASE_NOTE = """[b]New Update Available[/b]
 
 • Performance improvements
