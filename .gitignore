@@ -21,3 +21,4 @@ test_dev*
 *.db*
 *.json
 ImageDataBase error: _conn
+*.jks
