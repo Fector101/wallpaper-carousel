@@ -75,6 +75,44 @@ def test_get_or_create_scaled_down_image_positive_size_creates_dest(tmp_path):
     assert result != str(src)
 
 
+def test_backfill_scaled_down_images_creates_missing_only(tmp_path, monkeypatch):
+    monkeypatch.setattr(ConfigManager, "_cached_config_path", tmp_path / "config.json")
+    ConfigManager.write(ConfigManager.DEFAULT_CONFIG)
+
+    wp = tmp_path / "wallpapers"
+    wp.mkdir()
+    a = wp / "a.png"
+    _make_image(a, "red")
+    b = wp / "b.jpg"
+    _make_image(b, "red")
+    cache_ok = io.scaled_down_path_for(b)
+    cache_ok.write_bytes(b"existing")
+    missing_src = str(tmp_path / "nope.jpg")
+
+    ConfigManager.write(
+        {
+            **ConfigManager.DEFAULT_CONFIG,
+            "wallpapers": [str(a), str(b), missing_src],
+            "day_wallpapers": [str(a)],
+        }
+    )
+
+    io.backfill_scaled_down_images(size=(400, 400))
+
+    assert io.scaled_down_path_for(a).exists()
+    assert io.scaled_down_path_for(b).read_bytes() == b"existing"
+    assert not io.scaled_down_path_for(missing_src).exists()
+
+
+def test_backfill_scaled_down_images_empty_config_is_noop(tmp_path, monkeypatch):
+    monkeypatch.setattr(ConfigManager, "_cached_config_path", tmp_path / "config.json")
+    ConfigManager.write(ConfigManager.DEFAULT_CONFIG)
+
+    io.backfill_scaled_down_images(size=(400, 400))
+
+    assert not (tmp_path / "wallpapers" / "scaled_down_images").exists()
+
+
 class _FakeImageDB:
     def __init__(self):
         self.removed = []

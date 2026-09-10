@@ -967,6 +967,52 @@ def get_or_create_scaled_down_image(src, size):
     except ValueError:
         return str(src)
 
+def _default_scaled_down_size():
+    """Resolve the typical carousel display size for scaled-down wallpapers.
+
+    Matches ``ImageOperation.get_user_carousel_size``: window width x 80% of
+    window height, so it works without a fully built UI graph. Falls back to a
+    landscape phone-ish size when the window isn't available.
+    """
+    try:
+        from kivy.core.window import Window
+        win_size = Window.size
+        return (int(win_size[0]), int(win_size[1] * 0.8))
+    except Exception:
+        pass
+    return (1080, 2300)
+
+def backfill_scaled_down_images(size=None):
+    """Generate missing scaled-down cache images for all configured wallpapers.
+
+    Old installs predate the scaled-down image cache, so nothing is cached on
+    first launch after the upgrade. Iterate every configured wallpaper and
+    create its scaled-down file when missing. Meant to run on a background
+    thread at startup; on-demand callers short-circuit once the file exists.
+    """
+    if not size:
+        size = _default_scaled_down_size()
+    wallpapers = set(my_config.get_wallpapers())
+    wallpapers.update(my_config.get_day_wallpapers())
+    wallpapers.update(my_config.get_noon_wallpapers())
+    for src in sorted(wallpapers):
+        try:
+            if not os.path.exists(str(src)):
+                continue
+            dest_path = scaled_down_path_for(src)
+            if dest_path.exists():
+                continue
+            create_scaled_down_img(
+                src_path=str(src),
+                dest_path=dest_path,
+                max_width=size[0],
+                max_height=size[1],
+            )
+        except Exception as error_backfilling_scaled_image:
+            app_logger.exception(
+                f"backfill_scaled_down_images failed for {src}: {error_backfilling_scaled_image}"
+            )
+
 def get_image_info(path):
     info_dict = {
                 "Pixels": "Nil",
