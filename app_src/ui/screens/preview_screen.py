@@ -91,7 +91,6 @@ class PreviewScreen(MyMDScreen):
         super().__init__(**kwargs)
         self.name="preview"
         root = MDFloatLayout()
-        root.md_bg_color=[1, 1, 0, 1]
         self.btn_close = MDIconButton(
             icon="close",
             style="outlined",
@@ -142,6 +141,7 @@ class PreviewScreen(MyMDScreen):
         self.add_widget(root)
 
     def on_pre_enter(self, *args):
+        self.scatter.scale = self.scatter.min_scale
         self.image_widget.source=self.abs_img_path
         print(f"self.abs_img_path:{self.abs_img_path}")
         self.hide_system_ui()

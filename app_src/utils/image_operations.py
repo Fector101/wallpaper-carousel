@@ -622,6 +622,9 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
 def create_scaled_down_img(src_path, dest_path, max_width, max_height, quality=75):
     """Resize an image to fit within max_width x max_height using Android Java classes."""
 
+    if max_width <= 0 or max_height <= 0:
+        raise ValueError("Image dimensions must be positive")
+
     if os.path.exists(dest_path):
         return str(dest_path)
     def create_scaled_down_img_android(src_path=src_path, dest_path=dest_path, max_width=max_width, max_height=max_height, quality=quality):
@@ -725,6 +728,11 @@ def create_scaled_down_img(src_path, dest_path, max_width, max_height, quality=7
                     print("error_using_android_classes_to_create_scaled_down_image",
                           error_using_android_classes_to_create_scaled_down_image)
                     traceback.print_exc()
+                    try:
+                        os.remove(dest_path)
+                    except FileNotFoundError:
+                        pass
+                    return str(src_path)
     except OSError as os_error:
         app_logger.exception(f"OSError creating scaled down image for: {src_path}, os_error:{os_error}")
         return str(src_path)
@@ -839,12 +847,15 @@ def get_or_create_scaled_down_image(src, size):
         win_w, _ = Window.size
         size = (win_w, carousel_height)
 
-    return create_scaled_down_img(
-        src_path=src,
-        dest_path=destination_path,
-        max_width=size[0],
-        max_height=size[1]
-    )
+    try:
+        return create_scaled_down_img(
+            src_path=src,
+            dest_path=destination_path,
+            max_width=size[0],
+            max_height=size[1]
+        )
+    except ValueError:
+        return str(src)
 
 def get_image_info(path):
     info_dict = {
