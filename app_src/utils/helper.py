@@ -297,6 +297,35 @@ def get_free_port():
     return port
 
 
+def crop_path_for(src):
+    """Return the Path where the user's selected (cropped) wallpaper for a source
+    image is stored.
+
+    Crops live in a 'wallpaper_crops' subfolder under the app folder. The name
+    is derived from the full source filename (``<stem>_<ext>_crop.jpg``) so
+    distinct sources sharing a stem never collide on one file, matching the
+    scaled-down image naming.
+    """
+    from pathlib import Path
+    p = Path(src)
+    crop_dir = Path(appFolder()) / "wallpaper_crops"
+    crop_dir.mkdir(parents=True, exist_ok=True)
+    return crop_dir / f"{p.stem}_{p.suffix.lstrip('.') or 'img'}_crop.jpg"
+
+
+def resolve_user_selected_crop(path):
+    """Return the user's saved cropped version of an image when it exists on
+    disk, otherwise the original path."""
+    import os
+    try:
+        crop = crop_path_for(path)
+        if os.path.exists(str(crop)):
+            return str(crop)
+    except Exception as e:
+        print("Failed to resolve user crop:", e)
+    return path
+
+
 def change_wallpaper(wallpaper_path, do_ui_thing=None):
     """Actually set the wallpaper"""
     import os, traceback
@@ -313,6 +342,9 @@ def change_wallpaper(wallpaper_path, do_ui_thing=None):
             print("Invalid wallpaper path")
             run_ui_thing()
             return False
+
+        original_path = wallpaper_path
+        wallpaper_path = resolve_user_selected_crop(wallpaper_path)
 
         from android_notify.config import get_python_activity_context, from_service_file
         from android_notify.internal.java_classes import BuildVersion, BitmapFactory
@@ -331,7 +363,7 @@ def change_wallpaper(wallpaper_path, do_ui_thing=None):
             wallpaper_manager.setBitmap(bitmap, None, True, FLAG_LOCK)
             try:
                 from utils.database import ImageDatabase
-                ImageDatabase().record_wallpaper_set(wallpaper_path)
+                ImageDatabase().record_wallpaper_set(original_path)
             except Exception:
                 pass
             if not from_service_file():
@@ -542,6 +574,13 @@ def remove_images_from_app(abs_paths: list):
                 scaled_down_image.unlink()
         except Exception as error_unlinking_scaled_down_image:
             app_logger.exception(error_unlinking_scaled_down_image)
+
+        try:
+            crop = crop_path_for(each_path)
+            if crop.exists():
+                crop.unlink()
+        except Exception as error_unlinking_crop:
+            app_logger.exception(error_unlinking_crop)
 
         my_config.remove_wallpaper(each_path)
         try:

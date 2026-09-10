@@ -10,7 +10,7 @@ from kivy.clock import Clock
 from kivymd.app import MDApp
 
 from ui.widgets.layouts import LoadingLayout
-from utils.helper import appFolder, format_size
+from utils.helper import appFolder, format_size, crop_path_for
 
 from utils.config_manager import ConfigManager
 from utils.database import ImageDatabase
@@ -805,6 +805,112 @@ def scaled_down_path_for(src):
     scaled_down_dir = destination_dir / "scaled_down_images"
     scaled_down_dir.mkdir(parents=True, exist_ok=True)
     return scaled_down_dir / f"{p.stem}_{p.suffix.lstrip('.') or 'img'}.jpg"
+
+def compute_preview_crop(win_size, image_widget_size, texture_size, scale, pos):
+    """Compute the visible region of a preview image as a crop box and its
+    normalized viewport.
+
+    The preview scatter shows a cover-fitted image the size of
+    ``image_widget_size`` scaled by ``scale`` and translated by ``pos`` inside a
+    window of ``win_size`` (all in Kivy widget/pixel coordinates). Returns a
+    ``(box, viewport)`` tuple where ``box`` is ``(left, upper, right, lower)``
+    in the source texture's pixel coordinates (ready for Pillow crop) and
+    ``viewport`` is ``{"scale": ..., "cx": ..., "cy": ...}`` describing the
+    on-screen viewport center normalized to the image widget. Returns ``None``
+    when no region is visible (degenerate layout).
+    """
+    win_w, win_h = win_size
+    img_w, img_h = image_widget_size
+    tex_w, tex_h = texture_size
+    x, y = pos
+    if (
+        min(win_w, win_h, img_w, img_h, tex_w, tex_h, scale) <= 0
+        or win_w > img_w * scale
+        or win_h > img_h * scale
+    ):
+        return None
+
+    x0 = (0 - x) / scale
+    x1 = (win_w - x) / scale
+    y0 = (0 - y) / scale
+    y1 = (win_h - y) / scale
+
+    left_local = max(x0, 0)
+    right_local = min(x1, img_w)
+    bottom_local = max(y0, 0)
+    top_local = min(y1, img_h)
+
+    if left_local >= right_local or bottom_local >= top_local:
+        return None
+
+    left = int(round(left_local / img_w * tex_w))
+    right = int(round(right_local / img_w * tex_w))
+    upper = int(round((img_h - top_local) / img_h * tex_h))
+    lower = int(round((img_h - bottom_local) / img_h * tex_h))
+
+    left = max(left, 0)
+    right = min(right, tex_w)
+    upper = max(upper, 0)
+    lower = min(lower, tex_h)
+    if left >= right or upper >= lower:
+        return None
+
+    viewport = {
+        "scale": scale,
+        "cx": ((left_local + right_local) / 2) / img_w,
+        "cy": ((bottom_local + top_local) / 2) / img_h,
+    }
+    return (left, upper, right, lower), viewport
+
+def crop_and_save_region(src, box, quality=88):
+    """Crop ``src`` to ``box`` and store it as the user-selected wallpaper.
+
+    ``box`` is ``(left, upper, right, lower)`` in the source texture's pixel
+    coordinates. The cropped image is saved at :func:`utils.helper.crop_path_for`
+    so any future wallpaper set for ``src`` uses this tuned version. Returns the
+    crop path.
+    """
+    import os
+    src = str(src)
+    left, upper, right, lower = tuple(int(v) for v in box)
+    if right - left <= 0 or lower - upper <= 0:
+        raise ValueError("Crop box must have positive width and height")
+
+    dest_path = str(crop_path_for(src))
+
+    def create_cropped_img_android():
+        from jnius import autoclass
+        BitmapFactoryAndroid = autoclass('android.graphics.BitmapFactory')
+        Bitmap = autoclass('android.graphics.Bitmap')
+        CompressFormat = autoclass('android.graphics.Bitmap$CompressFormat')
+        FileOutputStream = autoclass('java.io.FileOutputStream')
+        bitmap = BitmapFactoryAndroid.decodeFile(src)
+        if bitmap is None:
+            raise Exception(f"Failed to decode image: {src}")
+        cropped = Bitmap.createBitmap(bitmap, left, upper, right - left, lower - upper)
+        out = FileOutputStream(dest_path)
+        cropped.compress(CompressFormat.JPEG, quality, out)
+        out.close()
+        bitmap.recycle()
+        cropped.recycle()
+
+    try:
+        from PIL import Image
+        with Image.open(src) as img:
+            cropped_img = img.crop((left, upper, right, lower))
+            cropped_img.save(dest_path, quality=quality)
+    except Exception as error_cropping_with_pil:
+        print(f"error_cropping_with_pil: {error_cropping_with_pil}")
+        traceback.print_exc()
+        if not _on_android_platform():
+            raise
+        try:
+            os.remove(dest_path)
+        except FileNotFoundError:
+            pass
+        create_cropped_img_android()
+
+    return dest_path
 
 def _try_java_native_copy(input_stream, destination_path):
     """Copy the stream entirely inside Java (one JNI call) on API 29+.

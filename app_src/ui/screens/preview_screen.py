@@ -111,7 +111,7 @@ class PreviewScreen(MyMDScreen):
             # pos_hint={'center_x': .5, 'center_y': .5},
             theme_text_color='Custom',
             text_color=[1, 1, 1, .9],
-            on_release=lambda *_: self.handle_going_back(),
+            on_release=lambda *_: self.handle_confirm_selection(),
             md_bg_color=[.1, .1, .1, 1],
             theme_bg_color='Custom'
         )
@@ -130,6 +130,7 @@ class PreviewScreen(MyMDScreen):
         # self.bind(size=lambda _, v: setattr(self.image_widget, 'size', v))
         # self.bind(size=lambda _,v: setattr(scatter,'size',v),pos=lambda _,v: setattr(scatter,'pos',v))
 
+        self._pending_restore = None
         self.image_widget.bind(texture=self.update_cover_size)
         Window.bind(size=self.update_cover_size)
 
@@ -143,12 +144,52 @@ class PreviewScreen(MyMDScreen):
     def on_pre_enter(self, *args):
         self.scatter.scale = self.scatter.min_scale
         self.image_widget.source=self.abs_img_path
+        try:
+            from utils.database import ImageDatabase
+            self._pending_restore = ImageDatabase().get_preview_props(self.abs_img_path)
+        except Exception as error_reading_preview_props:
+            print(f"Failed to read preview props: {error_reading_preview_props}")
+            self._pending_restore = None
         print(f"self.abs_img_path:{self.abs_img_path}")
         self.hide_system_ui()
+        self.update_cover_size()
 
     def handle_going_back(self, *_):
         self.show_system_ui()
         self.manager.go_to_fullscreen()
+
+    def handle_confirm_selection(self, *_):
+        info = self._preview_crop_info()
+        if not info:
+            return
+        box, viewport = info
+        try:
+            from utils.image_operations import crop_and_save_region
+            crop_and_save_region(self.abs_img_path, box)
+        except Exception as error_saving_selected_wallpaper:
+            print(f"Failed to save selected wallpaper: {error_saving_selected_wallpaper}")
+            return
+        try:
+            from utils.database import ImageDatabase
+            ImageDatabase().set_preview_props(
+                self.abs_img_path, viewport["scale"], viewport["cx"], viewport["cy"]
+            )
+        except Exception as error_saving_preview_props:
+            print(f"Failed to save preview props: {error_saving_preview_props}")
+        self.handle_going_back()
+
+    def _preview_crop_info(self):
+        if not self.image_widget.texture:
+            return None
+        from utils.image_operations import compute_preview_crop
+        win_w, win_h = Window.size
+        return compute_preview_crop(
+            (win_w, win_h),
+            self.image_widget.size,
+            (self.image_widget.texture.width, self.image_widget.texture.height),
+            self.scatter.scale,
+            self.scatter.pos,
+        )
 
     def update_cover_size(self, *args):
         if not self.image_widget.texture:
@@ -180,3 +221,12 @@ class PreviewScreen(MyMDScreen):
             (win_w - new_w) / 2,
             (win_h - new_h) / 2
         )
+
+        pending = self._pending_restore
+        self._pending_restore = None
+        if pending and pending.get("scale") and pending.get("cx") is not None and pending.get("cy") is not None:
+            self.scatter.scale = pending["scale"]
+            self.scatter.pos = (
+                win_w / 2 - self.scatter.scale * (pending["cx"] * new_w),
+                win_h / 2 - self.scatter.scale * (pending["cy"] * new_h),
+            )
