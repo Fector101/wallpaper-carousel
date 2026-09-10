@@ -11,10 +11,12 @@ from ui.widgets.layouts import MyMDScreen
 from kivy.properties import ListProperty, StringProperty
 from kivy.graphics import Color, Rectangle
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.image import Image
+from kivy.uix.image import AsyncImage
 from kivy.uix.scatterlayout import ScatterLayout
+from utils.constants import _rgba
 
-class MyImage(Image):
+
+class MyImage(AsyncImage):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.bind(pos=self.test)
@@ -29,7 +31,7 @@ class MyScatter(ScatterLayout):
         self.pos=(0,0)
 
         with self.canvas.before:
-            Color(1, 1, 0, 1)
+            Color(*_rgba(26, 27, 27))
             self.rect = Rectangle(pos=self.pos, size=self.size)
 
         self.bind(pos=self.update_rect, size=self.update_rect)

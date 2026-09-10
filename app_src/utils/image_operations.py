@@ -164,11 +164,12 @@ class ImageOperation:
                 shutil.copy2(src, dst)
                 create_thumbnail(dst, destination_dir=wallpapers_dir)
                 dest_path = scaled_down_path_for(dst)
+                carousel_size = self.get_user_carousel_size()
                 create_scaled_down_img(
                     src_path=dst,
                     dest_path=dest_path,
-                    max_width=self.user_carousel_size[0],
-                    max_height=self.user_carousel_size[1],
+                    max_width=carousel_size[0],
+                    max_height=carousel_size[1],
                 )
                 os.utime(dst, (copy_time, copy_time))
                 with images_lock:
@@ -186,6 +187,12 @@ class ImageOperation:
         Clock.schedule_once(self.ui_things, 0)
         Clock.schedule_once(lambda dt: self.app.bottom_bar.show(animation=False, hidden_by="pic"), 0)
 
+    def get_user_carousel_size(self):
+        from kivy.core.window import Window
+        win_size = Window.size
+        if self.user_carousel_size == [0,0]:
+            self.user_carousel_size = [win_size[0], win_size[1]*0.8] # 80% of screen height
+        return self.user_carousel_size
     def import_images_from_android(self, only_limited_access=False,image_uris=None):
         """Process URIs from a pending intent in parallel.
         Runs in a background thread; calls ui_things when done.
@@ -236,11 +243,12 @@ class ImageOperation:
                         t2 = time.time()
                         create_thumbnail(src_path=destination_path, destination_dir=wallpapers_dir)
                         dest_path=scaled_down_path_for(destination_path)
+                        carousel_size = self.get_user_carousel_size()
                         create_scaled_down_img(
                             src_path=destination_path,
                             dest_path=dest_path,
-                            max_width=self.user_carousel_size[0],
-                            max_height=self.user_carousel_size[1],
+                            max_width=carousel_size[0],
+                            max_height=carousel_size[1],
                         )
                         t3 = time.time()
                         print(f"image_operations: process_one [{i+1}/{len(uris)}] meta={t1-t0:.3f}s copy={t2-t1:.3f}s thumb={t3-t2:.3f}s")
@@ -510,7 +518,7 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
     # _thumb_t0 = time.time()
     # print(f"image_operations: create_thumbnail start {os.path.basename(str(src_path))}")
     def use_android_classes_to_create_thumbnail(src_path_, destination_path):
-        # _t = time.time()
+        _t = time.time()
         max_width = size[0]
         max_height = size[1]
 
@@ -518,15 +526,15 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
         bitmap = BitmapFactory.decodeFile(src_path_)
         if bitmap is None:
             raise Exception("Failed to decode image")
-        # print(f"  [thumb] decodeFile {time.time()-_t:.3f}s")
+        print(f"  [thumb] decodeFile {time.time()-_t:.3f}s") # 0.590s
 
-        # _t2 = time.time()
+        _t2 = time.time()
         # 2. Convert to RGB (ARGB_8888 ≈ RGB)
         bitmap = bitmap.copy(BitmapConfig.ARGB_8888, False)
-        # print(f"  [thumb] bitmap.copy {time.time()-_t2:.3f}s")
+        print(f"  [thumb] bitmap.copy {time.time()-_t2:.3f}s")#0.065s
 
         # 3. Compute thumbnail size (keep aspect ratio)
-        # _t2 = time.time()
+        _t2 = time.time()
         width = bitmap.getWidth()
         height = bitmap.getHeight()
 
@@ -540,19 +548,19 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
 
         # High-quality resize (Android internal filter)
         resized = Bitmap.createScaledBitmap(bitmap, new_w, new_h, True)
-        # print(f"  [thumb] createScaledBitmap {time.time()-_t2:.3f}s")
+        print(f"  [thumb] createScaledBitmap {time.time()-_t2:.3f}s")#0.568s
 
         # 4. Save as JPEG
-        # _t2 = time.time()
+        _t2 = time.time()
         out = FileOutputStream(destination_path)
         resized.compress(CompressFormat.JPEG, quality, out)
         out.close()
-        # print(f"  [thumb] compress+write {time.time()-_t2:.3f}s")
+        print(f"  [thumb] compress+write {time.time()-_t2:.3f}s")#0.099s
 
         # Cleanup
         bitmap.recycle()
         resized.recycle()
-        # print(f"  [thumb] android total {time.time()-_t:.3f}s")
+        print(f"  [thumb] android total {time.time()-_t:.3f}s")#1.331s
 
     if str(src_path).endswith(".webp"):
         return str(src_path)
@@ -645,7 +653,7 @@ def create_scaled_down_img(src_path, dest_path, max_width, max_height, quality=7
         width = bitmap.getWidth()
         height = bitmap.getHeight()
 
-        scale = min(max_width / float(width), max_height / float(height))
+        scale = min(1.0, min(max_width / float(width), max_height / float(height)))
         new_w = Math.round(width * scale)
         new_h = Math.round(height * scale)
 
@@ -705,6 +713,7 @@ def create_scaled_down_img(src_path, dest_path, max_width, max_height, quality=7
             print("Pillow not available, cannot create scaled down image.")
             # Pillow not available and not on android -> fall back to original image path
             return str(src_path)
+
     try:
         if Image:
             create_scaled_down_img_PIL()
