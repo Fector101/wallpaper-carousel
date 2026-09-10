@@ -1,4 +1,6 @@
 import os
+import threading
+from pathlib import Path
 
 from PIL import Image
 import pytest
@@ -33,6 +35,7 @@ def test_create_scaled_down_img_rgba_png_converts_to_rgb(tmp_path):
 
     assert result == str(dest)
     assert dest.exists()
+    assert not Path(f"{dest}.tmp").exists()
     with Image.open(dest) as img:
         assert img.mode == "RGB"
 
@@ -86,6 +89,31 @@ def test_get_or_create_scaled_down_image_positive_size_creates_dest(tmp_path):
     result = io.get_or_create_scaled_down_image(str(src), (400, 400))
     assert os.path.exists(result)
     assert result != str(src)
+
+
+def test_create_scaled_down_img_concurrent_same_dest(tmp_path):
+    src = tmp_path / "a.png"
+    _make_image(src, "red")
+    dest = tmp_path / "out.jpg"
+
+    barrier = threading.Barrier(2)
+    results = []
+
+    def worker():
+        barrier.wait()
+        results.append(io.create_scaled_down_img(str(src), str(dest), 400, 300))
+
+    threads = [threading.Thread(target=worker) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert results == [str(dest), str(dest)]
+    assert dest.exists()
+    assert not (tmp_path / "out.jpg.tmp").exists()
+    with Image.open(dest) as img:
+        assert img.size == (400, 280)
 
 
 def test_backfill_scaled_down_images_creates_missing_only(tmp_path, monkeypatch):

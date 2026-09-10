@@ -143,6 +143,8 @@ class PreviewScreen(MyMDScreen):
 
     def on_pre_enter(self, *args):
         self.scatter.scale = self.scatter.min_scale
+        self._preview_entry_texture = self.image_widget.texture
+        self._preview_entry_source = self.image_widget.source
         self.image_widget.source=self.abs_img_path
         try:
             from utils.database import ImageDatabase
@@ -178,9 +180,11 @@ class PreviewScreen(MyMDScreen):
                 from utils.image_operations import crop_and_save_region
                 crop_and_save_region(self.abs_img_path, box)
                 from utils.database import ImageDatabase
-                ImageDatabase().set_preview_props(
+                persisted = ImageDatabase().set_preview_props(
                     self.abs_img_path, viewport["scale"], viewport["cx"], viewport["cy"]
                 )
+                if not persisted:
+                    raise Exception("Failed to persist preview viewport")
                 state["ok"] = True
             except Exception as error_saving_selected_wallpaper:
                 print(f"Failed to save selected wallpaper: {error_saving_selected_wallpaper}")
@@ -236,10 +240,21 @@ class PreviewScreen(MyMDScreen):
         )
 
         pending = self._pending_restore
-        self._pending_restore = None
         if pending and pending.get("scale") and pending.get("cx") is not None and pending.get("cy") is not None:
+            if not self._restore_texture_current():
+                return
+            self._pending_restore = None
             self.scatter.scale = pending["scale"]
             self.scatter.pos = (
                 win_w / 2 - self.scatter.scale * (pending["cx"] * new_w),
                 win_h / 2 - self.scatter.scale * (pending["cy"] * new_h),
             )
+
+    def _restore_texture_current(self):
+        """Whether the displayed texture belongs to the current source, so a
+        saved viewport restore is only consumed once that image is loaded."""
+        if self.image_widget.texture is None:
+            return False
+        if self._preview_entry_source == self.abs_img_path:
+            return True
+        return self.image_widget.texture is not self._preview_entry_texture

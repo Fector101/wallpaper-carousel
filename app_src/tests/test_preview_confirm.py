@@ -105,6 +105,17 @@ def test_crop_and_save_region_rejects_empty_box(tmp_path, monkeypatch):
         io.crop_and_save_region(str(src), (100, 200, 100, 600))
 
 
+def test_crop_and_save_region_rgba_png_converts_to_rgb(tmp_path, monkeypatch):
+    monkeypatch.setattr(helper, "appFolder", lambda: str(tmp_path))
+    src = tmp_path / "rgba.png"
+    Image.new("RGBA", (1000, 700), (255, 0, 0, 128)).save(src)
+    dest = io.crop_and_save_region(str(src), (100, 200, 500, 600))
+    assert dest == str(helper.crop_path_for(src))
+    with Image.open(dest) as img:
+        assert img.mode == "RGB"
+        assert img.size == (400, 400)
+
+
 # --- DB preview props ------------------------------------------------------
 
 def test_db_migration_adds_preview_columns(tmp_path):
@@ -149,10 +160,17 @@ def test_preview_props_roundtrip(tmp_path):
     inst = _fresh_db(tmp_path)
     path = "/some/place/img.jpg"
     assert inst.get_preview_props(path) is None
-    inst.set_preview_props(path, 2.5, 0.4, 0.6)
+    assert inst.set_preview_props(path, 2.5, 0.4, 0.6) is True
     assert inst.get_preview_props(path) == {"scale": 2.5, "cx": 0.4, "cy": 0.6}
-    inst.set_preview_props(path, 1.0, 0.5, 0.5)
+    assert inst.set_preview_props(path, 1.0, 0.5, 0.5) is True
     assert inst.get_preview_props(path) == {"scale": 1.0, "cx": 0.5, "cy": 0.5}
+
+
+def test_set_preview_props_reports_failure(tmp_path):
+    inst = _fresh_db(tmp_path)
+    path = "/some/place/img.jpg"
+    inst._conn.close()
+    assert inst.set_preview_props(path, 2.5, 0.4, 0.6) is False
 
 
 # --- wallpaper setting uses the crop --------------------------------------

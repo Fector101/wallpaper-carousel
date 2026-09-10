@@ -625,8 +625,6 @@ def create_scaled_down_img(src_path, dest_path, max_width, max_height, quality=7
     if max_width <= 0 or max_height <= 0:
         raise ValueError("Image dimensions must be positive")
 
-    if os.path.exists(dest_path):
-        return str(dest_path)
     def create_scaled_down_img_android(src_path=src_path, dest_path=dest_path, max_width=max_width, max_height=max_height, quality=quality):
         from jnius import autoclass
 
@@ -703,7 +701,17 @@ def create_scaled_down_img(src_path, dest_path, max_width, max_height, quality=7
         if resized_img.mode != "RGB":
             resized_img = resized_img.convert("RGB")
 
-        resized_img.save(dest_path)
+        tmp_path = f"{dest_path}.tmp"
+        try:
+            resized_img.save(tmp_path, format="JPEG", quality=quality)
+            os.replace(tmp_path, dest_path)
+        except Exception:
+            try:
+                os.remove(tmp_path)
+            except FileNotFoundError:
+                pass
+            raise
+
         print(f"OG : {format_size(os.path.getsize(src_path))}")
         print(f"pil scaled image : {format_size(os.path.getsize(dest_path))}")
         return None
@@ -720,11 +728,13 @@ def create_scaled_down_img(src_path, dest_path, max_width, max_height, quality=7
             # Pillow not available and not on android -> fall back to original image path
             return str(src_path)
 
-    try:
-        if Image:
-            create_scaled_down_img_PIL()
-        elif _on_android_platform():
-            with _SCALED_IMG_LOCK:
+    with _SCALED_IMG_LOCK:
+        if os.path.exists(dest_path):
+            return str(dest_path)
+        try:
+            if Image:
+                create_scaled_down_img_PIL()
+            elif _on_android_platform():
                 try:
                     create_scaled_down_img_android()
                 except Exception as error_using_android_classes_to_create_scaled_down_image:
@@ -736,13 +746,13 @@ def create_scaled_down_img(src_path, dest_path, max_width, max_height, quality=7
                     except FileNotFoundError:
                         pass
                     return str(src_path)
-    except OSError as os_error:
-        app_logger.exception(f"OSError creating scaled down image for: {src_path}, os_error:{os_error}")
-        return str(src_path)
-    except Exception as error_making_scaled_down_img:
-        print(f"Error creating scaled down image for: {error_making_scaled_down_img} src_path:{src_path}")
-        traceback.print_exc()
-        return str(src_path)
+        except OSError as os_error:
+            app_logger.exception(f"OSError creating scaled down image for: {src_path}, os_error:{os_error}")
+            return str(src_path)
+        except Exception as error_making_scaled_down_img:
+            print(f"Error creating scaled down image for: {error_making_scaled_down_img} src_path:{src_path}")
+            traceback.print_exc()
+            return str(src_path)
 
     return str(dest_path)
 
@@ -901,6 +911,8 @@ def crop_and_save_region(src, box, quality=88):
         from PIL import Image
         with Image.open(src) as img:
             cropped_img = img.crop((left, upper, right, lower))
+            if cropped_img.mode != "RGB":
+                cropped_img = cropped_img.convert("RGB")
             cropped_img.save(dest_path, quality=quality)
     except Exception as error_cropping_with_pil:
         print(f"error_cropping_with_pil: {error_cropping_with_pil}")

@@ -124,6 +124,8 @@ class ImageDatabase:
         except Exception as e:
             app_logger.error(f"[ImageDatabase] _execute error: {e}")
             traceback.print_exc()
+            return False
+        return True
 
     def _fetchone(self, sql, params=()):
         try:
@@ -182,7 +184,7 @@ class ImageDatabase:
         )
 
     def set_preview_props(self, path, scale, cx, cy):
-        self._execute(
+        return self._execute(
             "INSERT INTO images (image_path, preview_scale, preview_cx, preview_cy) "
             "VALUES (?, ?, ?, ?) "
             "ON CONFLICT(image_path) DO UPDATE SET "
