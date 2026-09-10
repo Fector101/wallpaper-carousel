@@ -199,7 +199,6 @@ class FullscreenScreen(MyMDScreen):
         self.btn_home_widget = None
         self.btn_layout = None
         self.header_file_size = None
-        self.btn_close = None
         self.btn_toggle = None
         self.header_layout = None
         self.layout = None
@@ -280,21 +279,6 @@ class FullscreenScreen(MyMDScreen):
             theme_bg_color = 'Custom'
         )
 
-
-        self.btn_close = MDIconButton(
-            icon="close",
-            style="outlined",
-            size=(dp(70), dp(70)),
-            pos_hint={'x': .025, 'top': .98},
-            theme_text_color='Custom',
-            text_color=[1, 1, 1, .9],
-            opacity=0,
-            disabled=True,
-            on_release=lambda *_: self.leave_preview_mode(),
-            md_bg_color = [.1, .1, .1, 1],
-            theme_bg_color = 'Custom'
-        )
-
         self.text_container = MDBoxLayout(orientation="vertical")
         self.header_title = MDLabel(text="", pos_hint={'center_y': .48})
         self.header_file_size = MDLabel(text=" ", pos_hint={'center_y': .46},adaptive_size=True,padding=[dp(4),dp(1)])
@@ -370,7 +354,6 @@ class FullscreenScreen(MyMDScreen):
         self.header_layout.add_widget(self.text_container)
         self.header_layout.add_widget(self.dropdown_btn)
         self.layout.add_widget(self.header_layout)
-        self.layout.add_widget(self.btn_close)
 
 
         self.btm_btn_layout_root.add_widget(left_btm_box)
@@ -439,7 +422,7 @@ class FullscreenScreen(MyMDScreen):
         self.header_layout.md_bg_color = header_bg
         self.btn_toggle.md_bg_color = header_bg
         self.btn_layout.md_bg_color = header_bg
-        self.btn_close.md_bg_color = header_bg
+        # self.btn_close.md_bg_color = header_bg
         self.btn_toggle.text_color = tc
         self.header_title.text_color = tc
         self.set_wallpaper_btn.icon_color = tc
@@ -452,7 +435,6 @@ class FullscreenScreen(MyMDScreen):
     def enter_preview_mode(self, *_):
         self.manager.preview_screen.abs_img_path = self.current_image
         self.manager.go_to_preview()
-
         return
         self.is_fullscreen = True
 
@@ -626,8 +608,8 @@ class FullscreenScreen(MyMDScreen):
         self.carousel.pos_hint = self.original_carousel_pos_hint
         self.header_layout.pos_hint = {'center_x': .5, 'top': .98}
 
-        self.btn_close.opacity = 0
-        self.btn_close.disabled = True
+        # self.btn_close.opacity = 0
+        # self.btn_close.disabled = True
 
         self.btm_btn_layout_root.pos_hint = {"y": 0}
 

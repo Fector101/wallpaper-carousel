@@ -1,3 +1,8 @@
+from kivymd.uix.floatlayout import MDFloatLayout
+
+from kivy.metrics import dp
+from kivymd.uix.button import MDIconButton
+
 from kivy.core.window import Window
 from kivymd.uix.screen import MDScreen
 
@@ -79,12 +84,36 @@ class MyBoxLayout(BoxLayout):
 
 
 class PreviewScreen(MyMDScreen):
-    abs_img_path=StringProperty("/data/user/0/org.wally.waller/files/wallpapers/486306-1920x1080-desktop-full-hd-blade-runner-2049-background-image (1).jpg")
+    abs_img_path=StringProperty("/data/user/0/org.wally.waller/files/wallpapers/486306-1920x1080-desktop-full-hd-blade-runner-2049-background-image.jpg")
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.name="preview"
-        root = FloatLayout()
-
+        root = MDFloatLayout()
+        root.md_bg_color=[1, 1, 0, 1]
+        self.btn_close = MDIconButton(
+            icon="close",
+            style="outlined",
+            size=(dp(200), dp(200)),
+            pos_hint={'x': .025, 'top': .98},
+            # pos_hint={'center_x': .5, 'center_y': .5},
+            theme_text_color='Custom',
+            text_color=[1, 1, 1, .9],
+            on_release=lambda *_: self.handle_going_back(),
+            md_bg_color=[.1, .1, .1, 1],
+            theme_bg_color='Custom'
+        )
+        self.save_btn = MDIconButton(
+            icon="check",
+            style="outlined",
+            size=(dp(200), dp(200)),
+            pos_hint={'x': .85, 'top': .98},
+            # pos_hint={'center_x': .5, 'center_y': .5},
+            theme_text_color='Custom',
+            text_color=[1, 1, 1, .9],
+            on_release=lambda *_: self.handle_going_back(),
+            md_bg_color=[.1, .1, .1, 1],
+            theme_bg_color='Custom'
+        )
         self.scatter = MyScatter(
             size_hint=(None, None),
             auto_bring_to_front=0
@@ -96,7 +125,6 @@ class PreviewScreen(MyMDScreen):
             fit_mode="cover",
             keep_ratio=True,
             size_hint=(None, None)
-
         )
         # self.bind(size=lambda _, v: setattr(self.image_widget, 'size', v))
         # self.bind(size=lambda _,v: setattr(scatter,'size',v),pos=lambda _,v: setattr(scatter,'pos',v))
@@ -106,9 +134,11 @@ class PreviewScreen(MyMDScreen):
 
         self.scatter.add_widget(self.image_widget)
         root.add_widget(self.scatter)
+        root.add_widget(self.btn_close)
+        root.add_widget(self.save_btn)
         self.update_cover_size()
-
         self.add_widget(root)
+
     def on_pre_enter(self, *args):
         self.image_widget.source=self.abs_img_path
         print(f"self.abs_img_path:{self.abs_img_path}")
