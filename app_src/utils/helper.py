@@ -536,7 +536,8 @@ def remove_images_from_app(abs_paths: list):
             app_logger.exception(error_unlinking_thumb)
 
         try:
-            scaled_down_image = Path(each_path).parent / "scaled_down_images" / f"{Path(each_path).stem}.jpg"
+            from utils.image_operations import scaled_down_path_for
+            scaled_down_image = scaled_down_path_for(each_path)
             if scaled_down_image.exists():
                 scaled_down_image.unlink()
         except Exception as error_unlinking_scaled_down_image:

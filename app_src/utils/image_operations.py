@@ -793,14 +793,18 @@ def thumbnail_path_for(src, destination_dir=None):
     return thumb_dir / f"{p.stem}_thumb.jpg"
 
 def scaled_down_path_for(src):
-    """Return a consistent scaled down Path for a source image.
-    scaled down images are stored in a subfolder named 'scaled_down_images' under destination_dir (or source folder by default).
+    """Return the cached scaled-down Path for a source image.
+
+    Scaled-down images live in a 'scaled_down_images' subfolder under the source
+    folder. The output name is derived from the full source filename
+    (``<stem>_<ext>.jpg``, e.g. ``foo.png`` -> ``foo_png.jpg``) so distinct
+    sources sharing a stem never collide on one cached file.
     """
     p = Path(src)
     destination_dir = p.parent
     scaled_down_dir = destination_dir / "scaled_down_images"
     scaled_down_dir.mkdir(parents=True, exist_ok=True)
-    return scaled_down_dir / f"{p.stem}.jpg"
+    return scaled_down_dir / f"{p.stem}_{p.suffix.lstrip('.') or 'img'}.jpg"
 
 def _try_java_native_copy(input_stream, destination_path):
     """Copy the stream entirely inside Java (one JNI call) on API 29+.

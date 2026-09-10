@@ -94,8 +94,18 @@ def _setup_wallpapers(tmp_path, names, with_source=True, with_derived=True):
             (wp / "thumbs").mkdir(exist_ok=True)
             (wp / "scaled_down_images").mkdir(exist_ok=True)
             (wp / "thumbs" / f"{p.stem}_thumb.jpg").write_bytes(b"t")
-            (wp / "scaled_down_images" / f"{p.stem}.jpg").write_bytes(b"s")
+            io.scaled_down_path_for(p).write_bytes(b"s")
     return [str(wp / name) for name in names]
+
+
+def test_scaled_down_path_for_is_collision_safe(tmp_path):
+    a = tmp_path / "foo.jpg"
+    b = tmp_path / "foo.png"
+    c = tmp_path / "foo.jpeg"
+    assert io.scaled_down_path_for(a).name == "foo_jpg.jpg"
+    assert io.scaled_down_path_for(b).name == "foo_png.jpg"
+    assert io.scaled_down_path_for(c).name == "foo_jpeg.jpg"
+    assert len({io.scaled_down_path_for(p) for p in (a, b, c)}) == 3
 
 
 def test_remove_images_from_app_cleans_derived_files(tmp_path, monkeypatch):
@@ -116,7 +126,7 @@ def test_remove_images_from_app_cleans_derived_files(tmp_path, monkeypatch):
     wp = tmp_path / "wallpapers"
     assert not (wp / "a.png").exists()
     assert not (wp / "thumbs" / "a_thumb.jpg").exists()
-    assert not (wp / "scaled_down_images" / "a.jpg").exists()
+    assert not (wp / "scaled_down_images" / "a_png.jpg").exists()
     assert (wp / "b.jpg").exists()
 
     cfg = ConfigManager.read()
@@ -143,7 +153,7 @@ def test_remove_images_from_app_missing_source_still_cleans_up(tmp_path, monkeyp
 
     wp = tmp_path / "wallpapers"
     assert not (wp / "thumbs" / "gone_thumb.jpg").exists()
-    assert not (wp / "scaled_down_images" / "gone.jpg").exists()
+    assert not (wp / "scaled_down_images" / "gone_png.jpg").exists()
     assert not ConfigManager.read()["wallpapers"]
     assert fake_db.removed == [[gone_path]]
 
