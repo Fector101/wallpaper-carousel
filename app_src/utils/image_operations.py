@@ -701,6 +701,14 @@ def create_scaled_down_img(src_path, dest_path, max_width, max_height, quality=7
         if resized_img.mode != "RGB":
             resized_img = resized_img.convert("RGB")
 
+        # Publish atomically: save to a temp file the reader never looks at,
+        # then os.replace() (atomic rename) so a concurrent caller can only
+        # ever see the old file or a fully-written JPEG, never a partial one.
+        # The backfill thread and on-demand carousel path can both build the
+        # same destination, so this prevents a reader from reusing a file that
+        # is still half-written. The format= argument is required because
+        # tmp_path has no .jpg extension for Pillow to infer from, and quality
+        # keeps JPEG output in step with the Android branch.
         tmp_path = f"{dest_path}.tmp"
         try:
             resized_img.save(tmp_path, format="JPEG", quality=quality)
