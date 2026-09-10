@@ -700,6 +700,9 @@ def create_scaled_down_img(src_path, dest_path, max_width, max_height, quality=7
 
         resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
+        if resized_img.mode != "RGB":
+            resized_img = resized_img.convert("RGB")
+
         resized_img.save(dest_path)
         print(f"OG : {format_size(os.path.getsize(src_path))}")
         print(f"pil scaled image : {format_size(os.path.getsize(dest_path))}")

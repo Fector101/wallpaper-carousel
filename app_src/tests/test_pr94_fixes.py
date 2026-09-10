@@ -24,6 +24,19 @@ def test_create_scaled_down_img_rejects_nonpositive_dims(tmp_path):
         io.create_scaled_down_img(str(src), str(dest), 100, -5)
 
 
+def test_create_scaled_down_img_rgba_png_converts_to_rgb(tmp_path):
+    src = tmp_path / "rgba.png"
+    Image.new("RGBA", (1000, 700), (255, 0, 0, 128)).save(src)
+    dest = tmp_path / "out.jpg"
+
+    result = io.create_scaled_down_img(str(src), str(dest), 400, 300)
+
+    assert result == str(dest)
+    assert dest.exists()
+    with Image.open(dest) as img:
+        assert img.mode == "RGB"
+
+
 def test_create_scaled_down_img_android_failure_returns_source(tmp_path, monkeypatch):
     import builtins
     from pathlib import Path
