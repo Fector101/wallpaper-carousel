@@ -177,8 +177,6 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
         self.img.source = self.images[self.i]
         self.img.size = [dp(self.img_sizes[self.i]), dp(self.img_sizes[self.i])]
 
-# delete_dialog_popup = DialogScreen(ok_callback = self.delete_current)
-
 
 class FullscreenScreen(MyMDScreen):
     current_image: str # used in toggle btn
@@ -452,6 +450,10 @@ class FullscreenScreen(MyMDScreen):
         self._update_menu_theme(menu_bg, tc)
 
     def enter_preview_mode(self, *_):
+        self.manager.preview_screen.abs_img_path = self.current_image
+        self.manager.go_to_preview()
+
+        return
         self.is_fullscreen = True
 
         self.carousel.size_hint = (1, 1)

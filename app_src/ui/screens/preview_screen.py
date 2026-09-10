@@ -1,6 +1,9 @@
+from kivy.core.window import Window
+from kivymd.uix.screen import MDScreen
+
 from kivy.uix.floatlayout import FloatLayout
 from ui.widgets.layouts import MyMDScreen
-from kivy.properties import ListProperty
+from kivy.properties import ListProperty, StringProperty
 from kivy.graphics import Color, Rectangle
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import Image
@@ -30,7 +33,6 @@ class MyScatter(ScatterLayout):
         # Manually update the rectangle coordinates when the widget resizes
         self.rect.pos = self.pos
         self.rect.size = self.size
-        print("Scatter pos: {pos}, {size}".format(pos=self.pos, size=self.size))
 
     def on_transform(self, instance, value):
         super().on_transform(instance, value)
@@ -60,7 +62,6 @@ class MyScatter(ScatterLayout):
         self.pos = (x, y)
 
 
-
 class MyBoxLayout(BoxLayout):
     background_color = ListProperty([1,0,0,1])
     def __init__(self, **kwargs):
@@ -78,28 +79,72 @@ class MyBoxLayout(BoxLayout):
 
 
 class PreviewScreen(MyMDScreen):
+    abs_img_path=StringProperty("/data/user/0/org.wally.waller/files/wallpapers/486306-1920x1080-desktop-full-hd-blade-runner-2049-background-image (1).jpg")
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.name="preview"
         root = FloatLayout()
 
-        scatter = MyScatter(
+        self.scatter = MyScatter(
             size_hint=(None, None),
             auto_bring_to_front=0
 
         )  # ,pos_hint={"center_x":0.01, "center_y":0.5})
         # image = MyBoxLayout(size_hint=(1,1),background_color=[1,0,0.5,1])
-        image = MyImage(
-            source='sun.jpg',
+        self.image_widget = MyImage(
+            source=self.abs_img_path,
             fit_mode="cover",
             keep_ratio=True,
+            size_hint=(None, None)
 
         )
-        self.bind(size=lambda _, v: setattr(image, 'size', v))  # ,pos=lambda _,v: setattr(image,'pos',v))
-        self.bind(size=lambda _,v: setattr(scatter,'size',v),pos=lambda _,v: setattr(scatter,'pos',v))
-        scatter.add_widget(image)
-        root.add_widget(scatter)
+        # self.bind(size=lambda _, v: setattr(self.image_widget, 'size', v))
+        # self.bind(size=lambda _,v: setattr(scatter,'size',v),pos=lambda _,v: setattr(scatter,'pos',v))
+
+        self.image_widget.bind(texture=self.update_cover_size)
+        Window.bind(size=self.update_cover_size)
+
+        self.scatter.add_widget(self.image_widget)
+        root.add_widget(self.scatter)
+        self.update_cover_size()
 
         self.add_widget(root)
+    def on_pre_enter(self, *args):
+        self.image_widget.source=self.abs_img_path
+        print(f"self.abs_img_path:{self.abs_img_path}")
         self.hide_system_ui()
 
+    def handle_going_back(self, *_):
+        self.show_system_ui()
+        self.manager.go_to_fullscreen()
+
+    def update_cover_size(self, *args):
+        if not self.image_widget.texture:
+            return
+
+        win_w, win_h = Window.size
+        tex_w = self.image_widget.texture.width
+        tex_h = self.image_widget.texture.height
+
+        if win_h == 0 or tex_h == 0:
+            return
+
+        win_aspect = win_w / win_h
+        tex_aspect = tex_w / tex_h
+
+        # COVER LOGIC: Force the image to cover the screen entirely
+        if tex_aspect > win_aspect:
+            new_h = win_h
+            new_w = win_h * tex_aspect
+        else:
+            new_w = win_w
+            new_h = win_w / tex_aspect
+
+        self.image_widget.size = (new_w, new_h)
+        self.scatter.size = (new_w, new_h)
+
+        # Center the scatter initially inside the window
+        self.scatter.pos = (
+            (win_w - new_w) / 2,
+            (win_h - new_h) / 2
+        )
