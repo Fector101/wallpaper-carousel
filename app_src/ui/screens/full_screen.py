@@ -16,7 +16,7 @@ from kivymd.uix.relativelayout import MDRelativeLayout
 from ui.widgets.layouts import MyMDScreen, LoadingLayout
 
 from utils.config_manager import ConfigManager
-from utils.helper import format_size
+from utils.helper import format_size, remove_images_from_app
 from utils.image_operations import get_or_create_scaled_down_image
 from utils.model import get_app, GalleryTabs
 from utils.logger import app_logger
@@ -506,27 +506,7 @@ class FullscreenScreen(MyMDScreen):
         # remove_wallpaper_from_thumbnails edits the underlying list for us
         gallery_screen.remove_wallpaper_from_thumbnails(path)
 
-        if path and os.path.exists(path):
-            os.remove(path)
-            try:
-                from utils.database import ImageDatabase
-                ImageDatabase().remove_image(path)
-            except Exception:
-                pass
-            try:
-                thumb = Path(path).parent / "thumbs" / f"{Path(path).stem}_thumb.jpg"
-                if thumb.exists():
-                    thumb.unlink()
-            except Exception as error_deleting_image:
-                app_logger.error(f"Error deleting image: {error_deleting_image}")
-
-        current_tab = self.app.sm.gallery_screen.current_tab
-        if current_tab == GalleryTabs.BOTH.value:
-            my_config.remove_wallpaper(path)
-        elif current_tab == GalleryTabs.DAY.value:
-            my_config.remove_wallpaper_to_from("day_wallpapers",path)
-        elif current_tab == GalleryTabs.NOON.value:
-            my_config.remove_wallpaper_to_from("noon_wallpapers", path)
+        remove_images_from_app([path])
 
         if not gallery_screen.wallpapers:
             self.manager.current = "thumbs"

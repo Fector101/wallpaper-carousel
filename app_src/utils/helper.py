@@ -497,6 +497,7 @@ def get_folder_size(folder_path):
                 total_size += os.path.getsize(file_path)
     return total_size
 
+
 def get_files_size(files:list) -> int:
     import os
     total_size = 0
@@ -505,3 +506,47 @@ def get_files_size(files:list) -> int:
         if os.path.exists(each_file_path) and not os.path.islink(each_file_path):
             total_size += os.path.getsize(each_file_path)
     return total_size
+
+
+def remove_images_from_app(abs_paths: list):
+    import os
+    import traceback
+    from pathlib import Path
+    from utils.logger import app_logger
+    from utils.config_manager import ConfigManager
+    my_config = ConfigManager()
+
+    for each_path in abs_paths:
+        if os.path.exists(each_path):
+            os.remove(each_path)
+            try:
+                thumb = Path(each_path).parent / "thumbs" / f"{Path(each_path).stem}_thumb.jpg"
+                if thumb.exists():
+                    thumb.unlink()
+            except Exception as error_unlinking_thumb:
+                app_logger.exception(error_unlinking_thumb)
+
+            try:
+                scaled_down_image = Path(each_path).parent / "scaled_down_images" / f"{Path(each_path).stem}.jpg"
+                if scaled_down_image.exists():
+                    scaled_down_image.unlink()
+            except Exception as error_unlinking_scaled_down_image:
+                app_logger.exception(error_unlinking_scaled_down_image)
+
+            my_config.remove_wallpaper(each_path)
+            try:
+                my_config.remove_wallpaper_to_from("day_wallpapers", each_path)
+            except Exception as error_removing_data:
+                app_logger.exception(error_removing_data)
+            try:
+                my_config.remove_wallpaper_to_from("noon_wallpapers", each_path)
+            except Exception as error_removing_data1:
+                app_logger.exception(error_removing_data1)
+
+    if abs_paths:
+        try:
+            from utils.database import ImageDatabase
+            ImageDatabase().remove_images(abs_paths)
+        except Exception as error_removing_image_from_db:
+            print(error_removing_image_from_db)
+            traceback.print_exc()
