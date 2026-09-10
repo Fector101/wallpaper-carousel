@@ -17,6 +17,7 @@ from ui.widgets.layouts import MyMDScreen, LoadingLayout
 
 from utils.config_manager import ConfigManager
 from utils.helper import format_size
+from utils.image_operations import get_or_create_scaled_down_image
 from utils.model import get_app, GalleryTabs
 from utils.logger import app_logger
 
@@ -45,11 +46,24 @@ class BorderMDBoxLayout(MDBoxLayout):
     def update_border(self, *_):
         self.border.rounded_rectangle = self.round_rect_args  # (self.x,self.y,self.width,self.height,16)
 
-
+# from kivy.graphics import Color, Rectangle
 class MyCarousel(Carousel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.bind(size=self.send_data)
+        # with self.canvas:
+        #     Color(1,0,0,1)
+        #     self.rect  = Rectangle(pos=self.pos, size=self.size)
+        # self.bind(pos=self.update_rect, size=self.update_rect)
 
+    # def update_rect(self, *args):
+    #     self.rect.pos = self.pos
+    #     self.rect.size = self.size
+
+    def send_data(self,_, value):
+        app = get_app()
+        file_operation = app.file_operation
+        file_operation.user_carousel_size = value
 
 class MyMDIconButton(MDIconButton):
     def __init__(self, **kwargs):
@@ -295,9 +309,11 @@ class FullscreenScreen(MyMDScreen):
         self.dropdown_btn = MyMDIconButton(icon="dots-vertical", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
         self.original_carousel_pos_hint = {'x': 0, 'y': 0.125}
         self.original_carousel_size_hint = (1, 1 - .25)
-        self.carousel = MyCarousel(direction="right", loop=True,
-                                   size_hint=self.original_carousel_size_hint,
-                                   pos_hint=self.original_carousel_pos_hint)
+        self.carousel = MyCarousel(
+                           direction="right", loop=True,
+                           size_hint=self.original_carousel_size_hint,
+                           pos_hint=self.original_carousel_pos_hint,
+        )
 
         self._build_dropdown_menu(
             delete_callback=lambda *_args: self._run_dropdown_action(
@@ -587,12 +603,16 @@ class FullscreenScreen(MyMDScreen):
         from kivy.loader import Loader
         if getattr(slide, '_high_res_loaded', False):
             return
-        hf = str(slide.higher_format)
-        if slide.source == hf:
+        high_res_path = get_or_create_scaled_down_image(
+            src=str(slide.higher_format),
+            size=self.carousel.size
+        )
+
+        if slide.source == high_res_path:
             slide._high_res_loaded = True
             return
         slide._high_res_loaded = True
-        proxy = Loader.image(hf)
+        proxy = Loader.image(high_res_path)
         proxy.bind(on_load=lambda p, obj=slide: self._apply_high_res(p, obj))
         if proxy.image is not None and proxy.image.texture:
             self._apply_high_res(proxy, slide)
@@ -600,7 +620,10 @@ class FullscreenScreen(MyMDScreen):
     def _apply_high_res(self, proxy_image, slide):
         if proxy_image.image.texture:
             slide.texture = proxy_image.image.texture
-            slide.source = str(slide.higher_format)
+            slide.source = get_or_create_scaled_down_image(
+            src=str(slide.higher_format),
+            size=self.carousel.size
+        )
             slide._high_res_loaded = True
 
     def leave_preview_mode(self,*_):
