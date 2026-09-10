@@ -163,20 +163,33 @@ class PreviewScreen(MyMDScreen):
         if not info:
             return
         box, viewport = info
-        try:
-            from utils.image_operations import crop_and_save_region
-            crop_and_save_region(self.abs_img_path, box)
-        except Exception as error_saving_selected_wallpaper:
-            print(f"Failed to save selected wallpaper: {error_saving_selected_wallpaper}")
-            return
-        try:
-            from utils.database import ImageDatabase
-            ImageDatabase().set_preview_props(
-                self.abs_img_path, viewport["scale"], viewport["cx"], viewport["cy"]
-            )
-        except Exception as error_saving_preview_props:
-            print(f"Failed to save preview props: {error_saving_preview_props}")
-        self.handle_going_back()
+        import threading
+        from ui.widgets.layouts import LoadingLayout
+        spinner_layout = LoadingLayout()
+        state = {"ok": False}
+
+        def finish(_):
+            spinner_layout.remove()
+            if state["ok"]:
+                self.handle_going_back()
+
+        def do_save():
+            try:
+                from utils.image_operations import crop_and_save_region
+                crop_and_save_region(self.abs_img_path, box)
+                from utils.database import ImageDatabase
+                ImageDatabase().set_preview_props(
+                    self.abs_img_path, viewport["scale"], viewport["cx"], viewport["cy"]
+                )
+                state["ok"] = True
+            except Exception as error_saving_selected_wallpaper:
+                print(f"Failed to save selected wallpaper: {error_saving_selected_wallpaper}")
+            from kivy.clock import Clock
+            Clock.schedule_once(finish)
+
+        threading.Thread(target=do_save, daemon=True).start()
+
+
 
     def _preview_crop_info(self):
         if not self.image_widget.texture:
