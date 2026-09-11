@@ -154,26 +154,62 @@ def unique(destination_name):
 
 NUMBERED_WALLPAPER_NAMES = [f"number_{n}.png" for n in range(1, 11)]
 
-def _bundled_assets_dir():
-    """Path to the app's bundled assets, whether running from app_src on
-    desktop or from files/app on Android."""
-    return Path(__file__).resolve().parent.parent / "assets" / "icons"
+def _font_path():
+    """Path to the bundled font used to render numbered wallpaper digits."""
+    return Path(__file__).resolve().parent.parent / "assets" / "fonts" / "Roboto_Mono" / "static" / "RobotoMono-Bold.ttf"
+
+def _generate_numbered_wallpaper(n, destination_dir):
+    """Render a numbered wallpaper placeholder (number_{n}.png) to
+    destination_dir using Pillow. Desktop/test helper: Pillow is not part of
+    the Android build, so this path is only used off-device."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    font_path = _font_path()
+    if not font_path.exists():
+        raise FileNotFoundError(f"Numbered wallpaper font not found: {font_path}")
+
+    SIZE = 512
+    PAD = 24
+    B = 8
+
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    draw.rounded_rectangle((PAD, PAD, SIZE - PAD, SIZE - PAD), radius=64, fill=(80, 84, 100, 255))
+    draw.rounded_rectangle((PAD + B, PAD + B, SIZE - PAD - B, SIZE - PAD - B), radius=56, fill=(30, 30, 34, 255))
+
+    text = str(n)
+    font_size = 300
+    font = ImageFont.truetype(str(font_path), font_size)
+    bbox = draw.textbbox((0, 0), text, font=font)
+    w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    while w > SIZE * 0.6 or h > SIZE * 0.72:
+        font_size -= 4
+        font = ImageFont.truetype(str(font_path), font_size)
+        bbox = draw.textbbox((0, 0), text, font=font)
+        w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+    cx = (SIZE - w) / 2 - bbox[0]
+    cy = (SIZE - h) / 2 - bbox[1]
+    draw.text((cx, cy), text, font=font, fill=(255, 255, 255, 255))
+
+    destination = Path(destination_dir) / f"number_{n}.png"
+    img.save(str(destination))
+    return destination
 
 def seed_numbered_wallpapers():
-    """Copy the bundled number_1..10 wallpapers into the runtime wallpapers
-    folder and register them in config so they show up in the gallery.
-    Idempotent: skips files already copied and never rewrites config when
-    every path is already listed."""
+    """Generate the number_1..10 wallpapers into the runtime wallpapers folder
+    and register them in config so they show up in the gallery.
+    Idempotent: keeps existing files and never rewrites config when every path
+    is already listed. Raises (and logs) when a wallpaper cannot be generated
+    instead of silently skipping, so missing Pillow on Android surfaces."""
     try:
-        src_dir = _bundled_assets_dir()
+        wallpapers_dir.mkdir(parents=True, exist_ok=True)
         added = []
-        for name in NUMBERED_WALLPAPER_NAMES:
-            src = src_dir / name
+        for n, name in enumerate(NUMBERED_WALLPAPER_NAMES, start=1):
             dest = wallpapers_dir / name
-            if not src.exists():
-                continue
             if not dest.exists():
-                shutil.copy2(str(src), str(dest))
+                _generate_numbered_wallpaper(n, wallpapers_dir)
             added.append(str(dest))
         data = my_config.read()
         existing = set(data.get("wallpapers", []))

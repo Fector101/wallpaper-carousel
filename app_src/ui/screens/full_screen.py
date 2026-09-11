@@ -498,10 +498,9 @@ class FullscreenScreen(MyMDScreen):
             self.manager.current = "thumbs"
             spinner_layout.remove()
             return
-            
-        self.update_images()
-        new_index=max(0, min(idx, len(gallery_screen.wallpapers) - 1))
-        self.carousel.index = new_index
+
+        new_index = max(0, min(idx, len(gallery_screen.wallpapers) - 1))
+        self.update_images(new_index)
         spinner_layout.remove()
 
     def update_images(self,index=None):
@@ -509,6 +508,11 @@ class FullscreenScreen(MyMDScreen):
         from utils.image_operations import thumbnail_path_for
         gallery_screen = self.manager.gallery_screen
         self.wallpapers_data=gallery_screen.wallpapers
+        if not self.wallpapers_data:
+            return
+        if index is not None:
+            self.carousel_index = index
+        self.carousel_index = max(0, min(self.carousel_index, len(self.wallpapers_data) - 1))
         self.build_ui()
         self.carousel.unbind(current_slide=self.on_current_slide)
         self.carousel.clear_widgets()
@@ -610,16 +614,20 @@ class FullscreenScreen(MyMDScreen):
 
     def on_current_slide(self, carousel, index): # type: ignore
         """Using on_current_slide instead of on_index to prevent multiple Calls"""
-        print("on_current_slide")
         scroll_data = self._get_scroll_data(current_path=self.carousel.current_slide.higher_format)
 
         left_path = scroll_data["left"]
         right_path = scroll_data["right"]
 
-        self.carousel.slides[self.get_index("left")].source=str(thumbnail_path_for(left_path))#'left'
-        self.carousel.slides[self.get_index("left")].higher_format=str(left_path)#'left'
-        self.carousel.slides[self.get_index("right")].source=str(thumbnail_path_for(right_path))#'right'
-        self.carousel.slides[self.get_index("right")].higher_format=str(right_path)#'right'
+        left_slide = self.carousel.slides[self.get_index("left")]
+        left_slide.source = str(thumbnail_path_for(left_path))
+        left_slide.higher_format=str(left_path)
+        left_slide._high_res_loaded=False
+
+        right_slide = self.carousel.slides[self.get_index("right")]
+        right_slide.source=str(thumbnail_path_for(right_path))
+        right_slide.higher_format=str(right_path)
+        right_slide._high_res_loaded=False
 
         if not self.carousel_has_images or not carousel.current_slide:
             return None

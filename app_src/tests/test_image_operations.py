@@ -1,3 +1,4 @@
+from copy import deepcopy
 from pathlib import Path
 from unittest import mock
 
@@ -208,7 +209,7 @@ def test_seed_numbered_wallpapers_idempotent(tmp_path, monkeypatch):
 def test_seed_numbered_wallpapers_keeps_existing_config(tmp_path, monkeypatch):
     _reset_config(tmp_path, monkeypatch)
 
-    data = ConfigManager.DEFAULT_CONFIG
+    data = deepcopy(ConfigManager.DEFAULT_CONFIG)
     existing = str(io.wallpapers_dir / "photo.png")
     data["wallpapers"] = [existing]
     ConfigManager.write(data)
