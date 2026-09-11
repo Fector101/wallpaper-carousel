@@ -170,3 +170,51 @@ def test_get_selected_uris_from_intent_reads_extra_stream_array(tmp_path):
 def test_get_selected_uris_from_intent_returns_empty_without_carriers():
     assert io.get_selected_uris_from_intent(_FakeIntent()) == []
     assert io.get_selected_uris_from_intent(None) == []
+
+
+def _reset_config(tmp_path, monkeypatch):
+    monkeypatch.setattr(ConfigManager, "_cached_config_path", tmp_path / "config.json")
+    monkeypatch.setattr(io, "wallpapers_dir", tmp_path / "wallpapers")
+    ConfigManager.write(ConfigManager.DEFAULT_CONFIG)
+
+
+def test_seed_numbered_wallpapers_copies_and_registers(tmp_path, monkeypatch):
+    _reset_config(tmp_path, monkeypatch)
+
+    io.seed_numbered_wallpapers()
+
+    present = {p.name for p in io.wallpapers_dir.glob("number_*.png")}
+    expected = {f"number_{n}.png" for n in range(1, 11)}
+    assert present == expected
+
+    configured = {Path(p).name for p in io.my_config.read()["wallpapers"]}
+    assert configured == expected
+
+
+def test_seed_numbered_wallpapers_idempotent(tmp_path, monkeypatch):
+    _reset_config(tmp_path, monkeypatch)
+
+    io.seed_numbered_wallpapers()
+    io.seed_numbered_wallpapers()
+    io.seed_numbered_wallpapers()
+
+    configured = [
+        Path(p).name for p in io.my_config.read()["wallpapers"]
+        if Path(p).name.startswith("number_")
+    ]
+    assert len(configured) == 10
+
+
+def test_seed_numbered_wallpapers_keeps_existing_config(tmp_path, monkeypatch):
+    _reset_config(tmp_path, monkeypatch)
+
+    data = ConfigManager.DEFAULT_CONFIG
+    existing = str(io.wallpapers_dir / "photo.png")
+    data["wallpapers"] = [existing]
+    ConfigManager.write(data)
+
+    io.seed_numbered_wallpapers()
+
+    configured = io.my_config.read()["wallpapers"]
+    assert existing in configured
+    assert len([p for p in configured if Path(p).name.startswith("number_")]) == 10

@@ -2,11 +2,12 @@ import os
 from pathlib import Path
 
 from kivy.clock import Clock
-from kivy.properties import ListProperty, ObjectProperty, NumericProperty
+from kivy.properties import ListProperty, ObjectProperty, NumericProperty, StringProperty
 from kivy.metrics import dp, sp
 
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.carousel import Carousel
+from kivy.uix.image import Image
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDIconButton
 from kivymd.uix.menu import MDDropdownMenu
@@ -17,7 +18,7 @@ from ui.widgets.layouts import MyMDScreen, LoadingLayout
 
 from utils.config_manager import ConfigManager
 from utils.helper import format_size, remove_images_from_app
-from utils.image_operations import get_or_create_scaled_down_image
+from utils.image_operations import get_or_create_scaled_down_image, thumbnail_path_for
 from utils.model import get_app, GalleryTabs
 from utils.logger import app_logger
 
@@ -192,11 +193,18 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
         self.img.size = [dp(self.img_sizes[self.i]), dp(self.img_sizes[self.i])]
 
 
+class MyImage(Image):
+    higher_format=StringProperty("")
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
 class FullscreenScreen(MyMDScreen):
     current_image: str # used in toggle btn
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.wallpapers_data = None
+        self.carousel_index = None
         self.name = "fullscreen"
         self.btm_btn_layout_root = None
         self.share_btn = None
@@ -312,6 +320,7 @@ class FullscreenScreen(MyMDScreen):
                            size_hint=self.original_carousel_size_hint,
                            pos_hint=self.original_carousel_pos_hint,
         )
+        # self.carousel.slides
 
         self._build_dropdown_menu(
             delete_callback=lambda *_args: self._run_dropdown_action(
@@ -476,7 +485,7 @@ class FullscreenScreen(MyMDScreen):
             spinner_layout.remove()
             return
 
-        idx = self.carousel.index
+        idx = self.carousel_index
         # Get path without removing it from the list directly
         path = wallpapers[idx]
 
@@ -493,34 +502,80 @@ class FullscreenScreen(MyMDScreen):
         self.update_images()
         new_index=max(0, min(idx, len(gallery_screen.wallpapers) - 1))
         self.carousel.index = new_index
-        self.__patch_for_first_not_getting_called_by_on_current_slide(index=new_index)
         spinner_layout.remove()
 
     def update_images(self,index=None):
         """Rebuild carousel anytime wallpapers change."""
-        from kivy.uix.image import Image
         from utils.image_operations import thumbnail_path_for
+        gallery_screen = self.manager.gallery_screen
+        self.wallpapers_data=gallery_screen.wallpapers
         self.build_ui()
         self.carousel.unbind(current_slide=self.on_current_slide)
         self.carousel.clear_widgets()
         self.carousel_has_images = False
-        gallery_screen = self.manager.gallery_screen
 
-        for p in gallery_screen.wallpapers:
-            img = Image(
-                source=str(thumbnail_path_for(p)),
-                fit_mode="contain",
-            )
-            img.higher_format = p
-            self.carousel_has_images = True
-            self.carousel.add_widget(img)
+        scroll_data = self._get_scroll_data(current_path=self.wallpapers_data[self.carousel_index])
+
+        left_path = scroll_data["left"]
+        center_path = scroll_data["center"]
+        right_path = scroll_data["right"]
+        # for each_wallpaper_path in self.wallpapers_data:
+        img = MyImage(
+            source=str(thumbnail_path_for(left_path)),
+            fit_mode="contain",
+            higher_format=left_path
+        )
+        self.carousel.add_widget(img)
+
+        img = MyImage(
+            source=str(thumbnail_path_for(center_path)),
+            fit_mode="contain",
+            higher_format=center_path
+        )
+        self.carousel.add_widget(img)
+
+
+        img = MyImage(
+            source=str(thumbnail_path_for(right_path)),
+            fit_mode="contain",
+            higher_format=right_path
+        )
+        self.carousel.add_widget(img)
+        self.carousel_has_images = True
+        self.carousel.index=1
+        self.on_current_slide(self.carousel, 1)
         self.carousel.bind(current_slide=self.on_current_slide)
 
-        self.__patch_for_first_not_getting_called_by_on_current_slide(index)
+    def _get_scroll_data(self, current_path):
+        """
+        Gets Image Paths At both sides if any
+        :param current_path: the current wallpaper path user sees
+        :return: dict of paths {left: path, right: path}
+        """
+        self.carousel_index=current_index = self.wallpapers_data.index(current_path)
 
-    def __patch_for_first_not_getting_called_by_on_current_slide(self,index):
-        if index == 0:
-            self.on_current_slide(self.carousel,0)
+
+        data={
+            "left":self.wallpapers_data[current_index],
+            "center":self.wallpapers_data[current_index],
+            "right":self.wallpapers_data[current_index]
+        }
+        if len(self.wallpapers_data) == 1:
+            return data
+
+        # data["left"] = se
+        if current_index == 0: # if current is first
+            data["left"] = self.wallpapers_data[-1]
+        elif current_index > 0:
+            data["left"] = self.wallpapers_data[current_index-1]
+
+        if current_index == len(self.wallpapers_data) - 1: # if current is last
+            data["right"] = self.wallpapers_data[0]
+        elif len(self.wallpapers_data) > current_index:
+            data["right"] = self.wallpapers_data[current_index+1]
+
+        print(f"carousel data: {data}")
+        return data
 
     def update_header_texts(self,image_path):
         self.header_title.text = os.path.basename(image_path)
@@ -537,8 +592,35 @@ class FullscreenScreen(MyMDScreen):
         else:
             self.day_noon_both_button.set_day_nd_noon_image()
 
+    def get_index(self,pos):
+        # [0,1,2]
+        cur_index=self.carousel.index
+        carousel_items = self.carousel.slides
+        if pos == "right":
+            if cur_index == len(carousel_items)-1:
+                return 0
+            if cur_index < len(carousel_items) - 1:
+                return cur_index+1
+        elif pos == "left":
+            if cur_index == 0:
+                return -1
+            elif cur_index > 0:
+                return cur_index-1
+        return 0
+
     def on_current_slide(self, carousel, index): # type: ignore
         """Using on_current_slide instead of on_index to prevent multiple Calls"""
+        print("on_current_slide")
+        scroll_data = self._get_scroll_data(current_path=self.carousel.current_slide.higher_format)
+
+        left_path = scroll_data["left"]
+        right_path = scroll_data["right"]
+
+        self.carousel.slides[self.get_index("left")].source=str(thumbnail_path_for(left_path))#'left'
+        self.carousel.slides[self.get_index("left")].higher_format=str(left_path)#'left'
+        self.carousel.slides[self.get_index("right")].source=str(thumbnail_path_for(right_path))#'right'
+        self.carousel.slides[self.get_index("right")].higher_format=str(right_path)#'right'
+
         if not self.carousel_has_images or not carousel.current_slide:
             return None
 
