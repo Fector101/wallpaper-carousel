@@ -266,6 +266,16 @@ def format_time_remaining(seconds):
     return f"{minutes:02d}:{secs:02d}"
 
 
+def format_countdown(seconds):
+    """Format a remaining countdown as minutes ('30 mins') until under a
+    minute, then per-second MM:SS. Keeps the notification churn low while
+    staying precise enough to look alive."""
+    if seconds >= 60:
+        mins = int(seconds // 60)
+        return f"{mins} min" if mins == 1 else f"{mins} mins"
+    return format_time_remaining(seconds)
+
+
 def smart_convert_minutes(minutes: float) -> str:
     total_seconds = int(minutes * 60)
 
