@@ -135,7 +135,7 @@ def test_save_crop_and_props_failed_persistence_restores_previous_crop(tmp_path,
     monkeypatch.setattr("utils.image_operations.crop_and_save_region", fake_save)
     monkeypatch.setattr("utils.database.ImageDatabase", lambda: FakeDB())
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception, match=r"^Failed to persist preview viewport$"):
         _save_crop_and_props(src, (0, 0, 10, 10), 2.0, 0.5, 0.5)
     assert crop.read_bytes() == b"previous"
 
@@ -158,7 +158,7 @@ def test_save_crop_and_props_failed_persistence_removes_new_crop(tmp_path, monke
     monkeypatch.setattr("utils.image_operations.crop_and_save_region", fake_save)
     monkeypatch.setattr("utils.database.ImageDatabase", lambda: FakeDB())
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception, match=r"^Failed to persist preview viewport$"):
         _save_crop_and_props(src, (0, 0, 10, 10), 2.0, 0.5, 0.5)
     assert not crop.exists()
 
