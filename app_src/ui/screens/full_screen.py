@@ -512,6 +512,8 @@ class FullscreenScreen(MyMDScreen):
             return
         if index is not None:
             self.carousel_index = index
+        if self.carousel_index is None:
+            return
         self.carousel_index = max(0, min(self.carousel_index, len(self.wallpapers_data) - 1))
         self.build_ui()
         self.carousel.unbind(current_slide=self.on_current_slide)
@@ -578,7 +580,6 @@ class FullscreenScreen(MyMDScreen):
         elif len(self.wallpapers_data) > current_index:
             data["right"] = self.wallpapers_data[current_index+1]
 
-        print(f"carousel data: {data}")
         return data
 
     def update_header_texts(self,image_path):
@@ -614,6 +615,9 @@ class FullscreenScreen(MyMDScreen):
 
     def on_current_slide(self, carousel, index): # type: ignore
         """Using on_current_slide instead of on_index to prevent multiple Calls"""
+        if not self.carousel_has_images or not carousel.current_slide:
+            return None
+
         scroll_data = self._get_scroll_data(current_path=self.carousel.current_slide.higher_format)
 
         left_path = scroll_data["left"]
@@ -628,9 +632,6 @@ class FullscreenScreen(MyMDScreen):
         right_slide.source=str(thumbnail_path_for(right_path))
         right_slide.higher_format=str(right_path)
         right_slide._high_res_loaded=False
-
-        if not self.carousel_has_images or not carousel.current_slide:
-            return None
 
         current_slide = carousel.current_slide
 
