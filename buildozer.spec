@@ -18,7 +18,7 @@ presplash.filename = %(source.dir)s/assets/icons/presplash.png
 icon.filename = %(source.dir)s/assets/icons/icon.png
 
 source.include_exts = py,png,jpg,kv,atlas,ttf,json,xml,wav
-source.exclude_dirs = bin, venv,lab, worked, __pycache__, .idea, dist, for-download,laner-linux, .filereader, wallpapers
+source.exclude_dirs = bin, venv,lab, worked, __pycache__, .idea, dist, for-download,laner-linux, .filereader, wallpapers, tests
 
 
 requirements = python3,kivy,kivymd,python-osc,materialyoucolor==3.0.3,asynckivy,asyncgui,pyjnius==1.7.0, docutils,netifaces,filetype,requests_toolbelt,websockets,android-widgets, https://github.com/Fector101/android_notify/archive/main.zip
