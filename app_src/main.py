@@ -173,6 +173,7 @@ class WallpaperCarouselApp(MDApp):
         boot_log("on_start: scheduling")
         Clock.schedule_once(lambda dt: self.setup_service(), 2)
         Clock.schedule_interval(lambda dt: self.monitor_dark_and_light_device_change(), 1)
+        self.warm_scaled_down_cache()
         if on_android_platform():
             from utils.update_checker import schedule_update_check
             Clock.schedule_once(lambda dt: self._register_connectivity_receiver(), 0)
@@ -180,6 +181,25 @@ class WallpaperCarouselApp(MDApp):
             Clock.schedule_once(lambda dt: schedule_update_check(), 0)
             # Handle initial intent if app was launched via share/widget/update
             Clock.schedule_once(lambda dt: self._handle_initial_intent(), 1)
+
+    def warm_scaled_down_cache(self):
+        """Generate scaled-down cache images for wallpapers that lack them.
+
+        Old installs predate the scaled-down image cache, so the first launch
+        after the upgrade has nothing cached. Run the backfill on a background
+        thread; on-demand callers skip straight to the cache file once it exists.
+        """
+        try:
+            from utils.image_operations import backfill_scaled_down_images, _default_scaled_down_size
+            size = _default_scaled_down_size()
+            threading.Thread(
+                target=backfill_scaled_down_images,
+                args=(size,),
+                daemon=True,
+                name="scaled_down_backfill",
+            ).start()
+        except Exception as error_warming_scaled_down_cache:
+            app_logger.exception(f"Failed to start scaled-down cache warmup: {error_warming_scaled_down_cache}")
 
     def _register_connectivity_receiver(self):
         if not on_android_platform():

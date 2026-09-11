@@ -16,12 +16,21 @@ _SCHEMA = """CREATE TABLE IF NOT EXISTS images (
     set_count INTEGER DEFAULT 0,
     tab TEXT DEFAULT 'both',
     last_skipped_at TIMESTAMP,
-    skip_count INTEGER DEFAULT 0
+    skip_count INTEGER DEFAULT 0,
+    preview_scale REAL DEFAULT 1.0,
+    preview_cx REAL,
+    preview_cy REAL
 );
 CREATE TABLE IF NOT EXISTS widget_images (
     app_widget_id INTEGER PRIMARY KEY,
     image_path TEXT NOT NULL
 )"""
+
+_PREVIEW_PROPS_COLUMNS = {
+    "preview_scale": "REAL DEFAULT 1.0",
+    "preview_cx": "REAL",
+    "preview_cy": "REAL",
+}
 
 
 class ImageDatabase:
@@ -55,6 +64,22 @@ class ImageDatabase:
         app_logger.info(f"[ImageDatabase] journal_mode={journal_mode}")
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
+        self._migrate_preview_props_columns()
+
+    def _migrate_preview_props_columns(self):
+        """Add preview props columns to the images table on existing databases."""
+        columns = {
+            row[1]
+            for row in self._conn.execute("PRAGMA table_info(images)").fetchall()
+        }
+        for name, definition in _PREVIEW_PROPS_COLUMNS.items():
+            if name in columns:
+                continue
+            try:
+                self._conn.execute(f"ALTER TABLE images ADD COLUMN {name} {definition}")
+                self._conn.commit()
+            except sqlite3.Error as e:
+                app_logger.error(f"[ImageDatabase] migration error adding {name}: {e}")
 
     @classmethod
     def config_dir(cls):
@@ -99,6 +124,8 @@ class ImageDatabase:
         except Exception as e:
             app_logger.error(f"[ImageDatabase] _execute error: {e}")
             traceback.print_exc()
+            return False
+        return True
 
     def _fetchone(self, sql, params=()):
         try:
@@ -155,6 +182,26 @@ class ImageDatabase:
             "last_skipped_at = CURRENT_TIMESTAMP, skip_count = skip_count + 1",
             (path,),
         )
+
+    def set_preview_props(self, path, scale, cx, cy):
+        return self._execute(
+            "INSERT INTO images (image_path, preview_scale, preview_cx, preview_cy) "
+            "VALUES (?, ?, ?, ?) "
+            "ON CONFLICT(image_path) DO UPDATE SET "
+            "preview_scale = excluded.preview_scale, "
+            "preview_cx = excluded.preview_cx, "
+            "preview_cy = excluded.preview_cy",
+            (path, scale, cx, cy),
+        )
+
+    def get_preview_props(self, path):
+        row = self._fetchone(
+            "SELECT preview_scale, preview_cx, preview_cy FROM images WHERE image_path = ?",
+            (path,),
+        )
+        if not row or row[0] is None or row[1] is None or row[2] is None:
+            return None
+        return {"scale": row[0], "cx": row[1], "cy": row[2]}
 
     def update_tab(self, path, tab):
         self._execute(

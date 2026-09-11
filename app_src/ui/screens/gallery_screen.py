@@ -28,7 +28,7 @@ from utils.logger import app_logger
 from ui.widgets.layouts import MyMDScreen, Column, Row, get_nav_bar_height, get_status_bar_height, \
     PlaceOnMainScreen, GenericStatusBarSpacer  # used in .kv file
 from utils.config_manager import ConfigManager
-from utils.helper import appFolder, load_kv_file  # type
+from utils.helper import appFolder, load_kv_file, remove_images_from_app  # type
 from utils.boot_log import boot_log
 from utils.image_operations import get_or_create_thumbnail, get_image_info, share_image_to_other_app, share_images_to_other_app
 from ui.widgets.modals import DialogScreen
@@ -860,30 +860,7 @@ class MultiselectBottom(Row):
             tab_name = gallery_screen.current_tab
             gallery_screen.remove_wallpaper_from_thumbnails(path, tab=tab_name)
 
-            if os.path.exists(path):
-                os.remove(path)
-                try:
-                    thumb = Path(path).parent / "thumbs" / f"{Path(path).stem}_thumb.jpg"
-                    if thumb.exists():
-                        thumb.unlink()
-                except Exception as error_unlinking_thumb:
-                    app_logger.exception(error_unlinking_thumb)
-
-            my_config.remove_wallpaper(path)
-            try:
-                my_config.remove_wallpaper_to_from("day_wallpapers", path)
-            except Exception as error_removing_data:
-                app_logger.exception(error_removing_data)
-            try:
-                my_config.remove_wallpaper_to_from("noon_wallpapers", path)
-            except Exception as error_removing_data1:
-                app_logger.exception(error_removing_data1)
-
-        try:
-            from utils.database import ImageDatabase
-            ImageDatabase().remove_images(paths)
-        except Exception:
-            pass
+        remove_images_from_app(paths)
         
         if self.hide:
             self.hide()

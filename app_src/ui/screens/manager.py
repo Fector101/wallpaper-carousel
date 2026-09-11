@@ -1,3 +1,4 @@
+from ui.screens.preview_screen import PreviewScreen
 from utils.boot_log import boot_log
 import traceback
 
@@ -50,6 +51,8 @@ class ScreenManager(MDScreenManager):
         self.add_widget(self.log_screen)
         self.add_widget(self.download_apk_screen)
         self.add_widget(self.stats_screen)
+        self.preview_screen= PreviewScreen()
+        self.add_widget(self.preview_screen)
         boot_log("sm: screens added")
         self.__register_rotate_listener()
         boot_log("sm: rotate listener done")
@@ -85,7 +88,7 @@ class ScreenManager(MDScreenManager):
         super().on_current(instance=instance,value=value)
 
     def btm_nav_patch(self, screen_name):
-        is_fullscreen = screen_name in ["welcome", "fullscreen", "logs", "update_screen","stats"]
+        is_fullscreen = screen_name in ["welcome", "fullscreen", "logs", "update_screen","stats","preview"]
         if screen_name == "welcome":
             self.ensure_welcome_screen()
         if is_fullscreen and self.app.bottom_bar:
@@ -100,6 +103,14 @@ class ScreenManager(MDScreenManager):
     def go_to_thumbs(self, _=None):
         self.transition = SlideTransition(direction="right")
         self.current = "thumbs"
+
+    def go_to_preview(self, _=None):
+        self.transition = NoTransition()
+        self.current = "preview"
+
+    def go_to_fullscreen(self, _=None):
+        self.transition = NoTransition()
+        self.current = "fullscreen"
 
     def scroll_to_to_thumbs(self):
         self.gallery_screen.ids.thumbnails_scroll_view_widget.scroll_y = 1

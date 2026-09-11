@@ -16,7 +16,8 @@ from kivymd.uix.relativelayout import MDRelativeLayout
 from ui.widgets.layouts import MyMDScreen, LoadingLayout
 
 from utils.config_manager import ConfigManager
-from utils.helper import format_size
+from utils.helper import format_size, remove_images_from_app
+from utils.image_operations import get_or_create_scaled_down_image
 from utils.model import get_app, GalleryTabs
 from utils.logger import app_logger
 
@@ -45,11 +46,24 @@ class BorderMDBoxLayout(MDBoxLayout):
     def update_border(self, *_):
         self.border.rounded_rectangle = self.round_rect_args  # (self.x,self.y,self.width,self.height,16)
 
-
+# from kivy.graphics import Color, Rectangle
 class MyCarousel(Carousel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.bind(size=self.send_data)
+        # with self.canvas:
+        #     Color(1,0,0,1)
+        #     self.rect  = Rectangle(pos=self.pos, size=self.size)
+        # self.bind(pos=self.update_rect, size=self.update_rect)
 
+    # def update_rect(self, *args):
+    #     self.rect.pos = self.pos
+    #     self.rect.size = self.size
+
+    def send_data(self,_, value):
+        app = get_app()
+        file_operation = app.file_operation
+        file_operation.user_carousel_size = value
 
 class MyMDIconButton(MDIconButton):
     def __init__(self, **kwargs):
@@ -177,8 +191,6 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
         self.img.source = self.images[self.i]
         self.img.size = [dp(self.img_sizes[self.i]), dp(self.img_sizes[self.i])]
 
-# delete_dialog_popup = DialogScreen(ok_callback = self.delete_current)
-
 
 class FullscreenScreen(MyMDScreen):
     current_image: str # used in toggle btn
@@ -201,7 +213,6 @@ class FullscreenScreen(MyMDScreen):
         self.btn_home_widget = None
         self.btn_layout = None
         self.header_file_size = None
-        self.btn_close = None
         self.btn_toggle = None
         self.header_layout = None
         self.layout = None
@@ -211,8 +222,6 @@ class FullscreenScreen(MyMDScreen):
         self.clock_for_higher_format = None
         self.md_bg_color =[0, 0, 0, 1]
         self.bottom_height = 0.12
-        self.is_fullscreen = False
-        
         from utils.helper import appFolder
         self.app = get_app()
         self.app_dir = Path(appFolder())
@@ -282,21 +291,6 @@ class FullscreenScreen(MyMDScreen):
             theme_bg_color = 'Custom'
         )
 
-
-        self.btn_close = MDIconButton(
-            icon="close",
-            style="outlined",
-            size=(dp(70), dp(70)),
-            pos_hint={'x': .025, 'top': .98},
-            theme_text_color='Custom',
-            text_color=[1, 1, 1, .9],
-            opacity=0,
-            disabled=True,
-            on_release=lambda *_: self.leave_preview_mode(),
-            md_bg_color = [.1, .1, .1, 1],
-            theme_bg_color = 'Custom'
-        )
-
         self.text_container = MDBoxLayout(orientation="vertical")
         self.header_title = MDLabel(text="", pos_hint={'center_y': .48})
         self.header_file_size = MDLabel(text=" ", pos_hint={'center_y': .46},adaptive_size=True,padding=[dp(4),dp(1)])
@@ -313,9 +307,11 @@ class FullscreenScreen(MyMDScreen):
         self.dropdown_btn = MyMDIconButton(icon="dots-vertical", style="tonal", theme_icon_color="Custom", icon_color=[1,1,1,1])
         self.original_carousel_pos_hint = {'x': 0, 'y': 0.125}
         self.original_carousel_size_hint = (1, 1 - .25)
-        self.carousel = MyCarousel(direction="right", loop=True,
-                                   size_hint=self.original_carousel_size_hint,
-                                   pos_hint=self.original_carousel_pos_hint)
+        self.carousel = MyCarousel(
+                           direction="right", loop=True,
+                           size_hint=self.original_carousel_size_hint,
+                           pos_hint=self.original_carousel_pos_hint,
+        )
 
         self._build_dropdown_menu(
             delete_callback=lambda *_args: self._run_dropdown_action(
@@ -372,7 +368,6 @@ class FullscreenScreen(MyMDScreen):
         self.header_layout.add_widget(self.text_container)
         self.header_layout.add_widget(self.dropdown_btn)
         self.layout.add_widget(self.header_layout)
-        self.layout.add_widget(self.btn_close)
 
 
         self.btm_btn_layout_root.add_widget(left_btm_box)
@@ -441,7 +436,7 @@ class FullscreenScreen(MyMDScreen):
         self.header_layout.md_bg_color = header_bg
         self.btn_toggle.md_bg_color = header_bg
         self.btn_layout.md_bg_color = header_bg
-        self.btn_close.md_bg_color = header_bg
+        # self.btn_close.md_bg_color = header_bg
         self.btn_toggle.text_color = tc
         self.header_title.text_color = tc
         self.set_wallpaper_btn.icon_color = tc
@@ -452,29 +447,11 @@ class FullscreenScreen(MyMDScreen):
         self._update_menu_theme(menu_bg, tc)
 
     def enter_preview_mode(self, *_):
-        self.is_fullscreen = True
-
-        self.carousel.size_hint = (1, 1)
-        self.carousel.pos_hint = {'center_x': .5, 'center_y': .5}
-
-        self.header_layout.pos_hint = {'center_x': .5, 'top': 1.2}
-
-        self.btn_close.opacity = 1
-        self.btn_close.disabled = False
-
-        self.btm_btn_layout_root.pos_hint = {"y": -2}
-        for img in self.carousel.slides:
-            img.fit_mode = "cover"
-
-        self.layout.do_layout()
-        self.hide_system_ui()
-        self.generic_status_bar_spacer.status_bar_height=0
+        self.manager.preview_screen.abs_img_path = self.current_image
+        self.manager.go_to_preview()
 
     def handle_going_back(self, *_):
-        if self.is_fullscreen:
-            self.leave_preview_mode()
-        else:
-            self.back_to_gallery_screen()
+        self.back_to_gallery_screen()
     
     def set_as_wallpaper(self, *_):
         import threading
@@ -506,27 +483,7 @@ class FullscreenScreen(MyMDScreen):
         # remove_wallpaper_from_thumbnails edits the underlying list for us
         gallery_screen.remove_wallpaper_from_thumbnails(path)
 
-        if path and os.path.exists(path):
-            os.remove(path)
-            try:
-                from utils.database import ImageDatabase
-                ImageDatabase().remove_image(path)
-            except Exception:
-                pass
-            try:
-                thumb = Path(path).parent / "thumbs" / f"{Path(path).stem}_thumb.jpg"
-                if thumb.exists():
-                    thumb.unlink()
-            except Exception as error_deleting_image:
-                app_logger.error(f"Error deleting image: {error_deleting_image}")
-
-        current_tab = self.app.sm.gallery_screen.current_tab
-        if current_tab == GalleryTabs.BOTH.value:
-            my_config.remove_wallpaper(path)
-        elif current_tab == GalleryTabs.DAY.value:
-            my_config.remove_wallpaper_to_from("day_wallpapers",path)
-        elif current_tab == GalleryTabs.NOON.value:
-            my_config.remove_wallpaper_to_from("noon_wallpapers", path)
+        remove_images_from_app([path])
 
         if not gallery_screen.wallpapers:
             self.manager.current = "thumbs"
@@ -552,7 +509,7 @@ class FullscreenScreen(MyMDScreen):
         for p in gallery_screen.wallpapers:
             img = Image(
                 source=str(thumbnail_path_for(p)),
-                fit_mode="cover" if self.is_fullscreen else "contain",
+                fit_mode="contain",
             )
             img.higher_format = p
             self.carousel_has_images = True
@@ -603,12 +560,16 @@ class FullscreenScreen(MyMDScreen):
         from kivy.loader import Loader
         if getattr(slide, '_high_res_loaded', False):
             return
-        hf = str(slide.higher_format)
-        if slide.source == hf:
+        high_res_path = get_or_create_scaled_down_image(
+            src=str(slide.higher_format),
+            size=self.carousel.size
+        )
+
+        if slide.source == high_res_path:
             slide._high_res_loaded = True
             return
         slide._high_res_loaded = True
-        proxy = Loader.image(hf)
+        proxy = Loader.image(high_res_path)
         proxy.bind(on_load=lambda p, obj=slide: self._apply_high_res(p, obj))
         if proxy.image is not None and proxy.image.texture:
             self._apply_high_res(proxy, slide)
@@ -616,31 +577,11 @@ class FullscreenScreen(MyMDScreen):
     def _apply_high_res(self, proxy_image, slide):
         if proxy_image.image.texture:
             slide.texture = proxy_image.image.texture
-            slide.source = str(slide.higher_format)
+            slide.source = get_or_create_scaled_down_image(
+            src=str(slide.higher_format),
+            size=self.carousel.size
+        )
             slide._high_res_loaded = True
-
-    def leave_preview_mode(self,*_):
-        self.carousel.size_hint = self.original_carousel_size_hint
-        self.carousel.pos_hint = self.original_carousel_pos_hint
-        self.header_layout.pos_hint = {'center_x': .5, 'top': .98}
-
-        self.btn_close.opacity = 0
-        self.btn_close.disabled = True
-
-        self.btm_btn_layout_root.pos_hint = {"y": 0}
-
-        self.set_wallpaper_btn.icon_color = [1,1,1,1] if self.app.device_theme == "dark" else [0,0,0,1]
-        self.btn_home_widget.icon_color = self.set_wallpaper_btn.icon_color
-        self.btn_fullscreen.icon_color = self.set_wallpaper_btn.icon_color
-        self.share_btn.icon_color = self.set_wallpaper_btn.icon_color
-        self.dropdown_btn.icon_color = self.set_wallpaper_btn.icon_color
-        self.is_fullscreen = False
-
-        for img in self.carousel.slides:
-            img.fit_mode = "contain"
-
-        self.show_system_ui()
-        self.generic_status_bar_spacer.status_bar_height=self.status_bar_height
 
     def back_to_gallery_screen(self,*_):
         self.app.sm.gallery_screen.refresh_gallery_screen()

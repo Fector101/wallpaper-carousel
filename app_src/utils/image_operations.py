@@ -10,7 +10,7 @@ from kivy.clock import Clock
 from kivymd.app import MDApp
 
 from ui.widgets.layouts import LoadingLayout
-from utils.helper import appFolder
+from utils.helper import appFolder, format_size, crop_path_for
 
 from utils.config_manager import ConfigManager
 from utils.database import ImageDatabase
@@ -82,12 +82,17 @@ boot_log("image_operations: creating configmanager and dirs")
 
 my_config = ConfigManager()
 app_dir = Path(appFolder())
+
 wallpapers_dir = app_dir / "wallpapers"
 wallpapers_dir.mkdir(parents=True, exist_ok=True)
+
+scaled_down_images_dir = app_dir / "scaled_down_images"
+scaled_down_images_dir.mkdir(parents=True, exist_ok=True)
 
 boot_log("image_operations: configmanager and dirs done")
 
 _ANDROID_THUMBNAIL_LOCK = threading.Lock()
+_SCALED_IMG_LOCK = threading.Lock()
 
 def _format_started_time(timestamp):
     return time.strftime('%H:%M:%S', time.localtime(timestamp))
@@ -114,6 +119,7 @@ class ImageOperation:
         boot_log("image_operations: ImageOperation.__init__")
         self.app = MDApp.get_running_app()
         self.load_saved = load_saved
+        self.user_carousel_size = [0,0]
         self._picker_request_code = 65432
         self.showing_loading_screen = False # To fix when no image chosen from Half Popup
         self.processing_intent = False # True when import_images_from_android is running; guards against plyer duplicate
@@ -157,6 +163,14 @@ class ImageOperation:
             try:
                 shutil.copy2(src, dst)
                 create_thumbnail(dst, destination_dir=wallpapers_dir)
+                dest_path = scaled_down_path_for(dst)
+                carousel_size = self.get_user_carousel_size()
+                create_scaled_down_img(
+                    src_path=dst,
+                    dest_path=dest_path,
+                    max_width=carousel_size[0],
+                    max_height=carousel_size[1],
+                )
                 os.utime(dst, (copy_time, copy_time))
                 with images_lock:
                     new_images.append(str(dst))
@@ -173,6 +187,12 @@ class ImageOperation:
         Clock.schedule_once(self.ui_things, 0)
         Clock.schedule_once(lambda dt: self.app.bottom_bar.show(animation=False, hidden_by="pic"), 0)
 
+    def get_user_carousel_size(self):
+        from kivy.core.window import Window
+        win_size = Window.size
+        if self.user_carousel_size == [0,0]:
+            self.user_carousel_size = [win_size[0], win_size[1]*0.8] # 80% of screen height
+        return self.user_carousel_size
     def import_images_from_android(self, only_limited_access=False,image_uris=None):
         """Process URIs from a pending intent in parallel.
         Runs in a background thread; calls ui_things when done.
@@ -222,6 +242,14 @@ class ImageOperation:
                         copy_image_to_internal(destination_path=destination_path, uri=uri,src_path=src_path)
                         t2 = time.time()
                         create_thumbnail(src_path=destination_path, destination_dir=wallpapers_dir)
+                        dest_path=scaled_down_path_for(destination_path)
+                        carousel_size = self.get_user_carousel_size()
+                        create_scaled_down_img(
+                            src_path=destination_path,
+                            dest_path=dest_path,
+                            max_width=carousel_size[0],
+                            max_height=carousel_size[1],
+                        )
                         t3 = time.time()
                         print(f"image_operations: process_one [{i+1}/{len(uris)}] meta={t1-t0:.3f}s copy={t2-t1:.3f}s thumb={t3-t2:.3f}s")
                         with images_lock:
@@ -490,7 +518,7 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
     # _thumb_t0 = time.time()
     # print(f"image_operations: create_thumbnail start {os.path.basename(str(src_path))}")
     def use_android_classes_to_create_thumbnail(src_path_, destination_path):
-        # _t = time.time()
+        _t = time.time()
         max_width = size[0]
         max_height = size[1]
 
@@ -498,15 +526,15 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
         bitmap = BitmapFactory.decodeFile(src_path_)
         if bitmap is None:
             raise Exception("Failed to decode image")
-        # print(f"  [thumb] decodeFile {time.time()-_t:.3f}s")
+        print(f"  [thumb] decodeFile {time.time()-_t:.3f}s") # 0.590s
 
-        # _t2 = time.time()
+        _t2 = time.time()
         # 2. Convert to RGB (ARGB_8888 ≈ RGB)
         bitmap = bitmap.copy(BitmapConfig.ARGB_8888, False)
-        # print(f"  [thumb] bitmap.copy {time.time()-_t2:.3f}s")
+        print(f"  [thumb] bitmap.copy {time.time()-_t2:.3f}s")#0.065s
 
         # 3. Compute thumbnail size (keep aspect ratio)
-        # _t2 = time.time()
+        _t2 = time.time()
         width = bitmap.getWidth()
         height = bitmap.getHeight()
 
@@ -520,19 +548,19 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
 
         # High-quality resize (Android internal filter)
         resized = Bitmap.createScaledBitmap(bitmap, new_w, new_h, True)
-        # print(f"  [thumb] createScaledBitmap {time.time()-_t2:.3f}s")
+        print(f"  [thumb] createScaledBitmap {time.time()-_t2:.3f}s")#0.568s
 
         # 4. Save as JPEG
-        # _t2 = time.time()
+        _t2 = time.time()
         out = FileOutputStream(destination_path)
         resized.compress(CompressFormat.JPEG, quality, out)
         out.close()
-        # print(f"  [thumb] compress+write {time.time()-_t2:.3f}s")
+        print(f"  [thumb] compress+write {time.time()-_t2:.3f}s")#0.099s
 
         # Cleanup
         bitmap.recycle()
         resized.recycle()
-        # print(f"  [thumb] android total {time.time()-_t:.3f}s")
+        print(f"  [thumb] android total {time.time()-_t:.3f}s")#1.331s
 
     if str(src_path).endswith(".webp"):
         return str(src_path)
@@ -582,13 +610,159 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
                     print("error_using_android_classes_to_create_thumbnail",error_using_android_classes_to_create_thumbnail)
                     traceback.print_exc()
         # print(f"  [thumb] create_thumbnail done in {time.time()-_thumb_t0:.3f}s")
-        return str(destination)
+        return str(destination) # TODO: Stop Returning caller already knows path format, well aspect there is an error then the format is the original path
     except OSError as os_error:
         app_logger.exception(f"OSError creating thumbnail for: {src_path}, os_error:{os_error}")
+        return str(src_path)
     except Exception as error_making_thumbnail:
         print(f"Error creating thumbnail for: {error_making_thumbnail} src_path:{src_path}")
         traceback.print_exc()
         return str(src_path)
+
+def create_scaled_down_img(src_path, dest_path, max_width, max_height, quality=75):
+    """Resize an image to fit within max_width x max_height using Android Java classes."""
+
+    if max_width <= 0 or max_height <= 0:
+        raise ValueError("Image dimensions must be positive")
+
+    def create_scaled_down_img_android(src_path=src_path, dest_path=dest_path, max_width=max_width, max_height=max_height, quality=quality):
+        from jnius import autoclass
+
+        BitmapFactory = autoclass('android.graphics.BitmapFactory')
+        BitmapFactoryOptions = autoclass('android.graphics.BitmapFactory$Options')
+        Bitmap = autoclass('android.graphics.Bitmap')
+        BitmapConfig = autoclass('android.graphics.Bitmap$Config')
+        CompressFormat = autoclass('android.graphics.Bitmap$CompressFormat')
+        FileOutputStream = autoclass('java.io.FileOutputStream')
+        Math = autoclass('java.lang.Math')
+        src_path=str(src_path)
+        dest_path=str(dest_path)
+        opts = BitmapFactoryOptions()
+        opts.inJustDecodeBounds = True
+        BitmapFactory.decodeFile(src_path, opts)
+
+        opts.inSampleSize = _compute_in_sample_size(
+            max_width, max_height, opts.outWidth, opts.outHeight
+        )
+        opts.inJustDecodeBounds = False
+        bitmap = BitmapFactory.decodeFile(src_path, opts)
+        if bitmap is None:
+            raise Exception(f"Failed to decode image: {src_path}")
+
+        bitmap = bitmap.copy(BitmapConfig.ARGB_8888, False)
+
+        width = bitmap.getWidth()
+        height = bitmap.getHeight()
+
+        scale = min(1.0, min(max_width / float(width), max_height / float(height)))
+        new_w = Math.round(width * scale)
+        new_h = Math.round(height * scale)
+
+        resized = Bitmap.createScaledBitmap(bitmap, new_w, new_h, True)
+
+        out = FileOutputStream(dest_path)
+        resized.compress(CompressFormat.JPEG, quality, out)
+        out.close()
+
+        print(f"src_path: {format_size(os.path.getsize(src_path))}")
+        print(f"dest_path: {format_size(os.path.getsize(dest_path))}")
+
+        bitmap.recycle()
+        resized.recycle()
+        return None
+
+    def create_scaled_down_img_PIL():
+        try:
+            from PIL import Image
+        except Exception as error_getting_pil:
+            print("error_getting_pil", error_getting_pil)
+            return src_path
+
+        img = Image.open(src_path)
+        img_width, img_height = img.size
+
+        # 1. Start with a scale factor of 1.0 (100% size)
+        scale_factor = 1.0
+
+        # 2. If it's too wide, calculate width scale factor
+        if img_width > max_width:
+            scale_factor = max_width / img_width
+
+        # 3. If it's STILL too tall after width scaling, shrink it further to fit height
+        if (img_height * scale_factor) > max_height:
+            scale_factor = max_height / img_height
+
+        # 4. Apply the final scale factor uniformly to both sides
+        new_width = int(img_width * scale_factor)
+        new_height = int(img_height * scale_factor)
+
+        resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+        if resized_img.mode != "RGB":
+            resized_img = resized_img.convert("RGB")
+
+        # Publish atomically: save to a temp file the reader never looks at,
+        # then os.replace() (atomic rename) so a concurrent caller can only
+        # ever see the old file or a fully-written JPEG, never a partial one.
+        # The backfill thread and on-demand carousel path can both build the
+        # same destination, so this prevents a reader from reusing a file that
+        # is still half-written. The format= argument is required because
+        # tmp_path has no .jpg extension for Pillow to infer from, and quality
+        # keeps JPEG output in step with the Android branch.
+        tmp_path = f"{dest_path}.tmp"
+        try:
+            resized_img.save(tmp_path, format="JPEG", quality=quality)
+            os.replace(tmp_path, dest_path)
+        except Exception:
+            try:
+                os.remove(tmp_path)
+            except FileNotFoundError:
+                pass
+            raise
+
+        print(f"OG : {format_size(os.path.getsize(src_path))}")
+        print(f"pil scaled image : {format_size(os.path.getsize(dest_path))}")
+        return None
+
+    if str(src_path).endswith(".webp"):
+        return str(src_path)
+
+    try:
+        from PIL import Image
+    except ImportError:
+        Image=None
+        if not _on_android_platform():
+            print("Pillow not available, cannot create scaled down image.")
+            # Pillow not available and not on android -> fall back to original image path
+            return str(src_path)
+
+    with _SCALED_IMG_LOCK:
+        if os.path.exists(dest_path):
+            return str(dest_path)
+        try:
+            if Image:
+                create_scaled_down_img_PIL()
+            elif _on_android_platform():
+                try:
+                    create_scaled_down_img_android()
+                except Exception as error_using_android_classes_to_create_scaled_down_image:
+                    print("error_using_android_classes_to_create_scaled_down_image",
+                          error_using_android_classes_to_create_scaled_down_image)
+                    traceback.print_exc()
+                    try:
+                        os.remove(dest_path)
+                    except FileNotFoundError:
+                        pass
+                    return str(src_path)
+        except OSError as os_error:
+            app_logger.exception(f"OSError creating scaled down image for: {src_path}, os_error:{os_error}")
+            return str(src_path)
+        except Exception as error_making_scaled_down_img:
+            print(f"Error creating scaled down image for: {error_making_scaled_down_img} src_path:{src_path}")
+            traceback.print_exc()
+            return str(src_path)
+
+    return str(dest_path)
 
 def copy_uri_to_internal(destination_name, uri):
     if not uri:
@@ -639,6 +813,128 @@ def thumbnail_path_for(src, destination_dir=None):
     thumb_dir.mkdir(parents=True, exist_ok=True)
     return thumb_dir / f"{p.stem}_thumb.jpg"
 
+def scaled_down_path_for(src):
+    """Return the cached scaled-down Path for a source image.
+
+    Scaled-down images live in a 'scaled_down_images' subfolder under the source
+    folder. The output name is derived from the full source filename
+    (``<stem>_<ext>.jpg``, e.g. ``foo.png`` -> ``foo_png.jpg``) so distinct
+    sources sharing a stem never collide on one cached file.
+    """
+    p = Path(src)
+    destination_dir = p.parent
+    scaled_down_dir = destination_dir / "scaled_down_images"
+    scaled_down_dir.mkdir(parents=True, exist_ok=True)
+    return scaled_down_dir / f"{p.stem}_{p.suffix.lstrip('.') or 'img'}.jpg"
+
+def compute_preview_crop(win_size, image_widget_size, texture_size, scale, pos):
+    """Compute the visible region of a preview image as a crop box and its
+    normalized viewport.
+
+    The preview scatter shows a cover-fitted image the size of
+    ``image_widget_size`` scaled by ``scale`` and translated by ``pos`` inside a
+    window of ``win_size`` (all in Kivy widget/pixel coordinates). Returns a
+    ``(box, viewport)`` tuple where ``box`` is ``(left, upper, right, lower)``
+    in the source texture's pixel coordinates (ready for Pillow crop) and
+    ``viewport`` is ``{"scale": ..., "cx": ..., "cy": ...}`` describing the
+    on-screen viewport center normalized to the image widget. Returns ``None``
+    when no region is visible (degenerate layout).
+    """
+    win_w, win_h = win_size
+    img_w, img_h = image_widget_size
+    tex_w, tex_h = texture_size
+    x, y = pos
+    if (
+        min(win_w, win_h, img_w, img_h, tex_w, tex_h, scale) <= 0
+        or win_w > img_w * scale
+        or win_h > img_h * scale
+    ):
+        return None
+
+    x0 = (0 - x) / scale
+    x1 = (win_w - x) / scale
+    y0 = (0 - y) / scale
+    y1 = (win_h - y) / scale
+
+    left_local = max(x0, 0)
+    right_local = min(x1, img_w)
+    bottom_local = max(y0, 0)
+    top_local = min(y1, img_h)
+
+    if left_local >= right_local or bottom_local >= top_local:
+        return None
+
+    left = int(round(left_local / img_w * tex_w))
+    right = int(round(right_local / img_w * tex_w))
+    upper = int(round((img_h - top_local) / img_h * tex_h))
+    lower = int(round((img_h - bottom_local) / img_h * tex_h))
+
+    left = max(left, 0)
+    right = min(right, tex_w)
+    upper = max(upper, 0)
+    lower = min(lower, tex_h)
+    if left >= right or upper >= lower:
+        return None
+
+    viewport = {
+        "scale": scale,
+        "cx": ((left_local + right_local) / 2) / img_w,
+        "cy": ((bottom_local + top_local) / 2) / img_h,
+    }
+    return (left, upper, right, lower), viewport
+
+def crop_and_save_region(src, box, quality=88):
+    """Crop ``src`` to ``box`` and store it as the user-selected wallpaper.
+
+    ``box`` is ``(left, upper, right, lower)`` in the source texture's pixel
+    coordinates. The cropped image is saved at :func:`utils.helper.crop_path_for`
+    so any future wallpaper set for ``src`` uses this tuned version. Returns the
+    crop path.
+    """
+    import os
+    src = str(src)
+    left, upper, right, lower = tuple(int(v) for v in box)
+    if right - left <= 0 or lower - upper <= 0:
+        raise ValueError("Crop box must have positive width and height")
+
+    dest_path = str(crop_path_for(src))
+
+    def create_cropped_img_android():
+        from jnius import autoclass
+        BitmapFactoryAndroid = autoclass('android.graphics.BitmapFactory')
+        Bitmap = autoclass('android.graphics.Bitmap')
+        CompressFormat = autoclass('android.graphics.Bitmap$CompressFormat')
+        FileOutputStream = autoclass('java.io.FileOutputStream')
+        bitmap = BitmapFactoryAndroid.decodeFile(src)
+        if bitmap is None:
+            raise Exception(f"Failed to decode image: {src}")
+        cropped = Bitmap.createBitmap(bitmap, left, upper, right - left, lower - upper)
+        out = FileOutputStream(dest_path)
+        cropped.compress(CompressFormat.JPEG, quality, out)
+        out.close()
+        bitmap.recycle()
+        cropped.recycle()
+
+    try:
+        from PIL import Image
+        with Image.open(src) as img:
+            cropped_img = img.crop((left, upper, right, lower))
+            if cropped_img.mode != "RGB":
+                cropped_img = cropped_img.convert("RGB")
+            cropped_img.save(dest_path, quality=quality)
+    except Exception as error_cropping_with_pil:
+        print(f"error_cropping_with_pil: {error_cropping_with_pil}")
+        traceback.print_exc()
+        if not _on_android_platform():
+            raise
+        try:
+            os.remove(dest_path)
+        except FileNotFoundError:
+            pass
+        create_cropped_img_android()
+
+    return dest_path
+
 def _try_java_native_copy(input_stream, destination_path):
     """Copy the stream entirely inside Java (one JNI call) on API 29+.
     Returns True when the copy succeeded, False to fall back to Python."""
@@ -670,6 +966,75 @@ def is_image_uri(uri):
 def get_or_create_thumbnail(src, destination_dir=None, size=(320, 320)):
     """Convenience wrapper to obtain a thumbnail path, creating it if necessary."""
     return create_thumbnail(src, destination_dir=destination_dir, size=size)
+
+def get_or_create_scaled_down_image(src, size):
+    """Convenience wrapper to obtain a thumbnail path, creating it if necessary."""
+    destination_path = scaled_down_path_for(src)
+    if not size:
+        from kivy.core.window import Window
+        running_app = MDApp.get_running_app()
+        screen_manager = running_app.sm
+        fullscreen = screen_manager.fullscreen
+        carousel = fullscreen.carousel
+        carousel_height = carousel.size[1]
+        win_w, _ = Window.size
+        size = (win_w, carousel_height)
+
+    try:
+        return create_scaled_down_img(
+            src_path=src,
+            dest_path=destination_path,
+            max_width=size[0],
+            max_height=size[1]
+        )
+    except ValueError:
+        return str(src)
+
+def _default_scaled_down_size():
+    """Resolve the typical carousel display size for scaled-down wallpapers.
+
+    Matches ``ImageOperation.get_user_carousel_size``: window width x 80% of
+    window height, so it works without a fully built UI graph. Falls back to a
+    landscape phone-ish size when the window isn't available.
+    """
+    try:
+        from kivy.core.window import Window
+        win_size = Window.size
+        return (int(win_size[0]), int(win_size[1] * 0.8))
+    except Exception:
+        pass
+    return (1080, 2300)
+
+def backfill_scaled_down_images(size=None):
+    """Generate missing scaled-down cache images for all configured wallpapers.
+
+    Old installs predate the scaled-down image cache, so nothing is cached on
+    first launch after the upgrade. Iterate every configured wallpaper and
+    create its scaled-down file when missing. Meant to run on a background
+    thread at startup; on-demand callers short-circuit once the file exists.
+    """
+    if not size:
+        size = _default_scaled_down_size()
+    wallpapers = set(my_config.get_wallpapers())
+    wallpapers.update(my_config.get_day_wallpapers())
+    wallpapers.update(my_config.get_noon_wallpapers())
+    for src in sorted(wallpapers):
+        try:
+            if not os.path.exists(str(src)):
+                continue
+            dest_path = scaled_down_path_for(src)
+            if dest_path.exists():
+                continue
+            create_scaled_down_img(
+                src_path=str(src),
+                dest_path=dest_path,
+                max_width=size[0],
+                max_height=size[1],
+            )
+        except Exception as error_backfilling_scaled_image:
+            app_logger.exception(
+                f"backfill_scaled_down_images failed for {src}: {error_backfilling_scaled_image}"
+            )
 
 def get_image_info(path):
     info_dict = {
@@ -792,6 +1157,18 @@ def share_images_to_other_app(image_paths):
     except Exception as error_from_trying_to_share_images_to_other_apps:
         print("error_from_trying_to_share_images_to_other_apps", error_from_trying_to_share_images_to_other_apps)
         traceback.print_exc()
+
+def _compute_in_sample_size(req_width, req_height, src_width, src_height):
+    in_sample_size = 1
+    if src_height > req_height or src_width > req_width:
+        half_height = src_height // 2
+        half_width = src_width // 2
+        while (half_height // in_sample_size) >= req_height and \
+                (half_width // in_sample_size) >= req_width:
+            in_sample_size *= 2
+    return in_sample_size
+
+
 
 
 boot_log("image_operations: module imported")
