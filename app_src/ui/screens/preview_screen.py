@@ -16,6 +16,7 @@ from kivy.uix.scatterlayout import ScatterLayout
 from utils.constants import _rgba
 
 
+
 class MyImage(AsyncImage):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
