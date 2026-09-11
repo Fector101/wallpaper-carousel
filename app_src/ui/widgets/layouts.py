@@ -299,7 +299,7 @@ class PlaceOnMainScreen:
 
 class MyMDScreen(MDScreen):
     navigation_buttons_box = ObjectProperty()
-    screen_content = ObjectProperty()
+    screen_content = ObjectProperty(None)
     BACK_PRESS_THRESHOLD = 0.4
     SAFETY_TIMEOUT = 2.0
     dimensions = get_dimensions()
@@ -356,6 +356,8 @@ class MyMDScreen(MDScreen):
             self.set_widget_left_and_right_padding(left_padding=0,right_padding=0,rotation=orientation)
 
     def adjust_padding(self, rotation):
+        if not self.screen_content:
+            return
         if rotation == "TOP":
             self.screen_content.padding = [0, 0, 0, 0 if self.__hide_system_ui else self.nav_bar_height]
         elif rotation == "BOTTOM":
