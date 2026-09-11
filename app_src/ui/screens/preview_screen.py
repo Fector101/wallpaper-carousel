@@ -178,14 +178,9 @@ class PreviewScreen(MyMDScreen):
 
         def do_save():
             try:
-                from utils.image_operations import crop_and_save_region
-                crop_and_save_region(self.abs_img_path, box)
-                from utils.database import ImageDatabase
-                persisted = ImageDatabase().set_preview_props(
-                    self.abs_img_path, viewport["scale"], viewport["cx"], viewport["cy"]
+                _save_crop_and_props(
+                    self.abs_img_path, box, viewport["scale"], viewport["cx"], viewport["cy"]
                 )
-                if not persisted:
-                    raise Exception("Failed to persist preview viewport")
                 state["ok"] = True
             except Exception as error_saving_selected_wallpaper:
                 print(f"Failed to save selected wallpaper: {error_saving_selected_wallpaper}")
@@ -259,3 +254,36 @@ class PreviewScreen(MyMDScreen):
         if self._preview_entry_source == self.abs_img_path:
             return True
         return self.image_widget.texture is not self._preview_entry_texture
+
+
+def _save_crop_and_props(abs_img_path, box, scale, cx, cy):
+    """Crop the preview image and persist its viewport as one unit.
+
+    The on-disk crop file doubles as the "user selected a crop" marker (see
+    ``utils.helper.resolve_user_selected_crop``), so it must only change when
+    the DB write also succeeds. The pre-existing crop, if any, is preserved so
+    that a failed persistence restores the previous crop (or removes the new
+    one when nothing was there before), leaving preview properties unchanged
+    and keeping the confirm action in the preview until both succeed.
+    """
+    import os
+    import pathlib
+    from utils import helper
+    from utils.image_operations import crop_and_save_region
+    from utils.database import ImageDatabase
+
+    crop_path = pathlib.Path(helper.crop_path_for(abs_img_path))
+    had_previous = crop_path.exists()
+    previous_content = crop_path.read_bytes() if had_previous else None
+
+    crop_and_save_region(abs_img_path, box)
+    persisted = ImageDatabase().set_preview_props(abs_img_path, scale, cx, cy)
+    if not persisted:
+        if had_previous:
+            crop_path.write_bytes(previous_content)
+        else:
+            try:
+                os.remove(str(crop_path))
+            except FileNotFoundError:
+                pass
+        raise Exception("Failed to persist preview viewport")

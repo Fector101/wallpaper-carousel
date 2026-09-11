@@ -116,6 +116,79 @@ def test_crop_and_save_region_rgba_png_converts_to_rgb(tmp_path, monkeypatch):
         assert img.size == (400, 400)
 
 
+def test_save_crop_and_props_failed_persistence_restores_previous_crop(tmp_path, monkeypatch):
+    monkeypatch.setattr(helper, "appFolder", lambda: str(tmp_path))
+    src = str(tmp_path / "wallpapers" / "a.jpg")
+    (tmp_path / "wallpapers").mkdir()
+    crop = helper.crop_path_for(src)
+    crop.write_bytes(b"previous")
+
+    class FakeDB:
+        def set_preview_props(self, *args):
+            return False
+
+    def fake_save(s, box):
+        crop.write_bytes(b"newcrop")
+        return str(crop)
+
+    from ui.screens.preview_screen import _save_crop_and_props
+    monkeypatch.setattr("utils.image_operations.crop_and_save_region", fake_save)
+    monkeypatch.setattr("utils.database.ImageDatabase", lambda: FakeDB())
+
+    with pytest.raises(Exception):
+        _save_crop_and_props(src, (0, 0, 10, 10), 2.0, 0.5, 0.5)
+    assert crop.read_bytes() == b"previous"
+
+
+def test_save_crop_and_props_failed_persistence_removes_new_crop(tmp_path, monkeypatch):
+    monkeypatch.setattr(helper, "appFolder", lambda: str(tmp_path))
+    src = str(tmp_path / "wallpapers" / "b.jpg")
+    (tmp_path / "wallpapers").mkdir()
+    crop = helper.crop_path_for(src)
+
+    class FakeDB:
+        def set_preview_props(self, *args):
+            return False
+
+    def fake_save(s, box):
+        crop.write_bytes(b"newcrop")
+        return str(crop)
+
+    from ui.screens.preview_screen import _save_crop_and_props
+    monkeypatch.setattr("utils.image_operations.crop_and_save_region", fake_save)
+    monkeypatch.setattr("utils.database.ImageDatabase", lambda: FakeDB())
+
+    with pytest.raises(Exception):
+        _save_crop_and_props(src, (0, 0, 10, 10), 2.0, 0.5, 0.5)
+    assert not crop.exists()
+
+
+def test_save_crop_and_props_success_writes_crop_and_props(tmp_path, monkeypatch):
+    monkeypatch.setattr(helper, "appFolder", lambda: str(tmp_path))
+    src = str(tmp_path / "wallpapers" / "c.jpg")
+    (tmp_path / "wallpapers").mkdir()
+    crop = helper.crop_path_for(src)
+
+    persisted = []
+
+    class FakeDB:
+        def set_preview_props(self, path, scale, cx, cy):
+            persisted.append((path, scale, cx, cy))
+            return True
+
+    def fake_save(s, box):
+        crop.write_bytes(b"newcrop")
+        return str(crop)
+
+    from ui.screens.preview_screen import _save_crop_and_props
+    monkeypatch.setattr("utils.image_operations.crop_and_save_region", fake_save)
+    monkeypatch.setattr("utils.database.ImageDatabase", lambda: FakeDB())
+
+    _save_crop_and_props(src, (0, 0, 10, 10), 2.0, 0.5, 0.5)
+    assert crop.read_bytes() == b"newcrop"
+    assert persisted == [(src, 2.0, 0.5, 0.5)]
+
+
 # --- DB preview props ------------------------------------------------------
 
 def test_db_migration_adds_preview_columns(tmp_path):
