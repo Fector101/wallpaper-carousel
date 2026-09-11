@@ -94,6 +94,44 @@ boot_log("image_operations: configmanager and dirs done")
 _ANDROID_THUMBNAIL_LOCK = threading.Lock()
 _SCALED_IMG_LOCK = threading.Lock()
 
+def warm_up_android_bitmap_stack():
+    """Resolve the lazy Android bitmap classes and warm the native JPEG codec
+    once per process, so the first real thumbnail/scaled-down call doesn't pay
+    the ~1s cold-start (class resolution + codec init) cost at render time.
+    Must run on a background thread; takes _ANDROID_THUMBNAIL_LOCK to stay
+    safe against concurrent first-use of these classes.
+    """
+    if not _on_android_platform():
+        return
+    try:
+        with _ANDROID_THUMBNAIL_LOCK:
+            _t = time.time()
+            for cls in (Options, BitmapFactory, Bitmap, BitmapConfig,
+                        CompressFormat, FileOutputStream, Math):
+                cls._get()
+            warm_path = os.path.join(str(scaled_down_images_dir), ".warmup.jpg")
+            pixel = Bitmap.createBitmap(2, 2, BitmapConfig.ARGB_8888)
+            out = FileOutputStream(warm_path)
+            try:
+                pixel.compress(CompressFormat.JPEG, 50, out)
+            finally:
+                out.close()
+            opts = Options()
+            opts.inJustDecodeBounds = True
+            BitmapFactory.decodeFile(warm_path, opts)
+            opts.inJustDecodeBounds = False
+            decoded = BitmapFactory.decodeFile(warm_path, opts)
+            if decoded is not None:
+                decoded.recycle()
+            pixel.recycle()
+            try:
+                os.remove(warm_path)
+            except OSError:
+                pass
+            print(f"bitmap stack warmed in {time.time()-_t:.3f}s")
+    except Exception as error_warming_bitmap_stack:
+        print("warm_up_android_bitmap_stack:", error_warming_bitmap_stack)
+
 def _format_started_time(timestamp):
     return time.strftime('%H:%M:%S', time.localtime(timestamp))
 

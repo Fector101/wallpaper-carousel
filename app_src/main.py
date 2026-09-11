@@ -34,7 +34,7 @@ boot_log("main: local imports done2")
 from utils.helper import Service, get_free_port, register_fonts, fix_input_on_linux, \
     get_stored_running_ui_server_port, get_stored_running_service_server_port
 boot_log("main: local imports done1")
-from utils.image_operations import ImageOperation # JNI call — app_storage_path() - 0.697s
+from utils.image_operations import ImageOperation, warm_up_android_bitmap_stack # JNI call — app_storage_path() - 0.697s
 from utils.logger import app_logger
 from utils.ui_service_bridge import UIListenToServicer, UIMessengerToService
 boot_log("main: local imports done")
@@ -148,6 +148,7 @@ class WallpaperCarouselApp(MDApp):
     def _init_image_operation_on_background_thread(self):
         try:
             boot_log("build: ImageOperation start")
+            warm_up_android_bitmap_stack()
             self.file_operation = ImageOperation(load_saved=self.sm.gallery_screen.initialize_tabs)
             boot_log("build: ImageOperation done")
             Clock.schedule_once(self._finish_image_operation_init, 0)
