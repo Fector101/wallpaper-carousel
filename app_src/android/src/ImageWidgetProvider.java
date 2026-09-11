@@ -91,7 +91,7 @@ public class ImageWidgetProvider extends AppWidgetProvider {
 
             RemoteViews views = new RemoteViews(
                     context.getPackageName(),
-                    R.layout.carousel_widget
+                    R.layout.image_widget
             );
 
             String imagePath = getWidgetImagePath(context, appWidgetId);
