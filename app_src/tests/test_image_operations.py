@@ -2,6 +2,7 @@ from copy import deepcopy
 from pathlib import Path
 from unittest import mock
 
+import pytest
 from kivy.clock import Clock
 from PIL import Image
 
@@ -219,3 +220,14 @@ def test_seed_numbered_wallpapers_keeps_existing_config(tmp_path, monkeypatch):
     configured = io.my_config.read()["wallpapers"]
     assert existing in configured
     assert len([p for p in configured if Path(p).name.startswith("number_")]) == 10
+
+
+def test_seed_numbered_wallpapers_propagates_generation_failure(tmp_path, monkeypatch):
+    _reset_config(tmp_path, monkeypatch)
+
+    def _boom(n, destination_dir):
+        raise RuntimeError("no pillow")
+
+    monkeypatch.setattr(io, "_generate_numbered_wallpaper", _boom)
+    with pytest.raises(RuntimeError, match="no pillow"):
+        io.seed_numbered_wallpapers()

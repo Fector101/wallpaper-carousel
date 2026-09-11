@@ -201,24 +201,22 @@ def seed_numbered_wallpapers():
     """Generate the number_1..10 wallpapers into the runtime wallpapers folder
     and register them in config so they show up in the gallery.
     Idempotent: keeps existing files and never rewrites config when every path
-    is already listed. Raises (and logs) when a wallpaper cannot be generated
-    instead of silently skipping, so missing Pillow on Android surfaces."""
-    try:
-        wallpapers_dir.mkdir(parents=True, exist_ok=True)
-        added = []
-        for n, name in enumerate(NUMBERED_WALLPAPER_NAMES, start=1):
-            dest = wallpapers_dir / name
-            if not dest.exists():
-                _generate_numbered_wallpaper(n, wallpapers_dir)
-            added.append(str(dest))
-        data = my_config.read()
-        existing = set(data.get("wallpapers", []))
-        missing = [p for p in added if p not in existing]
-        if missing:
-            data["wallpapers"].extend(missing)
-            my_config.write(data)
-    except Exception as error_seeding_numbered_wallpapers:
-        app_logger.exception(f"seed_numbered_wallpapers failed: {error_seeding_numbered_wallpapers}")
+    is already listed. Failures (e.g. missing Pillow on Android) raise so
+    callers can detect that seeding did not complete instead of silently
+    shipping without the numbered wallpapers."""
+    wallpapers_dir.mkdir(parents=True, exist_ok=True)
+    added = []
+    for n, name in enumerate(NUMBERED_WALLPAPER_NAMES, start=1):
+        dest = wallpapers_dir / name
+        if not dest.exists():
+            _generate_numbered_wallpaper(n, wallpapers_dir)
+        added.append(str(dest))
+    data = my_config.read()
+    existing = set(data.get("wallpapers", []))
+    missing = [p for p in added if p not in existing]
+    if missing:
+        data["wallpapers"].extend(missing)
+        my_config.write(data)
 
 
 class ImageOperation:
