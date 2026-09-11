@@ -953,23 +953,25 @@ def crop_and_save_region(src, box, quality=88):
         bitmap.recycle()
         cropped.recycle()
 
-    try:
-        from PIL import Image
-        with Image.open(src) as img:
-            cropped_img = img.crop((left, upper, right, lower))
-            if cropped_img.mode != "RGB":
-                cropped_img = cropped_img.convert("RGB")
-            cropped_img.save(dest_path, quality=quality)
-    except Exception as error_cropping_with_pil:
-        print(f"error_cropping_with_pil: {error_cropping_with_pil}")
-        traceback.print_exc()
-        if not _on_android_platform():
-            raise
-        try:
-            os.remove(dest_path)
-        except FileNotFoundError:
-            pass
+    if _on_android_platform():
         create_cropped_img_android()
+    else:
+        try:
+            from PIL import Image
+            with Image.open(src) as img:
+                cropped_img = img.crop((left, upper, right, lower))
+                if cropped_img.mode != "RGB":
+                    cropped_img = cropped_img.convert("RGB")
+                cropped_img.save(dest_path, quality=quality)
+        except Exception as error_cropping_with_pil:
+            print(f"error_cropping_with_pil: {error_cropping_with_pil}")
+            traceback.print_exc()
+            if not _on_android_platform():
+                raise
+            try:
+                os.remove(dest_path)
+            except FileNotFoundError:
+                pass
 
     return dest_path
 
