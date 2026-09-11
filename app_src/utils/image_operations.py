@@ -152,6 +152,39 @@ def unique(destination_name):
     return destination_path
 
 
+NUMBERED_WALLPAPER_NAMES = [f"number_{n}.png" for n in range(1, 11)]
+
+def _bundled_assets_dir():
+    """Path to the app's bundled assets, whether running from app_src on
+    desktop or from files/app on Android."""
+    return Path(__file__).resolve().parent.parent / "assets" / "icons"
+
+def seed_numbered_wallpapers():
+    """Copy the bundled number_1..10 wallpapers into the runtime wallpapers
+    folder and register them in config so they show up in the gallery.
+    Idempotent: skips files already copied and never rewrites config when
+    every path is already listed."""
+    try:
+        src_dir = _bundled_assets_dir()
+        added = []
+        for name in NUMBERED_WALLPAPER_NAMES:
+            src = src_dir / name
+            dest = wallpapers_dir / name
+            if not src.exists():
+                continue
+            if not dest.exists():
+                shutil.copy2(str(src), str(dest))
+            added.append(str(dest))
+        data = my_config.read()
+        existing = set(data.get("wallpapers", []))
+        missing = [p for p in added if p not in existing]
+        if missing:
+            data["wallpapers"].extend(missing)
+            my_config.write(data)
+    except Exception as error_seeding_numbered_wallpapers:
+        app_logger.exception(f"seed_numbered_wallpapers failed: {error_seeding_numbered_wallpapers}")
+
+
 class ImageOperation:
     def __init__(self,load_saved):
         boot_log("image_operations: ImageOperation.__init__")
