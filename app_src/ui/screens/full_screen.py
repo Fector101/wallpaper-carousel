@@ -222,8 +222,6 @@ class FullscreenScreen(MyMDScreen):
         self.clock_for_higher_format = None
         self.md_bg_color =[0, 0, 0, 1]
         self.bottom_height = 0.12
-        self.is_fullscreen = False
-        
         from utils.helper import appFolder
         self.app = get_app()
         self.app_dir = Path(appFolder())
@@ -451,30 +449,9 @@ class FullscreenScreen(MyMDScreen):
     def enter_preview_mode(self, *_):
         self.manager.preview_screen.abs_img_path = self.current_image
         self.manager.go_to_preview()
-        return
-        self.is_fullscreen = True
-
-        self.carousel.size_hint = (1, 1)
-        self.carousel.pos_hint = {'center_x': .5, 'center_y': .5}
-
-        self.header_layout.pos_hint = {'center_x': .5, 'top': 1.2}
-
-        self.btn_close.opacity = 1
-        self.btn_close.disabled = False
-
-        self.btm_btn_layout_root.pos_hint = {"y": -2}
-        for img in self.carousel.slides:
-            img.fit_mode = "cover"
-
-        self.layout.do_layout()
-        self.hide_system_ui()
-        self.generic_status_bar_spacer.status_bar_height=0
 
     def handle_going_back(self, *_):
-        if self.is_fullscreen:
-            self.leave_preview_mode()
-        else:
-            self.back_to_gallery_screen()
+        self.back_to_gallery_screen()
     
     def set_as_wallpaper(self, *_):
         import threading
@@ -532,7 +509,7 @@ class FullscreenScreen(MyMDScreen):
         for p in gallery_screen.wallpapers:
             img = Image(
                 source=str(thumbnail_path_for(p)),
-                fit_mode="cover" if self.is_fullscreen else "contain",
+                fit_mode="contain",
             )
             img.higher_format = p
             self.carousel_has_images = True
@@ -605,29 +582,6 @@ class FullscreenScreen(MyMDScreen):
             size=self.carousel.size
         )
             slide._high_res_loaded = True
-
-    def leave_preview_mode(self,*_):
-        self.carousel.size_hint = self.original_carousel_size_hint
-        self.carousel.pos_hint = self.original_carousel_pos_hint
-        self.header_layout.pos_hint = {'center_x': .5, 'top': .98}
-
-        # self.btn_close.opacity = 0
-        # self.btn_close.disabled = True
-
-        self.btm_btn_layout_root.pos_hint = {"y": 0}
-
-        self.set_wallpaper_btn.icon_color = [1,1,1,1] if self.app.device_theme == "dark" else [0,0,0,1]
-        self.btn_home_widget.icon_color = self.set_wallpaper_btn.icon_color
-        self.btn_fullscreen.icon_color = self.set_wallpaper_btn.icon_color
-        self.share_btn.icon_color = self.set_wallpaper_btn.icon_color
-        self.dropdown_btn.icon_color = self.set_wallpaper_btn.icon_color
-        self.is_fullscreen = False
-
-        for img in self.carousel.slides:
-            img.fit_mode = "contain"
-
-        self.show_system_ui()
-        self.generic_status_bar_spacer.status_bar_height=self.status_bar_height
 
     def back_to_gallery_screen(self,*_):
         self.app.sm.gallery_screen.refresh_gallery_screen()
