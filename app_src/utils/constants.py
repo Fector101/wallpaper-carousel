@@ -42,6 +42,8 @@ _COLORS = {
     "BUTTON_BG":              {"light": _rgba(230, 230, 230), "dark": _rgba(51, 51, 51)},
     "BUTTON_PRIMARY":         {"light": _rgba(55, 151, 252), "dark": _hex("#2A92FF")},
     "BUTTON_DANGER":          {"light": _rgba(243, 170, 170), "dark": _hex("#FF3F3F")},
+    "BUTTON_ACCENT_BG":       {"light": _hex("#254847"), "dark": _hex("#254847")},
+    "BUTTON_ACCENT_TEXT":     {"light": _hex("#98F1DD"), "dark": _hex("#98F1DD")},
     "BUTTON_WHITE_LAYER":     {"light": _rgba(255, 255, 255), "dark": _hex("#FEFEFE")},
     "THEME_SELECTOR_ACCENT":  {"light": _hex("#98F1DD"), "dark": _hex("#98F1DD")},
     "THEME_SELECTOR_INACTIVE":{"light": _rgba(209, 209, 209), "dark": _rgba(51, 51, 51)},
@@ -90,6 +92,8 @@ class ThemeColors(EventDispatcher):
     BUTTON_BG = ListProperty(_DEFAULTS["BUTTON_BG"])
     BUTTON_PRIMARY = ListProperty(_DEFAULTS["BUTTON_PRIMARY"])
     BUTTON_DANGER = ListProperty(_DEFAULTS["BUTTON_DANGER"])
+    BUTTON_ACCENT_BG = ListProperty(_DEFAULTS["BUTTON_ACCENT_BG"])
+    BUTTON_ACCENT_TEXT = ListProperty(_DEFAULTS["BUTTON_ACCENT_TEXT"])
     BUTTON_WHITE_LAYER = ListProperty(_DEFAULTS["BUTTON_WHITE_LAYER"])
     THEME_SELECTOR_ACCENT = ListProperty(_DEFAULTS["THEME_SELECTOR_ACCENT"])
     THEME_SELECTOR_INACTIVE = ListProperty(_DEFAULTS["THEME_SELECTOR_INACTIVE"])

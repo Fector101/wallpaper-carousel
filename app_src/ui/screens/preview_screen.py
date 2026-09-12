@@ -1,4 +1,3 @@
-from kivy.utils import get_color_from_hex
 from kivymd.uix.floatlayout import MDFloatLayout
 
 from kivy.metrics import dp
@@ -110,8 +109,8 @@ class PreviewScreen(MyMDScreen):
             pos_hint={'x': .77, 'top': .98},
             on_release=lambda *_: self.handle_confirm_selection(),
             theme_bg_color = "Custom",
-            md_bg_color = get_color_from_hex("#254847"),
-            text_color = theme_colors.PRIMARY,
+            md_bg_color = theme_colors.BUTTON_ACCENT_BG,
+            text_color = theme_colors.BUTTON_ACCENT_TEXT,
             adaptive_size = True,
             size_padding = dp(20)
         )
