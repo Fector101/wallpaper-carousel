@@ -1,3 +1,4 @@
+from kivy.utils import get_color_from_hex
 from kivymd.uix.floatlayout import MDFloatLayout
 
 from kivy.metrics import dp
@@ -13,8 +14,8 @@ from kivy.graphics import Color, Rectangle
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import AsyncImage
 from kivy.uix.scatterlayout import ScatterLayout
-from utils.constants import _rgba
-
+from ui.widgets.modals import MyTextButton
+from utils.constants import _rgba, theme_colors
 
 
 class MyImage(AsyncImage):
@@ -104,17 +105,15 @@ class PreviewScreen(MyMDScreen):
             md_bg_color=[.1, .1, .1, 1],
             theme_bg_color='Custom'
         )
-        self.save_btn = MDIconButton(
-            icon="check",
-            style="outlined",
-            size=(dp(200), dp(200)),
-            pos_hint={'x': .85, 'top': .98},
-            # pos_hint={'center_x': .5, 'center_y': .5},
-            theme_text_color='Custom',
-            text_color=[1, 1, 1, .9],
+        self.save_btn = MyTextButton(
+            text="save",
+            pos_hint={'x': .77, 'top': .98},
             on_release=lambda *_: self.handle_confirm_selection(),
-            md_bg_color=[.1, .1, .1, 1],
-            theme_bg_color='Custom'
+            theme_bg_color = "Custom",
+            md_bg_color = get_color_from_hex("#254847"),
+            text_color = theme_colors.PRIMARY,
+            adaptive_size = True,
+            size_padding = dp(20)
         )
         self.scatter = MyScatter(
             size_hint=(None, None),

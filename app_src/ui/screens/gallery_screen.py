@@ -10,6 +10,7 @@ from kivy.properties import StringProperty, NumericProperty, ListProperty, Boole
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.widget import Widget
 from kivy.uix.image import AsyncImage
+from kivy.utils import get_color_from_hex
 
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -31,7 +32,7 @@ from utils.config_manager import ConfigManager
 from utils.helper import appFolder, load_kv_file, remove_images_from_app  # type
 from utils.boot_log import boot_log
 from utils.image_operations import get_or_create_thumbnail, get_image_info, share_image_to_other_app, share_images_to_other_app
-from ui.widgets.modals import DialogScreen
+from ui.widgets.modals import DialogScreen, MyTextButton
 from utils.logger import app_logger
 from utils.model import get_app, GalleryTabs
 from utils.constants import theme_colors
@@ -321,6 +322,8 @@ class DateGroupLayout(Column):
     images_container = ObjectProperty()
     cols = NumericProperty(0)
     doing_cols_change = BooleanProperty(False)
+    are_all_selected=BooleanProperty(False)
+    count_of_items_not_selected=NumericProperty(0)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -369,10 +372,32 @@ class DateGroupLayout(Column):
             pos_hint={"center_y": .5, "right": 1}
         )
 
+
+        self.toggle_select_group_btn = MyTextButton(
+                text="Select all",
+                theme_font_size="Custom",
+                pos_hint={"center_y": .5, "right": 1},
+                theme_bg_color = "Custom",
+                md_bg_color = get_color_from_hex("#3e41407d"),
+                bold=False,
+                text_color = theme_colors.TEXT_PRIMARY,
+                adaptive_size = True,
+                radius=[20],
+                size_padding = dp(10),
+                font_size=sp(13),
+                adaptive_text_size=True,
+                disabled=True,
+                opacity=0
+        )
+        self.toggle_select_group_btn.theme_height="Custom"
+        self.toggle_select_group_btn.height=dp(28)
+
         self.toggle_drop_btn.bind(on_release=self.toggle_dropdown)
+        self.toggle_select_group_btn.bind(on_release=self._toggle_select_all_group)
 
         header_layout.add_widget(self.title_text_widget)
         header_layout.add_widget(self.toggle_drop_btn)
+        header_layout.add_widget(self.toggle_select_group_btn)
         self.add_widget(header_layout)
 
         self.images_container = MyMDGridLayout(
@@ -401,6 +426,7 @@ class DateGroupLayout(Column):
                     source=each_data["thumbnail_path"],
                     on_long_press=self.app.sm.gallery_screen.enter_select_mode
                 )
+                thumbnailWidget.bind(selected=self._on_image_selection_changed)
             elif isinstance(each_data, PreviewImage):
                 thumbnailWidget = each_data
                 app_logger.debug(f"Found: {each_data}")
@@ -410,6 +436,7 @@ class DateGroupLayout(Column):
             thumbnailWidget.size_hint = (None, None)
             thumbnailWidget.size = (box_size, box_size)
             self.images_container.add_widget(thumbnailWidget)
+            self.count_of_items_not_selected += 1
 
         self.add_widget(self.images_container)
         sep_color = [.3, .3, .3, .8]
@@ -463,6 +490,8 @@ class DateGroupLayout(Column):
             if image_absolute_path == each_image_widget.high_resolution_path:
                 images_container_widget.remove_widget(each_image_widget)
                 image_widget = each_image_widget
+                if not each_image_widget.selected:
+                    self.count_of_items_not_selected -= 1
                 break
         new_children = images_container_widget.children
         app_logger.info(f"DGL_REMOVE: found={image_widget is not None} new_children_count={len(new_children)} self.parent={self.parent}")
@@ -485,6 +514,7 @@ class DateGroupLayout(Column):
             app_logger.error(f"Error Getting only PreviewImage Class, got: {image_widget}")
             return
         images_container_widget.add_widget(image_widget,index=len(children))
+        self.count_of_items_not_selected+=1
         self.__update_title(len(children))
 
     def __update_title(self,count:int):
@@ -529,28 +559,35 @@ class DateGroupLayout(Column):
 
     def set_selection_mode(self,state):
         """Toggles selection mode for all preview images in this group."""
+        if self.is_collapsed:
+            self.toggle_dropdown()
+
         if state:
-            self.toggle_drop_btn.font_size = "18sp"
-            self.toggle_drop_btn.icon = "checkbox-blank-circle-outline"
-            self.toggle_drop_btn.unbind(on_release=self.toggle_dropdown)
-            self.toggle_drop_btn.bind(on_release=self._toggle_select_all_group)
+            self.toggle_drop_btn.opacity=0
+            self.toggle_drop_btn.disabled = True
+
+            self.toggle_select_group_btn.opacity = 1
+            self.toggle_select_group_btn.disabled = False
             self._update_group_select_all_button()
         else:
-            self.toggle_drop_btn.font_size = "14sp"
-            self.toggle_drop_btn.icon = "triangle-down" if self.is_collapsed else "triangle"
-            self.toggle_drop_btn.unbind(on_release=self._toggle_select_all_group)
-            self.toggle_drop_btn.bind(on_release=self.toggle_dropdown)
+            self.toggle_drop_btn.opacity = 1
+            self.toggle_drop_btn.disabled = False
+
+            self.toggle_select_group_btn.opacity = 0
+            self.toggle_select_group_btn.disabled = True
+
         if self.images_container and self.images_container.children:
             for child in self.images_container.children:
                 if isinstance(child, PreviewImage):
                     child.selection_mode = state
-                    if state:
-                        child.bind(selected=self._on_image_selection_changed)
-                    else:
-                        child.unbind(selected=self._on_image_selection_changed)
 
     def _on_image_selection_changed(self, instance, value):
         """Called when any preview image's selection state changes."""
+
+        if value: # if selected
+            self.count_of_items_not_selected -= 1
+        else:
+            self.count_of_items_not_selected += 1
         self._update_group_select_all_button()
         if hasattr(self.app,"sm"):
             gallery_screen =self.app.sm.gallery_screen
@@ -560,22 +597,21 @@ class DateGroupLayout(Column):
         gallery_screen.multi_select_manager.update_selection_count()
 
     def _toggle_select_all_group(self, *args):
-        children = [c for c in self.images_container.children if isinstance(c, PreviewImage)]
+        self.toggle_select_group_btn.text="Select all" if self.count_of_items_not_selected else "Deselect all"
+        children = self.images_container.children
         if not children:
             return
-        all_selected = all(c.selected for c in children)
+        state = bool(self.count_of_items_not_selected)
+        # if amount that exists is not equal to amount not selected then select all
         for child in children:
-            child.selected = not all_selected
 
+            if not isinstance(child, PreviewImage):
+                app_logger.error("Stray widget, Only add PreviewImage len is been used for logic")
+            else:
+                child.selected = state
     def _update_group_select_all_button(self):
-        children = [c for c in self.images_container.children if isinstance(c, PreviewImage)]
-        if not children:
-            return
-        all_selected = all(c.selected for c in children)
-        self.toggle_drop_btn.icon = (
-            "check-circle" if all_selected
-            else "checkbox-blank-circle-outline"
-        )
+        self.toggle_select_group_btn.text="Select all" if self.count_of_items_not_selected else "Deselect all"
+
 
     def get_selected_images(self):
         """Return list of selected PreviewImage widgets in this group."""
@@ -587,6 +623,7 @@ class DateGroupLayout(Column):
     
     def clear_selection(self):
         """Deselect all images in this group."""
+
         for child in self.images_container.children:
             if isinstance(child, PreviewImage):
                 child.selected = False
@@ -604,7 +641,7 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
         self.add_widget(self.multi_select_bottom)
         self.bind(are_items_selected=self.multi_select_bottom.setter("are_items_selected_state"))
 
-    def show(self):
+    def show(self, *_):
         if not self.parent:
             self.gallery_screen.add_widget(self)
         super().show()
@@ -722,18 +759,10 @@ class MultiselectTop(MDFloatLayout):
     
     def update_selection_count(self) -> int:
         """Update the displayed selection count."""
-        if not self.gallery_screen:
-            return 0
-        
-        count = 0
-        for tab_name, tab_data in self.gallery_screen.tab_instances.items():
-            for key, value in tab_data.items():
-                if isinstance(value, DateGroupLayout):
-                    count += len(value.get_selected_images())
-        
-        txt = "item" if count == 1 else "items"
-        self.title_widget.text = f"{count} {txt} selected"
-        return count
+        count_selected = self.get_selected_items_count()
+        txt = "item" if count_selected == 1 else "items"
+        self.title_widget.text = f"{count_selected} {txt} selected"
+        return count_selected
     
     def select_all(self, *args):
         """Select all images in current tab."""
@@ -759,8 +788,20 @@ class MultiselectTop(MDFloatLayout):
                             # p(f"id={id(child)} parent={type(child.parent).__name__}.{id(child.parent)} path={child.high_resolution_path}")
                             child.selected = True
         # p('f',f)
+        if not self.gallery_screen:
+            return 0
         self.update_selection_count()
-    
+        return None
+    def get_selected_items_count(self):
+        total_not_selected_count = 0
+        total_imgs = 0
+        for tab_name, tab_data in self.gallery_screen.tab_instances.items():
+            for key, value in tab_data.items():
+                if isinstance(value, DateGroupLayout):
+                    total_imgs += len(value.images_container.children)
+                    total_not_selected_count = total_not_selected_count + value.count_of_items_not_selected
+        return total_imgs-total_not_selected_count
+
     def deselect_all(self, *args):
         """Deselect all images."""
         if not self.gallery_screen:
@@ -1175,7 +1216,7 @@ class GalleryScreen(MyMDScreen):
         self.ids.header_info_label.text = tab_data["title"]
         scrollView_container.add_widget(tab_data["widget"])
         self.wallpapers = tab_data["wallpapers"]
-        app_logger.info(f"on_tab {tab_name} wp_len={len(self.wallpapers)} wp_list_id={id(tab_data['wallpapers'])} swp_id={id(self.wallpapers)} wallpapers={tab_data['wallpapers']} widget_children={tab_data['widget'].children}")
+        # app_logger.info(f"on_tab {tab_name} wp_len={len(self.wallpapers)} wp_list_id={id(tab_data['wallpapers'])} swp_id={id(self.wallpapers)} wallpapers={tab_data['wallpapers']} widget_children={tab_data['widget'].children}")
 
     def load_day_wallpapers(self):
         self.current_tab = GalleryTabs.DAY.value

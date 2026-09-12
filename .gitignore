@@ -22,3 +22,4 @@ test_dev*
 *.json
 ImageDataBase error: _conn
 *.jks
+crash-samples

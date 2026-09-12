@@ -4,7 +4,8 @@ import traceback
 from kivy.clock import Clock
 from kivy.graphics import Color, Line
 from kivy.metrics import dp, sp
-from kivy.properties import StringProperty, ListProperty, ObjectProperty, NumericProperty, BooleanProperty
+from kivy.properties import StringProperty, ListProperty, ObjectProperty, NumericProperty, BooleanProperty, \
+    get_color_from_hex
 
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.label import Label
@@ -1154,10 +1155,18 @@ class SettingsScreen(MyMDScreen):
         return version_controls
 
     def _build_update_button(self):
-        from kivy.uix.button import Button
 
-        check_update_btn = Button(text="Check For New Version", on_release=self.check_for_update,
-                                  size_hint_y=None, height=dp(50))
+        check_update_btn = MyTextButton(
+                            text="Check For New Version",
+                            on_release=self.check_for_update,
+                            size_hint_y=None, height=dp(50),
+                            theme_bg_color="Custom",
+                            md_bg_color=get_color_from_hex("#254847"),
+                            text_color=theme_colors.PRIMARY,
+                            pos_hint={"right":1},
+                            adaptive_size=True,
+                            size_padding=dp(20)
+        )
         check_update_btn.background_normal = ''
         check_update_btn.background_color = theme_colors.BUTTON_BG
         check_update_btn.color = theme_colors.TEXT_PRIMARY
