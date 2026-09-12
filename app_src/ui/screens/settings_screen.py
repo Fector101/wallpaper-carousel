@@ -4,8 +4,9 @@ import traceback
 from kivy.clock import Clock
 from kivy.graphics import Color, Line
 from kivy.metrics import dp, sp
-from kivy.properties import StringProperty, ListProperty, ObjectProperty, NumericProperty, BooleanProperty, \
-    get_color_from_hex
+from kivy.properties import StringProperty, ListProperty, ObjectProperty, NumericProperty, BooleanProperty
+from kivy.utils import get_color_from_hex
+
 
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.label import Label
@@ -1167,9 +1168,6 @@ class SettingsScreen(MyMDScreen):
                             adaptive_size=True,
                             size_padding=dp(20)
         )
-        check_update_btn.background_normal = ''
-        check_update_btn.background_color = theme_colors.BUTTON_BG
-        check_update_btn.color = theme_colors.TEXT_PRIMARY
         self._check_update_btn = check_update_btn
         return check_update_btn
 
@@ -1609,9 +1607,8 @@ class SettingsScreen(MyMDScreen):
     def _set_check_update_btn_theme(self, _, theme):
         if not getattr(self, "_check_update_btn", None):
             return
-        is_dark = theme == "dark"
-        self._check_update_btn.background_color = theme_colors.BUTTON_BG
-        self._check_update_btn.color = theme_colors.TEXT_PRIMARY
+        self._check_update_btn.md_bg_color = theme_colors.BUTTON_BG
+        self._check_update_btn.text_color = theme_colors.TEXT_PRIMARY
 
     def set_using_on_wake_config(self, instance, value, from_user):
         ##p("instance.title_text",instance, value)

@@ -426,17 +426,19 @@ class DateGroupLayout(Column):
                     source=each_data["thumbnail_path"],
                     on_long_press=self.app.sm.gallery_screen.enter_select_mode
                 )
-                thumbnailWidget.bind(selected=self._on_image_selection_changed)
+                self._bind_selection_callback(thumbnailWidget)
             elif isinstance(each_data, PreviewImage):
                 thumbnailWidget = each_data
                 app_logger.debug(f"Found: {each_data}")
+                self._bind_selection_callback(thumbnailWidget)
             else:
                 app_logger.error(f"Error getting PreviewImage Class or Init Data, got: {each_data}")
                 return None
             thumbnailWidget.size_hint = (None, None)
             thumbnailWidget.size = (box_size, box_size)
             self.images_container.add_widget(thumbnailWidget)
-            self.count_of_items_not_selected += 1
+            if not thumbnailWidget.selected:
+                self.count_of_items_not_selected += 1
 
         self.add_widget(self.images_container)
         sep_color = [.3, .3, .3, .8]
@@ -488,6 +490,7 @@ class DateGroupLayout(Column):
                 continue
 
             if image_absolute_path == each_image_widget.high_resolution_path:
+                self._unbind_selection_callback(each_image_widget)
                 images_container_widget.remove_widget(each_image_widget)
                 image_widget = each_image_widget
                 if not each_image_widget.selected:
@@ -513,9 +516,23 @@ class DateGroupLayout(Column):
         if not isinstance(image_widget, PreviewImage):
             app_logger.error(f"Error Getting only PreviewImage Class, got: {image_widget}")
             return
+        self._bind_selection_callback(image_widget)
         images_container_widget.add_widget(image_widget,index=len(children))
-        self.count_of_items_not_selected+=1
+        if not image_widget.selected:
+            self.count_of_items_not_selected+=1
         self.__update_title(len(children))
+
+    def _bind_selection_callback(self, widget):
+        self._unbind_selection_callback(widget)
+        widget._selection_callback = self._on_image_selection_changed
+        widget.bind(selected=self._on_image_selection_changed)
+
+    @staticmethod
+    def _unbind_selection_callback(widget):
+        callback = getattr(widget, "_selection_callback", None)
+        if callback:
+            widget.unbind(selected=callback)
+            widget._selection_callback = None
 
     def __update_title(self,count:int):
         batch_title = self.title.split("|")[0].strip()
