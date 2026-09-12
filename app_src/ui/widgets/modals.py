@@ -33,6 +33,7 @@ class MyTextButton(MDButton):
     font_size = ObjectProperty("")
     size_padding = NumericProperty(10)
     bold = BooleanProperty(True)
+    adaptive_text_size=ObjectProperty()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.elevation_level = 1
@@ -43,6 +44,8 @@ class MyTextButton(MDButton):
                                 pos_hint={"center_x": .5, "center_y": .5},
                                 bold=self.bold
                                 )
+        if self.adaptive_text_size is not None:
+            self.txt.adaptive_size = self.adaptive_text_size
 
         # p(self.adaptive_size)
         if self.adaptive_size:
