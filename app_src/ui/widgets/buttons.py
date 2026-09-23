@@ -51,7 +51,7 @@ class MyRoundButton(Button):
                 border_radius=[r, r, r, r],
                 blur_radius=20 if self.state == "normal" else 50
             )
-        self.bind(size=self.update_rect, pos=self.update_rect, state=self.update_rect)
+        self.bind(size=self.update_rect, pos=self.update_rect)#, state=self.update_rect)
 
         # Clock.schedule_interval(self.peek,2)
 
