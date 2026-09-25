@@ -83,7 +83,7 @@ class MyMDIconButton(MDIconButton):
         self.time_of_second_release = 0
         self.on_double_click= on_double_click
 
-    def on_release(self):
+    def on_release(self,*args):
         # If some other instance is waiting for a second click, cancel it
         if MyMDIconButton._active_instance is not None and MyMDIconButton._active_instance is not self:
             MyMDIconButton._active_instance.cancel_double_click()
