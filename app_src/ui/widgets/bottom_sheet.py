@@ -122,7 +122,7 @@ class MyBtmSheet(MDBottomSheet):
         self.close_btn = MDBottomSheetDragHandleButton(
                 icon="close",
                 ripple_effect=False,
-                on_release=lambda x: self.set_state("close"),
+                on_release=lambda x,motion=None: self.set_state("close"),
                 theme_text_color="Custom",
                 text_color="white",
             )

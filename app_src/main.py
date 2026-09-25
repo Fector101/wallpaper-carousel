@@ -306,8 +306,8 @@ class WallpaperCarouselApp(MDApp):
     def _finish_setup_service(self, _):
         try:
             self.sm.settings_screen.build_ui()
-            self.sm.settings_screen.ids.skip_upcoming_wallpaper_button.on_release = self.ui_messenger_to_service.change_next
-            self.sm.settings_screen.ids.pause_home_screen_widget_loop_button.on_release = self.ui_messenger_to_service.toggle_home_screen_widget_changes
+            self.sm.settings_screen.ids.skip_upcoming_wallpaper_button.on_release = lambda x=None, motion=None: self.ui_messenger_to_service.change_next()
+            self.sm.settings_screen.ids.pause_home_screen_widget_loop_button.on_release = lambda x=None, motion=None: self.ui_messenger_to_service.toggle_home_screen_widget_changes()
 
             self.ui_service_listener.on_countdown_change = self.sm.settings_screen.update_label
             self.ui_service_listener.on_changed_homescreen_widget = self.sm.settings_screen.on_changed_homescreen_widget

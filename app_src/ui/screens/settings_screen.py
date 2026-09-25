@@ -976,7 +976,7 @@ class SettingsScreen(MyMDScreen):
             theme_bg_color="Custom",
             md_bg_color=theme_colors.BUTTON_BG,
             radius=[5],
-            on_release=add_home_screen_widget,
+            on_release=lambda widget, motion=None:add_home_screen_widget(),
         )
         add_icon = MDButtonIcon(icon="plus")
         add_text = MDButtonText(text="Add to Home Screen", theme_text_color="Custom")
