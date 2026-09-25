@@ -36,7 +36,7 @@ class DropDownMain(Row):
         # self.add_widget(t)
         # self.bind(touch_up=self.on_release)
 
-    def on_release(self):
+    def on_release(self,*args):
         app_logger.warning("TODO Add Un-Grouped Logic")
         return True
         items = [

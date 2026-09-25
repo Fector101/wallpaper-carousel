@@ -375,7 +375,7 @@ class DownloadApkScreen(MyMDScreen):
         self.new_stuff_container.clear_widgets()
         self.new_stuff_container.add_widget(rst_widget)
 
-    def start_download(self,_=None):
+    def start_download(self,_=None,pos=None):
        #p("Clicked start download...")
         if not self.built_ui:
             return

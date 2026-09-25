@@ -249,7 +249,7 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
         # self._play_press_down_effect()
         self._long_press = Clock.schedule_once(self._dispatch_long_press, 0.6)
 
-    def on_release(self):
+    def on_release(self,*args):
         self._cancel_long_press()
         return True
 
