@@ -32,6 +32,7 @@ from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_
     theme_colors as _theme_colors
 boot_log("main: local imports done2")
 from utils.helper import Service, get_free_port, register_fonts, fix_input_on_linux, \
+    patch_kivymd_switch_press_events, \
     get_stored_running_ui_server_port, get_stored_running_service_server_port
 boot_log("main: local imports done1")
 from utils.image_operations import ImageOperation, warm_up_android_bitmap_stack # JNI call — app_storage_path() - 0.697s
@@ -42,6 +43,7 @@ boot_log("main: local imports done")
 android_notify_logger.setLevel(logging.DEBUG if on_android_platform() else logging.ERROR)
 
 fix_input_on_linux()
+patch_kivymd_switch_press_events()
 register_fonts()
 boot_log("--------------main: module setup done--------------")
 
@@ -304,8 +306,8 @@ class WallpaperCarouselApp(MDApp):
     def _finish_setup_service(self, _):
         try:
             self.sm.settings_screen.build_ui()
-            self.sm.settings_screen.ids.skip_upcoming_wallpaper_button.on_release = self.ui_messenger_to_service.change_next
-            self.sm.settings_screen.ids.pause_home_screen_widget_loop_button.on_release = self.ui_messenger_to_service.toggle_home_screen_widget_changes
+            self.sm.settings_screen.ids.skip_upcoming_wallpaper_button.on_release = lambda x=None, motion=None: self.ui_messenger_to_service.change_next()
+            self.sm.settings_screen.ids.pause_home_screen_widget_loop_button.on_release = lambda x=None, motion=None: self.ui_messenger_to_service.toggle_home_screen_widget_changes()
 
             self.ui_service_listener.on_countdown_change = self.sm.settings_screen.update_label
             self.ui_service_listener.on_changed_homescreen_widget = self.sm.settings_screen.on_changed_homescreen_widget

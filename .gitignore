@@ -23,3 +23,5 @@ test_dev*
 ImageDataBase error: _conn
 *.jks
 crash-samples
+kivy
+venv

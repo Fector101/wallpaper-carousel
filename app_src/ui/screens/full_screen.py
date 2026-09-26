@@ -126,7 +126,7 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
 
         return tab_name
 
-    def on_release(self):
+    def on_release(self,*args):
         current_image = self.fullscreen.current_image
         gallery_screen = self.app.sm.gallery_screen
         old_tab = self.get_tab_from_index(self.i)

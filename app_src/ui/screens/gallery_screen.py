@@ -206,6 +206,11 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
         # Own this touch sequence so ButtonBehavior does not dispatch a
         # normal release after a long press has already been handled.
         touch.grab(self)
+        # NOTE: dispatched without the touch on purpose. Kivy 3.0 dispatches
+        # on_press/on_release with a touch, so our handlers (on_press below and
+        # the release_function lambdas built in generate_tab_widgets) are
+        # written to tolerate 0 or 1 extra arg. Keep both sides in sync if you
+        # ever pass `touch` here.
         self.dispatch("on_press")
         return True
 
@@ -249,7 +254,7 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
         # self._play_press_down_effect()
         self._long_press = Clock.schedule_once(self._dispatch_long_press, 0.6)
 
-    def on_release(self):
+    def on_release(self,*args):
         self._cancel_long_press()
         return True
 
@@ -731,7 +736,7 @@ class MultiselectTop(MDFloatLayout):
         self.cancel_selection_mode_btn = MDIconButton(icon="close", theme_icon_color="Custom", icon_color=tc)
         self.toggle_select_all_btn = MDIconButton(icon="playlist-check", theme_icon_color="Custom", icon_color=tc)
         self.cancel_selection_mode_btn.bind(on_release=self.hide)
-        self.toggle_select_all_btn.bind(on_release=lambda _: setattr(self, "select_all_", not self.select_all_))
+        self.toggle_select_all_btn.bind(on_release=lambda *_: setattr(self, "select_all_", not self.select_all_))
         btn_box.add_widget(self.cancel_selection_mode_btn)
         btn_box.add_widget(Widget())
         btn_box.add_widget(self.toggle_select_all_btn)

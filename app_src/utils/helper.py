@@ -451,6 +451,34 @@ def fix_input_on_linux():
     return None
 
 
+def patch_kivymd_switch_press_events():
+    # Kivy 3.0 made ButtonBehavior.on_press/on_release require a touch, but
+    # KivyMD's selectioncontrol.kv re-dispatches both events from the switch
+    # thumb with no arguments. The kv handlers are fbind observers, so these
+    # class methods are only reached as the empty default handler -> make them
+    # tolerant, otherwise tapping the thumb raises a TypeError.
+    from kivymd.uix.selectioncontrol import MDSwitch
+
+    def ignore(*args, **kwargs):
+        pass
+
+    MDSwitch.on_press = ignore
+    MDSwitch.on_release = ignore
+
+    # Other KivyMD widgets that re-dispatch these events without a touch, and
+    # therefore need the same patch if they ever get used here:
+    #   MDImageList          uix/imagelist/imagelist.kv (on_press/on_release)
+    #   MDTabs               uix/tab/tab.py (on_release, plus a `lambda x:` that
+    #                        also breaks on the new (instance, touch) call)
+    #   MDSegmentedButton    uix/segmentedbutton/segmentedbutton.py (on_release)
+    #   MDNavigationBar      uix/navigationbar/navigationbar.py (`on_release(self)`)
+    #   MDDatePicker/MDTimePicker -> dispatch("on_cancel") from their cancel btn
+    # MDCheckbox is a different break: it still reads/writes ButtonBehavior's
+    # removed `state` option (uix/selectioncontrol/selectioncontrol.py).
+
+    return None
+
+
 def register_fonts():
     from kivy.core.text import LabelBase
     robot_mono = Font(name='RobotoMono', base_folder="assets/fonts/Roboto_Mono/static")
