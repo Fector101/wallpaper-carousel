@@ -27,8 +27,11 @@ class MyRoundButton(Button):
     @property
     def _glow_radius(self):
         # Kivy 3.0 removed ButtonBehavior's `state` option in favour of the
-        # read-only `pressed`, so the press glow keys off `pressed`.
-        return 50 if self.pressed else 20
+        # read-only `pressed`, so the press glow keys off `pressed` there and
+        # off `state` on 2.3.x, where `pressed` does not exist yet.
+        if hasattr(self, "pressed"):
+            return 50 if self.pressed else 20
+        return 50 if self.state == "down" else 20
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -56,7 +59,14 @@ class MyRoundButton(Button):
                 border_radius=[r, r, r, r],
                 blur_radius=self._glow_radius
             )
-        self.bind(size=self.update_rect, pos=self.update_rect, pressed=self.update_rect)
+        # `bind()` raises KeyError for a name that isn't a property on this
+        # Kivy, and 2.3.x has no `pressed`, so bind whichever one it provides.
+        press_state = "pressed" if hasattr(self, "pressed") else "state"
+        self.bind(
+            size=self.update_rect,
+            pos=self.update_rect,
+            **{press_state: self.update_rect},
+        )
 
         # Clock.schedule_interval(self.peek,2)
 
