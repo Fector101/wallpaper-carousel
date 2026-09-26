@@ -479,6 +479,34 @@ def patch_kivymd_switch_press_events():
     return None
 
 
+def patch_kivymd_hover_on_touch():
+    # KivyMD's HoverBehavior binds every hover capable widget to Window.mouse_pos
+    # (uix/behaviors/hover_behavior.py) without any platform guard. On Android
+    # the SDL3 window provider forwards real mouse motion events into
+    # Window.mouse_pos (core/window/window_sdl3.py `_fix_mouse_pos`), and
+    # on_mouse_update sets `hovering = True` before the parent/sibling
+    # visibility check, so `on_enter` can be skipped while `hovering` stays
+    # True. The next motion event then dispatches a bare `on_leave`, and
+    # StateLayerBehavior restores its default `_shadow_softness = [0, 0]`
+    # (uix/behaviors/state_layer_behavior.py) into the `shadow_softness`
+    # NumericProperty -> dpi2px(0, 0) -> "TypeError: Expected str, got int".
+    from kivy.utils import platform
+    if platform not in ('android', 'ios'):
+        return None
+    from kivy.properties import BooleanProperty
+    from kivymd.uix.behaviors.hover_behavior import HoverBehavior
+    from kivymd.uix.behaviors.state_layer_behavior import StateLayerBehavior
+
+    # Reassign the property instead of the class attribute so widgets can still
+    # opt in per instance / from kv.
+    HoverBehavior.allow_hover = BooleanProperty(False)
+    # CommonElevationBehavior uses 0 here (uix/behaviors/elevation.py), the
+    # [0, 0] default is only read back into the NumericProperty above.
+    StateLayerBehavior._shadow_softness = 0
+
+    return None
+
+
 def register_fonts():
     from kivy.core.text import LabelBase
     robot_mono = Font(name='RobotoMono', base_folder="assets/fonts/Roboto_Mono/static")

@@ -32,7 +32,7 @@ from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_
     theme_colors as _theme_colors
 boot_log("main: local imports done2")
 from utils.helper import Service, get_free_port, register_fonts, fix_input_on_linux, \
-    patch_kivymd_switch_press_events, \
+    patch_kivymd_switch_press_events, patch_kivymd_hover_on_touch, \
     get_stored_running_ui_server_port, get_stored_running_service_server_port
 boot_log("main: local imports done1")
 from utils.image_operations import ImageOperation, warm_up_android_bitmap_stack # JNI call — app_storage_path() - 0.697s
@@ -44,6 +44,7 @@ android_notify_logger.setLevel(logging.DEBUG if on_android_platform() else loggi
 
 fix_input_on_linux()
 patch_kivymd_switch_press_events()
+patch_kivymd_hover_on_touch()
 register_fonts()
 boot_log("--------------main: module setup done--------------")
 
