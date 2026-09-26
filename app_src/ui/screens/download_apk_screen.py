@@ -335,7 +335,7 @@ class DownloadApkScreen(MyMDScreen):
             md_bg_color=self.md_bg_color,
             theme_text_color="Custom",
             text_color=[.5, .5, .5, 1],
-            on_release=lambda x: self.handle_going_back()
+            on_release=lambda *_: self.handle_going_back()
         )
 
         bottom_container.add_widget(self.update_button)
@@ -409,7 +409,7 @@ class DownloadApkScreen(MyMDScreen):
             progress(0)
             threading.Thread(target=worker, daemon=True).start()
 
-    def start_install(self,_):
+    def start_install(self,*_):
         if not self.built_ui:
             return
         apk_path=get_apk_path(self.new_version)

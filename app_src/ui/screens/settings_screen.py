@@ -429,7 +429,6 @@ class ToggleSliderRow(Row):
 
     def set_from_user_key(self, instance,pos=None):
         instance.from_user = True
-        print(f"instance.from_user set to True for {instance} at pos {pos}")
 
     def _set_theme_color(self, _, theme):
         is_dark = theme == "dark"
