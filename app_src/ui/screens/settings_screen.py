@@ -197,7 +197,7 @@ class ToggleButton(MDIconButton):
         super().__init__(**kwargs)
         self.icon = "pause"
 
-    def on_release(self):
+    def on_release(self,*args):
         self.icon = "play" if self.icon == "pause" else "pause"
 
 
@@ -427,7 +427,7 @@ class ToggleSliderRow(Row):
             self.text_layout.add_widget(self.sub_text_widget)
             self.bind(sub_title_text=self.sub_text_widget.setter("text"))
 
-    def set_from_user_key(self, instance):
+    def set_from_user_key(self, instance,pos=None):
         instance.from_user = True
 
     def _set_theme_color(self, _, theme):
@@ -975,7 +975,7 @@ class SettingsScreen(MyMDScreen):
             theme_bg_color="Custom",
             md_bg_color=theme_colors.BUTTON_BG,
             radius=[5],
-            on_release=add_home_screen_widget,
+            on_release=lambda widget, motion=None:add_home_screen_widget(),
         )
         add_icon = MDButtonIcon(icon="plus")
         add_text = MDButtonText(text="Add to Home Screen", theme_text_color="Custom")
@@ -1219,7 +1219,7 @@ class SettingsScreen(MyMDScreen):
         for card in self._theme_cards:
             card.active = card.preference_value == preference
 
-    def show_export_dialog(self,_):
+    def show_export_dialog(self,_,pos=None):
         if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
             self.app.bottom_bar.hide(animation=False, hidden_by="export")
         self.export_dialog.dialog_box.cancel_btn.bind(on_release=lambda *_: self._restore_bottom_nav())
@@ -1253,7 +1253,7 @@ class SettingsScreen(MyMDScreen):
             text = "Paused"
         self.ids.countdown_label.text = text
 
-    def open_logs_screen(self, _=None):
+    def open_logs_screen(self, _=None,pos=None):
         self.times_tapped += 1
         if self.times_tapped == 3:
             self.manager.current = "logs"
@@ -1286,7 +1286,7 @@ class SettingsScreen(MyMDScreen):
             self.set_service_status(ServiceStatus.FAILED)
             toast("Stop failed")
 
-    def save_interval(self, widget):
+    def save_interval(self, widget,pos=None):
         ##p("saving interval")
         # app = MDApp.get_running_app()
         # # app.device_theme = "dark"

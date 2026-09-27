@@ -451,6 +451,62 @@ def fix_input_on_linux():
     return None
 
 
+def patch_kivymd_switch_press_events():
+    # Kivy 3.0 made ButtonBehavior.on_press/on_release require a touch, but
+    # KivyMD's selectioncontrol.kv re-dispatches both events from the switch
+    # thumb with no arguments. The kv handlers are fbind observers, so these
+    # class methods are only reached as the empty default handler -> make them
+    # tolerant, otherwise tapping the thumb raises a TypeError.
+    from kivymd.uix.selectioncontrol import MDSwitch
+
+    def ignore(*args, **kwargs):
+        pass
+
+    MDSwitch.on_press = ignore
+    MDSwitch.on_release = ignore
+
+    # Other KivyMD widgets that re-dispatch these events without a touch, and
+    # therefore need the same patch if they ever get used here:
+    #   MDImageList          uix/imagelist/imagelist.kv (on_press/on_release)
+    #   MDTabs               uix/tab/tab.py (on_release, plus a `lambda x:` that
+    #                        also breaks on the new (instance, touch) call)
+    #   MDSegmentedButton    uix/segmentedbutton/segmentedbutton.py (on_release)
+    #   MDNavigationBar      uix/navigationbar/navigationbar.py (`on_release(self)`)
+    #   MDDatePicker/MDTimePicker -> dispatch("on_cancel") from their cancel btn
+    # MDCheckbox is a different break: it still reads/writes ButtonBehavior's
+    # removed `state` option (uix/selectioncontrol/selectioncontrol.py).
+
+    return None
+
+
+def patch_kivymd_hover_on_touch():
+    # KivyMD's HoverBehavior binds every hover capable widget to Window.mouse_pos
+    # (uix/behaviors/hover_behavior.py) without any platform guard. On Android
+    # the SDL3 window provider forwards real mouse motion events into
+    # Window.mouse_pos (core/window/window_sdl3.py `_fix_mouse_pos`), and
+    # on_mouse_update sets `hovering = True` before the parent/sibling
+    # visibility check, so `on_enter` can be skipped while `hovering` stays
+    # True. The next motion event then dispatches a bare `on_leave`, and
+    # StateLayerBehavior restores its default `_shadow_softness = [0, 0]`
+    # (uix/behaviors/state_layer_behavior.py) into the `shadow_softness`
+    # NumericProperty -> dpi2px(0, 0) -> "TypeError: Expected str, got int".
+    from kivy.utils import platform
+    if platform not in ('android', 'ios'):
+        return None
+    from kivy.properties import BooleanProperty
+    from kivymd.uix.behaviors.hover_behavior import HoverBehavior
+    from kivymd.uix.behaviors.state_layer_behavior import StateLayerBehavior
+
+    # Reassign the property instead of the class attribute so widgets can still
+    # opt in per instance / from kv.
+    HoverBehavior.allow_hover = BooleanProperty(False)
+    # CommonElevationBehavior uses 0 here (uix/behaviors/elevation.py), the
+    # [0, 0] default is only read back into the NumericProperty above.
+    StateLayerBehavior._shadow_softness = 0
+
+    return None
+
+
 def register_fonts():
     from kivy.core.text import LabelBase
     robot_mono = Font(name='RobotoMono', base_folder="assets/fonts/Roboto_Mono/static")

@@ -96,19 +96,20 @@ class ScreenManager(MDScreenManager):
         elif self.app.bottom_bar:
             self.app.bottom_bar.show(hidden_by=self)
 
-    def go_to_settings(self, _=None):
+    def go_to_settings(self, widget=None, widget_pos=0):
+
         self.transition = SlideTransition(direction="left")
         self.current = "settings"
 
-    def go_to_thumbs(self, _=None):
+    def go_to_thumbs(self, widget=None, widget_pos=0):
         self.transition = SlideTransition(direction="right")
         self.current = "thumbs"
 
-    def go_to_preview(self, _=None):
+    def go_to_preview(self, widget=None, widget_pos=0):
         self.transition = NoTransition()
         self.current = "preview"
 
-    def go_to_fullscreen(self, _=None):
+    def go_to_fullscreen(self, widget=None, widget_pos=0):
         self.transition = NoTransition()
         self.current = "fullscreen"
 

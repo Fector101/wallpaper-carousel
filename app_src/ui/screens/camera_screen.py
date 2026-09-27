@@ -237,7 +237,7 @@ class CameraLayout(BoxLayout):
     # Quality selection
     # ------------------------------------------------------------------
 
-    def _on_quality_btn(self, btn):
+    def _on_quality_btn(self, btn,pos=None):
         name = btn.text
         if name == self._quality:
             return

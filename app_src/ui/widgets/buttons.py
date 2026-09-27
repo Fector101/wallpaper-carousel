@@ -24,6 +24,15 @@ class MyRoundButton(Button):
     bg_color_instr1 = None
     back_layer_bg_color = ListProperty()
 
+    @property
+    def _glow_radius(self):
+        # Kivy 3.0 removed ButtonBehavior's `state` option in favour of the
+        # read-only `pressed`, so the press glow keys off `pressed` there and
+        # off `state` on 2.3.x, where `pressed` does not exist yet.
+        if hasattr(self, "pressed"):
+            return 50 if self.pressed else 20
+        return 50 if self.state == "down" else 20
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -48,9 +57,16 @@ class MyRoundButton(Button):
                 inset=True,
                 spread_radius=[-15, -15],
                 border_radius=[r, r, r, r],
-                blur_radius=20 if self.state == "normal" else 50
+                blur_radius=self._glow_radius
             )
-        self.bind(size=self.update_rect, pos=self.update_rect, state=self.update_rect)
+        # `bind()` raises KeyError for a name that isn't a property on this
+        # Kivy, and 2.3.x has no `pressed`, so bind whichever one it provides.
+        press_state = "pressed" if hasattr(self, "pressed") else "state"
+        self.bind(
+            size=self.update_rect,
+            pos=self.update_rect,
+            **{press_state: self.update_rect},
+        )
 
         # Clock.schedule_interval(self.peek,2)
 
@@ -66,7 +82,7 @@ class MyRoundButton(Button):
     def update_rect(self, *_):
         self.bg.pos = self.pos
         self.bg.size = self.size
-        self.bg.blur_radius = 20 if self.state == "normal" else 50
+        self.bg.blur_radius = self._glow_radius
         self.rect.pos = self.pos
         self.rect.size = self.size
 
@@ -82,7 +98,7 @@ class MyMDIconButton(MDIconButton):
         self.time_of_second_release = 0
         self.on_double_click= on_double_click
 
-    def on_release(self):
+    def on_release(self,*args):
         # If some other instance is waiting for a second click, cancel it
         if MyMDIconButton._active_instance is not None and MyMDIconButton._active_instance is not self:
             MyMDIconButton._active_instance.cancel_double_click()

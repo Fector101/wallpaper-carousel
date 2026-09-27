@@ -236,7 +236,7 @@ class PlaceOnMainScreen:
         # app_logger.info("[BackKey] PlaceOnMainScreen.show() -> bound on_key_down + on_key_up")
 
     def _on_key_down(self, _, key, *__):
-        if key != 27:
+        if key not in (27, 1073742106):
             return True
         now = time.monotonic()
         if not self._back_key_pending:
@@ -251,7 +251,7 @@ class PlaceOnMainScreen:
         return True
 
     def _on_key_up(self, _, key, *__):
-        if key != 27:
+        if key not in (27, 1073742106):
             return True
         now = time.monotonic()
         if not self._back_key_pending:
@@ -411,7 +411,7 @@ class MyMDScreen(MDScreen):
         """Implemented by children"""
 
     def _on_key_down(self, _, key, *__):
-        if key != 27:
+        if key not in (27, 1073742106):
             return False
         now = time.monotonic()
         if not self._back_key_pending:
@@ -426,7 +426,7 @@ class MyMDScreen(MDScreen):
         return True
 
     def _on_key_up(self, _, key, *__):
-        if key != 27:
+        if key not in (27, 1073742106):
             return False
         now = time.monotonic()
         if not self._back_key_pending:

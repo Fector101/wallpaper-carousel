@@ -302,7 +302,7 @@ class StatsScreen(MyMDScreen):
     def handle_going_back(self,*_):
         self.manager.go_to_thumbs()
 
-    def refresh_storage_data(self,widget=None):
+    def refresh_storage_data(self,widget=None,pos=None):
         try:
             v = total_and_free_storage_in_android_device()
             print(f"storage v: {v}")

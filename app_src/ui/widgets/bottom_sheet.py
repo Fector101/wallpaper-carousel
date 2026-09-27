@@ -36,7 +36,7 @@ class DropDownMain(Row):
         # self.add_widget(t)
         # self.bind(touch_up=self.on_release)
 
-    def on_release(self):
+    def on_release(self,*args):
         app_logger.warning("TODO Add Un-Grouped Logic")
         return True
         items = [
@@ -122,7 +122,7 @@ class MyBtmSheet(MDBottomSheet):
         self.close_btn = MDBottomSheetDragHandleButton(
                 icon="close",
                 ripple_effect=False,
-                on_release=lambda x: self.set_state("close"),
+                on_release=lambda x,motion=None: self.set_state("close"),
                 theme_text_color="Custom",
                 text_color="white",
             )
