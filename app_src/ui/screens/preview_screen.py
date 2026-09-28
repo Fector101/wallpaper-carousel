@@ -89,14 +89,14 @@ from kivy.clock import Clock
 
 
 class PreviewScreen(MyMDScreen):
-    scaled_down_img_texture=ObjectProperty
+    scaled_down_img_texture=ObjectProperty(None, allownone=True)
     # abs_img_path=StringProperty("/data/user/0/org.wally.waller/files/wallpapers/486306-1920x1080-desktop-full-hd-blade-runner-2049-background-image.jpg")
     abs_img_path=StringProperty("")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.proxy = None
-        self._pending_restore = None
+        self.image_placement_data = None
         self.scatter = None
         self.image_widget = None
         self.save_btn = None
@@ -148,9 +148,11 @@ class PreviewScreen(MyMDScreen):
         # self.bind(size=lambda _, v: setattr(self.image_widget, 'size', v))
         # self.bind(size=lambda _,v: setattr(scatter,'size',v),pos=lambda _,v: setattr(scatter,'pos',v))
 
-        self._pending_restore = None
+        self.image_placement_data = None
         self.image_widget.bind(texture=self.update_cover_size)
-        self.image_widget.texture = self.scaled_down_img_texture
+        if self.scaled_down_img_texture is not None: # safe for hot reload
+            print(self.scaled_down_img_texture)
+            self.image_widget.texture = self.scaled_down_img_texture
         # Window.bind(size=self.update_cover_size)
 
         self.scatter.add_widget(self.image_widget)
@@ -174,6 +176,7 @@ class PreviewScreen(MyMDScreen):
     def on_leave(self, *args):
         self.image_widget.opacity = 0
         self.scaled_down_img_texture = None
+        self.image_placement_data = None
 
     def on_pre_enter(self, *args):
         self.set_scaled_down_texture()
@@ -185,6 +188,13 @@ class PreviewScreen(MyMDScreen):
 
     def format_widget(self, *args):
         self.scatter.scale = self.scatter.min_scale
+        try:
+            from utils.database import ImageDatabase
+            self.image_placement_data = ImageDatabase().get_preview_props(self.abs_img_path)
+        except Exception as error_reading_preview_props:
+            print(f"Failed to read preview props: {error_reading_preview_props}")
+            self.image_placement_data = None
+        print(f"self.image_placement_data: {self.image_placement_data}")
 
         from kivy.loader import Loader
         proxy = Loader.image(self.abs_img_path)
@@ -194,15 +204,6 @@ class PreviewScreen(MyMDScreen):
             on_load=self.apply_proxy_image_texture
         )
 
-        # self._preview_entry_texture = self.image_widget.texture
-        # self._preview_entry_source = self.image_widget.source
-        # self.image_widget.source=self.abs_img_path
-        try:
-            from utils.database import ImageDatabase
-            self._pending_restore = ImageDatabase().get_preview_props(self.abs_img_path)
-        except Exception as error_reading_preview_props:
-            print(f"Failed to read preview props: {error_reading_preview_props}")
-            self._pending_restore = None
         self.hide_system_ui()
 
     def handle_going_back(self, *_):
@@ -282,17 +283,17 @@ class PreviewScreen(MyMDScreen):
             (win_h - new_h) / 2
         )
 
-        pending = self._pending_restore
+        pending = self.image_placement_data
         if pending and pending.get("scale") and pending.get("cx") is not None and pending.get("cy") is not None:
             if not self._restore_texture_current():
                 return
-            self._pending_restore = None
+            self.image_placement_data = None
             self.scatter.scale = pending["scale"]
             self.scatter.pos = (
                 win_w / 2 - self.scatter.scale * (pending["cx"] * new_w),
                 win_h / 2 - self.scatter.scale * (pending["cy"] * new_h),
             )
-        print("update_cover_size")
+        # print(f"update_cover_size: {pending}")
 
     def _restore_texture_current(self):
         """Whether the displayed texture belongs to the current source, so a
@@ -333,7 +334,7 @@ def _save_crop_and_props(abs_img_path, box, scale, cx, cy):
     crop_and_save_region(abs_img_path, box)
     persisted = ImageDatabase().set_preview_props(abs_img_path, scale, cx, cy)
     if not persisted:
-        if had_previous:
+        if had_previous and previous_content is not None:
             crop_path.write_bytes(previous_content)
         else:
             try:
