@@ -150,6 +150,7 @@ class PreviewScreen(MyMDScreen):
 
         self._pending_restore = None
         self.image_widget.bind(texture=self.update_cover_size)
+        self.image_widget.texture = self.scaled_down_img_texture
         # Window.bind(size=self.update_cover_size)
 
         self.scatter.add_widget(self.image_widget)
@@ -158,6 +159,7 @@ class PreviewScreen(MyMDScreen):
         root.add_widget(self.save_btn)
         self.add_widget(root)
         self.format_widget()
+        self.image_widget.opacity=1
 
     def on_enter(self, *args):
         super().on_enter(*args)
@@ -171,11 +173,18 @@ class PreviewScreen(MyMDScreen):
 
     def on_leave(self, *args):
         self.image_widget.opacity = 0
+        self.scaled_down_img_texture = None
+
+    def on_pre_enter(self, *args):
+        self.set_scaled_down_texture()
+
+    def set_scaled_down_texture(self):
+        if self.image_widget is not None and self.scaled_down_img_texture:
+            self.image_widget.texture = self.scaled_down_img_texture
+            self.image_widget.opacity=1
 
     def format_widget(self, *args):
         self.scatter.scale = self.scatter.min_scale
-        self.image_widget.texture=self.scaled_down_img_texture
-        self.image_widget.opacity=1
 
         from kivy.loader import Loader
         proxy = Loader.image(self.abs_img_path)
