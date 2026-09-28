@@ -109,6 +109,7 @@ class PreviewScreen(MyMDScreen):
     def build_ui(self,_):
         print("building ui")
         self.built_ui = True
+        self.set_image_data()
         root = MDFloatLayout()
         self.btn_close = MDIconButton(
             icon="close",
@@ -185,16 +186,14 @@ class PreviewScreen(MyMDScreen):
         if self.image_widget is not None and self.scaled_down_img_texture:
             self.image_widget.texture = self.scaled_down_img_texture
             self.image_widget.opacity=1
+        self.set_image_data()
+
 
     def format_widget(self, *args):
+        if not self.abs_img_path: # safe hot reload
+            return None
         self.scatter.scale = self.scatter.min_scale
-        try:
-            from utils.database import ImageDatabase
-            self.image_placement_data = ImageDatabase().get_preview_props(self.abs_img_path)
-        except Exception as error_reading_preview_props:
-            print(f"Failed to read preview props: {error_reading_preview_props}")
-            self.image_placement_data = None
-        print(f"self.image_placement_data: {self.image_placement_data}")
+
 
         from kivy.loader import Loader
         proxy = Loader.image(self.abs_img_path)
@@ -285,8 +284,6 @@ class PreviewScreen(MyMDScreen):
 
         pending = self.image_placement_data
         if pending and pending.get("scale") and pending.get("cx") is not None and pending.get("cy") is not None:
-            if not self._restore_texture_current():
-                return
             self.image_placement_data = None
             self.scatter.scale = pending["scale"]
             self.scatter.pos = (
@@ -295,14 +292,14 @@ class PreviewScreen(MyMDScreen):
             )
         # print(f"update_cover_size: {pending}")
 
-    def _restore_texture_current(self):
-        """Whether the displayed texture belongs to the current source, so a
-        saved viewport restore is only consumed once that image is loaded."""
-        if self.image_widget.texture is None:
-            return False
-        if self._preview_entry_source == self.abs_img_path:
-            return True
-        return self.image_widget.texture is not self._preview_entry_texture
+    def set_image_data(self):
+        try:
+            from utils.database import ImageDatabase
+            self.image_placement_data = ImageDatabase().get_preview_props(self.abs_img_path)
+        except Exception as error_reading_preview_props:
+            print(f"Failed to read preview props: {error_reading_preview_props}")
+            self.image_placement_data = None
+        print(f"self.image_placement_data: {self.image_placement_data}")
 
     def apply_proxy_image_texture(self,proxy_image):
         if proxy_image.image.texture:
