@@ -4,10 +4,10 @@ from pathlib import Path
 from kivy.clock import Clock
 from kivy.properties import ListProperty, ObjectProperty, NumericProperty, StringProperty
 from kivy.metrics import dp, sp
-
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.carousel import Carousel
 from kivy.uix.image import Image
+
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDIconButton
 from kivymd.uix.menu import MDDropdownMenu
@@ -47,7 +47,7 @@ class BorderMDBoxLayout(MDBoxLayout):
     def update_border(self, *_):
         self.border.rounded_rectangle = self.round_rect_args  # (self.x,self.y,self.width,self.height,16)
 
-# from kivy.graphics import Color, Rectangle
+
 class MyCarousel(Carousel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -65,6 +65,7 @@ class MyCarousel(Carousel):
         app = get_app()
         file_operation = app.file_operation
         file_operation.user_carousel_size = value
+
 
 class MyMDIconButton(MDIconButton):
     def __init__(self, **kwargs):
@@ -197,6 +198,7 @@ class MyImage(Image):
     higher_format=StringProperty("")
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
 
 class FullscreenScreen(MyMDScreen):
     current_image: str # used in toggle btn
@@ -456,6 +458,7 @@ class FullscreenScreen(MyMDScreen):
         self._update_menu_theme(menu_bg, tc)
 
     def enter_preview_mode(self, *_):
+        self.manager.preview_screen.scaled_down_img_texture = self.carousel.current_slide.texture
         self.manager.preview_screen.abs_img_path = self.current_image
         self.manager.go_to_preview()
 

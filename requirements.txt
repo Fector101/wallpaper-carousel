@@ -10,3 +10,4 @@ https://github.com/fector101/plyer/archive/feature/file-type-parser.zip
 buildozer
 cython==0.29.34
 pillow
+kaki
