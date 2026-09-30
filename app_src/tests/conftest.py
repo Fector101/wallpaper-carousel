@@ -27,6 +27,16 @@ _mock_module("android_notify")
 for name in ("android", "android_widgets", "android.permissions", "jnius"):
     _mock_module(name)
 
+
+class JavaException(Exception):
+    """Stands in for jnius.jnius.JavaException, which must be a real exception class
+    to be usable in an `except` clause."""
+
+
+sys.modules["jnius"].JavaException = JavaException
+sys.modules["jnius"].jnius = sys.modules["jnius"]
+sys.modules["jnius.jnius"] = sys.modules["jnius"]
+
 import utils.helper as helper
 
 _TMP_APP = Path(tempfile.mkdtemp())

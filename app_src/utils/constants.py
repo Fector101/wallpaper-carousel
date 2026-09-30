@@ -151,6 +151,8 @@ class ServiceStatus(Enum):
     STOPPED = "stopped"
     FAILED = "failed"
     RESTARTING = "restarting"
+    RETRYING = "retrying"
 
 DEV=0
 VERSION="1.0.10"
+

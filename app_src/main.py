@@ -60,6 +60,11 @@ class WallpaperCarouselApp(MDApp):
     # True only after file_operation is created AND bind_plyer_fix + share
     # listener are wired up; gates the picker entry point and early results.
     image_operation_ready = BooleanProperty(False)
+    # Android refuses to spawn a service process it flagged as crash-looped
+    # ("Unable to launch app ...: process is bad"). That refusal clears once the
+    # dying process is reaped, so retry a few times instead of failing right away.
+    SERVICE_START_RETRY_DELAY_SECONDS = 15
+    SERVICE_START_MAX_RETRIES = 4
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -73,6 +78,8 @@ class WallpaperCarouselApp(MDApp):
         self.sm = None
         self.bottom_bar = None
         self._widget_pick_pending = None
+        self._service_start_attempt = 0
+        self._service_start_retry_event = None
 
     def build_ui(self):
         from kivy.lang import Builder
@@ -327,8 +334,17 @@ class WallpaperCarouselApp(MDApp):
             self.sm.settings_screen.set_service_status(status)
 
     def start_service(self):
+        self.cancel_service_start_retry()
+        self._service_start_attempt = 0
+        return self._try_start_service()
 
-        settings_screen = getattr(self.sm, "settings_screen", None)
+    def cancel_service_start_retry(self):
+        if self._service_start_retry_event:
+            self._service_start_retry_event.cancel()
+            self._service_start_retry_event = None
+
+    def _try_start_service(self):
+        settings_screen = self._settings_screen_or_none()
         if settings_screen is not None:
             settings_screen.set_service_status(ServiceStatus.STARTING)
 
@@ -342,12 +358,44 @@ class WallpaperCarouselApp(MDApp):
                 on_finish=self.self_settings_screen_service_state
             ).start()
         except Exception as error_starting_service:
+            app_logger.exception(
+                f"start_service: error starting carousel service: "
+                f"{error_starting_service}")
+            result = False
+
+        if result is not False:
+            self.cancel_service_start_retry()
+            return True
+        return self._schedule_service_start_retry()
+
+    def _schedule_service_start_retry(self):
+        self._service_start_attempt += 1
+        settings_screen = self._settings_screen_or_none()
+
+        if self._service_start_attempt > self.SERVICE_START_MAX_RETRIES:
+            self._service_start_retry_event = None
             if settings_screen is not None:
                 settings_screen.set_service_status(ServiceStatus.FAILED)
-            raise
-        if result is False and settings_screen is not None:
-            settings_screen.set_service_status(ServiceStatus.FAILED)
-            raise Exception("Failed to start carousel service")
+            app_logger.error(
+                f"start_service: carousel service still refused after "
+                f"{self._service_start_attempt - 1} retries, giving up")
+            return False
+
+        if settings_screen is not None:
+            settings_screen.set_service_status(
+                ServiceStatus.RETRYING,
+                f"Retrying in {self.SERVICE_START_RETRY_DELAY_SECONDS}s "
+                f"({self._service_start_attempt}/{self.SERVICE_START_MAX_RETRIES})",
+            )
+        self._service_start_retry_event = Clock.schedule_once(
+            self._retry_service_start, self.SERVICE_START_RETRY_DELAY_SECONDS)
+        return False
+
+    def _retry_service_start(self, _dt):
+        self._service_start_retry_event = None
+        self._try_start_service()
+    def _settings_screen_or_none(self):
+        return getattr(getattr(self, "sm", None), "settings_screen", None)
 
     def on_resume(self):
         if self.file_operation and self.file_operation.showing_loading_screen and not self.file_operation._file_picker_active:

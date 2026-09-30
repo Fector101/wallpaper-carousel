@@ -646,6 +646,7 @@ class SettingsScreen(MyMDScreen):
         ServiceStatus.STOPPED: ([0.62, 0.62, 0.62, 1], "Stopped"),
         ServiceStatus.FAILED: ([0.9, 0.28, 0.25, 1], "Failed"),
         ServiceStatus.RESTARTING: ([1.0, 0.76, 0.03, 1], "Restarting..."),
+        ServiceStatus.RETRYING: ([1.0, 0.76, 0.03, 1], "Retrying..."),
     }
     # (restart button label, stop button label) per ServiceStatus
     _CAROUSEL_TOOLS_LABELS = {
@@ -655,6 +656,7 @@ class SettingsScreen(MyMDScreen):
         ServiceStatus.STOPPED: ("Restart Carousel", "Stop Carousel"),
         ServiceStatus.FAILED: ("Restart Carousel", "Stop Carousel"),
         ServiceStatus.RESTARTING: ("Restarting...", "Stop Carousel"),
+        ServiceStatus.RETRYING: ("Starting...", "Stop Carousel"),
     }
     STARTUP_TIMEOUT_SECONDS = 15
     STOP_TIMEOUT_SECONDS = 10
@@ -1270,6 +1272,7 @@ class SettingsScreen(MyMDScreen):
         ).show()
 
     def _terminate_carousel_confirm(self):
+        self.app.cancel_service_start_retry()
         self.set_service_status(ServiceStatus.STOPPING)
         try:
             result = Service(name="Wallpapercarousel").stop()
@@ -1356,17 +1359,15 @@ class SettingsScreen(MyMDScreen):
         self._restart_service_confirm()
 
     def _restart_service_confirm(self):
+        self.app.cancel_service_start_retry()
         self.set_service_status(ServiceStatus.RESTARTING)
 
         def after_stop(*_):
             try:
-                self.app.start_service()
-                # Service(name="Wallpapercarousel").start()
-                toast("Service boosted!")
+                if self.app.start_service():
+                    toast("Service boosted!")
             except Exception as error_starting_service:
-               #p(error_starting_service)
                 traceback.print_exc()
-                toast("Start failed")
                 self.set_service_status(ServiceStatus.FAILED)
 
         try:
@@ -1385,7 +1386,7 @@ class SettingsScreen(MyMDScreen):
     def on_service_stopped(self):
         self.set_service_status(ServiceStatus.STOPPED)
 
-    def set_service_status(self, status):
+    def set_service_status(self, status, label=None):
         if not self.built_ui:
             return
         if isinstance(status, str):
@@ -1396,9 +1397,12 @@ class SettingsScreen(MyMDScreen):
                 return
 
         color, text = self._SERVICE_STATUS_STATE[status]
+        if label is not None:
+            text = label
         if self._carousel_status_dot is not None:
             self._carousel_status_dot.md_bg_color = color
         if self._carousel_status_label is not None:
+            
             self._carousel_status_label.text = text
 
         if self.carousel_tools is not None:

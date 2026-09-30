@@ -138,6 +138,7 @@ class Service:
         self.name = name
         self.on_finish = on_finish
         self.extra = extra
+        self.start_error = None
         self._method_cache = {}
         self.service = self.__load_service_class() if self.mActivity else None
 
@@ -231,15 +232,37 @@ class Service:
                 from utils.constants import ServiceStatus
                 self.on_finish(ServiceStatus.RUNNING)
             return True
-        
+
+        import jnius.jnius
+        from utils.logger import app_logger
+        self.start_error = None
         try:
             self.__get_static_method('start', 2).invoke(None, (self.mActivity, arg))
-        except Exception as error_starting_service:
-            print("Error starting service:", error_starting_service)
-            import traceback
-            traceback.print_exc()
+            return True
+
+        except jnius.jnius.JavaException as java_exception:
+            # The java class name is only the wrapper (InvocationTargetException),
+            # the real reason is in the stack trace, prefixed by "Caused by:".
+            self.start_error = "\n".join(
+                str(frame)
+                for frame in (getattr(java_exception, 'stacktrace', None) or [])
+            )
+            if 'process is bad' in self.start_error:
+                app_logger.error(
+                    f"[Service.start] {self.get_name()} refused by Android: service "
+                    f"process marked bad (crash-looped). Only a force-stop or app "
+                    f"restart can start it again."
+                )
+            else:
+                app_logger.exception(
+                    f"[Service.start] JVM exception starting {self.get_name()}")
             return False
-        return True
+
+        except Exception as error_starting_service:
+            self.start_error = str(error_starting_service)
+            app_logger.exception(
+                f"[Service.start] error starting {self.get_name()}")
+            return False
 
     def __run_service_file(self):
         import os, json, runpy, threading

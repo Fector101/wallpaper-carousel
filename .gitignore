@@ -24,4 +24,5 @@ ImageDataBase error: _conn
 *.jks
 crash-samples
 kivy
+kivy_src
 venv

@@ -67,7 +67,7 @@ def _unsupported_callbacks(path):
 
 def _source_files():
     for path in sorted(APP_SRC.rglob("*.py")):
-        if path.relative_to(APP_SRC).parts[0] in {"tests", "android_notify"}:
+        if path.relative_to(APP_SRC).parts[0] in {"tests", "android_notify", "kivy", "kivy_src"}:
             continue
         yield path
 
