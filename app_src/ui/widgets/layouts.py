@@ -479,7 +479,8 @@ class MyMDScreen(MDScreen):
 
     def hide_system_ui(self):
         self.__hide_system_ui = True
-        self.screen_content.padding = [0,0,0,0]
+        if self.screen_content is not None: # hide bars before adding some content to screen
+            self.screen_content.padding = [0,0,0,0]
         if not on_android_platform():
             return
         _set_system_ui_visibility(True)

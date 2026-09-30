@@ -62,6 +62,7 @@ class MDLive(App,MDApp):
         "LogsScreen":"ui.screens.logs_screen",
         "FullscreenScreen":"ui.screens.full_screen",
         "GalleryScreen":"ui.screens.gallery_screen",
+        "PreviewScreen":"ui.screens.preview_screen",
         "MyBtmSheet":"ui.screens.gallery_screen",
         # "NotificationScreen": "important",
         "WelcomeScreen": "ui.screens.welcome_screen",
@@ -78,7 +79,7 @@ class MDLive(App,MDApp):
     def build_app(self, *args):
         # return Factory.MyPopUp()
         # return Factory.DialogScreen(ok_callback=None)
-        return Factory.SettingsScreen()
+        return Factory.PreviewScreen()
 
     def on_start(self):
         # self.theme_cls.theme_style = "Light"

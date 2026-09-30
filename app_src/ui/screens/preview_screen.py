@@ -1,28 +1,19 @@
-from kivymd.uix.floatlayout import MDFloatLayout
-
-from kivy.metrics import dp
-from kivymd.uix.button import MDIconButton
-
 from kivy.core.window import Window
-from kivymd.uix.screen import MDScreen
-
-from kivy.uix.floatlayout import FloatLayout
-from ui.widgets.layouts import MyMDScreen
-from kivy.properties import ListProperty, StringProperty
+from kivy.metrics import dp
+from kivy.properties import ListProperty, StringProperty, ObjectProperty
 from kivy.graphics import Color, Rectangle
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import AsyncImage
 from kivy.uix.scatterlayout import ScatterLayout
+
+from kivymd.uix.floatlayout import MDFloatLayout
+from kivymd.uix.button import MDIconButton
+
 from ui.widgets.modals import MyTextButton
+from ui.widgets.layouts import MyMDScreen
 from utils.constants import _rgba, theme_colors
+from utils.logger import app_logger
 
-
-class MyImage(AsyncImage):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.bind(pos=self.test)
-    def test(self, instance, value):
-        print("on_pos: ", value)
 
 class MyScatter(ScatterLayout):
     def __init__(self, **kwargs):
@@ -37,7 +28,7 @@ class MyScatter(ScatterLayout):
 
         self.bind(pos=self.update_rect, size=self.update_rect)
 
-    def update_rect(self, *args):
+    def update_rect(self, *_):
         # Manually update the rectangle coordinates when the widget resizes
         self.rect.pos = self.pos
         self.rect.size = self.size
@@ -80,17 +71,37 @@ class MyBoxLayout(BoxLayout):
 
         self.bind(pos=self.update_rect, size=self.update_rect)
 
-    def update_rect(self, *args):
+    def update_rect(self, *_):
         # Manually update the rectangle coordinates when the widget resizes
         self.rect.pos = self.pos
         self.rect.size = self.size
 
 
+from kivy.clock import Clock
+
+
 class PreviewScreen(MyMDScreen):
-    abs_img_path=StringProperty("/data/user/0/org.wally.waller/files/wallpapers/486306-1920x1080-desktop-full-hd-blade-runner-2049-background-image.jpg")
+    scaled_down_img_texture=ObjectProperty(None, allownone=True)
+    # abs_img_path=StringProperty("/data/user/0/org.wally.waller/files/wallpapers/486306-1920x1080-desktop-full-hd-blade-runner-2049-background-image.jpg")
+    abs_img_path=StringProperty("")
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.proxy = None
+        self.image_placement_data = None
+        self.scatter = None
+        self.image_widget = None
+        self.save_btn = None
+        self.btn_close = None
+        self._preview_entry_texture = None
+        self._preview_entry_source = None
         self.name="preview"
+        self.built_ui = False
+
+    def build_ui(self,_):
+        self.set_image_data()
+        # print("building ui")
+        self.built_ui = True
         root = MDFloatLayout()
         self.btn_close = MDIconButton(
             icon="close",
@@ -120,44 +131,78 @@ class PreviewScreen(MyMDScreen):
 
         )  # ,pos_hint={"center_x":0.01, "center_y":0.5})
         # image = MyBoxLayout(size_hint=(1,1),background_color=[1,0,0.5,1])
-        self.image_widget = MyImage(
-            source=self.abs_img_path,
+        self.image_widget = AsyncImage(
+            source="",# <--- never set directly
             fit_mode="cover",
-            keep_ratio=True,
             size_hint=(None, None)
         )
+        self.image_widget.opacity=0
         # self.bind(size=lambda _, v: setattr(self.image_widget, 'size', v))
         # self.bind(size=lambda _,v: setattr(scatter,'size',v),pos=lambda _,v: setattr(scatter,'pos',v))
 
-        self._pending_restore = None
         self.image_widget.bind(texture=self.update_cover_size)
-        Window.bind(size=self.update_cover_size)
+        if self.scaled_down_img_texture is not None: # safe for hot reload
+            self.image_widget.texture = self.scaled_down_img_texture
+        # Window.bind(size=self.update_cover_size)
 
         self.scatter.add_widget(self.image_widget)
         root.add_widget(self.scatter)
         root.add_widget(self.btn_close)
         root.add_widget(self.save_btn)
-        self.update_cover_size()
         self.add_widget(root)
+        self.format_widget()
+        self.image_widget.opacity=1
+
+    def on_enter(self, *args):
+        super().on_enter(*args)
+        if not self.built_ui:
+            Clock.schedule_once(self._timer_set)
+        else:
+            self.format_widget()
+
+    def _timer_set(self,_):
+        Clock.schedule_once(self.build_ui)
+
+    def on_leave(self, *args):
+        # hiding img widget and removing texture data to help avoid flickers on_enter
+        self.image_widget.opacity = 0
+        self.scaled_down_img_texture = None
+        self.image_placement_data = None
+        # resetting texture to call self.update_cover_size which is bound to texture to get it to reset scatter size & pos.
+        self.image_widget.texture = None
+        # Unbinding to avoid errors with large images
+        self.proxy.unbind(on_load=self.apply_proxy_image_texture)
+        self.proxy=None
 
     def on_pre_enter(self, *args):
-        self.scatter.scale = self.scatter.min_scale
-        self._preview_entry_texture = self.image_widget.texture
-        self._preview_entry_source = self.image_widget.source
-        self.image_widget.source=self.abs_img_path
-        try:
-            from utils.database import ImageDatabase
-            self._pending_restore = ImageDatabase().get_preview_props(self.abs_img_path)
-        except Exception as error_reading_preview_props:
-            print(f"Failed to read preview props: {error_reading_preview_props}")
-            self._pending_restore = None
-        print(f"self.abs_img_path:{self.abs_img_path}")
+        self.set_scaled_down_texture()
+
+    def set_scaled_down_texture(self):
+        if self.image_widget is not None and self.scaled_down_img_texture:
+            self.set_image_data()
+            self.image_widget.texture = self.scaled_down_img_texture
+            self.image_widget.opacity=1
+
+
+    def format_widget(self, *_):
+        if not self.abs_img_path: # safe hot reload
+            return None
+
+        from kivy.loader import Loader
+        self.proxy = Loader.image(self.abs_img_path)
+        if self.proxy.loaded:
+            self.apply_proxy_image_texture(self.proxy)
+        self.proxy.bind(
+            on_load=self.apply_proxy_image_texture
+        )
+
         self.hide_system_ui()
-        self.update_cover_size()
+        return None
 
     def handle_going_back(self, *_):
         self.show_system_ui()
-        self.manager.go_to_fullscreen()
+        if self.manager is not None:
+            self.manager.go_to_fullscreen()
 
     def handle_confirm_selection(self, *_):
         info = self._preview_crop_info()
@@ -181,13 +226,11 @@ class PreviewScreen(MyMDScreen):
                 )
                 state["ok"] = True
             except Exception as error_saving_selected_wallpaper:
-                print(f"Failed to save selected wallpaper: {error_saving_selected_wallpaper}")
+                app_logger.error(f"Failed to save selected wallpaper: {error_saving_selected_wallpaper}")
             from kivy.clock import Clock
             Clock.schedule_once(finish)
 
         threading.Thread(target=do_save, daemon=True).start()
-
-
 
     def _preview_crop_info(self):
         if not self.image_widget.texture:
@@ -202,11 +245,17 @@ class PreviewScreen(MyMDScreen):
             self.scatter.pos,
         )
 
-    def update_cover_size(self, *args):
-        if not self.image_widget.texture:
-            return
-
+    def update_cover_size(self, *_):
         win_w, win_h = Window.size
+        if not self.image_widget.texture:
+            self.scatter.scale = self.scatter.min_scale
+            self.scatter.pos = (
+                (win_w - self.scatter.width) / 2,
+                (win_h - self.scatter.height) / 2,
+            )
+
+            app_logger.debug("ran reset scatter size")
+            return
         tex_w = self.image_widget.texture.width
         tex_h = self.image_widget.texture.height
 
@@ -233,25 +282,30 @@ class PreviewScreen(MyMDScreen):
             (win_h - new_h) / 2
         )
 
-        pending = self._pending_restore
+        pending = self.image_placement_data
         if pending and pending.get("scale") and pending.get("cx") is not None and pending.get("cy") is not None:
-            if not self._restore_texture_current():
-                return
-            self._pending_restore = None
+            # self.image_placement_data = None
             self.scatter.scale = pending["scale"]
             self.scatter.pos = (
                 win_w / 2 - self.scatter.scale * (pending["cx"] * new_w),
                 win_h / 2 - self.scatter.scale * (pending["cy"] * new_h),
             )
+        app_logger.debug(f"update_cover_size: {pending}")
 
-    def _restore_texture_current(self):
-        """Whether the displayed texture belongs to the current source, so a
-        saved viewport restore is only consumed once that image is loaded."""
-        if self.image_widget.texture is None:
-            return False
-        if self._preview_entry_source == self.abs_img_path:
-            return True
-        return self.image_widget.texture is not self._preview_entry_texture
+    def set_image_data(self):
+        try:
+            from utils.database import ImageDatabase
+            self.image_placement_data = ImageDatabase().get_preview_props(self.abs_img_path)
+        except Exception as error_reading_preview_props:
+            app_logger.error(f"Failed to read preview props: {error_reading_preview_props}")
+            self.image_placement_data = None
+        app_logger.debug(f"got image data: {self.image_placement_data}")
+
+    def apply_proxy_image_texture(self,proxy_image):
+        if proxy_image.image.texture:
+            self.image_widget.texture = proxy_image.image.texture
+            self.image_widget._high_res_loaded = True
+            self.image_widget.source = self.abs_img_path
 
 
 def _save_crop_and_props(abs_img_path, box, scale, cx, cy):
@@ -277,7 +331,7 @@ def _save_crop_and_props(abs_img_path, box, scale, cx, cy):
     crop_and_save_region(abs_img_path, box)
     persisted = ImageDatabase().set_preview_props(abs_img_path, scale, cx, cy)
     if not persisted:
-        if had_previous:
+        if had_previous and previous_content is not None:
             crop_path.write_bytes(previous_content)
         else:
             try:
@@ -285,3 +339,5 @@ def _save_crop_and_props(abs_img_path, box, scale, cx, cy):
             except FileNotFoundError:
                 pass
         raise Exception("Failed to persist preview viewport")
+
+
