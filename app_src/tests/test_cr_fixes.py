@@ -27,6 +27,9 @@ class _Rec:
     def on_service_start_attempt(self):
         self.calls.append(ServiceStatus.STARTING)
 
+    def on_service_attempt_failed(self):
+        self.calls.append(ServiceStatus.ATTEMPT_FAILED)
+
     def on_service_retry_tick(self, attempt, total, seconds_left):
         self.calls.append(ServiceStatus.RETRYING)
         self.ticks.append((attempt, total, seconds_left))
@@ -81,6 +84,56 @@ def _retrying_service(start_results, **callbacks):
 def _tick(schedule_once):
     """Fire the countdown tick the helper just scheduled via kivy.Clock."""
     schedule_once.call_args[0][0](0)
+
+
+def _run_attempt(schedule_once, screen):
+    """Flash the failure, then run the countdown down to the next attempt."""
+    _tick(schedule_once)  # _begin_countdown, after RETRY_FLASH_SECONDS
+    for _ in range(helper.Service.START_RETRY_DELAY_SECONDS):
+        _tick(schedule_once)
+
+
+def _begin_countdown(schedule_once):
+    """Fire only the flash->countdown handoff, not the countdown itself."""
+    assert schedule_once.call_args[0][0].__name__ == "_begin_countdown"
+    _tick(schedule_once)
+
+
+class _StrictColorProperty:
+    """Mimics ColorProperty(None), whose allownone defaults to False."""
+
+    def __init__(self):
+        self._value = None
+
+    def __set__(self, _obj, value):
+        if value is None:
+            raise ValueError("None is not allowed for text_color_disabled")
+        self._value = value
+
+    def __get__(self, _obj, _owner=None):
+        return self._value
+
+
+class _StrictColorButton:
+    def __init__(self):
+        self.disabled = False
+        self.md_bg_color = None
+        self.txt = SimpleNamespace(
+            text_color=None,
+            text_color_disabled=_StrictColorProperty(),
+        )
+
+
+class _CarouselToolsRecorder:
+    """Stands in for CarouselTools; records the disabled state per status."""
+
+    def __init__(self):
+        self.restart_btn = SimpleNamespace(txt=SimpleNamespace(text=""))
+        self.stop_btn = SimpleNamespace(txt=SimpleNamespace(text=""))
+        self.restart_enabled = []
+
+    def set_restart_enabled(self, enabled):
+        self.restart_enabled.append(enabled)
 
 
 def test_service_start_desktop_returns_true():
@@ -168,46 +221,104 @@ def test_service_start_success_has_no_start_error():
 def test_start_with_retry_refused_schedules_countdown():
     screen = _Rec()
     svc = _retrying_service([False], on_start_attempt=screen.on_service_start_attempt,
+                            on_attempt_failed=screen.on_service_attempt_failed,
                             on_retry=screen.on_service_retry_tick,
                             on_give_up=screen.on_service_start_gave_up)
     with mock.patch("kivy.clock.Clock.schedule_once") as schedule_once:
         assert svc.start_with_retry() is False
 
-    assert screen.calls == [ServiceStatus.STARTING, ServiceStatus.RETRYING]
-    assert screen.ticks == [(1, 4, 15)]
+    # the refusal is reported as a failure first, the countdown comes after
+    assert screen.calls == [ServiceStatus.STARTING, ServiceStatus.ATTEMPT_FAILED]
+    assert screen.ticks == []
     schedule_once.assert_called_once()
-    assert schedule_once.call_args[0][1] == 1
+    assert schedule_once.call_args[0][0] == svc._begin_countdown
+    assert schedule_once.call_args[0][1] == helper.Service.RETRY_FLASH_SECONDS
+
+
+def test_start_with_retry_countdown_starts_after_the_failure_flash():
+    screen = _Rec()
+    svc = _retrying_service([False, False], on_start_attempt=screen.on_service_start_attempt,
+                            on_attempt_failed=screen.on_service_attempt_failed,
+                            on_retry=screen.on_service_retry_tick,
+                            on_give_up=screen.on_service_start_gave_up)
+    with mock.patch("kivy.clock.Clock.schedule_once") as schedule_once:
+        assert svc.start_with_retry() is False
+        _begin_countdown(schedule_once)
+
+    # FAILED is shown for exactly one scheduled step, then "Retrying in 15s"
+    assert screen.calls == [
+        ServiceStatus.STARTING,
+        ServiceStatus.ATTEMPT_FAILED,
+        ServiceStatus.RETRYING,
+    ]
+    assert screen.ticks == [(1, 4, 15)]
+
+
+def test_start_with_retry_cancel_during_the_failure_flash():
+    screen = _Rec()
+    svc = _retrying_service([False] * 3, on_attempt_failed=screen.on_service_attempt_failed,
+                            on_retry=screen.on_service_retry_tick)
+    with mock.patch("kivy.clock.Clock.schedule_once") as schedule_once:
+        svc.start_with_retry()
+        pending_flash = schedule_once.return_value
+        svc.cancel_retry()
+
+    # the pending event is the flash handoff; cancelling it skips the countdown
+    assert pending_flash.cancel.called
+    assert svc._retry_event is None
+    assert screen.ticks == []
+    assert screen.calls == [ServiceStatus.ATTEMPT_FAILED]
+    assert svc.start.call_count == 1
+
+
+def test_start_with_retry_cancel_mid_countdown():
+    screen = _Rec()
+    svc = _retrying_service([False] * 3, on_attempt_failed=screen.on_service_attempt_failed,
+                            on_retry=screen.on_service_retry_tick)
+    with mock.patch("kivy.clock.Clock.schedule_once") as schedule_once:
+        svc.start_with_retry()
+        _run_attempt(schedule_once, screen)
+        # countdown is mid-flight, 14 ticks left
+        assert len(screen.ticks) == 15
+        pending_tick = schedule_once.return_value
+        svc.cancel_retry()
+
+    assert pending_tick.cancel.called
+    assert svc._retry_event is None
+    assert svc.start.call_count == 2
 
 
 def test_start_with_retry_countdown_ticks_down_then_retries():
     screen = _Rec()
-    svc = _retrying_service([False, False], on_retry=screen.on_service_retry_tick,
+    svc = _retrying_service([False, False], on_attempt_failed=screen.on_service_attempt_failed,
+                            on_retry=screen.on_service_retry_tick,
                             on_give_up=screen.on_service_start_gave_up)
     with mock.patch("kivy.clock.Clock.schedule_once") as schedule_once:
         assert svc.start_with_retry() is False
-
-        for _ in range(helper.Service.START_RETRY_DELAY_SECONDS):
-            _tick(schedule_once)
+        _run_attempt(schedule_once, screen)
 
     # one tick per second, second attempt only fires at 0
     assert screen.ticks == [
         (1, 4, 15), (1, 4, 14), (1, 4, 13), (1, 4, 12), (1, 4, 11),
         (1, 4, 10), (1, 4, 9), (1, 4, 8), (1, 4, 7), (1, 4, 6),
         (1, 4, 5), (1, 4, 4), (1, 4, 3), (1, 4, 2), (1, 4, 1),
-        (2, 4, 15),
     ]
     assert svc.start.call_count == 2
     assert ServiceStatus.FAILED not in screen.calls
 
+    # the second refusal flashes before its own countdown restarts at 15
+    _begin_countdown(schedule_once)
+    assert screen.ticks[-1] == (2, 4, 15)
+
 
 def test_start_with_retry_succeeds_on_retry_and_stops():
     screen = _Rec()
-    svc = _retrying_service([False, True], on_retry=screen.on_service_retry_tick,
+    svc = _retrying_service([False, True], on_attempt_failed=screen.on_service_attempt_failed,
+                            on_retry=screen.on_service_retry_tick,
                             on_give_up=screen.on_service_start_gave_up)
     with mock.patch("kivy.clock.Clock.schedule_once") as schedule_once:
         svc.start_with_retry()
-        for _ in range(helper.Service.START_RETRY_DELAY_SECONDS):
-            _tick(schedule_once)
+        _run_attempt(schedule_once, screen)
 
     assert svc.start.call_count == 2
     assert len(screen.ticks) == 15
@@ -218,25 +329,32 @@ def test_start_with_retry_succeeds_on_retry_and_stops():
 def test_start_with_retry_gives_up_after_four_retries():
     screen = _Rec()
     svc = _retrying_service([False] * 6, on_start_attempt=screen.on_service_start_attempt,
+                            on_attempt_failed=screen.on_service_attempt_failed,
                             on_retry=screen.on_service_retry_tick,
                             on_give_up=screen.on_service_start_gave_up)
     with mock.patch("kivy.clock.Clock.schedule_once") as schedule_once:
         svc.start_with_retry()
         for _ in range(4):
-            for _ in range(helper.Service.START_RETRY_DELAY_SECONDS):
-                _tick(schedule_once)
+            _run_attempt(schedule_once, screen)
 
     # first attempt plus four retries
     assert svc.start.call_count == 5
     assert screen.calls.count(ServiceStatus.STARTING) == 5
+    # one failure flash per refusal that is actually retried (4, not 5): the
+    # last refusal goes straight to the give-up, so the status is FAILED
+    assert screen.calls.count(ServiceStatus.ATTEMPT_FAILED) == 4
     assert screen.calls[-1] == ServiceStatus.FAILED
+    # the 5th (final) refusal does not flash: it goes straight to the give-up
+    assert screen.calls[-2] == ServiceStatus.STARTING
+    assert screen.calls[-3] == ServiceStatus.RETRYING
     assert [tick[0] for tick in screen.ticks[::15]] == [1, 2, 3, 4]
     assert svc._retry_event is None
 
 
 def test_start_with_retry_cancel_stops_the_countdown():
     screen = _Rec()
-    svc = _retrying_service([False] * 3, on_retry=screen.on_service_retry_tick)
+    svc = _retrying_service([False] * 3, on_attempt_failed=screen.on_service_attempt_failed,
+                            on_retry=screen.on_service_retry_tick)
     with mock.patch("kivy.clock.Clock.schedule_once") as schedule_once:
         svc.start_with_retry()
         svc.cancel_retry()
@@ -249,7 +367,8 @@ def test_start_with_retry_cancel_stops_the_countdown():
 def test_start_with_retry_none_result_is_not_a_refusal():
     # no mActivity (Pydroid / service-less context) must not spin the retry loop
     screen = _Rec()
-    svc = _retrying_service([None], on_retry=screen.on_service_retry_tick,
+    svc = _retrying_service([None], on_attempt_failed=screen.on_service_attempt_failed,
+                            on_retry=screen.on_service_retry_tick,
                             on_give_up=screen.on_service_start_gave_up)
     with mock.patch("kivy.clock.Clock.schedule_once") as schedule_once:
         assert svc.start_with_retry() is None
@@ -269,6 +388,7 @@ def test_start_service_wires_screen_callbacks():
 
     _, kwargs = fake_cls.call_args
     assert kwargs["on_start_attempt"] == screen.on_service_start_attempt
+    assert kwargs["on_attempt_failed"] == screen.on_service_attempt_failed
     assert kwargs["on_retry"] == screen.on_service_retry_tick
     assert kwargs["on_give_up"] == screen.on_service_start_gave_up
     assert app_obj._carousel_service is fake_cls.return_value
@@ -304,6 +424,93 @@ def test_set_service_status_label_override():
     screen.set_service_status(ServiceStatus.RETRYING, "Retrying in 15s (2/4)")
 
     assert screen._carousel_status_label.text == "Retrying in 15s (2/4)"
+
+
+def test_attempt_failed_status_shows_failed():
+    screen = _make_screen()
+
+    screen.on_service_attempt_failed()
+
+    assert screen._carousel_status_label.text == "Failed"
+
+
+def test_restart_button_is_disabled_while_busy():
+    screen = _make_screen()
+    tools = _CarouselToolsRecorder()
+    screen.carousel_tools = tools
+
+    for status in (ServiceStatus.STARTING, ServiceStatus.RESTARTING,
+                   ServiceStatus.RETRYING, ServiceStatus.ATTEMPT_FAILED,
+                   ServiceStatus.STOPPING):
+        screen.set_service_status(status)
+
+    assert tools.restart_enabled == [False] * 5
+
+
+def test_restart_button_is_enabled_when_idle():
+    screen = _make_screen()
+    tools = _CarouselToolsRecorder()
+    screen.carousel_tools = tools
+
+    for status in (ServiceStatus.RUNNING, ServiceStatus.STOPPED,
+                   ServiceStatus.FAILED):
+        screen.set_service_status(status)
+
+    assert tools.restart_enabled == [True] * 3
+
+
+def test_set_restart_enabled_toggles_disabled_and_dims_both_colours():
+    tools = settings_module.CarouselTools.__new__(settings_module.CarouselTools)
+    tools.app = SimpleNamespace(device_theme="dark")
+    tools.restart_btn = _StrictColorButton()
+    tools._restart_enabled = True
+    background = list(settings_module.theme_colors.BUTTON_BG)
+
+    tools.set_restart_enabled(False)
+
+    assert tools.restart_btn.disabled is True
+    assert tools.restart_btn.md_bg_color == [background[0], background[1], background[2], 0.4]
+    assert tools.restart_btn.txt.text_color_disabled == [1, 1, 1, 0.4]
+
+    tools.set_restart_enabled(True)
+
+    assert tools.restart_btn.disabled is False
+    assert list(tools.restart_btn.md_bg_color) == background
+    # never reset to None: ColorProperty(None) has allownone=False
+    assert tools.restart_btn.txt.text_color_disabled == "white"
+
+
+def test_set_restart_enabled_survives_a_theme_switch():
+    tools = settings_module.CarouselTools.__new__(settings_module.CarouselTools)
+    tools.app = SimpleNamespace(device_theme="light")
+    tools.restart_btn = _StrictColorButton()
+    tools._restart_enabled = False
+    tools.stop_btn = SimpleNamespace(
+        txt=SimpleNamespace(text_color=None),
+    )
+
+    tools.set_restart_enabled(False)
+    # a theme change while disabled must not restore the enabled colours
+    tools.app.device_theme = "dark"
+    tools._set_theme_color()
+
+    assert tools.restart_btn.disabled is True
+    assert tools.restart_btn.txt.text_color_disabled == [1, 1, 1, 0.4]
+    assert tools.restart_btn.txt.text_color == "white"
+
+
+def test_restart_button_stays_disabled_across_the_failure_flash():
+    # STARTING -> ATTEMPT_FAILED -> RETRYING must not hand the button back
+    screen = _make_screen()
+    tools = _CarouselToolsRecorder()
+    screen.carousel_tools = tools
+
+    screen.on_service_start_attempt()
+    screen.on_service_attempt_failed()
+    screen.on_service_retry_tick(1, 4, 15)
+
+    assert tools.restart_enabled == [False, False, False]
+    assert tools.restart_btn.txt.text == "Starting..."
 
 
 def test_terminate_stop_none_is_stopped():

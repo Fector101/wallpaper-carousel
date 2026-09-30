@@ -33,6 +33,7 @@ from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_
 boot_log("main: local imports done2")
 from utils.helper import Service, get_free_port, register_fonts, fix_input_on_linux, \
     patch_kivymd_switch_press_events, patch_kivymd_hover_on_touch, \
+    patch_kivymd_disabled_text_color, \
     get_stored_running_ui_server_port, get_stored_running_service_server_port
 boot_log("main: local imports done1")
 from utils.image_operations import ImageOperation, warm_up_android_bitmap_stack # JNI call — app_storage_path() - 0.697s
@@ -45,6 +46,10 @@ android_notify_logger.setLevel(logging.DEBUG if on_android_platform() else loggi
 fix_input_on_linux()
 patch_kivymd_switch_press_events()
 patch_kivymd_hover_on_touch()
+
+# Must run before any MDLabel is built, so that the kv overrides below it
+# apply; the carousel buttons rely on text_color_disabled.
+patch_kivymd_disabled_text_color()
 register_fonts()
 boot_log("--------------main: module setup done--------------")
 
@@ -334,10 +339,12 @@ class WallpaperCarouselApp(MDApp):
         on_retry = None
         on_give_up = None
         on_start_attempt = None
+        on_attempt_failed = None
         if settings_screen is not None:
             on_retry = settings_screen.on_service_retry_tick
             on_give_up = settings_screen.on_service_start_gave_up
             on_start_attempt = settings_screen.on_service_start_attempt
+            on_attempt_failed = settings_screen.on_service_attempt_failed
 
         try:
             self._carousel_service = Service(
@@ -348,6 +355,7 @@ class WallpaperCarouselApp(MDApp):
                 },
                 on_finish=self.self_settings_screen_service_state,
                 on_start_attempt=on_start_attempt,
+                on_attempt_failed=on_attempt_failed,
                 on_retry=on_retry,
                 on_give_up=on_give_up,
             )

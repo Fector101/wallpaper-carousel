@@ -152,7 +152,7 @@ class ServiceStatus(Enum):
     FAILED = "failed"
     RESTARTING = "restarting"
     RETRYING = "retrying"
+    ATTEMPT_FAILED = "attempt_failed"
 
 DEV=0
 VERSION="1.0.10"
-

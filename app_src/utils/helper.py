@@ -130,9 +130,14 @@ def write_logs_to_file(log_folder_name="logs", file_name="all_output1.txt"):
 class Service:
     START_RETRY_DELAY_SECONDS = 15
     START_MAX_RETRIES = 4
+    # A refused start flashes as "Failed" this long before the retry countdown
+    # starts, so the failure is visible instead of the label jumping straight
+    # to "Retrying in 15s".
+    RETRY_FLASH_SECONDS = 1
 
     def __init__(self, name, args_str="", extra=True, on_finish=None,
-                 on_start_attempt=None, on_retry=None, on_give_up=None):
+                 on_start_attempt=None, on_attempt_failed=None, on_retry=None,
+                 on_give_up=None):
         try:
             from android import mActivity  # type: ignore
         except (ModuleNotFoundError, ImportError):
@@ -142,6 +147,7 @@ class Service:
         self.name = name
         self.on_finish = on_finish
         self.on_start_attempt = on_start_attempt
+        self.on_attempt_failed = on_attempt_failed
         self.on_retry = on_retry
         self.on_give_up = on_give_up
         self.extra = extra
@@ -279,9 +285,10 @@ class Service:
 
         Android flags a crash-looped service process as bad and then rejects
         every start with "process is bad" until that process is reaped, so a
-        refused start often succeeds a moment later. The countdown ticks once
-        a second and the next attempt fires when it reaches 0; the pending
-        tick is cancelled on success, on cancel_retry() and when giving up.
+        refused start often succeeds a moment later. A refusal first flashes as
+        failed for RETRY_FLASH_SECONDS, then the countdown ticks once a second
+        and the next attempt fires when it reaches 0; the single pending event
+        is cancelled on success, on cancel_retry() and when giving up.
 
         Returns what the first attempt returned, so the caller can tell
         "started" from "failed and retrying in the background".
@@ -335,21 +342,27 @@ class Service:
                 self.on_give_up()
             return False
 
-        self._retry_seconds_left = self.START_RETRY_DELAY_SECONDS
-        self._notify_retry()
-        self._schedule_countdown_tick()
+        if self.on_attempt_failed:
+            self.on_attempt_failed()
+        self._schedule_event(self._begin_countdown, self.RETRY_FLASH_SECONDS)
         return True
 
-    def _schedule_countdown_tick(self):
+    def _begin_countdown(self, _dt):
+        self._retry_event = None
+        self._retry_seconds_left = self.START_RETRY_DELAY_SECONDS
+        self._notify_retry()
+        self._schedule_event(self._countdown_tick, 1)
+
+    def _schedule_event(self, callback, delay):
         from kivy.clock import Clock
-        self._retry_event = Clock.schedule_once(self._countdown_tick, 1)
+        self._retry_event = Clock.schedule_once(callback, delay)
 
     def _countdown_tick(self, _dt):
         self._retry_event = None
         self._retry_seconds_left -= 1
         if self._retry_seconds_left > 0:
             self._notify_retry()
-            self._schedule_countdown_tick()
+            self._schedule_event(self._countdown_tick, 1)
             return
         self._attempt_start()
 
@@ -615,6 +628,46 @@ def patch_kivymd_hover_on_touch():
     # CommonElevationBehavior uses 0 here (uix/behaviors/elevation.py), the
     # [0, 0] default is only read back into the NumericProperty above.
     StateLayerBehavior._shadow_softness = 0
+
+    return None
+
+def patch_kivymd_disabled_text_color():
+    # KivyMD PR #1897: MDLabel/MDButtonText always used the MD3
+    # onSurfaceColor @ label_opacity_value_disabled_text for `disabled_color`,
+    # ignoring an explicitly set text_color_disabled. This matters here because
+    # the carousel buttons are disabled while the service starts/retries and
+    # should keep the theme's text color, dimmed, instead of a grey that
+    # clashes with a custom md_bg_color.
+    # Applies the property plus the two kv rule overrides from that PR.
+    # DELETE once kivymd ships it (2.0.1).
+    from kivy.properties import ColorProperty
+    from kivy.lang import Builder
+    from kivymd.uix.label import MDLabel
+
+    if not hasattr(MDLabel, "text_color_disabled"):
+        # __set_name__ is what registers the property with kivy's per-class
+        # property cache; assigning the attribute alone leaves the property
+        # unknown, so kwargs like text_color_disabled= are then rejected.
+        text_color_disabled = ColorProperty(None)
+        text_color_disabled.__set_name__(MDLabel, "text_color_disabled")
+        MDLabel.text_color_disabled = text_color_disabled
+
+    # Rule order matters: these must be loaded before any MDLabel is built,
+    # which holds because main.py patches at import time.
+    Builder.load_string(r"""
+<MDLabel>:
+    disabled_color:
+        (app.theme_cls.onSurfaceColor[:-1] + [self.label_opacity_value_disabled_text]) \
+        if not self.text_color_disabled \
+        else self.text_color_disabled
+
+<MDButtonText>:
+    disabled_color:
+        ((self.theme_cls.onSurfaceColor[:-1] + [self.button_text_opacity_value_disabled_text]) \
+        if self._button else self.theme_cls.transparentColor) \
+        if not self.text_color_disabled \
+        else self.text_color_disabled
+""")
 
     return None
 
