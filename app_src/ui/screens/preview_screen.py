@@ -1,5 +1,3 @@
-import traceback
-
 from kivy.core.window import Window
 from kivy.metrics import dp
 from kivy.properties import ListProperty, StringProperty, ObjectProperty
@@ -19,9 +17,7 @@ from utils.constants import _rgba, theme_colors
 class MyImage(AsyncImage):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.bind(pos=self.test)
-    def test(self, instance, value):
-        print("on_pos: ", value)
+
 
 class MyScatter(ScatterLayout):
     def __init__(self, **kwargs):
@@ -36,7 +32,7 @@ class MyScatter(ScatterLayout):
 
         self.bind(pos=self.update_rect, size=self.update_rect)
 
-    def update_rect(self, *args):
+    def update_rect(self, *_):
         # Manually update the rectangle coordinates when the widget resizes
         self.rect.pos = self.pos
         self.rect.size = self.size
@@ -79,7 +75,7 @@ class MyBoxLayout(BoxLayout):
 
         self.bind(pos=self.update_rect, size=self.update_rect)
 
-    def update_rect(self, *args):
+    def update_rect(self, *_):
         # Manually update the rectangle coordinates when the widget resizes
         self.rect.pos = self.pos
         self.rect.size = self.size
@@ -172,10 +168,15 @@ class PreviewScreen(MyMDScreen):
         Clock.schedule_once(self.build_ui)
 
     def on_leave(self, *args):
+        # hiding img widget and removing texture data to help avoid flickers on_enter
         self.image_widget.opacity = 0
         self.scaled_down_img_texture = None
         self.image_placement_data = None
+        # resetting texture to call self.update_cover_size which is bound to texture to get it to reset scatter size & pos.
         self.image_widget.texture = None
+        # Unbinding to avoid errors with large images
+        self.proxy.unbind(on_load=self.apply_proxy_image_texture)
+        self.proxy=None
 
     def on_pre_enter(self, *args):
         self.set_scaled_down_texture()
@@ -187,19 +188,20 @@ class PreviewScreen(MyMDScreen):
             self.image_widget.opacity=1
 
 
-    def format_widget(self, *args):
+    def format_widget(self, *_):
         if not self.abs_img_path: # safe hot reload
             return None
 
         from kivy.loader import Loader
-        proxy = Loader.image(self.abs_img_path)
-        if proxy.loaded:
-            self.apply_proxy_image_texture(proxy)
-        proxy.bind(
+        self.proxy = Loader.image(self.abs_img_path)
+        if self.proxy.loaded:
+            self.apply_proxy_image_texture(self.proxy)
+        self.proxy.bind(
             on_load=self.apply_proxy_image_texture
         )
 
         self.hide_system_ui()
+        return None
 
     def handle_going_back(self, *_):
         self.show_system_ui()
@@ -247,7 +249,7 @@ class PreviewScreen(MyMDScreen):
             self.scatter.pos,
         )
 
-    def update_cover_size(self, *args):
+    def update_cover_size(self, *_):
         win_w, win_h = Window.size
         if not self.image_widget.texture:
             self.scatter.scale = self.scatter.min_scale
