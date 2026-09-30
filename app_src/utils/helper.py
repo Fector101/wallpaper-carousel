@@ -99,6 +99,35 @@ def app_external_storage_path():
     ext_dir = context.getExternalFilesDir(None)
     return ext_dir.getAbsolutePath() if ext_dir else appFolder()
 	
+def _last_cause(stack_trace):
+    """The deepest `Caused by:` line of a java stack trace, which is the part
+    that actually explains the failure. pyjnius hands us the whole dump, and
+    that is what flooded logcat before."""
+    if not stack_trace:
+        return None
+    lines = stack_trace.splitlines()
+    # AOSP puts the exception on the "Caused by:" line itself, but pyjnius can
+    # also emit the header alone with the message on the following line.
+    for index, line in enumerate(lines):
+        if 'Caused by:' not in line:
+            continue
+        cause = line.split('Caused by:', 1)[-1].strip()
+        if not cause:
+            for follower in lines[index + 1:]:
+                follower = follower.strip()
+                if follower and not follower.startswith(('at ', '\tat ')):
+                    cause = follower
+                    break
+        if cause:
+            return cause
+    # no Caused by chain; fall back to the first non-frame line
+    for line in lines:
+        stripped = line.strip()
+        if stripped and not stripped.startswith(('at ', '\tat ')):
+            return stripped
+    return None
+
+
 def write_logs_to_file(log_folder_name="logs", file_name="all_output1.txt"):
     import os
     from datetime import datetime
@@ -159,8 +188,10 @@ class Service:
         self._retry_event = None
 
     def get_name(self):
+        # Falls back to the bare service name when there is no context to read
+        # the package from, so a log line is never just "None".
         if not self.mActivity:
-            return None
+            return self.name
         context = self.mActivity.getApplicationContext()
         return str(context.getPackageName()) + '.Service' + self.name
 
@@ -262,22 +293,29 @@ class Service:
             self.start_error = "\n".join(
                 str(frame)
                 for frame in (getattr(java_exception, 'stacktrace', None) or [])
+            ) or str(java_exception)
+            bad_process = 'process is bad' in self.start_error
+            app_logger.error(
+                f"[Service.start] {self.get_name()} refused by Android"
+                f"{' (process marked bad, crash-looped)' if bad_process else ''}: "
+                f"{_last_cause(self.start_error) or 'no cause reported'}"
             )
-            if 'process is bad' in self.start_error:
+            # the full java stack, so a log export carries the whole story
+            app_logger.debug(
+                f"[Service.start] {self.get_name()} java stack trace:\n{self.start_error}")
+            if bad_process:
                 app_logger.error(
-                    f"[Service.start] {self.get_name()} refused by Android: service "
-                    f"process marked bad (crash-looped). Only a force-stop or app "
-                    f"restart can start it again."
+                    f"[Service.start] {self.get_name()} can only recover via "
+                    f"`adb shell am force-stop <package>` or an app restart; "
+                    f"retries may not help until the bad-process flag clears."
                 )
-            else:
-                app_logger.exception(
-                    f"[Service.start] JVM exception starting {self.get_name()}")
             return False
 
         except Exception as error_starting_service:
             self.start_error = str(error_starting_service)
             app_logger.exception(
-                f"[Service.start] error starting {self.get_name()}")
+                f"[Service.start] error starting {self.get_name()}: "
+                f"{self.start_error}")
             return False
 
     def start_with_retry(self):
@@ -305,6 +343,16 @@ class Service:
             self._retry_event = None
         self._retry_seconds_left = 0
 
+    @property
+    def retry_pending(self):
+        """True while a refusal is counting down to the next attempt.
+
+        True during both the failure flash and the countdown. Cleared as soon
+        as an attempt succeeds, so a pending retry implies the service is not
+        running — no `is_running()` JNI call needed to know that.
+        """
+        return self._retry_event is not None
+
     def _attempt_start(self):
         if self.on_start_attempt:
             self.on_start_attempt()
@@ -312,11 +360,17 @@ class Service:
         self._retry_event = None
         self._retry_seconds_left = 0
 
+        recovered = self._start_attempt > 0
         result = self.start()
         # None means there is no activity to start from (not Android), which is
         # not a refusal; only False means Android rejected the start.
         if result is not False:
             self.cancel_retry()
+            if recovered:
+                from utils.logger import app_logger
+                app_logger.info(
+                    f"[Service.start_with_retry] {self.get_name()} started on attempt "
+                    f"{self._start_attempt + 1} after earlier refusals.")
             return result
 
         self._schedule_retry()
@@ -331,17 +385,23 @@ class Service:
             )
 
     def _schedule_retry(self):
+        from utils.logger import app_logger
         self._start_attempt += 1
         if self._start_attempt > self.START_MAX_RETRIES:
             self._retry_event = None
-            from utils.logger import app_logger
             app_logger.error(
                 f"[Service.start_with_retry] {self.get_name()} still refused after "
-                f"{self.START_MAX_RETRIES} retries, giving up")
+                f"{self.START_MAX_RETRIES} retries, giving up. Last error: "
+                f"{_last_cause(self.start_error) or self.start_error or 'unknown'}")
             if self.on_give_up:
                 self.on_give_up()
             return False
 
+        app_logger.warning(
+            f"[Service.start_with_retry] {self.get_name()} attempt "
+            f"{self._start_attempt}/{self.START_MAX_RETRIES} refused: "
+            f"{_last_cause(self.start_error) or self.start_error or 'unknown'}. "
+            f"Retrying in {self.START_RETRY_DELAY_SECONDS}s.")
         if self.on_attempt_failed:
             self.on_attempt_failed()
         self._schedule_event(self._begin_countdown, self.RETRY_FLASH_SECONDS)
@@ -830,4 +890,3 @@ def remove_images_from_app(abs_paths: list):
         except Exception as error_removing_image_from_db:
             print(error_removing_image_from_db)
             traceback.print_exc()
-

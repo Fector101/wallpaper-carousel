@@ -58,6 +58,7 @@ def _make_screen():
     screen._stop_timeout_event = None
     screen.app = SimpleNamespace(
         cancel_service_start_retry=mock.Mock(),
+        service_retry_pending=mock.Mock(return_value=False),
         start_service=mock.Mock(return_value=True),
     )
     return screen
@@ -177,20 +178,56 @@ def _start_with_java_error(error):
         return svc, svc.start()
 
 
+_PROCESS_IS_BAD_TRACE = (
+    "java.lang.reflect.InvocationTargetException",
+    "\tat org.wally.waller.ServiceWallpapercarousel.start(ServiceWallpapercarousel.java:26)",
+    "Caused by:",
+    "java.lang.SecurityException: Unable to start service Intent { "
+    "cmp=org.wally.waller/.ServiceWallpapercarousel (has extras) }: Unable to launch "
+    "app org.wally.waller/10933 for service Intent { "
+    "cmp=org.wally.waller/.ServiceWallpapercarousel }: process is bad",
+)
+
+
 def test_service_start_process_is_bad_returns_false():
-    error = _java_exception(
-        "java.lang.reflect.InvocationTargetException",
-        "\tat org.wally.waller.ServiceWallpapercarousel.start(ServiceWallpapercarousel.java:26)",
-        "Caused by:",
-        "java.lang.SecurityException: Unable to start service Intent { "
-        "cmp=org.wally.waller/.ServiceWallpapercarousel (has extras) }: Unable to launch "
-        "app org.wally.waller/10933 for service Intent { "
-        "cmp=org.wally.waller/.ServiceWallpapercarousel }: process is bad",
-    )
-    svc, result = _start_with_java_error(error)
+    svc, result = _start_with_java_error(_java_exception(*_PROCESS_IS_BAD_TRACE))
 
     assert result is False
     assert "process is bad" in svc.start_error
+
+
+def test_last_cause_picks_the_deepest_caused_by():
+    trace = "\n".join(_PROCESS_IS_BAD_TRACE)
+
+    cause = helper._last_cause(trace)
+
+    assert cause.startswith("java.lang.SecurityException")
+    assert "process is bad" in cause
+    # the wrapper frames must not be what gets reported
+    assert "InvocationTargetException" not in cause
+
+
+def test_last_cause_falls_back_when_there_is_no_caused_by():
+    assert helper._last_cause(
+        "java.lang.IllegalStateException\n\tat org.wally.waller.Foo.bar(Foo.java:1)"
+    ) == "java.lang.IllegalStateException"
+    assert helper._last_cause("") is None
+    assert helper._last_cause(None) is None
+
+
+def test_service_start_logs_the_underlying_cause_not_just_the_wrapper():
+    with mock.patch("utils.logger.app_logger") as app_logger:
+        _start_with_java_error(_java_exception(*_PROCESS_IS_BAD_TRACE))
+
+    logged = " ".join(
+        str(call.args[0]) for call in app_logger.error.call_args_list)
+    # the SecurityException that actually explains the failure
+    assert "Unable to launch app" in logged
+    assert "process is bad" in logged
+    # and the full stack is still captured, at debug level
+    debugged = " ".join(
+        str(call.args[0]) for call in app_logger.debug.call_args_list)
+    assert "ServiceWallpapercarousel.java:26" in debugged
 
 
 def test_service_start_other_java_exception_returns_false():
@@ -378,6 +415,65 @@ def test_start_with_retry_none_result_is_not_a_refusal():
     assert ServiceStatus.FAILED not in screen.calls
 
 
+def test_retry_logs_every_refusal_with_its_cause():
+    screen = _Rec()
+    svc = _retrying_service([False, False],
+                            on_attempt_failed=screen.on_service_attempt_failed,
+                            on_retry=screen.on_service_retry_tick)
+    svc.start_error = "java.lang.SecurityException: process is bad"
+    with mock.patch("kivy.clock.Clock.schedule_once") as schedule_once, \
+         mock.patch("utils.logger.app_logger") as app_logger:
+        svc.start_with_retry()
+        _run_attempt(schedule_once, screen)
+
+    warnings = [str(call.args[0]) for call in app_logger.warning.call_args_list]
+    assert len(warnings) == 2
+    assert "attempt 1/4 refused" in warnings[0]
+    assert "process is bad" in warnings[0]
+    assert "Retrying in 15s" in warnings[0]
+    assert "attempt 2/4 refused" in warnings[1]
+
+
+def test_give_up_log_carries_the_last_error():
+    screen = _Rec()
+    svc = _retrying_service([False] * 6,
+                            on_attempt_failed=screen.on_service_attempt_failed,
+                            on_retry=screen.on_service_retry_tick,
+                            on_give_up=screen.on_service_start_gave_up)
+    with mock.patch("kivy.clock.Clock.schedule_once") as schedule_once, \
+         mock.patch("utils.logger.app_logger") as app_logger:
+        svc.start_with_retry()
+        for _ in range(4):
+            _run_attempt(schedule_once, screen)
+
+    errors = [str(call.args[0]) for call in app_logger.error.call_args_list]
+    assert any("giving up" in line and "Last error:" in line for line in errors)
+
+
+def test_recovery_is_logged_when_a_retry_succeeds():
+    screen = _Rec()
+    svc = _retrying_service([False, True],
+                            on_attempt_failed=screen.on_service_attempt_failed,
+                            on_retry=screen.on_service_retry_tick)
+    with mock.patch("kivy.clock.Clock.schedule_once") as schedule_once, \
+         mock.patch("utils.logger.app_logger") as app_logger:
+        svc.start_with_retry()
+        _run_attempt(schedule_once, screen)
+
+    infos = [str(call.args[0]) for call in app_logger.info.call_args_list]
+    assert any("started on attempt 2 after earlier refusals" in line
+               for line in infos)
+
+
+def test_no_recovery_log_when_the_first_attempt_succeeds():
+    svc = _retrying_service([True])
+    with mock.patch("kivy.clock.Clock.schedule_once"), \
+         mock.patch("utils.logger.app_logger") as app_logger:
+        assert svc.start_with_retry() is True
+
+    assert not app_logger.info.called
+
+
 def test_start_service_wires_screen_callbacks():
     screen = _Rec()
     app_obj = _make_app(screen)
@@ -416,6 +512,20 @@ def test_cancel_service_start_retry_without_service_is_noop():
     app_obj._carousel_service = None
 
     main.WallpaperCarouselApp.cancel_service_start_retry(app_obj)
+
+
+def test_service_retry_pending_delegates_to_service():
+    app_obj = _make_app(_Rec())
+    app_obj._carousel_service = mock.Mock(retry_pending=True)
+
+    assert main.WallpaperCarouselApp.service_retry_pending(app_obj) is True
+
+
+def test_service_retry_pending_without_service_is_false():
+    app_obj = _make_app(_Rec())
+    app_obj._carousel_service = None
+
+    assert main.WallpaperCarouselApp.service_retry_pending(app_obj) is False
 
 
 def test_set_service_status_label_override():
@@ -552,6 +662,93 @@ def test_terminate_cancels_pending_start_retry():
         screen._terminate_carousel_confirm()
 
     screen.app.cancel_service_start_retry.assert_called_once()
+
+
+def test_stop_while_retries_pending_skips_the_popup():
+    screen = _make_screen()
+    screen.app.service_retry_pending.return_value = True
+
+    with mock.patch.object(settings_module, "CarouselConfirmPopup", _PopupRecorder), \
+         mock.patch.object(settings_module, "Service") as fake_cls, \
+         mock.patch.object(settings_module, "toast") as toast:
+        _PopupRecorder.shown = []
+        screen.terminate_carousel()
+
+    # nothing to stop, so no confirmation and no Service is even built
+    assert _PopupRecorder.shown == []
+    assert not fake_cls.called
+    screen.app.cancel_service_start_retry.assert_called_once()
+    assert screen._carousel_status_label.text == "Stopped"
+    toast.assert_called_once_with("Retries cancelled")
+
+
+def test_stop_without_a_pending_retry_still_asks_for_confirmation():
+    screen = _make_screen()
+    screen.app.service_retry_pending.return_value = False
+
+    with mock.patch.object(settings_module, "CarouselConfirmPopup", _PopupRecorder), \
+         mock.patch.object(settings_module, "Service") as fake_cls:
+        _PopupRecorder.shown = []
+        screen.terminate_carousel()
+
+    # asking is the whole point here: the service is up and stopping it matters
+    assert len(_PopupRecorder.shown) == 1
+    assert not fake_cls.called
+    screen.app.cancel_service_start_retry.assert_not_called()
+
+
+def test_stop_label_is_cancel_retries_only_while_a_retry_is_pending():
+    screen = _make_screen()
+    tools = _CarouselToolsRecorder()
+    screen.carousel_tools = tools
+
+    screen.set_service_status(ServiceStatus.STARTING)
+    assert tools.stop_btn.txt.text == "Stop Carousel"
+
+    screen.set_service_status(ServiceStatus.ATTEMPT_FAILED)
+    assert tools.stop_btn.txt.text == "Cancel Retries"
+
+    screen.set_service_status(ServiceStatus.RETRYING)
+    assert tools.stop_btn.txt.text == "Cancel Retries"
+
+    screen.set_service_status(ServiceStatus.RUNNING)
+    assert tools.stop_btn.txt.text == "Stop Carousel"
+
+
+def test_restart_also_cancels_a_pending_retry():
+    screen = _make_screen()
+
+    with mock.patch.object(settings_module, "Service") as fake_cls, \
+         mock.patch.object(settings_module, "Clock"):
+        fake_cls.return_value.stop.return_value = True
+        screen._restart_service_confirm()
+
+    screen.app.cancel_service_start_retry.assert_called_once()
+
+
+def test_retry_pending_tracks_the_live_state():
+    screen = _Rec()
+    svc = _retrying_service([False, True],
+                            on_attempt_failed=screen.on_service_attempt_failed,
+                            on_retry=screen.on_service_retry_tick)
+    assert svc.retry_pending is False
+
+    with mock.patch("kivy.clock.Clock.schedule_once") as schedule_once:
+        svc.start_with_retry()
+        # pending during the failure flash
+        assert svc.retry_pending is True
+        _begin_countdown(schedule_once)
+        # and still pending partway through the countdown
+        assert svc.retry_pending is True
+        _tick(schedule_once)
+        _tick(schedule_once)
+        assert svc.retry_pending is True
+
+        # run the rest; the second attempt succeeds and calls cancel_retry()
+        for _ in range(helper.Service.START_RETRY_DELAY_SECONDS - 2):
+            _tick(schedule_once)
+
+    assert svc.retry_pending is False
 
 
 def _run_restart_confirm(screen):

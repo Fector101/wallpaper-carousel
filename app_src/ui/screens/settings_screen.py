@@ -34,7 +34,6 @@ my_config = ConfigManager()
 _NAMED_COLORS = {"white": "#ffffff", "black": "#000000"}
 
 
-
 class MyLabel(ButtonBehavior, Label):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -695,8 +694,8 @@ class SettingsScreen(MyMDScreen):
         ServiceStatus.STOPPED: ("Restart Carousel", "Stop Carousel"),
         ServiceStatus.FAILED: ("Restart Carousel", "Stop Carousel"),
         ServiceStatus.RESTARTING: ("Restarting...", "Stop Carousel"),
-        ServiceStatus.RETRYING: ("Starting...", "Stop Carousel"),
-        ServiceStatus.ATTEMPT_FAILED: ("Starting...", "Stop Carousel"),
+        ServiceStatus.RETRYING: ("Starting...", "Cancel Retries"),
+        ServiceStatus.ATTEMPT_FAILED: ("Starting...", "Cancel Retries"),
     }
     # While the service is starting, retrying or stopping, a tap on Restart
     # would stack another start attempt on top of the one already in flight.
@@ -1313,6 +1312,13 @@ class SettingsScreen(MyMDScreen):
             self.times_tapped = 0
 
     def terminate_carousel(self, *_):
+        if self.app.service_retry_pending():
+            # Nothing is running: the only thing to stop is the pending
+            # countdown, so skip the "stop a running service" confirmation.
+            self._cancel_start_retry()
+            self.set_service_status(ServiceStatus.STOPPED)
+            toast("Retries cancelled")
+            return
         CarouselConfirmPopup(
             title="Stop Carousel?",
             message="Stopping the carousel frequently can make Android block it from "
@@ -1322,8 +1328,15 @@ class SettingsScreen(MyMDScreen):
             on_confirm=self._terminate_carousel_confirm,
         ).show()
 
-    def _terminate_carousel_confirm(self):
+    def _cancel_start_retry(self):
+        from utils.logger import app_logger
         self.app.cancel_service_start_retry()
+        app_logger.info(
+            "[SettingsScreen] pending service start retries cancelled by the user")
+
+    def _terminate_carousel_confirm(self):
+        # also cancels here, so a countdown cannot outlive a real stop
+        self._cancel_start_retry()
         self.set_service_status(ServiceStatus.STOPPING)
         try:
             result = Service(name="Wallpapercarousel").stop()
@@ -1410,7 +1423,8 @@ class SettingsScreen(MyMDScreen):
         self._restart_service_confirm()
 
     def _restart_service_confirm(self):
-        self.app.cancel_service_start_retry()
+        # a fresh start replaces the pending one rather than racing it
+        self._cancel_start_retry()
         self.set_service_status(ServiceStatus.RESTARTING)
 
         def after_stop(*_):
@@ -1477,6 +1491,7 @@ class SettingsScreen(MyMDScreen):
             self.carousel_tools.restart_btn.txt.text = restart_label
             self.carousel_tools.stop_btn.txt.text = stop_label
             self.carousel_tools.set_restart_enabled(status not in self._BUSY_STATUSES)
+            app_logger.info(f"TMPPROBE stop_btn center={self.carousel_tools.stop_btn.to_window(*self.carousel_tools.stop_btn.center)} retry_pending={self.app.service_retry_pending()}")
 
         self._cancel_startup_timeout()
         self._cancel_stop_timeout()

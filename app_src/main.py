@@ -58,6 +58,7 @@ if platform == 'linux':
     Window.size = (390, 740)
 
 
+
 class WallpaperCarouselApp(MDApp):
     device_theme = StringProperty("dark")
     theme_preference = StringProperty(ConfigManager.get_theme_preference())
@@ -370,6 +371,11 @@ class WallpaperCarouselApp(MDApp):
     def cancel_service_start_retry(self):
         if self._carousel_service:
             self._carousel_service.cancel_retry()
+
+    def service_retry_pending(self):
+        return bool(
+            self._carousel_service and self._carousel_service.retry_pending)
+
     def _settings_screen_or_none(self):
         return getattr(getattr(self, "sm", None), "settings_screen", None)
 
