@@ -107,9 +107,9 @@ class PreviewScreen(MyMDScreen):
         self.built_ui = False
 
     def build_ui(self,_):
+        self.set_image_data()
         print("building ui")
         self.built_ui = True
-        self.set_image_data()
         root = MDFloatLayout()
         self.btn_close = MDIconButton(
             icon="close",
@@ -142,17 +142,14 @@ class PreviewScreen(MyMDScreen):
         self.image_widget = MyImage(
             source="",# <--- never set directly
             fit_mode="cover",
-            keep_ratio=True,
             size_hint=(None, None)
         )
         self.image_widget.opacity=0
         # self.bind(size=lambda _, v: setattr(self.image_widget, 'size', v))
         # self.bind(size=lambda _,v: setattr(scatter,'size',v),pos=lambda _,v: setattr(scatter,'pos',v))
 
-        self.image_placement_data = None
         self.image_widget.bind(texture=self.update_cover_size)
         if self.scaled_down_img_texture is not None: # safe for hot reload
-            print(self.scaled_down_img_texture)
             self.image_widget.texture = self.scaled_down_img_texture
         # Window.bind(size=self.update_cover_size)
 
@@ -178,6 +175,8 @@ class PreviewScreen(MyMDScreen):
         self.image_widget.opacity = 0
         self.scaled_down_img_texture = None
         self.image_placement_data = None
+        self.image_widget.texture = None
+        # self.update_cover_size()
 
     def on_pre_enter(self, *args):
         self.set_scaled_down_texture()
@@ -186,14 +185,12 @@ class PreviewScreen(MyMDScreen):
         if self.image_widget is not None and self.scaled_down_img_texture:
             self.image_widget.texture = self.scaled_down_img_texture
             self.image_widget.opacity=1
-        self.set_image_data()
+            self.set_image_data()
 
 
     def format_widget(self, *args):
         if not self.abs_img_path: # safe hot reload
             return None
-        self.scatter.scale = self.scatter.min_scale
-
 
         from kivy.loader import Loader
         proxy = Loader.image(self.abs_img_path)
@@ -252,10 +249,16 @@ class PreviewScreen(MyMDScreen):
         )
 
     def update_cover_size(self, *args):
-        if not self.image_widget.texture:
-            return
-
         win_w, win_h = Window.size
+        if not self.image_widget.texture:
+            self.scatter.scale = self.scatter.min_scale
+            self.scatter.pos = (
+                (win_w - self.scatter.width) / 2,
+                (win_h - self.scatter.height) / 2,
+            )
+
+            print("ran reset scatter size")
+            return
         tex_w = self.image_widget.texture.width
         tex_h = self.image_widget.texture.height
 
@@ -284,13 +287,13 @@ class PreviewScreen(MyMDScreen):
 
         pending = self.image_placement_data
         if pending and pending.get("scale") and pending.get("cx") is not None and pending.get("cy") is not None:
-            self.image_placement_data = None
+            # self.image_placement_data = None
             self.scatter.scale = pending["scale"]
             self.scatter.pos = (
                 win_w / 2 - self.scatter.scale * (pending["cx"] * new_w),
                 win_h / 2 - self.scatter.scale * (pending["cy"] * new_h),
             )
-        # print(f"update_cover_size: {pending}")
+        print(f"update_cover_size: {pending}")
 
     def set_image_data(self):
         try:
@@ -299,7 +302,7 @@ class PreviewScreen(MyMDScreen):
         except Exception as error_reading_preview_props:
             print(f"Failed to read preview props: {error_reading_preview_props}")
             self.image_placement_data = None
-        print(f"self.image_placement_data: {self.image_placement_data}")
+        print(f"got image data: {self.image_placement_data}")
 
     def apply_proxy_image_texture(self,proxy_image):
         if proxy_image.image.texture:
