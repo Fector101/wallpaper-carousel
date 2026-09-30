@@ -458,7 +458,11 @@ class FullscreenScreen(MyMDScreen):
         self._update_menu_theme(menu_bg, tc)
 
     def enter_preview_mode(self, *_):
-        self.manager.preview_screen.scaled_down_img_texture = self.carousel.current_slide.texture
+        current_slide = self.carousel.current_slide
+        if not current_slide:
+            app_logger.warning("Trying to enter preview mode when self.carousel.current_slide does not exist ")
+            return
+        self.manager.preview_screen.scaled_down_img_texture = current_slide.texture
         self.manager.preview_screen.abs_img_path = self.current_image
         self.manager.go_to_preview()
 

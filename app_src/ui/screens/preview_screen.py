@@ -12,11 +12,7 @@ from kivymd.uix.button import MDIconButton
 from ui.widgets.modals import MyTextButton
 from ui.widgets.layouts import MyMDScreen
 from utils.constants import _rgba, theme_colors
-
-
-class MyImage(AsyncImage):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+from utils.logger import app_logger
 
 
 class MyScatter(ScatterLayout):
@@ -104,7 +100,7 @@ class PreviewScreen(MyMDScreen):
 
     def build_ui(self,_):
         self.set_image_data()
-        print("building ui")
+        # print("building ui")
         self.built_ui = True
         root = MDFloatLayout()
         self.btn_close = MDIconButton(
@@ -135,7 +131,7 @@ class PreviewScreen(MyMDScreen):
 
         )  # ,pos_hint={"center_x":0.01, "center_y":0.5})
         # image = MyBoxLayout(size_hint=(1,1),background_color=[1,0,0.5,1])
-        self.image_widget = MyImage(
+        self.image_widget = AsyncImage(
             source="",# <--- never set directly
             fit_mode="cover",
             size_hint=(None, None)
@@ -230,7 +226,7 @@ class PreviewScreen(MyMDScreen):
                 )
                 state["ok"] = True
             except Exception as error_saving_selected_wallpaper:
-                print(f"Failed to save selected wallpaper: {error_saving_selected_wallpaper}")
+                app_logger.error(f"Failed to save selected wallpaper: {error_saving_selected_wallpaper}")
             from kivy.clock import Clock
             Clock.schedule_once(finish)
 
@@ -258,7 +254,7 @@ class PreviewScreen(MyMDScreen):
                 (win_h - self.scatter.height) / 2,
             )
 
-            print("ran reset scatter size")
+            app_logger.debug("ran reset scatter size")
             return
         tex_w = self.image_widget.texture.width
         tex_h = self.image_widget.texture.height
@@ -294,16 +290,16 @@ class PreviewScreen(MyMDScreen):
                 win_w / 2 - self.scatter.scale * (pending["cx"] * new_w),
                 win_h / 2 - self.scatter.scale * (pending["cy"] * new_h),
             )
-        print(f"update_cover_size: {pending}")
+        app_logger.debug(f"update_cover_size: {pending}")
 
     def set_image_data(self):
         try:
             from utils.database import ImageDatabase
             self.image_placement_data = ImageDatabase().get_preview_props(self.abs_img_path)
         except Exception as error_reading_preview_props:
-            print(f"Failed to read preview props: {error_reading_preview_props}")
+            app_logger.error(f"Failed to read preview props: {error_reading_preview_props}")
             self.image_placement_data = None
-        print(f"got image data: {self.image_placement_data}")
+        app_logger.debug(f"got image data: {self.image_placement_data}")
 
     def apply_proxy_image_texture(self,proxy_image):
         if proxy_image.image.texture:
