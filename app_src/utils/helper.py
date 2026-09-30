@@ -128,7 +128,11 @@ def write_logs_to_file(log_folder_name="logs", file_name="all_output1.txt"):
 
 
 class Service:
-    def __init__(self, name, args_str="", extra=True, on_finish=None):
+    START_RETRY_DELAY_SECONDS = 15
+    START_MAX_RETRIES = 4
+
+    def __init__(self, name, args_str="", extra=True, on_finish=None,
+                 on_start_attempt=None, on_retry=None, on_give_up=None):
         try:
             from android import mActivity  # type: ignore
         except (ModuleNotFoundError, ImportError):
@@ -137,10 +141,16 @@ class Service:
         self.args_str = args_str
         self.name = name
         self.on_finish = on_finish
+        self.on_start_attempt = on_start_attempt
+        self.on_retry = on_retry
+        self.on_give_up = on_give_up
         self.extra = extra
         self.start_error = None
         self._method_cache = {}
         self.service = self.__load_service_class() if self.mActivity else None
+        self._start_attempt = 0
+        self._retry_seconds_left = 0
+        self._retry_event = None
 
     def get_name(self):
         if not self.mActivity:
@@ -263,6 +273,85 @@ class Service:
             app_logger.exception(
                 f"[Service.start] error starting {self.get_name()}")
             return False
+
+    def start_with_retry(self):
+        """Start the service, retrying with a countdown when Android refuses.
+
+        Android flags a crash-looped service process as bad and then rejects
+        every start with "process is bad" until that process is reaped, so a
+        refused start often succeeds a moment later. The countdown ticks once
+        a second and the next attempt fires when it reaches 0; the pending
+        tick is cancelled on success, on cancel_retry() and when giving up.
+
+        Returns what the first attempt returned, so the caller can tell
+        "started" from "failed and retrying in the background".
+        """
+        self.cancel_retry()
+        self._start_attempt = 0
+        self._retry_seconds_left = 0
+        self._retry_event = None
+        return self._attempt_start()
+
+    def cancel_retry(self):
+        if self._retry_event:
+            self._retry_event.cancel()
+            self._retry_event = None
+        self._retry_seconds_left = 0
+
+    def _attempt_start(self):
+        if self.on_start_attempt:
+            self.on_start_attempt()
+
+        self._retry_event = None
+        self._retry_seconds_left = 0
+
+        result = self.start()
+        # None means there is no activity to start from (not Android), which is
+        # not a refusal; only False means Android rejected the start.
+        if result is not False:
+            self.cancel_retry()
+            return result
+
+        self._schedule_retry()
+        return False
+
+    def _notify_retry(self):
+        if self.on_retry:
+            self.on_retry(
+                self._start_attempt,
+                self.START_MAX_RETRIES,
+                self._retry_seconds_left,
+            )
+
+    def _schedule_retry(self):
+        self._start_attempt += 1
+        if self._start_attempt > self.START_MAX_RETRIES:
+            self._retry_event = None
+            from utils.logger import app_logger
+            app_logger.error(
+                f"[Service.start_with_retry] {self.get_name()} still refused after "
+                f"{self.START_MAX_RETRIES} retries, giving up")
+            if self.on_give_up:
+                self.on_give_up()
+            return False
+
+        self._retry_seconds_left = self.START_RETRY_DELAY_SECONDS
+        self._notify_retry()
+        self._schedule_countdown_tick()
+        return True
+
+    def _schedule_countdown_tick(self):
+        from kivy.clock import Clock
+        self._retry_event = Clock.schedule_once(self._countdown_tick, 1)
+
+    def _countdown_tick(self, _dt):
+        self._retry_event = None
+        self._retry_seconds_left -= 1
+        if self._retry_seconds_left > 0:
+            self._notify_retry()
+            self._schedule_countdown_tick()
+            return
+        self._attempt_start()
 
     def __run_service_file(self):
         import os, json, runpy, threading
@@ -688,3 +777,4 @@ def remove_images_from_app(abs_paths: list):
         except Exception as error_removing_image_from_db:
             print(error_removing_image_from_db)
             traceback.print_exc()
+

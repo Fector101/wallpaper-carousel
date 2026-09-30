@@ -1386,6 +1386,18 @@ class SettingsScreen(MyMDScreen):
     def on_service_stopped(self):
         self.set_service_status(ServiceStatus.STOPPED)
 
+    def on_service_start_attempt(self):
+        self.set_service_status(ServiceStatus.STARTING)
+
+    def on_service_retry_tick(self, attempt, total, seconds_left):
+        self.set_service_status(
+            ServiceStatus.RETRYING,
+            f"Retrying in {seconds_left}s ({attempt}/{total})",
+        )
+
+    def on_service_start_gave_up(self):
+        self.set_service_status(ServiceStatus.FAILED)
+
     def set_service_status(self, status, label=None):
         if not self.built_ui:
             return
@@ -1402,7 +1414,6 @@ class SettingsScreen(MyMDScreen):
         if self._carousel_status_dot is not None:
             self._carousel_status_dot.md_bg_color = color
         if self._carousel_status_label is not None:
-            
             self._carousel_status_label.text = text
 
         if self.carousel_tools is not None:
