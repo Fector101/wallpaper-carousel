@@ -176,16 +176,15 @@ class PreviewScreen(MyMDScreen):
         self.scaled_down_img_texture = None
         self.image_placement_data = None
         self.image_widget.texture = None
-        # self.update_cover_size()
 
     def on_pre_enter(self, *args):
         self.set_scaled_down_texture()
 
     def set_scaled_down_texture(self):
         if self.image_widget is not None and self.scaled_down_img_texture:
+            self.set_image_data()
             self.image_widget.texture = self.scaled_down_img_texture
             self.image_widget.opacity=1
-            self.set_image_data()
 
 
     def format_widget(self, *args):
