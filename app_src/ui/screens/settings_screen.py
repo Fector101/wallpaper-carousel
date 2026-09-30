@@ -1488,10 +1488,11 @@ class SettingsScreen(MyMDScreen):
 
         if self.carousel_tools is not None:
             restart_label, stop_label = self._CAROUSEL_TOOLS_LABELS[status]
-            self.carousel_tools.restart_btn.txt.text = restart_label
-            self.carousel_tools.stop_btn.txt.text = stop_label
+            # assign .text, not .txt.text: MyTextButton binds text -> set_val ->
+            # txt.text, so this keeps the button's own property in sync too
+            self.carousel_tools.restart_btn.text = restart_label
+            self.carousel_tools.stop_btn.text = stop_label
             self.carousel_tools.set_restart_enabled(status not in self._BUSY_STATUSES)
-            app_logger.info(f"TMPPROBE stop_btn center={self.carousel_tools.stop_btn.to_window(*self.carousel_tools.stop_btn.center)} retry_pending={self.app.service_retry_pending()}")
 
         self._cancel_startup_timeout()
         self._cancel_stop_timeout()

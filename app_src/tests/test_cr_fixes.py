@@ -620,7 +620,7 @@ def test_restart_button_stays_disabled_across_the_failure_flash():
     screen.on_service_retry_tick(1, 4, 15)
 
     assert tools.restart_enabled == [False, False, False]
-    assert tools.restart_btn.txt.text == "Starting..."
+    assert tools.restart_btn.text == "Starting..."
 
 
 def test_terminate_stop_none_is_stopped():
@@ -703,16 +703,16 @@ def test_stop_label_is_cancel_retries_only_while_a_retry_is_pending():
     screen.carousel_tools = tools
 
     screen.set_service_status(ServiceStatus.STARTING)
-    assert tools.stop_btn.txt.text == "Stop Carousel"
+    assert tools.stop_btn.text == "Stop Carousel"
 
     screen.set_service_status(ServiceStatus.ATTEMPT_FAILED)
-    assert tools.stop_btn.txt.text == "Cancel Retries"
+    assert tools.stop_btn.text == "Cancel Retries"
 
     screen.set_service_status(ServiceStatus.RETRYING)
-    assert tools.stop_btn.txt.text == "Cancel Retries"
+    assert tools.stop_btn.text == "Cancel Retries"
 
     screen.set_service_status(ServiceStatus.RUNNING)
-    assert tools.stop_btn.txt.text == "Stop Carousel"
+    assert tools.stop_btn.text == "Stop Carousel"
 
 
 def test_restart_also_cancels_a_pending_retry():
@@ -724,6 +724,33 @@ def test_restart_also_cancels_a_pending_retry():
         screen._restart_service_confirm()
 
     screen.app.cancel_service_start_retry.assert_called_once()
+
+
+def test_retry_pending_is_true_during_every_callback():
+    """retry_pending must already be True *inside* on_retry/on_attempt_failed.
+
+    Both countdown callbacks clear `_retry_event` before notifying, so a
+    property derived from that event reads False exactly when the UI is told a
+    retry is in progress — which is what the Stop button asks about.
+    """
+    seen = {"flash": [], "tick": [], "give_up": []}
+    svc = _retrying_service(
+        [False, False, False, False, False, False],
+        on_attempt_failed=lambda: seen["flash"].append(svc.retry_pending),
+        on_retry=lambda *a: seen["tick"].append(svc.retry_pending),
+        on_give_up=lambda: seen["give_up"].append(svc.retry_pending),
+    )
+
+    with mock.patch("kivy.clock.Clock.schedule_once") as schedule_once:
+        svc.start_with_retry()
+        assert seen["flash"] == [True]
+        for _ in range(4):
+            _run_attempt(schedule_once, _Rec())
+
+    assert seen["tick"] and all(seen["tick"]), "a countdown tick saw no pending retry"
+    assert len(seen["tick"]) == 4 * helper.Service.START_RETRY_DELAY_SECONDS
+    # the chain is over, so the give-up callback must not claim a pending retry
+    assert seen["give_up"] == [False]
 
 
 def test_retry_pending_tracks_the_live_state():

@@ -186,6 +186,10 @@ class Service:
         self._start_attempt = 0
         self._retry_seconds_left = 0
         self._retry_event = None
+        # Explicit flag rather than `_retry_event is not None`: both countdown
+        # callbacks clear `_retry_event` before notifying, so the event is None
+        # at the exact moment the UI is told a retry is in progress.
+        self._retry_active = False
 
     def get_name(self):
         # Falls back to the bare service name when there is no context to read
@@ -342,16 +346,18 @@ class Service:
             self._retry_event.cancel()
             self._retry_event = None
         self._retry_seconds_left = 0
+        self._retry_active = False
 
     @property
     def retry_pending(self):
-        """True while a refusal is counting down to the next attempt.
+        """True from the first refusal until the retry chain ends.
 
-        True during both the failure flash and the countdown. Cleared as soon
-        as an attempt succeeds, so a pending retry implies the service is not
-        running — no `is_running()` JNI call needed to know that.
+        Covers the failure flash and every countdown tick. Cleared when an
+        attempt succeeds, when the chain gives up, and by cancel_retry(), so a
+        pending retry implies the service is not running — no `is_running()`
+        JNI call needed to know that.
         """
-        return self._retry_event is not None
+        return self._retry_active
 
     def _attempt_start(self):
         if self.on_start_attempt:
@@ -389,6 +395,7 @@ class Service:
         self._start_attempt += 1
         if self._start_attempt > self.START_MAX_RETRIES:
             self._retry_event = None
+            self._retry_active = False
             app_logger.error(
                 f"[Service.start_with_retry] {self.get_name()} still refused after "
                 f"{self.START_MAX_RETRIES} retries, giving up. Last error: "
@@ -402,6 +409,9 @@ class Service:
             f"{self._start_attempt}/{self.START_MAX_RETRIES} refused: "
             f"{_last_cause(self.start_error) or self.start_error or 'unknown'}. "
             f"Retrying in {self.START_RETRY_DELAY_SECONDS}s.")
+        # set before the flash callback, so a tap during the flash already
+        # knows a retry is pending
+        self._retry_active = True
         if self.on_attempt_failed:
             self.on_attempt_failed()
         self._schedule_event(self._begin_countdown, self.RETRY_FLASH_SECONDS)
