@@ -230,6 +230,8 @@ class FullscreenScreen(MyMDScreen):
         self.info_popup = None
         self.carousel_has_images = None
         self.clock_for_higher_format = None
+        self.high_res_proxy = None
+        self.high_res_on_load = None
         self.md_bg_color =[0, 0, 0, 1]
         self.bottom_height = 0.12
         from utils.helper import appFolder
@@ -523,6 +525,7 @@ class FullscreenScreen(MyMDScreen):
         self.carousel_index = max(0, min(self.carousel_index, len(self.wallpapers_data) - 1))
         self.build_ui()
         self.carousel.unbind(current_slide=self.on_current_slide)
+        self._cancel_high_res()
         self.carousel.clear_widgets()
         self.carousel_has_images = False
 
@@ -621,9 +624,10 @@ class FullscreenScreen(MyMDScreen):
 
     def on_current_slide(self, carousel, index): # type: ignore
         """Using on_current_slide instead of on_index to prevent multiple Calls"""
-        # print("on_current_slide")
         if not self.carousel_has_images or not carousel.current_slide:
             return None
+
+        self._cancel_high_res()
 
         scroll_data = self._get_scroll_data(current_path=self.carousel.current_slide.higher_format)
 
@@ -643,17 +647,31 @@ class FullscreenScreen(MyMDScreen):
         if hasattr(current_slide, "higher_format"):
             self.current_image = current_slide.higher_format
 
-        if self.clock_for_higher_format:
-            self.clock_for_higher_format.cancel()
-            self.clock_for_higher_format = None
-
         self.update_header_texts(current_slide.higher_format)
         self.clock_for_higher_format = Clock.schedule_once(
             lambda dt: self._load_high_res(current_slide), 0.8)
         return None
 
+    def _cancel_high_res(self):
+        """Drop a pending or in-flight high-res load for the slide we left.
+
+        The carousel only ever holds three slides and re-points them at other
+        wallpapers while swiping, so a load that is still in flight can end up
+        pointing at a slide that is showing something else entirely. Canceling
+        stops the wasted work (a big texture upload for a picture nobody sees);
+        ``_apply_high_res`` re-checks at paint time as the safety net.
+        """
+        if self.clock_for_higher_format:
+            self.clock_for_higher_format.cancel()
+            self.clock_for_higher_format = None
+        if self.high_res_proxy is not None:
+            self.high_res_proxy.unbind(on_load=self.high_res_on_load)
+            self.high_res_proxy = None
+            self.high_res_on_load = None
+
     def _load_high_res(self, slide):
         from kivy.loader import Loader
+        self._cancel_high_res()
         higher_format = str(slide.higher_format)
         proxy = Loader.image(get_or_create_scaled_down_image(
             src=higher_format,
@@ -661,12 +679,17 @@ class FullscreenScreen(MyMDScreen):
         ))
         if proxy.loaded:
             self._apply_high_res(proxy, slide, higher_format)
-        proxy.bind(on_load=lambda p, obj=slide, fmt=higher_format:
-                   self._apply_high_res(p, obj, fmt))
+            return
+        on_load = lambda p, obj=slide, fmt=higher_format: self._apply_high_res(p, obj, fmt)
+        proxy.bind(on_load=on_load)
+        self.high_res_proxy = proxy
+        self.high_res_on_load = on_load
 
     def _apply_high_res(self, proxy_image, slide, higher_format):
         current_slide = self.carousel.current_slide
-        if current_slide is None or current_slide.higher_format != higher_format:
+        if (current_slide is None
+                or current_slide is not slide
+                or current_slide.higher_format != higher_format):
             # Already swiped pass this image, so no need to set texture when it's not been displayed
             app_logger.info(f"Skipped high-res texture, {higher_format} is no longer displayed")
             return

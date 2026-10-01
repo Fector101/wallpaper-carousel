@@ -56,6 +56,9 @@ def _bare_screen(**attrs):
     fs.build_ui = mock.MagicMock()
     fs.update_header_texts = mock.MagicMock()
     fs._load_high_res = mock.MagicMock()
+    fs.clock_for_higher_format = None
+    fs.high_res_proxy = None
+    fs.high_res_on_load = None
     for k, v in attrs.items():
         setattr(fs, k, v)
     return fs
@@ -63,7 +66,9 @@ def _bare_screen(**attrs):
 
 def _patch_carousel_deps(monkeypatch):
     monkeypatch.setattr(fs_module, "MyImage", _FakeImage)
+    # on_current_slide uses the module-level import, update_images a local one
     monkeypatch.setattr(io, "thumbnail_path_for", lambda p: str(p))
+    monkeypatch.setattr(fs_module, "thumbnail_path_for", lambda p: str(p))
 
 
 def test_get_index_center():
@@ -199,9 +204,20 @@ class _FakeProxy:
         self.image = image
         self.loaded = loaded
         self.on_load_callbacks = []
+        self.unbound_callbacks = []
 
     def bind(self, **kwargs):
         self.on_load_callbacks.append(kwargs["on_load"])
+
+    def unbind(self, **kwargs):
+        callback = kwargs["on_load"]
+        self.unbound_callbacks.append(callback)
+        if callback in self.on_load_callbacks:
+            self.on_load_callbacks.remove(callback)
+
+    @property
+    def listener_count(self):
+        return len(self.on_load_callbacks)
 
 
 class _FakeImageLoader:
@@ -414,3 +430,232 @@ def test_apply_high_res_keeps_existing_texture_when_proxy_has_none():
     fs._apply_high_res(proxy, slide, "w0")
 
     assert slide.texture == "tex"
+
+
+def test_apply_high_res_skips_a_different_slide_showing_the_requested_path():
+    """CodeRabbit #107: the requested path can be on screen on another slide.
+
+    Two wallpapers means the slide on screen and the slide we asked for can end
+    up pointing at the same wallpaper, so comparing paths alone is not enough.
+    """
+    fs = _high_res_screen()
+    slides = fs.carousel.slides
+    captured = slides[0]
+    captured.higher_format = "w1"
+    slides[1].higher_format = "w0"
+    fs.carousel.index = 1
+    slides[1].higher_format = "w1"  # current slide now shows the requested path
+    proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"))
+
+    fs._apply_high_res(proxy, captured, "w1")
+
+    assert captured.texture is None
+
+
+def test_apply_high_res_skips_when_the_slide_moved_on_to_another_wallpaper():
+    """Same widget, different wallpaper: the path check has to catch that."""
+    fs = _high_res_screen()
+    slide = fs.carousel.slides[0]
+    slide.higher_format = "w0"
+    fs.carousel.index = 0
+    proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"))
+    slide.higher_format = "w1"  # re-pointed while the user stayed put
+
+    fs._apply_high_res(proxy, slide, "w0")
+
+    assert slide.texture is None
+
+
+def test_apply_high_res_without_a_slide_does_not_raise():
+    """No current slide and no captured slide must not read attributes off None."""
+    fs = _high_res_screen()
+    fs.carousel.index = 3  # out of range, so current_slide is None
+    proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"))
+
+    fs._apply_high_res(proxy, None, "w0")
+
+    assert fs.carousel.current_slide is None
+
+
+def test_late_load_never_paints_a_slide_that_is_not_current(monkeypatch):
+    """A load that finishes after swiping must never touch an off-screen slide.
+
+    Walks the real ``on_current_slide`` over many library sizes and swipe orders
+    (Kivy's carousel wraps its index modulo the slide count) and replays every
+    request made along the way against the real ``_apply_high_res``.
+    """
+    import itertools
+
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    monkeypatch.setattr(fs_module, "app_logger", mock.MagicMock())  # this rejects thousands of loads
+    monkeypatch.setattr(fs_module, "Clock", mock.MagicMock())  # real Clock is slow, we never need the timer
+    _patch_carousel_deps(monkeypatch)
+    applied = 0
+
+    for size in range(2, 6):
+        wallpapers = [f"w{i}" for i in range(size)]
+        for start in range(size):
+            fs = _bare_screen()
+            fs._apply_high_res = FullscreenScreen._apply_high_res.__get__(fs)
+            for length in range(size + 2):
+                for order in itertools.product("+-", repeat=length):
+                    fs.wallpapers_data = wallpapers
+                    fs.manager.gallery_screen.wallpapers = wallpapers
+                    fs.carousel_index = start
+                    fs.update_images(index=start)  # fresh slides for every order
+
+                    requests = [(fs.carousel.current_slide, fs.carousel.current_slide.higher_format)]
+                    for swipe in order:
+                        index = fs.carousel.index + (1 if swipe == "+" else -1)
+                        fs.carousel.index = index % 3  # kivy: _index % len(slides)
+                        fs.on_current_slide(fs.carousel, fs.carousel.index)
+                        requests.append((fs.carousel.current_slide, fs.carousel.current_slide.higher_format))
+
+                        for slide, path in requests:
+                            marker = object()  # unique, so a real paint is visible
+                            proxy = _FakeProxy(image=_FakeImageLoader(texture=marker))
+                            fs._apply_high_res(proxy, slide, path)
+                            if slide is fs.carousel.current_slide:
+                                applied += 1
+                            else:
+                                assert slide.texture is not marker, (
+                                    f"stale load painted an off-screen slide "
+                                    f"(wallpapers={size}, start={start}, swipes={''.join(order)})"
+                                )
+
+    assert applied, "no load was ever accepted, so the loop proved nothing"
+
+
+def test_load_high_res_stores_one_listener_for_a_cold_proxy(monkeypatch):
+    fs = _high_res_screen()
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    slide = fs.carousel.slides[0]
+    slide.higher_format = "w0"
+    fs.carousel.index = 0
+    proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=False)
+    _patch_loader(monkeypatch, {"scaled/w0": proxy})
+
+    fs._load_high_res(slide)
+
+    assert proxy.listener_count == 1
+    assert fs.high_res_proxy is proxy
+    assert fs.high_res_on_load in proxy.on_load_callbacks
+
+
+def test_load_high_res_binds_nothing_when_already_loaded(monkeypatch):
+    fs = _high_res_screen()
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    slide = fs.carousel.slides[0]
+    slide.higher_format = "w0"
+    fs.carousel.index = 0
+    proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=True)
+    _patch_loader(monkeypatch, {"scaled/w0": proxy})
+
+    fs._load_high_res(slide)
+
+    assert slide.texture == "tex"
+    assert proxy.listener_count == 0
+    assert fs.high_res_proxy is None
+    assert fs.high_res_on_load is None
+
+
+def test_load_high_res_drops_the_previous_listener(monkeypatch):
+    fs = _high_res_screen()
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    fs.carousel.index = 0
+    first = fs.carousel.slides[0]
+    first.higher_format = "w0"
+    second = fs.carousel.slides[1]
+    second.higher_format = "w1"
+    fs.carousel.index = 1
+    stale_proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=False)
+    _patch_loader(monkeypatch, {"scaled/w0": stale_proxy, "scaled/w1": stale_proxy})
+
+    fs._load_high_res(first)
+    fs._load_high_res(second)
+
+    assert stale_proxy.listener_count == 1
+    assert fs.high_res_proxy is stale_proxy
+
+
+def test_cancel_high_res_unbinds_and_clears(monkeypatch):
+    fs = _high_res_screen()
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    slide = fs.carousel.slides[0]
+    slide.higher_format = "w0"
+    fs.carousel.index = 0
+    proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=False)
+    _patch_loader(monkeypatch, {"scaled/w0": proxy})
+    clock = mock.MagicMock()
+    fs.clock_for_higher_format = clock
+
+    fs._load_high_res(slide)
+    fs._cancel_high_res()
+
+    assert clock.cancel.called
+    assert proxy.listener_count == 0
+    assert proxy.unbound_callbacks
+    assert fs.high_res_proxy is None
+    assert fs.high_res_on_load is None
+    assert fs.clock_for_higher_format is None
+
+
+def test_cancel_high_res_without_a_pending_load_is_safe():
+    fs = _high_res_screen()
+
+    fs._cancel_high_res()
+
+    assert fs.high_res_proxy is None
+    assert fs.clock_for_higher_format is None
+
+
+def test_on_current_slide_unbinds_the_previous_listener(monkeypatch):
+    _patch_carousel_deps(monkeypatch)
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    wallpapers = [f"w{i}" for i in range(3)]
+    fs = _high_res_screen()
+    fs.wallpapers_data = wallpapers
+    fs.manager.gallery_screen.wallpapers = wallpapers
+    fs.carousel_index = 0
+    fs.update_images(index=0)
+    proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=False)
+    _patch_loader(monkeypatch, {f"scaled/{p}": proxy for p in wallpapers})
+
+    fs._load_high_res(fs.carousel.current_slide)
+    assert proxy.listener_count == 1
+
+    fs.carousel.index = 2
+    fs.on_current_slide(fs.carousel, 2)
+
+    assert proxy.listener_count == 0
+    assert fs.high_res_proxy is None
+
+
+def test_update_images_unbinds_before_dropping_the_slides(monkeypatch):
+    _patch_carousel_deps(monkeypatch)
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    wallpapers = [f"w{i}" for i in range(3)]
+    fs = _high_res_screen()
+    fs.wallpapers_data = wallpapers
+    fs.manager.gallery_screen.wallpapers = wallpapers
+    fs.carousel_index = 0
+    fs.update_images(index=0)
+    proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=False)
+    _patch_loader(monkeypatch, {f"scaled/{p}": proxy for p in wallpapers})
+    fs._load_high_res(fs.carousel.current_slide)
+    dropped = fs.carousel.current_slide
+    listeners_when_dropped = []
+    clear_widgets = fs.carousel.clear_widgets
+
+    def spy_clear_widgets():
+        listeners_when_dropped.append(proxy.listener_count)
+        clear_widgets()
+
+    fs.carousel.clear_widgets = spy_clear_widgets
+
+    fs.update_images(index=1)
+
+    assert listeners_when_dropped == [0], "listener was still attached while the slides went away"
+    assert proxy.listener_count == 0
+    assert fs.high_res_proxy is None
+    assert dropped not in fs.carousel.slides
