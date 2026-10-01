@@ -842,6 +842,7 @@ def create_scaled_down_img(src_path, dest_path, max_width, max_height, quality=7
             return str(src_path)
 
     with _SCALED_IMG_LOCK:
+        print(f"{dest_path} os.path.exists(dest_path): {os.path.exists(dest_path)}")
         if os.path.exists(dest_path):
             return str(dest_path)
         try:
@@ -1076,15 +1077,23 @@ def get_or_create_thumbnail(src, destination_dir=None, size=(320, 320)):
 
 def get_or_create_scaled_down_image(src, size):
     """Convenience wrapper to obtain a thumbnail path, creating it if necessary."""
+    if not src:
+        return ""
+
     destination_path = scaled_down_path_for(src)
+    if os.path.exists(destination_path):
+        return destination_path
     if not size:
         from kivy.core.window import Window
         running_app = MDApp.get_running_app()
         screen_manager = running_app.sm
-        fullscreen = screen_manager.fullscreen
-        carousel = fullscreen.carousel
-        carousel_height = carousel.size[1]
-        win_w, _ = Window.size
+        full_screen = screen_manager.full_screen
+        carousel = full_screen.carousel
+        win_w, win_h = Window.size
+        if carousel:
+            carousel_height = carousel.size[1]
+        else:
+            carousel_height=win_h*0.8
         size = (win_w, carousel_height)
 
     try:
