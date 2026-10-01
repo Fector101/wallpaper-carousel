@@ -253,7 +253,6 @@ class FullscreenScreen(MyMDScreen):
         current_slide = self.carousel.current_slide
         if not current_slide:
             return
-        current_slide._high_res_loaded = False
         self._load_high_res(current_slide)
 
     def build_ui(self, _=None):
@@ -622,6 +621,7 @@ class FullscreenScreen(MyMDScreen):
 
     def on_current_slide(self, carousel, index): # type: ignore
         """Using on_current_slide instead of on_index to prevent multiple Calls"""
+        # print("on_current_slide")
         if not self.carousel_has_images or not carousel.current_slide:
             return None
 
@@ -633,12 +633,10 @@ class FullscreenScreen(MyMDScreen):
         left_slide = self.carousel.slides[self.get_index("left")]
         left_slide.source = str(thumbnail_path_for(left_path))
         left_slide.higher_format=str(left_path)
-        left_slide._high_res_loaded=False
 
         right_slide = self.carousel.slides[self.get_index("right")]
         right_slide.source=str(thumbnail_path_for(right_path))
         right_slide.higher_format=str(right_path)
-        right_slide._high_res_loaded=False
 
         current_slide = carousel.current_slide
 
@@ -656,30 +654,27 @@ class FullscreenScreen(MyMDScreen):
 
     def _load_high_res(self, slide):
         from kivy.loader import Loader
-        if getattr(slide, '_high_res_loaded', False):
-            return
         high_res_path = get_or_create_scaled_down_image(
             src=str(slide.higher_format),
             size=self.carousel.size
         )
 
-        if slide.source == high_res_path:
-            slide._high_res_loaded = True
-            return
-        slide._high_res_loaded = True
         proxy = Loader.image(high_res_path)
-        proxy.bind(on_load=lambda p, obj=slide: self._apply_high_res(p, obj))
-        if proxy.image is not None and proxy.image.texture:
+        if proxy.loaded:
             self._apply_high_res(proxy, slide)
+        proxy.bind(on_load=lambda p, obj=slide: self._apply_high_res(p, obj))
 
     def _apply_high_res(self, proxy_image, slide):
+        if slide.higher_format != self.carousel.current_slide.higher_format:
+            # Already swiped pass this image, so no need to set texture when it's not been displayed
+            app_logger.debug("Already swiped pass this image, so no need to set texture when it's not been displayed")
+            return
         if proxy_image.image.texture:
             slide.texture = proxy_image.image.texture
             slide.source = get_or_create_scaled_down_image(
             src=str(slide.higher_format),
             size=self.carousel.size
         )
-            slide._high_res_loaded = True
 
     def back_to_gallery_screen(self,*_):
         self.app.sm.gallery_screen.refresh_gallery_screen()
@@ -690,7 +685,6 @@ def patch_resolution(proxy_image, image_object, higher_format):
     if proxy_image.image.texture:
         image_object.texture = proxy_image.image.texture
         image_object.source = higher_format
-        image_object._high_res_loaded = True
 
 def hide_nav_btn_and_status_bar():
     from android_notify.internal.java_classes import autoclass
@@ -710,7 +704,6 @@ def hide_nav_btn_and_status_bar():
         )
     except Exception as error_hiding_nav_btn_and_status_bar:
         app_logger.exception(error_hiding_nav_btn_and_status_bar)
-
 
 def thing(*_):
     print(f"bad img: {_}")
