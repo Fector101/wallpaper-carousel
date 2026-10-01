@@ -99,6 +99,35 @@ def app_external_storage_path():
     ext_dir = context.getExternalFilesDir(None)
     return ext_dir.getAbsolutePath() if ext_dir else appFolder()
 	
+def _last_cause(stack_trace):
+    """The deepest `Caused by:` line of a java stack trace, which is the part
+    that actually explains the failure. pyjnius hands us the whole dump, and
+    that is what flooded logcat before."""
+    if not stack_trace:
+        return None
+    lines = stack_trace.splitlines()
+    # AOSP puts the exception on the "Caused by:" line itself, but pyjnius can
+    # also emit the header alone with the message on the following line.
+    for index, line in enumerate(lines):
+        if 'Caused by:' not in line:
+            continue
+        cause = line.split('Caused by:', 1)[-1].strip()
+        if not cause:
+            for follower in lines[index + 1:]:
+                follower = follower.strip()
+                if follower and not follower.startswith(('at ', '\tat ')):
+                    cause = follower
+                    break
+        if cause:
+            return cause
+    # no Caused by chain; fall back to the first non-frame line
+    for line in lines:
+        stripped = line.strip()
+        if stripped and not stripped.startswith(('at ', '\tat ')):
+            return stripped
+    return None
+
+
 def write_logs_to_file(log_folder_name="logs", file_name="all_output1.txt"):
     import os
     from datetime import datetime
@@ -128,7 +157,16 @@ def write_logs_to_file(log_folder_name="logs", file_name="all_output1.txt"):
 
 
 class Service:
-    def __init__(self, name, args_str="", extra=True, on_finish=None):
+    START_RETRY_DELAY_SECONDS = 15
+    START_MAX_RETRIES = 4
+    # A refused start flashes as "Failed" this long before the retry countdown
+    # starts, so the failure is visible instead of the label jumping straight
+    # to "Retrying in 15s".
+    RETRY_FLASH_SECONDS = 1
+
+    def __init__(self, name, args_str="", extra=True, on_finish=None,
+                 on_start_attempt=None, on_attempt_failed=None, on_retry=None,
+                 on_give_up=None):
         try:
             from android import mActivity  # type: ignore
         except (ModuleNotFoundError, ImportError):
@@ -137,13 +175,27 @@ class Service:
         self.args_str = args_str
         self.name = name
         self.on_finish = on_finish
+        self.on_start_attempt = on_start_attempt
+        self.on_attempt_failed = on_attempt_failed
+        self.on_retry = on_retry
+        self.on_give_up = on_give_up
         self.extra = extra
+        self.start_error = None
         self._method_cache = {}
         self.service = self.__load_service_class() if self.mActivity else None
+        self._start_attempt = 0
+        self._retry_seconds_left = 0
+        self._retry_event = None
+        # Explicit flag rather than `_retry_event is not None`: both countdown
+        # callbacks clear `_retry_event` before notifying, so the event is None
+        # at the exact moment the UI is told a retry is in progress.
+        self._retry_active = False
 
     def get_name(self):
+        # Falls back to the bare service name when there is no context to read
+        # the package from, so a log line is never just "None".
         if not self.mActivity:
-            return None
+            return self.name
         context = self.mActivity.getApplicationContext()
         return str(context.getPackageName()) + '.Service' + self.name
 
@@ -231,15 +283,158 @@ class Service:
                 from utils.constants import ServiceStatus
                 self.on_finish(ServiceStatus.RUNNING)
             return True
-        
+
+        import jnius.jnius
+        from utils.logger import app_logger
+        self.start_error = None
         try:
             self.__get_static_method('start', 2).invoke(None, (self.mActivity, arg))
-        except Exception as error_starting_service:
-            print("Error starting service:", error_starting_service)
-            import traceback
-            traceback.print_exc()
+            return True
+
+        except jnius.jnius.JavaException as java_exception:
+            # The java class name is only the wrapper (InvocationTargetException),
+            # the real reason is in the stack trace, prefixed by "Caused by:".
+            self.start_error = "\n".join(
+                str(frame)
+                for frame in (getattr(java_exception, 'stacktrace', None) or [])
+            ) or str(java_exception)
+            bad_process = 'process is bad' in self.start_error
+            app_logger.error(
+                f"[Service.start] {self.get_name()} refused by Android"
+                f"{' (process marked bad, crash-looped)' if bad_process else ''}: "
+                f"{_last_cause(self.start_error) or 'no cause reported'}"
+            )
+            # the full java stack, so a log export carries the whole story
+            app_logger.debug(
+                f"[Service.start] {self.get_name()} java stack trace:\n{self.start_error}")
+            if bad_process:
+                app_logger.error(
+                    f"[Service.start] {self.get_name()} can only recover via "
+                    f"`adb shell am force-stop <package>` or an app restart; "
+                    f"retries may not help until the bad-process flag clears."
+                )
             return False
+
+        except Exception as error_starting_service:
+            self.start_error = str(error_starting_service)
+            app_logger.exception(
+                f"[Service.start] error starting {self.get_name()}: "
+                f"{self.start_error}")
+            return False
+
+    def start_with_retry(self):
+        """Start the service, retrying with a countdown when Android refuses.
+
+        Android flags a crash-looped service process as bad and then rejects
+        every start with "process is bad" until that process is reaped, so a
+        refused start often succeeds a moment later. A refusal first flashes as
+        failed for RETRY_FLASH_SECONDS, then the countdown ticks once a second
+        and the next attempt fires when it reaches 0; the single pending event
+        is cancelled on success, on cancel_retry() and when giving up.
+
+        Returns what the first attempt returned, so the caller can tell
+        "started" from "failed and retrying in the background".
+        """
+        self.cancel_retry()
+        self._start_attempt = 0
+        self._retry_seconds_left = 0
+        self._retry_event = None
+        return self._attempt_start()
+
+    def cancel_retry(self):
+        if self._retry_event:
+            self._retry_event.cancel()
+            self._retry_event = None
+        self._retry_seconds_left = 0
+        self._retry_active = False
+
+    @property
+    def retry_pending(self):
+        """True from the first refusal until the retry chain ends.
+
+        Covers the failure flash and every countdown tick. Cleared when an
+        attempt succeeds, when the chain gives up, and by cancel_retry(), so a
+        pending retry implies the service is not running — no `is_running()`
+        JNI call needed to know that.
+        """
+        return self._retry_active
+
+    def _attempt_start(self):
+        if self.on_start_attempt:
+            self.on_start_attempt()
+
+        self._retry_event = None
+        self._retry_seconds_left = 0
+
+        recovered = self._start_attempt > 0
+        result = self.start()
+        # None means there is no activity to start from (not Android), which is
+        # not a refusal; only False means Android rejected the start.
+        if result is not False:
+            self.cancel_retry()
+            if recovered:
+                from utils.logger import app_logger
+                app_logger.info(
+                    f"[Service.start_with_retry] {self.get_name()} started on attempt "
+                    f"{self._start_attempt + 1} after earlier refusals.")
+            return result
+
+        self._schedule_retry()
+        return False
+
+    def _notify_retry(self):
+        if self.on_retry:
+            self.on_retry(
+                self._start_attempt,
+                self.START_MAX_RETRIES,
+                self._retry_seconds_left,
+            )
+
+    def _schedule_retry(self):
+        from utils.logger import app_logger
+        self._start_attempt += 1
+        if self._start_attempt > self.START_MAX_RETRIES:
+            self._retry_event = None
+            self._retry_active = False
+            app_logger.error(
+                f"[Service.start_with_retry] {self.get_name()} still refused after "
+                f"{self.START_MAX_RETRIES} retries, giving up. Last error: "
+                f"{_last_cause(self.start_error) or self.start_error or 'unknown'}")
+            if self.on_give_up:
+                self.on_give_up()
+            return False
+
+        app_logger.warning(
+            f"[Service.start_with_retry] {self.get_name()} attempt "
+            f"{self._start_attempt}/{self.START_MAX_RETRIES} refused: "
+            f"{_last_cause(self.start_error) or self.start_error or 'unknown'}. "
+            f"Retrying in {self.START_RETRY_DELAY_SECONDS}s.")
+        # set before the flash callback, so a tap during the flash already
+        # knows a retry is pending
+        self._retry_active = True
+        if self.on_attempt_failed:
+            self.on_attempt_failed()
+        self._schedule_event(self._begin_countdown, self.RETRY_FLASH_SECONDS)
         return True
+
+    def _begin_countdown(self, _dt):
+        self._retry_event = None
+        self._retry_seconds_left = self.START_RETRY_DELAY_SECONDS
+        self._notify_retry()
+        self._schedule_event(self._countdown_tick, 1)
+
+    def _schedule_event(self, callback, delay):
+        from kivy.clock import Clock
+        self._retry_event = Clock.schedule_once(callback, delay)
+
+    def _countdown_tick(self, _dt):
+        self._retry_event = None
+        self._retry_seconds_left -= 1
+        if self._retry_seconds_left > 0:
+            self._notify_retry()
+            self._schedule_event(self._countdown_tick, 1)
+            return
+        self._attempt_start()
 
     def __run_service_file(self):
         import os, json, runpy, threading
@@ -503,6 +698,46 @@ def patch_kivymd_hover_on_touch():
     # CommonElevationBehavior uses 0 here (uix/behaviors/elevation.py), the
     # [0, 0] default is only read back into the NumericProperty above.
     StateLayerBehavior._shadow_softness = 0
+
+    return None
+
+def patch_kivymd_disabled_text_color():
+    # KivyMD PR #1897: MDLabel/MDButtonText always used the MD3
+    # onSurfaceColor @ label_opacity_value_disabled_text for `disabled_color`,
+    # ignoring an explicitly set text_color_disabled. This matters here because
+    # the carousel buttons are disabled while the service starts/retries and
+    # should keep the theme's text color, dimmed, instead of a grey that
+    # clashes with a custom md_bg_color.
+    # Applies the property plus the two kv rule overrides from that PR.
+    # DELETE once kivymd ships it (2.0.1).
+    from kivy.properties import ColorProperty
+    from kivy.lang import Builder
+    from kivymd.uix.label import MDLabel
+
+    if not hasattr(MDLabel, "text_color_disabled"):
+        # __set_name__ is what registers the property with kivy's per-class
+        # property cache; assigning the attribute alone leaves the property
+        # unknown, so kwargs like text_color_disabled= are then rejected.
+        text_color_disabled = ColorProperty(None)
+        text_color_disabled.__set_name__(MDLabel, "text_color_disabled")
+        MDLabel.text_color_disabled = text_color_disabled
+
+    # Rule order matters: these must be loaded before any MDLabel is built,
+    # which holds because main.py patches at import time.
+    Builder.load_string(r"""
+<MDLabel>:
+    disabled_color:
+        (app.theme_cls.onSurfaceColor[:-1] + [self.label_opacity_value_disabled_text]) \
+        if not self.text_color_disabled \
+        else self.text_color_disabled
+
+<MDButtonText>:
+    disabled_color:
+        ((self.theme_cls.onSurfaceColor[:-1] + [self.button_text_opacity_value_disabled_text]) \
+        if self._button else self.theme_cls.transparentColor) \
+        if not self.text_color_disabled \
+        else self.text_color_disabled
+""")
 
     return None
 

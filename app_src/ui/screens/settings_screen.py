@@ -3,6 +3,7 @@ import traceback
 
 from kivy.clock import Clock
 from kivy.graphics import Color, Line
+from kivy.utils import get_color_from_hex
 from kivy.metrics import dp, sp
 from kivy.properties import StringProperty, ListProperty, ObjectProperty, NumericProperty, BooleanProperty
 
@@ -27,6 +28,10 @@ from utils.logger import app_logger
 from utils.model import get_app
 
 my_config = ConfigManager()
+
+# The button text colour is passed around as MDButtonText's "white"/"black"
+# shorthand, but dimming it for the disabled state needs real float channels.
+_NAMED_COLORS = {"white": "#ffffff", "black": "#000000"}
 
 
 class MyLabel(ButtonBehavior, Label):
@@ -621,12 +626,44 @@ class CarouselTools(Column):
         self.add_widget(button_box)
 
         self.app.bind(device_theme=self._set_theme_color)
+        self._restart_enabled = True
         self._set_theme_color()
 
     def _set_theme_color(self, *_):
         text_color = "black" if self.app.device_theme == "light" else "white"
-        self.restart_btn.txt.text_color = text_color
         self.stop_btn.txt.text_color = text_color
+        self._apply_restart_colors(text_color)
+
+    def set_restart_enabled(self, enabled):
+        self._restart_enabled = enabled
+        self.restart_btn.disabled = not enabled
+        self._apply_restart_colors()
+
+    def _apply_restart_colors(self, text_color=None):
+        # <MDButton> has no disabled branch for md_bg_color, so the dimmed
+        # background has to be set by hand; text_color_disabled comes from
+        # patch_kivymd_disabled_text_color().
+        if text_color is None:
+            text_color = "black" if self.app.device_theme == "light" else "white"
+        # text_color_disabled is a ColorProperty(None) without allownone, so it
+        # can never be reset to None. While enabled it is left at the plain
+        # text colour, which is what the label renders anyway.
+        if self._restart_enabled:
+            self.restart_btn.txt.text_color = text_color
+            self.restart_btn.txt.text_color_disabled = text_color
+            self.restart_btn.md_bg_color = theme_colors.BUTTON_BG
+            return
+        self.restart_btn.txt.text_color = text_color
+        self.restart_btn.txt.text_color_disabled = self._dimmed(text_color)
+        self.restart_btn.md_bg_color = self._dimmed(theme_colors.BUTTON_BG)
+
+    def _dimmed(self, color, alpha=0.4):
+        # theme_colors entries are float lists, but the text colour is the
+        # "white"/"black" shorthand MDButtonText already takes.
+        if isinstance(color, str):
+            color = _NAMED_COLORS.get(color, color)
+            color = get_color_from_hex(color)
+        return [color[0], color[1], color[2], alpha]
 
 
 class SettingsScreen(MyMDScreen):
@@ -646,6 +683,8 @@ class SettingsScreen(MyMDScreen):
         ServiceStatus.STOPPED: ([0.62, 0.62, 0.62, 1], "Stopped"),
         ServiceStatus.FAILED: ([0.9, 0.28, 0.25, 1], "Failed"),
         ServiceStatus.RESTARTING: ([1.0, 0.76, 0.03, 1], "Restarting..."),
+        ServiceStatus.RETRYING: ([1.0, 0.76, 0.03, 1], "Retrying..."),
+        ServiceStatus.ATTEMPT_FAILED: ([0.9, 0.28, 0.25, 1], "Failed"),
     }
     # (restart button label, stop button label) per ServiceStatus
     _CAROUSEL_TOOLS_LABELS = {
@@ -655,7 +694,20 @@ class SettingsScreen(MyMDScreen):
         ServiceStatus.STOPPED: ("Restart Carousel", "Stop Carousel"),
         ServiceStatus.FAILED: ("Restart Carousel", "Stop Carousel"),
         ServiceStatus.RESTARTING: ("Restarting...", "Stop Carousel"),
+        ServiceStatus.RETRYING: ("Starting...", "Cancel Retries"),
+        ServiceStatus.ATTEMPT_FAILED: ("Starting...", "Cancel Retries"),
     }
+    # While the service is starting, retrying or stopping, a tap on Restart
+    # would stack another start attempt on top of the one already in flight.
+    # MDButton.on_touch_down returns None while disabled, so no on_release
+    # fires. Stop stays enabled so a pending retry loop can still be cancelled.
+    _BUSY_STATUSES = frozenset({
+        ServiceStatus.STARTING,
+        ServiceStatus.RESTARTING,
+        ServiceStatus.RETRYING,
+        ServiceStatus.ATTEMPT_FAILED,
+        ServiceStatus.STOPPING,
+    })
     STARTUP_TIMEOUT_SECONDS = 15
     STOP_TIMEOUT_SECONDS = 10
 
@@ -1260,6 +1312,13 @@ class SettingsScreen(MyMDScreen):
             self.times_tapped = 0
 
     def terminate_carousel(self, *_):
+        if self.app.service_retry_pending():
+            # Nothing is running: the only thing to stop is the pending
+            # countdown, so skip the "stop a running service" confirmation.
+            self._cancel_start_retry()
+            self.set_service_status(ServiceStatus.STOPPED)
+            toast("Retries cancelled")
+            return
         CarouselConfirmPopup(
             title="Stop Carousel?",
             message="Stopping the carousel frequently can make Android block it from "
@@ -1269,7 +1328,15 @@ class SettingsScreen(MyMDScreen):
             on_confirm=self._terminate_carousel_confirm,
         ).show()
 
+    def _cancel_start_retry(self):
+        from utils.logger import app_logger
+        self.app.cancel_service_start_retry()
+        app_logger.info(
+            "[SettingsScreen] pending service start retries cancelled by the user")
+
     def _terminate_carousel_confirm(self):
+        # also cancels here, so a countdown cannot outlive a real stop
+        self._cancel_start_retry()
         self.set_service_status(ServiceStatus.STOPPING)
         try:
             result = Service(name="Wallpapercarousel").stop()
@@ -1356,17 +1423,16 @@ class SettingsScreen(MyMDScreen):
         self._restart_service_confirm()
 
     def _restart_service_confirm(self):
+        # a fresh start replaces the pending one rather than racing it
+        self._cancel_start_retry()
         self.set_service_status(ServiceStatus.RESTARTING)
 
         def after_stop(*_):
             try:
-                self.app.start_service()
-                # Service(name="Wallpapercarousel").start()
-                toast("Service boosted!")
+                if self.app.start_service():
+                    toast("Service boosted!")
             except Exception as error_starting_service:
-               #p(error_starting_service)
                 traceback.print_exc()
-                toast("Start failed")
                 self.set_service_status(ServiceStatus.FAILED)
 
         try:
@@ -1385,7 +1451,24 @@ class SettingsScreen(MyMDScreen):
     def on_service_stopped(self):
         self.set_service_status(ServiceStatus.STOPPED)
 
-    def set_service_status(self, status):
+    def on_service_start_attempt(self):
+        self.set_service_status(ServiceStatus.STARTING)
+
+    def on_service_attempt_failed(self):
+        # Brief flash between STARTING and RETRYING, so a refused start is
+        # reported as failed instead of jumping straight to the countdown.
+        self.set_service_status(ServiceStatus.ATTEMPT_FAILED)
+
+    def on_service_retry_tick(self, attempt, total, seconds_left):
+        self.set_service_status(
+            ServiceStatus.RETRYING,
+            f"Retrying in {seconds_left}s ({attempt}/{total})",
+        )
+
+    def on_service_start_gave_up(self):
+        self.set_service_status(ServiceStatus.FAILED)
+
+    def set_service_status(self, status, label=None):
         if not self.built_ui:
             return
         if isinstance(status, str):
@@ -1396,6 +1479,8 @@ class SettingsScreen(MyMDScreen):
                 return
 
         color, text = self._SERVICE_STATUS_STATE[status]
+        if label is not None:
+            text = label
         if self._carousel_status_dot is not None:
             self._carousel_status_dot.md_bg_color = color
         if self._carousel_status_label is not None:
@@ -1403,9 +1488,11 @@ class SettingsScreen(MyMDScreen):
 
         if self.carousel_tools is not None:
             restart_label, stop_label = self._CAROUSEL_TOOLS_LABELS[status]
-            self.carousel_tools.restart_btn.txt.text = restart_label
-            self.carousel_tools.stop_btn.txt.text = stop_label
-            # self.carousel_tools.set_busy( status in (ServiceStatus.STARTING, ServiceStatus.STOPPING, ServiceStatus.RESTARTING))
+            # assign .text, not .txt.text: MyTextButton binds text -> set_val ->
+            # txt.text, so this keeps the button's own property in sync too
+            self.carousel_tools.restart_btn.text = restart_label
+            self.carousel_tools.stop_btn.text = stop_label
+            self.carousel_tools.set_restart_enabled(status not in self._BUSY_STATUSES)
 
         self._cancel_startup_timeout()
         self._cancel_stop_timeout()

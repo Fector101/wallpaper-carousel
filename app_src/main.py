@@ -28,11 +28,12 @@ from ui.widgets.bottom_sheet import MyBtmSheet
 
 from utils.android import is_device_on_light_mode
 from utils.config_manager import ConfigManager
-from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, ServiceStatus, \
+from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, \
     theme_colors as _theme_colors
 boot_log("main: local imports done2")
 from utils.helper import Service, get_free_port, register_fonts, fix_input_on_linux, \
     patch_kivymd_switch_press_events, patch_kivymd_hover_on_touch, \
+    patch_kivymd_disabled_text_color, \
     get_stored_running_ui_server_port, get_stored_running_service_server_port
 boot_log("main: local imports done1")
 from utils.image_operations import ImageOperation, warm_up_android_bitmap_stack # JNI call — app_storage_path() - 0.697s
@@ -45,12 +46,17 @@ android_notify_logger.setLevel(logging.DEBUG if on_android_platform() else loggi
 fix_input_on_linux()
 patch_kivymd_switch_press_events()
 patch_kivymd_hover_on_touch()
+
+# Must run before any MDLabel is built, so that the kv overrides below it
+# apply; the carousel buttons rely on text_color_disabled.
+patch_kivymd_disabled_text_color()
 register_fonts()
 boot_log("--------------main: module setup done--------------")
 
 if platform == 'linux':
     from kivy.core.window import Window # +0.738s
     Window.size = (390, 740)
+
 
 
 class WallpaperCarouselApp(MDApp):
@@ -60,7 +66,6 @@ class WallpaperCarouselApp(MDApp):
     # True only after file_operation is created AND bind_plyer_fix + share
     # listener are wired up; gates the picker entry point and early results.
     image_operation_ready = BooleanProperty(False)
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         boot_log("app: __init__ done")
@@ -73,6 +78,7 @@ class WallpaperCarouselApp(MDApp):
         self.sm = None
         self.bottom_bar = None
         self._widget_pick_pending = None
+        self._carousel_service = None
 
     def build_ui(self):
         from kivy.lang import Builder
@@ -327,27 +333,51 @@ class WallpaperCarouselApp(MDApp):
             self.sm.settings_screen.set_service_status(status)
 
     def start_service(self):
+        """Build a Service with retry callbacks wired to the settings screen."""
+        self.cancel_service_start_retry()
 
-        settings_screen = getattr(self.sm, "settings_screen", None)
+        settings_screen = self._settings_screen_or_none()
+        on_retry = None
+        on_give_up = None
+        on_start_attempt = None
+        on_attempt_failed = None
         if settings_screen is not None:
-            settings_screen.set_service_status(ServiceStatus.STARTING)
+            on_retry = settings_screen.on_service_retry_tick
+            on_give_up = settings_screen.on_service_start_gave_up
+            on_start_attempt = settings_screen.on_service_start_attempt
+            on_attempt_failed = settings_screen.on_service_attempt_failed
 
         try:
-            result = Service(
+            self._carousel_service = Service(
                 name='Wallpapercarousel',
                 args_str={
                     SERVICE_PORT_ARGUMENT_KEY: self.service_port,
                     SERVICE_UI_PORT_ARGUMENT_KEY: self.ui_service_listener.UI_PORT,
                 },
-                on_finish=self.self_settings_screen_service_state
-            ).start()
+                on_finish=self.self_settings_screen_service_state,
+                on_start_attempt=on_start_attempt,
+                on_attempt_failed=on_attempt_failed,
+                on_retry=on_retry,
+                on_give_up=on_give_up,
+            )
+            return self._carousel_service.start_with_retry()
         except Exception as error_starting_service:
-            if settings_screen is not None:
-                settings_screen.set_service_status(ServiceStatus.FAILED)
-            raise
-        if result is False and settings_screen is not None:
-            settings_screen.set_service_status(ServiceStatus.FAILED)
-            raise Exception("Failed to start carousel service")
+            app_logger.exception(
+                f"start_service: error starting carousel service: "
+                f"{error_starting_service}")
+            self._carousel_service = None
+            return False
+
+    def cancel_service_start_retry(self):
+        if self._carousel_service:
+            self._carousel_service.cancel_retry()
+
+    def service_retry_pending(self):
+        return bool(
+            self._carousel_service and self._carousel_service.retry_pending)
+
+    def _settings_screen_or_none(self):
+        return getattr(getattr(self, "sm", None), "settings_screen", None)
 
     def on_resume(self):
         if self.file_operation and self.file_operation.showing_loading_screen and not self.file_operation._file_picker_active:
