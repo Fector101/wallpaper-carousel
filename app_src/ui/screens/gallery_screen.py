@@ -9,7 +9,7 @@ from kivy.metrics import dp, sp
 from kivy.properties import StringProperty, NumericProperty, ListProperty, BooleanProperty, ObjectProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.widget import Widget
-from kivy.uix.image import AsyncImage
+from kivy.uix.image import Image
 from kivy.utils import get_color_from_hex
 
 from kivymd.app import MDApp
@@ -135,6 +135,30 @@ class IconTextButton(MDButton):
             return True
         return super().on_touch_down(touch)
 
+class LowResDisplayerWithLoader(Image):
+    low_res_abs_path=StringProperty("")
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.proxy = None
+        self.opacity=0
+        self.load_low_res_image()
+        self.bind(low_res_abs_path=self.load_low_res_image)
+
+    def load_low_res_image(self, _=None,source=None):
+        from kivy.loader import Loader
+        self.proxy = Loader.image(self.low_res_abs_path)
+        if self.proxy.loaded:
+            self.apply_proxy_image_texture(self.proxy)
+        self.proxy.bind(
+            on_load=self.apply_proxy_image_texture
+        )
+
+    def apply_proxy_image_texture(self, proxy_image):
+        if proxy_image.image.texture:
+            self.texture = proxy_image.image.texture
+            self.source = self.low_res_abs_path
+            Clock.schedule_once(lambda dt: setattr(self, 'opacity', 1),1)
+
 
 class PreviewImage(ButtonBehavior, MDRelativeLayout):
     __events__ = ("on_long_press",)
@@ -153,11 +177,10 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
         self._normal_image_size = None
         # self.md_bg_color=[1,1,0,1]
         self.checkmark_widget = None
-        self.image_widget = AsyncImage(
-            source=source,
+        self.image_widget = LowResDisplayerWithLoader(
+            low_res_abs_path=source,
             fit_mode="cover",
             mipmap=True,
-
             # allow_stretch=True,
         )
         self.image_widget.size_hint=(None,None)

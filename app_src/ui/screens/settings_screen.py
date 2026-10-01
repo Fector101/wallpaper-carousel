@@ -1,6 +1,7 @@
 import os
 import traceback
 
+
 from kivy.clock import Clock
 from kivy.graphics import Color, Line
 from kivy.utils import get_color_from_hex
@@ -14,6 +15,7 @@ from kivy.uix.label import Label
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDButton, MDIconButton, MDButtonIcon, MDButtonText
 from kivymd.uix.label import MDLabel, MDIcon
+from kivymd.uix.fitimage import FitImage
 
 from ui.screens.full_screen import BorderMDBoxLayout
 from ui.widgets.android import toast
@@ -22,8 +24,9 @@ from ui.widgets.modals import CarouselConfirmPopup, MyTextButton
 
 from utils.android import add_home_screen_widget
 from utils.config_manager import ConfigManager
-from utils.constants import DEV, ServiceStatus, theme_colors, VERSION, _rgba
+from utils.constants import DEV, ServiceStatus, theme_colors, VERSION
 from utils.helper import Service, appFolder, smart_convert_minutes, is_running_debug_build
+from utils.image_operations import get_or_create_scaled_down_image
 from utils.logger import app_logger
 from utils.model import get_app
 
@@ -665,6 +668,26 @@ class CarouselTools(Column):
             color = get_color_from_hex(color)
         return [color[0], color[1], color[2], alpha]
 
+class ScaledLoaderImage(FitImage):
+    high_res_abs_path=StringProperty("")
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.proxy = None
+        self.load_scaled_image()
+        self.bind(high_res_abs_path=self.load_scaled_image)
+
+    def load_scaled_image(self, _=None,source=None):
+        from kivy.loader import Loader
+        self.proxy = Loader.image(get_or_create_scaled_down_image(self.high_res_abs_path,size=None))
+        if self.proxy.loaded:
+            self.apply_proxy_image_texture(self.proxy)
+        self.proxy.bind(
+            on_load=self.apply_proxy_image_texture
+        )
+
+    def apply_proxy_image_texture(self, proxy_image):
+        if proxy_image.image.texture:
+            self.texture = proxy_image.image.texture
 
 class SettingsScreen(MyMDScreen):
     current_image_source = StringProperty()
@@ -970,8 +993,8 @@ class SettingsScreen(MyMDScreen):
             radius=[dp(5)],
             md_bg_color=theme_colors.SECONDARY,
         )
-        current_image = FitImage(
-            source=self.current_image_source,
+        current_image = ScaledLoaderImage(
+            high_res_abs_path=self.current_image_source,
             fit_mode="cover",
             size_hint=(None, None),
             size=(dp(120), dp(120)),
@@ -995,8 +1018,8 @@ class SettingsScreen(MyMDScreen):
             radius=[dp(5)],
             md_bg_color=theme_colors.SECONDARY,
         )
-        next_image = FitImage(
-            source=self.next_image_source,
+        next_image = ScaledLoaderImage(
+            high_res_abs_path=self.next_image_source,
             fit_mode="cover",
             size_hint=(None, None),
             size=(dp(60), dp(60)),
@@ -1007,8 +1030,8 @@ class SettingsScreen(MyMDScreen):
 
         images_row.add_widget(current_col)
         images_row.add_widget(next_col)
-        self.bind(current_image_source=current_image.setter("source"),
-                  next_image_source=next_image.setter("source"))
+        self.bind(current_image_source=current_image.setter("high_res_abs_path"),
+                  next_image_source=next_image.setter("high_res_abs_path"))
         home_widget_body.add_widget(images_row)
 
         skip_row = Row(adaptive_size=True, spacing=dp(10), pos_hint={"right": 1})
