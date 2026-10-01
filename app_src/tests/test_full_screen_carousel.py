@@ -9,7 +9,7 @@ class _FakeSlide:
     def __init__(self, path="", source=""):
         self.higher_format = path
         self.source = source
-        self._high_res_loaded = False
+        self.texture = None
 
 
 class _FakeImage:
@@ -17,13 +17,14 @@ class _FakeImage:
         self.source = kwargs.get("source")
         self.fit_mode = kwargs.get("fit_mode")
         self.higher_format = kwargs.get("higher_format")
-        self._high_res_loaded = False
+        self.texture = None
 
 
 class _FakeCarousel:
     def __init__(self, n_slides=3):
         self.slides = [_FakeSlide() for _ in range(n_slides)]
         self.index = 0
+        self.size = (100, 200)
 
     def clear_widgets(self):
         self.slides.clear()
@@ -188,7 +189,228 @@ def test_on_current_slide_updates_neighbors(monkeypatch, tmp_path):
 
     slides = fs.carousel.slides
     assert slides[0].higher_format == wallpapers[0]
-    assert slides[0]._high_res_loaded is False
     assert slides[1].higher_format == wallpapers[1]
     assert slides[2].higher_format == wallpapers[2]
     assert fs.current_image == wallpapers[1]
+
+
+class _FakeProxy:
+    def __init__(self, image=None, loaded=False):
+        self.image = image
+        self.loaded = loaded
+        self.on_load_callbacks = []
+
+    def bind(self, **kwargs):
+        self.on_load_callbacks.append(kwargs["on_load"])
+
+
+class _FakeImageLoader:
+    def __init__(self, texture=None):
+        self.texture = texture
+
+
+def _patch_loader(monkeypatch, proxies):
+    """Hand out pre-built proxies from a fake kivy.loader.Loader.
+
+    An empty ``proxies`` map makes any ``Loader.image`` call fail loudly, which is
+    how the "already loaded, nothing to do" test proves it skips the loader.
+    """
+    import sys
+    import types
+
+    def image(path, **_kwargs):
+        if path not in proxies:
+            raise AssertionError(f"Loader.image unexpectedly called for {path}")
+        return proxies[path]
+
+    loader_module = types.ModuleType("kivy.loader")
+    loader_module.Loader = types.SimpleNamespace(image=image)
+    monkeypatch.setitem(sys.modules, "kivy.loader", loader_module)
+
+
+def _high_res_screen(**attrs):
+    """A screen that keeps the real _load_high_res/_apply_high_res."""
+    fs = _bare_screen(**attrs)
+    fs._load_high_res = FullscreenScreen._load_high_res.__get__(fs)
+    fs._apply_high_res = FullscreenScreen._apply_high_res.__get__(fs)
+    return fs
+
+
+class _CountingSlide(_FakeSlide):
+    """A slide that records how often its texture is written."""
+
+    def __init__(self, path="", source=""):
+        self._texture = None
+        self.texture_writes = 0
+        super().__init__(path=path, source=source)
+
+    @property
+    def texture(self):
+        return self._texture
+
+    @texture.setter
+    def texture(self, value):
+        self.texture_writes += 1
+        self._texture = value
+
+
+def test_apply_high_res_sets_texture_and_leaves_source_alone():
+    fs = _high_res_screen()
+    slide = fs.carousel.slides[0]
+    slide.higher_format = "w0"
+    slide.source = "thumb/w0"
+    fs.carousel.index = 0
+    proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"))
+
+    fs._apply_high_res(proxy, slide, "w0")
+
+    assert slide.texture == "tex"
+    # the slide keeps pointing at the thumbnail: rendering follows the texture
+    assert slide.source == "thumb/w0"
+
+
+def test_apply_high_res_skips_slide_user_swiped_past():
+    fs = _high_res_screen()
+    slide = fs.carousel.slides[0]
+    slide.higher_format = "w0"
+    fs.carousel.index = 1
+    fs.carousel.slides[1].higher_format = "w1"
+    proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"))
+
+    fs._apply_high_res(proxy, slide, "w0")
+
+    assert slide.texture is None
+    assert slide.source == ""
+
+
+def test_apply_high_res_without_current_slide_does_not_raise():
+    fs = _high_res_screen()
+    fs.carousel = _FakeCarousel(n_slides=0)
+    proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"))
+
+    fs._apply_high_res(proxy, _FakeSlide(path="w0"), "w0")
+
+
+def test_apply_high_res_without_texture_leaves_slide_untouched():
+    fs = _high_res_screen()
+    slide = fs.carousel.slides[0]
+    slide.higher_format = "w0"
+    proxy = _FakeProxy(image=_FakeImageLoader(texture=None))
+
+    fs._apply_high_res(proxy, slide, "w0")
+
+    assert slide.texture is None
+    assert slide.source == ""
+
+
+def test_apply_high_res_skips_when_slide_already_has_that_texture():
+    fs = _high_res_screen()
+    slide = _CountingSlide()
+    slide.higher_format = "w0"
+    slide.texture = "tex"
+    writes_before = slide.texture_writes
+    fs.carousel.index = 0
+    fs.carousel.slides[0] = slide
+    proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"))
+
+    fs._apply_high_res(proxy, slide, "w0")
+
+    assert slide.texture_writes == writes_before
+
+
+def test_apply_high_res_replaces_a_texture_from_another_wallpaper():
+    fs = _high_res_screen()
+    slide = _CountingSlide()
+    slide.higher_format = "w1"
+    slide.texture = "tex_of_w0"
+    fs.carousel.index = 0
+    fs.carousel.slides[0] = slide
+    proxy = _FakeProxy(image=_FakeImageLoader(texture="tex_of_w1"))
+
+    fs._apply_high_res(proxy, slide, "w1")
+
+    assert slide.texture == "tex_of_w1"
+
+
+def test_load_high_res_applies_immediately_when_proxy_already_loaded(monkeypatch):
+    fs = _high_res_screen()
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    slide = fs.carousel.slides[0]
+    slide.higher_format = "w0"
+    fs.carousel.index = 0
+    proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=True)
+    _patch_loader(monkeypatch, {"scaled/w0": proxy})
+
+    fs._load_high_res(slide)
+
+    assert slide.texture == "tex"
+    assert slide.source == ""
+
+
+def test_load_high_res_defers_to_on_load_when_not_loaded(monkeypatch):
+    fs = _high_res_screen()
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    slide = fs.carousel.slides[0]
+    slide.higher_format = "w0"
+    fs.carousel.index = 0
+    proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=False)
+    _patch_loader(monkeypatch, {"scaled/w0": proxy})
+
+    fs._load_high_res(slide)
+    assert slide.texture is None
+
+    proxy.loaded = True
+    proxy.on_load_callbacks[0](proxy)
+    assert slide.texture == "tex"
+
+
+def test_load_high_res_ignores_load_that_finished_after_swiping(monkeypatch):
+    fs = _high_res_screen()
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    slide = fs.carousel.slides[0]
+    slide.higher_format = "w0"
+    fs.carousel.index = 0
+    proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=False)
+    _patch_loader(monkeypatch, {"scaled/w0": proxy})
+
+    fs._load_high_res(slide)
+    # user swipes on while the load is still in flight
+    fs.carousel.index = 1
+    fs.carousel.slides[1].higher_format = "w1"
+    proxy.on_load_callbacks[0](proxy)
+
+    assert slide.texture is None
+
+
+def test_load_high_res_keeps_high_res_texture_when_swiping_back(monkeypatch):
+    fs = _high_res_screen()
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    slide = _CountingSlide()
+    slide.higher_format = "w0"
+    fs.carousel.index = 0
+    fs.carousel.slides[0] = slide
+    proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=True)
+    _patch_loader(monkeypatch, {"scaled/w0": proxy})
+
+    fs._load_high_res(slide)
+    writes_after_first = slide.texture_writes
+    # swiping away sets the neighbour's source back to the thumbnail path
+    slide.source = "thumb/w0"
+    # swiping back loads the same image again
+    fs._load_high_res(slide)
+
+    assert slide.texture == "tex"
+    assert slide.texture_writes == writes_after_first
+
+
+def test_apply_high_res_keeps_existing_texture_when_proxy_has_none():
+    fs = _high_res_screen()
+    slide = fs.carousel.slides[0]
+    slide.higher_format = "w0"
+    slide.texture = "tex"
+    fs.carousel.index = 0
+    proxy = _FakeProxy(image=_FakeImageLoader(texture=None))
+
+    fs._apply_high_res(proxy, slide, "w0")
+
+    assert slide.texture == "tex"

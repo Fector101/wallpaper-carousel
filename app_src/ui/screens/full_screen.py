@@ -654,37 +654,32 @@ class FullscreenScreen(MyMDScreen):
 
     def _load_high_res(self, slide):
         from kivy.loader import Loader
-        high_res_path = get_or_create_scaled_down_image(
-            src=str(slide.higher_format),
+        higher_format = str(slide.higher_format)
+        proxy = Loader.image(get_or_create_scaled_down_image(
+            src=higher_format,
             size=self.carousel.size
-        )
-
-        proxy = Loader.image(high_res_path)
+        ))
         if proxy.loaded:
-            self._apply_high_res(proxy, slide)
-        proxy.bind(on_load=lambda p, obj=slide: self._apply_high_res(p, obj))
+            self._apply_high_res(proxy, slide, higher_format)
+        proxy.bind(on_load=lambda p, obj=slide, fmt=higher_format:
+                   self._apply_high_res(p, obj, fmt))
 
-    def _apply_high_res(self, proxy_image, slide):
-        if slide.higher_format != self.carousel.current_slide.higher_format:
+    def _apply_high_res(self, proxy_image, slide, higher_format):
+        current_slide = self.carousel.current_slide
+        if current_slide is None or current_slide.higher_format != higher_format:
             # Already swiped pass this image, so no need to set texture when it's not been displayed
-            app_logger.debug("Already swiped pass this image, so no need to set texture when it's not been displayed")
+            app_logger.info(f"Skipped high-res texture, {higher_format} is no longer displayed")
             return
-        if proxy_image.image.texture:
-            slide.texture = proxy_image.image.texture
-            slide.source = get_or_create_scaled_down_image(
-            src=str(slide.higher_format),
-            size=self.carousel.size
-        )
+        texture = proxy_image.image.texture
+        if texture is None or slide.texture is texture:
+            return
+        slide.texture = texture
 
     def back_to_gallery_screen(self,*_):
         self.app.sm.gallery_screen.refresh_gallery_screen()
         self.manager.current = "thumbs"
 
 
-def patch_resolution(proxy_image, image_object, higher_format):
-    if proxy_image.image.texture:
-        image_object.texture = proxy_image.image.texture
-        image_object.source = higher_format
 
 def hide_nav_btn_and_status_bar():
     from android_notify.internal.java_classes import autoclass
