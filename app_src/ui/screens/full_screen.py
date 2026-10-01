@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+from kivymd.uix.label import MDLabel
+
 from kivy.clock import Clock
 from kivy.properties import ListProperty, ObjectProperty, NumericProperty, StringProperty
 from kivy.metrics import dp, sp
@@ -63,8 +65,9 @@ class MyCarousel(Carousel):
 
     def send_data(self,_, value):
         app = get_app()
-        file_operation = app.file_operation
-        file_operation.user_carousel_size = value
+        if hasattr(app,"file_operation"): # add so hot_reload doesn't fail
+            file_operation = app.file_operation
+            file_operation.user_carousel_size = value
 
 
 class MyMDIconButton(MDIconButton):
@@ -199,6 +202,32 @@ class MyImage(Image):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+class MyMDDropdownMenu(MDDropdownMenu):
+    def set_target_height(self) -> None:
+        # open() sets self.height = self.target_height, so a height passed to the
+        # constructor is always discarded; only the summed item heights survive.
+        # The base implementation sums items alone and never counts header_cls,
+        # which leaves the item list short by the header height. Fold the header
+        # into the sum before delegating so KivyMD's own max_height cap and
+        # window-bounds clamp still apply to the whole card; adding it afterwards
+        # would bypass that clamp and push the menu off the top of the screen.
+        header_height = self.header_cls.height if self.header_cls is not None else 0
+        items = self.menu.data
+        if not header_height or not items:
+            super().set_target_height()
+            return
+        first = items[0]
+        had_height = "height" in first
+        original = first.get("height", self.min_height)
+        first["height"] = original + header_height
+        try:
+            super().set_target_height()
+        finally:
+            if had_height:
+                first["height"] = original
+            else:
+                del first["height"]
+
 
 class FullscreenScreen(MyMDScreen):
     current_image: str # used in toggle btn
@@ -239,7 +268,9 @@ class FullscreenScreen(MyMDScreen):
         self.app_dir = Path(appFolder())
         self.wallpapers_dir = self.app_dir / "wallpapers"
         self.built_ui = False
-        # self.build_ui()# hot_reload
+        self.build_ui()# hot_reload
+        self.create_menu()
+        self.menu.open()
 
     def on_enter(self, *args):
         super().on_enter(*args)
@@ -398,7 +429,7 @@ class FullscreenScreen(MyMDScreen):
         self.set_wallpaper_btn.bind(on_release=self.set_as_wallpaper)
         self.btn_home_widget.bind(on_release=self.add_widget_to_home_screen)
         # p("using hot reload stuff")
-        # self.update_images(0)  # for hot_reload
+        self.update_images(0)  # for hot_reload
 
     def _build_dropdown_menu(self, delete_callback, info_callback):
         is_dark = self.app.device_theme == "dark"
@@ -469,8 +500,58 @@ class FullscreenScreen(MyMDScreen):
 
     def handle_going_back(self, *_):
         self.back_to_gallery_screen()
-    
+
+    def create_menu(self):
+
+        is_dark = self.app.device_theme == "dark"
+        text_color = [1, 1, 1, 1] if is_dark else [0, 0, 0, 1]
+        bg_color = [.15, .15, .15, 1] if is_dark else [1, 1, 1, 1]
+        menu_items = [
+            {"text": "Delete", "leading_icon": "trash-can-outline", "on_release": print,
+             "theme_text_color": "Custom", "theme_bg_color": "Custom",
+             "text_color": text_color, "leading_icon_color": text_color, "md_bg_color": bg_color,
+             "height": dp(56),
+             "viewclass": "FullscreenDropdownItem"},
+            {"text": "Info", "leading_icon": "information-outline", "on_release": print,
+             "theme_text_color": "Custom", "theme_bg_color": "Custom",
+             "text_color": text_color, "leading_icon_color": text_color, "md_bg_color": bg_color,
+             "height": dp(56),
+             "viewclass": "FullscreenDropdownItem"},
+            # {"text": "Info1", "leading_icon": "information", "on_release": print,
+            #  "theme_text_color": "Custom", "theme_bg_color": "Custom",
+            #  "text_color": text_color, "leading_icon_color": text_color, "md_bg_color": bg_color,
+            #  "height": dp(56),
+            #  "viewclass": "FullscreenDropdownItem"},
+        ]
+        self.menu = MyMDDropdownMenu(
+            header_cls=MDBoxLayout(
+                # MDIconButton(
+                #     icon="gesture-tap-button",
+                #     pos_hint={"center_y": .5},
+                # ),
+                MDLabel(
+                    text="Set as",
+                    adaptive_size=True,
+                    pos_hint={"center_y": .5},
+                ),
+                spacing="12dp",
+                padding="10dp",
+                height=dp(48),
+                # menu.kv gives content_header `adaptive_size: True`, so its height
+                # is its minimum_size. Kivy's BoxLayout._get_minimum_size only folds
+                # a child's height in when size_hint_y is None; with size_hint_y=1
+                # the header contributes nothing, content_header collapses to 0 and
+                # do_layout then stretches the header to that 0.
+                size_hint_y=None,
+                # adaptive_height=True,
+            ),
+            items=menu_items,
+        )
+        self.menu.caller = self.set_wallpaper_btn
+
     def set_as_wallpaper(self, *_):
+        self.menu.open()
+        return
         import threading
         from utils.helper import change_wallpaper
         spinner_layout = LoadingLayout()
@@ -514,8 +595,12 @@ class FullscreenScreen(MyMDScreen):
     def update_images(self,index=None):
         """Rebuild carousel anytime wallpapers change."""
         from utils.image_operations import thumbnail_path_for
-        gallery_screen = self.manager.gallery_screen
-        self.wallpapers_data=gallery_screen.wallpapers
+        if hasattr(self.manager,"gallery_screen"): # guard for hot_reload
+            gallery_screen = self.manager.gallery_screen
+            self.wallpapers_data=gallery_screen.wallpapers
+        else:
+            self.wallpapers_data = ["/home/fabian/Pictures/1065154.jpg"]
+            app_logger.warning("Using hot reload data")
         if not self.wallpapers_data:
             return
         if index is not None:
@@ -701,7 +786,6 @@ class FullscreenScreen(MyMDScreen):
     def back_to_gallery_screen(self,*_):
         self.app.sm.gallery_screen.refresh_gallery_screen()
         self.manager.current = "thumbs"
-
 
 
 def hide_nav_btn_and_status_bar():
