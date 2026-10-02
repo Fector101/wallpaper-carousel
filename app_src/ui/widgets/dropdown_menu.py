@@ -41,6 +41,7 @@ from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.image import Image
 
 from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.behaviors import RectangularRippleBehavior
 from kivymd.uix.divider import MDDivider
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.label import MDLabel, MDIcon
@@ -87,6 +88,7 @@ class MenuItem:
         on_release=None,
         icon=None,
         icon_image=None,
+        icon_image_light=None,
         divider=None,
         height=dp(56),
         text_color=None,
@@ -96,13 +98,16 @@ class MenuItem:
         self.on_release = on_release
         self.icon = icon
         self.icon_image = icon_image
+        # Image files are not tinted, so a dark glyph vanishes on the light card. Give the
+        # row the light-theme variant and it is swapped when the theme changes.
+        self.icon_image_light = icon_image_light
         self.divider = divider
         self.height = height
         self.text_color = text_color
         self.icon_color = icon_color
 
 
-class DropdownItemWidget(ButtonBehavior, MDBoxLayout):
+class DropdownItemWidget(RectangularRippleBehavior, ButtonBehavior, MDBoxLayout):
     """One row: optional icon, label, and a divider underneath only if wanted.
 
     Vertical, because the divider belongs under the whole row rather than between the icon and
@@ -144,7 +149,7 @@ class DropdownItemWidget(ButtonBehavior, MDBoxLayout):
             text=item.text,
             shorten=True,
             shorten_from="right",
-            pos_hint={"center_y": .5},
+            pos_hint={"center_y": .44},
             theme_text_color="Custom",
             text_color=item.text_color or [1, 1, 1, 1],
             theme_font_size="Custom",
@@ -200,10 +205,14 @@ class DropdownItemWidget(ButtonBehavior, MDBoxLayout):
         if self.item.on_release:
             self.item.on_release()
 
-    def recolor(self, text_color, icon_color=None):
+    def recolor(self, text_color, icon_color=None, theme=None):
         self.label.text_color = text_color
         if isinstance(self.icon_widget, MDIcon):
             self.icon_widget.text_color = icon_color or text_color
+        elif isinstance(self.icon_widget, Image) and theme is not None:
+            src = self.item.icon_image_light if theme == "light" and self.item.icon_image_light else self.item.icon_image
+            if src and self.icon_widget.source != src:
+                self.icon_widget.source = src
 
 
 class DropdownMenu(MDFloatLayout, PlaceOnMainScreen):
@@ -230,6 +239,7 @@ class DropdownMenu(MDFloatLayout, PlaceOnMainScreen):
     """Widget the card is positioned against."""
 
     card_bg_color = ListProperty([.15, .15, .15, 1])
+    header_bg_color = ListProperty(HEADER_BG_COLOR)
     text_color = ListProperty([1, 1, 1, 1])
     icon_color = ListProperty([1, 1, 1, 1])
     header_text_color = ListProperty([1, 1, 1, 1])
@@ -370,7 +380,7 @@ class DropdownMenu(MDFloatLayout, PlaceOnMainScreen):
             size_hint_y=None,
             height=HEADER_HEIGHT,
             padding=(dp(16), 0, dp(16), 0),
-            md_bg_color=HEADER_BG_COLOR,
+            md_bg_color=self.header_bg_color,
             radius=[CARD_RADIUS,CARD_RADIUS,0,0],
 
         )
@@ -383,7 +393,7 @@ class DropdownMenu(MDFloatLayout, PlaceOnMainScreen):
 
     # --- theme ------------------------------------------------------------------
 
-    def apply_theme(self, card_bg_color, text_color, icon_color=None):
+    def apply_theme(self, card_bg_color, text_color, icon_color=None, header_bg_color=None, theme=None):
         """Repaints the live card.
 
         The previous implementation changed colours by rebuilding the item dicts and
@@ -394,10 +404,13 @@ class DropdownMenu(MDFloatLayout, PlaceOnMainScreen):
         self.card.md_bg_color = card_bg_color
         self.text_color = text_color
         self.icon_color = icon_color or text_color
+        if header_bg_color is not None:
+            self.header_bg_color = header_bg_color
         self.header_text_color = text_color
         for row in self.items_box.children:
-            row.recolor(text_color, self.icon_color)
+            row.recolor(text_color, self.icon_color, theme=theme)
         if self.header is not None:
+            self.header.md_bg_color = self.header_bg_color
             for child in self.header.children:
                 if isinstance(child, MDLabel):
                     child.text_color = text_color

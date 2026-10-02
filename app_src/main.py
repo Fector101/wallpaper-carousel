@@ -420,18 +420,25 @@ class WallpaperCarouselApp(MDApp):
 
     def monitor_dark_and_light_device_change(self):
         if self.theme_preference == "adaptive":
-            self.device_theme = is_device_on_light_mode()
+            self.device_theme = self._coerce_device_theme(is_device_on_light_mode())
         else:
-            self.device_theme = self.theme_preference
+            self.device_theme = self._coerce_device_theme(self.theme_preference)
         return self.device_theme
 
     def set_theme_preference(self, preference):
         self.theme_preference = preference
         ConfigManager.set_theme_preference(preference)
         if preference == "adaptive":
-            self.device_theme = is_device_on_light_mode()
+            self.device_theme = self._coerce_device_theme(is_device_on_light_mode())
         else:
-            self.device_theme = preference
+            self.device_theme = self._coerce_device_theme(preference)
+
+    def _coerce_device_theme(self, value):
+        if value in ("dark", "light"):
+            return value
+        if self.device_theme in ("dark", "light"):
+            return self.device_theme
+        return "dark"
 
     def _sync_theme_colors(self, *args):
         _theme_colors.theme = self.device_theme

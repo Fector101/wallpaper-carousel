@@ -99,6 +99,7 @@ class IconTextButton(MDButton):
         self.add_widget(self.text_widget)
         self.theme_bg_color="Custom"
         app.bind(device_theme=self._set_theme)
+        self._set_theme(None, app.device_theme)  # prime with current theme
         Clock.schedule_once(self.adjust_width,5)
         Clock.schedule_once(lambda _: self._apply_disabled_color(), 0)  # after widget tree is built
 
@@ -1051,7 +1052,8 @@ class GalleryScreen(MyMDScreen):
         bg_color = [.15,.15,.15,1] if is_dark else [1,1,1,1]
 
         # No dicts to rebuild any more: apply_theme() recolours the rows that already exist.
-        self.select_menu.apply_theme(bg_color, text_color)
+        header_bg = [.1, .1, .1, 1] if is_dark else [.9, .9, .9, 1]
+        self.select_menu.apply_theme(bg_color, text_color, header_bg_color=header_bg, theme=theme)
 
     def open_select_mode_menu(self, *args):
         self.select_menu.open()

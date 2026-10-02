@@ -393,7 +393,7 @@ class FullscreenScreen(MyMDScreen):
         self.set_wallpaper_btn.bind(on_release=self.set_as_wallpaper)
         self.btn_home_widget.bind(on_release=self.add_widget_to_home_screen)
         # p("using hot reload stuff")
-        self.update_images(0)  # for hot_reload
+        # self.update_images(0)  # for hot_reload
 
     def _build_dropdown_menu(self, delete_callback, info_callback):
         is_dark = self.app.device_theme == "dark"
@@ -427,9 +427,11 @@ class FullscreenScreen(MyMDScreen):
         # not exist yet on the first device_theme change. Each menu is guarded
         # separately: one early return would skip the other menu's colours.
         if self.header_dropdown_menu is not None:
-            self.header_dropdown_menu.apply_theme(bg_color, text_color)
+            header_bg = [.1, .1, .1, 1] if self.app.device_theme == "dark" else [.9, .9, .9, 1]
+            self.header_dropdown_menu.apply_theme(bg_color, text_color, header_bg_color=header_bg, theme=self.app.device_theme)
         if self.menu is not None:
-            self.menu.apply_theme(bg_color, text_color)
+            header_bg = [.1, .1, .1, 1] if self.app.device_theme == "dark" else [.9, .9, .9, 1]
+            self.menu.apply_theme(bg_color, text_color, header_bg_color=header_bg, theme=self.app.device_theme)
 
     def _set_theme_color(self, _, theme):
         is_dark = theme == "dark"
@@ -472,6 +474,7 @@ class FullscreenScreen(MyMDScreen):
             MenuItem(
                 text="Home Screen", on_release=print,
                 icon_image="assets/icons/home.png",
+                icon_image_light="assets/icons/home-dark.png",
                 text_color=text_color,
                 height=dp(56),
             ),
