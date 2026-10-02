@@ -10,14 +10,19 @@ from kivy.uix.image import Image
 
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDIconButton
-from kivymd.uix.menu import MDDropdownMenu
-from kivymd.uix.menu.menu import MDDropdownLeadingIconItem
 from kivymd.uix.relativelayout import MDRelativeLayout
 
+from kivy.utils import get_color_from_hex
+from ui.widgets.dropdown_menu import DropdownMenu, MenuItem
 from ui.widgets.layouts import MyMDScreen, LoadingLayout
 
 from utils.config_manager import ConfigManager
-from utils.helper import format_size, remove_images_from_app
+from utils.helper import (
+    WALLPAPER_TARGET_HOME,
+    WALLPAPER_TARGET_LOCK,
+    format_size,
+    remove_images_from_app,
+)
 from utils.image_operations import get_or_create_scaled_down_image, thumbnail_path_for
 from utils.model import get_app, GalleryTabs
 from utils.logger import app_logger
@@ -63,8 +68,10 @@ class MyCarousel(Carousel):
 
     def send_data(self,_, value):
         app = get_app()
-        file_operation = app.file_operation
-        file_operation.user_carousel_size = value
+        if hasattr(app,"file_operation"): # add so hot_reload doesn't fail
+            file_operation = app.file_operation
+            file_operation.user_carousel_size = value
+
 
 
 class MyMDIconButton(MDIconButton):
@@ -74,21 +81,6 @@ class MyMDIconButton(MDIconButton):
         self.bg_color = 'black'
         self.theme_text_color = 'Custom'
         self.text_color = 'white'
-
-
-class FullscreenDropdownItem(MDDropdownLeadingIconItem):
-    def on_kv_post(self, base_widget):
-        super().on_kv_post(base_widget)
-        self.ids.label.pos_hint = {"center_y": .44}
-        Clock.schedule_once(self._hide_divider, 0)
-
-    def _hide_divider(self, *args):
-        for child in self.children:
-            if child.__class__.__name__ == "MDDivider":
-                child.opacity = 0
-                child.size_hint_y = None
-                child.height = 0
-                break
 
 
 class PictureButton(ButtonBehavior,MDRelativeLayout):
@@ -216,6 +208,10 @@ class FullscreenScreen(MyMDScreen):
         self.day_noon_both_button = None
         self.dropdown_btn = None
         self.header_dropdown_menu = None
+
+        self.menu = None
+        self._set_as_items = []
+
         self.btn_fullscreen=None
         self.original_carousel_pos_hint = None
         self.original_carousel_size_hint = None
@@ -240,6 +236,8 @@ class FullscreenScreen(MyMDScreen):
         self.wallpapers_dir = self.app_dir / "wallpapers"
         self.built_ui = False
         # self.build_ui()# hot_reload
+        # self._build_dropdown_menu_wallpaper_setter()# hot_reload
+        # Clock.schedule_once(lambda x:self.menu.open(),1)# hot_reload
 
     def on_enter(self, *args):
         super().on_enter(*args)
@@ -397,6 +395,8 @@ class FullscreenScreen(MyMDScreen):
         # self.set_wallpaper_btn.bind(on_release=lambda x: change_wallpaper(self.carousel.current_slide.higher_format))
         self.set_wallpaper_btn.bind(on_release=self.set_as_wallpaper)
         self.btn_home_widget.bind(on_release=self.add_widget_to_home_screen)
+
+        self._build_dropdown_menu_wallpaper_setter()
         # p("using hot reload stuff")
         # self.update_images(0)  # for hot_reload
 
@@ -404,23 +404,22 @@ class FullscreenScreen(MyMDScreen):
         is_dark = self.app.device_theme == "dark"
         text_color = [1, 1, 1, 1] if is_dark else [0, 0, 0, 1]
         bg_color = [.15, .15, .15, 1] if is_dark else [1, 1, 1, 1]
-        self._menu_items_data = [
-            {"text": "Delete", "leading_icon": "trash-can-outline", "on_release": delete_callback,
-             "theme_text_color": "Custom", "theme_bg_color": "Custom",
-             "text_color": text_color, "leading_icon_color": text_color, "md_bg_color": bg_color,
-             "viewclass": "FullscreenDropdownItem"},
-            {"text": "Info", "leading_icon": "information-outline", "on_release": info_callback,
-             "theme_text_color": "Custom", "theme_bg_color": "Custom",
-             "text_color": text_color, "leading_icon_color": text_color, "md_bg_color": bg_color,
-             "viewclass": "FullscreenDropdownItem"},
+        self._menu_items = [
+            MenuItem(
+                text="Delete", icon="trash-can-outline", on_release=delete_callback,
+                text_color=text_color, icon_color=text_color,
+            ),
+            MenuItem(
+                text="Info", icon="information-outline", on_release=info_callback,
+                text_color=text_color, icon_color=text_color,
+            ),
         ]
-        self.header_dropdown_menu = MDDropdownMenu(
+        self.header_dropdown_menu = DropdownMenu(
             caller=self.dropdown_btn,
-            items=self._menu_items_data,
-            width_mult=2.5,
-            theme_bg_color="Custom",
-            ver_growth="down",
-            hor_growth="left",
+            items=self._menu_items,
+            card_bg_color=bg_color,
+            text_color=text_color,
+            icon_color=text_color,
         )
 
     def _run_dropdown_action(self, action, *_args):
@@ -429,14 +428,15 @@ class FullscreenScreen(MyMDScreen):
         action()
 
     def _update_menu_theme(self, bg_color, text_color):
-        if self.header_dropdown_menu is None:
-            return
-        self.header_dropdown_menu.md_bg_color = bg_color
-        for item in self._menu_items_data:
-            item["md_bg_color"] = bg_color
-            item["text_color"] = text_color
-            item["leading_icon_color"] = text_color
-        self.header_dropdown_menu.items = self._menu_items_data
+        # _build_dropdown_menu_wallpaper_setter() runs after this handler is bound, so the set-as menu may
+        # not exist yet on the first device_theme change. Each menu is guarded
+        # separately: one early return would skip the other menu's colors.
+        if self.header_dropdown_menu is not None:
+            header_bg = [.1, .1, .1, 1] if self.app.device_theme == "dark" else [.9, .9, .9, 1]
+            self.header_dropdown_menu.apply_theme(bg_color, text_color, header_bg_color=header_bg, theme=self.app.device_theme)
+        if self.menu is not None:
+            header_bg = [.1, .1, .1, 1] if self.app.device_theme == "dark" else [.9, .9, .9, 1]
+            self.menu.apply_theme(bg_color, text_color, header_bg_color=header_bg, theme=self.app.device_theme)
 
     def _set_theme_color(self, _, theme):
         is_dark = theme == "dark"
@@ -469,14 +469,72 @@ class FullscreenScreen(MyMDScreen):
 
     def handle_going_back(self, *_):
         self.back_to_gallery_screen()
-    
-    def set_as_wallpaper(self, *_):
-        import threading
+
+    def _build_dropdown_menu_wallpaper_setter(self):
+
+        is_dark = self.app.device_theme == "dark"
+        text_color = [1, 1, 1, 1] if is_dark else [0, 0, 0, 1]
+
+        self._set_as_items = [
+            MenuItem(
+                text="Home Screen",
+                on_release=lambda *_args: self._set_as_wallpaper(WALLPAPER_TARGET_HOME),
+                icon_image="assets/icons/home.png",
+                icon_image_light="assets/icons/home-dark.png",
+                text_color=text_color,
+                height=dp(56),
+            ),
+            MenuItem(
+                text="Lock Screen",
+                on_release=lambda *_args: self._set_as_wallpaper(WALLPAPER_TARGET_LOCK),
+                icon="lock",
+                icon_color=text_color,
+                text_color=text_color,
+                height=dp(56),
+            ),
+        ]
+        self.menu = DropdownMenu(
+            caller=self.set_wallpaper_btn,
+            header_text="Set as",
+            items=self._set_as_items,
+            card_bg_color=get_color_from_hex("#252424"),
+            text_color=text_color,
+        )
+
+    def _set_as_wallpaper(self, target, *_args):
+        """Sets the wallpaper on a worker thread and clears itself when that thread finishes.
+
+        Called straight from the menu row, without the `_run_dropdown_action` wrapper the
+        header menu's rows use: every row dismisses its own menu on release
+        (`DropdownItemWidget.on_release` calls `self.dismiss` before `item.on_release`), and
+        that wrapper would only dismiss `header_dropdown_menu`, which is not the menu on
+        screen here.
+
+        `current_image` is only assigned by `on_current_slide`, so it can be missing entirely
+        when the carousel never got any wallpapers -- hence getattr rather than self.current_image.
+        """
+        from android_notify.config import on_android_platform
+        if not on_android_platform():
+            app_logger.warning("Set as tapped off Android, ignoring")
+            return
+        image_path = getattr(self, "current_image", None)
+        if not image_path:
+            app_logger.warning("Set as tapped with no wallpaper on the carousel, ignoring")
+            return
         from utils.helper import change_wallpaper
+        import threading
         spinner_layout = LoadingLayout()
-        def remove_spinner(_):
-            spinner_layout.remove()
-        threading.Thread(target=change_wallpaper, args=[self.carousel.current_slide.higher_format, remove_spinner], daemon=True).start()
+        # Keywords, not positional: do_ui_thing is the second positional parameter and a
+        # silent signature change here would hand it the target string.
+        threading.Thread(
+            target=change_wallpaper,
+            args=[image_path],
+            kwargs={"target": target, "do_ui_thing": spinner_layout.remove},
+            daemon=True,
+        ).start()
+
+    def set_as_wallpaper(self, *_):
+        self.menu.open()
 
     def add_widget_to_home_screen(self, *_):
         from utils.android import add_home_screen_widget
@@ -514,8 +572,12 @@ class FullscreenScreen(MyMDScreen):
     def update_images(self,index=None):
         """Rebuild carousel anytime wallpapers change."""
         from utils.image_operations import thumbnail_path_for
-        gallery_screen = self.manager.gallery_screen
-        self.wallpapers_data=gallery_screen.wallpapers
+        if hasattr(self.manager,"gallery_screen"): # guard for hot_reload
+            gallery_screen = self.manager.gallery_screen
+            self.wallpapers_data=gallery_screen.wallpapers
+        else:
+            # self.wallpapers_data = ["/home/fabian/Pictures/1065154.jpg"]
+            app_logger.warning("Using hot reload data")
         if not self.wallpapers_data:
             return
         if index is not None:
@@ -701,7 +763,6 @@ class FullscreenScreen(MyMDScreen):
     def back_to_gallery_screen(self,*_):
         self.app.sm.gallery_screen.refresh_gallery_screen()
         self.manager.current = "thumbs"
-
 
 
 def hide_nav_btn_and_status_bar():

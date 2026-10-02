@@ -4,6 +4,7 @@ from kivy.factory import Factory
 from kivymd.app import MDApp
 # from main import WallpaperCarouselApp
 from kivy.core.window import Window
+Window.always_on_top = True
 from kivy.properties import BooleanProperty, StringProperty
 
 from kivy import Config
@@ -79,7 +80,7 @@ class MDLive(App,MDApp):
     def build_app(self, *args):
         # return Factory.MyPopUp()
         # return Factory.DialogScreen(ok_callback=None)
-        return Factory.PreviewScreen()
+        return Factory.FullscreenScreen()
 
     def on_start(self):
         # self.theme_cls.theme_style = "Light"

@@ -531,9 +531,37 @@ def resolve_user_selected_crop(path):
     return path
 
 
-def change_wallpaper(wallpaper_path, do_ui_thing=None):
-    """Actually set the wallpaper"""
+WALLPAPER_TARGET_HOME = "home"
+WALLPAPER_TARGET_LOCK = "lock"
+WALLPAPER_TARGET_BOTH = "both"
+# Used in the toasts, so the message names the screen that actually changed.
+WALLPAPER_TARGET_LABELS = {
+    WALLPAPER_TARGET_HOME: "home screen",
+    WALLPAPER_TARGET_LOCK: "lock screen",
+    WALLPAPER_TARGET_BOTH: "home and lock screen",
+}
+# A separate lock screen only exists from Android 7.0. FLAG_SYSTEM (home) has no such limit.
+LOCK_SCREEN_MIN_SDK = 24
+
+
+def change_wallpaper(wallpaper_path, target=WALLPAPER_TARGET_LOCK, do_ui_thing=None):
+    """Actually set the wallpaper.
+
+    `target` picks which screen, via the WallpaperManager flags:
+    `WALLPAPER_TARGET_HOME` -> FLAG_SYSTEM, `WALLPAPER_TARGET_LOCK` -> FLAG_LOCK,
+    `WALLPAPER_TARGET_BOTH` -> both. It defaults to the lock screen because that is what the
+    background service (`utils/service_helper.set_wallpaper`) has always set; the UI passes an
+    explicit target.
+
+    Runs on a worker thread when the UI calls it, so nothing here may touch the UI directly --
+    both `notify` and `do_ui_thing` go through the Clock.
+
+    Returns True when a wallpaper was set, False when it was not, None when there is no
+    WallpaperManager at all (i.e. not on Android).
+    """
     import os, traceback
+    label = WALLPAPER_TARGET_LABELS.get(target, "wallpaper")
+
     def run_ui_thing():
         if do_ui_thing:
             from kivy.clock import Clock
@@ -542,9 +570,20 @@ def change_wallpaper(wallpaper_path, do_ui_thing=None):
             except Exception as error_running_ui_function:
                 print(f"Error doing UI thing: {error_running_ui_function}")
                 traceback.print_exc()
+
+    def notify(message):
+        """Toast from whichever thread called us. MDToast builds widgets, so it has to be
+        built on the main thread."""
+        from kivy.clock import Clock
+        try:
+            Clock.schedule_once(lambda _dt: _toast(message))
+        except Exception as error_toasting:
+            print(f"Error toasting: {error_toasting}")
+
     try:
         if not wallpaper_path or not os.path.exists(wallpaper_path):
             print("Invalid wallpaper path")
+            notify(f"No image to set as {label}")
             run_ui_thing()
             return False
 
@@ -562,25 +601,47 @@ def change_wallpaper(wallpaper_path, do_ui_thing=None):
             run_ui_thing()
             return None
 
-        elif BuildVersion.SDK_INT >= 24:  # Android 7.0+
-            bitmap = BitmapFactory.decodeFile(wallpaper_path)
-            FLAG_LOCK = WallpaperManager.FLAG_LOCK
-            wallpaper_manager.setBitmap(bitmap, None, True, FLAG_LOCK)
-            try:
-                from utils.database import ImageDatabase
-                ImageDatabase().record_wallpaper_set(original_path)
-            except Exception:
-                pass
-            if not from_service_file():
-                _toast("Changed Wallpaper")
-            # print(f"Success: Lock screen wallpaper changed to: {os.path.basename(wallpaper_path)}")
+        if target == WALLPAPER_TARGET_HOME:
+            flags = WallpaperManager.FLAG_SYSTEM
+        elif target == WALLPAPER_TARGET_LOCK:
+            flags = WallpaperManager.FLAG_LOCK
         else:
-            _toast("Changed Not Supported")
-            print("Fail: Lock screen wallpaper not supported on this Android version.")
+            flags = WallpaperManager.FLAG_SYSTEM | WallpaperManager.FLAG_LOCK
+
+        # Only the lock screen is gated; setting FLAG_SYSTEM works on every API we support, so
+        # a home-screen set must not be refused here.
+        if (flags & WallpaperManager.FLAG_LOCK) and BuildVersion.SDK_INT < LOCK_SCREEN_MIN_SDK:
+            notify(f"{label.capitalize()} not supported")
+            print(f"Fail: {label} wallpaper not supported on this Android version.")
+            run_ui_thing()
+            return False
+
+        # setBitmap(bitmap, rect, allowBackup, flags) -- the null rect means the whole
+        # wallpaper. Decoding via BitmapFactory.decodeFile keeps the full resolution, so this
+        # does not stretch a small image.
+        bitmap = BitmapFactory.decodeFile(wallpaper_path)
+        if bitmap is None:
+            notify(f"Could not read image for {label}")
+            print(f"Fail: could not decode wallpaper image: {wallpaper_path}")
+            run_ui_thing()
+            return False
+        changed = wallpaper_manager.setBitmap(bitmap, None, True, flags)
+        # Hidden API: the number of wallpaper components the ROM actually changed. A 0 here is
+        # a silent refusal rather than an exception, so it is worth having in the log.
+        if isinstance(changed, int) and changed <= 0:
+            print(f"WallpaperManager.setBitmap reported {changed} changed for the {label}")
+        try:
+            from utils.database import ImageDatabase
+            ImageDatabase().record_wallpaper_set(original_path)
+        except Exception:
+            pass
+        if not from_service_file():
+            notify(f"{label.capitalize()} wallpaper changed")
         run_ui_thing()
         return True
     except Exception as e:
-        _toast("Failed to Change")
+        notify(f"Failed to set {label} wallpaper")
+        traceback.print_exc()
         print("Failed to set wallpaper:", e)
         run_ui_thing()
         return False

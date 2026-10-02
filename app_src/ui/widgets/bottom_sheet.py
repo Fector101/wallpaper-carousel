@@ -92,8 +92,8 @@ class MyBtmSheet(MDBottomSheet):
         self.sheet_title = None
         self.close_btn = None
         self.content = None
-        app = MDApp.get_running_app()
-        app.bind(device_theme=self._set_theme)
+        self.app = MDApp.get_running_app()
+        self.app.bind(device_theme=self._set_theme)
 
     def build_ui(self, _=None):
         if self.built_ui:
@@ -197,23 +197,11 @@ class MyBtmSheet(MDBottomSheet):
 
             )
         )
-        # for each_item in self.items:
-        #     title=each_item['header_title'].capitalize()
-        #     icon=each_item['icon']
-        #     function=each_item['function']
-        #     self.content.add_widget(
-        #         TypeMapElement(
-        #             title=title,
-        #             icon=icon,
-        #             func=function
-        #         )
-        #     )
-        # self.set_state("open")
-
-    def _set_theme(self, _, theme):
+        self._set_theme(None, self.app.device_theme)
+    def _set_theme(self, *_):
         if not self.built_ui:
             return
-        is_dark = theme == "dark"
+        is_dark = self.app.device_theme == "dark"
         self.md_bg_color = [.14, .14, .14, 1] if is_dark else [.95, .95, .95, 1]
         self.drag_sheet.drag_handle_color = [.7, .7, .7, 1] if is_dark else [.4, .4, .4, 1]
         self.sheet_title.text_color = "white" if is_dark else "black"

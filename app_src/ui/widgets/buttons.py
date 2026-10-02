@@ -133,6 +133,8 @@ class BottomNavigationBar(MDNavigationDrawer):
         super().__init__(**kwargs)
         self.hidden = False
         self.hidden_by = None
+        # A show() that has not been applied to the drawer yet. See show()/hide().
+        self.pending_show = None
         self.set_state('open')
         self.drawer_type='standard'
         self.app = get_app()
@@ -246,6 +248,14 @@ class BottomNavigationBar(MDNavigationDrawer):
         self.button_box.md_bg_color = self.btn_camera.md_bg_color
 
     def hide(self,animation=True, hidden_by=None):
+        # show() checks ownership now but only re-opens the drawer a frame later, so without
+        # this a hide landing in that window would be undone by the stale callback and leave
+        # the navbar visible while `self.hidden` says it is gone. Happens whenever one owner
+        # shows the bar and another hides it in the same frame -- e.g. a dropdown dismisses
+        # (show, queued) and the screen's overlay then hides it for multi-select mode.
+        if self.pending_show is not None:
+            self.pending_show.cancel()
+            self.pending_show = None
         if self.hidden:
             return None # so hidden_by doesn't get overwritten by another widget or text key e.g "pic"
         # p(f"hidden_by {hidden_by}")
@@ -263,9 +273,21 @@ class BottomNavigationBar(MDNavigationDrawer):
             app_logger.warning(f"Didn't show navbar it was hidden by {self.hidden_by}, can't be shown by {hidden_by}")
             return None
         def ui_thing(*args):
+            # Cleared first: hide() cancels this handle, and cancel() on an event that has
+            # already run is a no-op, but a live handle here would be misleading.
+            self.pending_show = None
             self.set_state('open', animation=animation)
             self.button_box.pos_hint = {"center_x": 0.5, "center_y": 0.5}
-        Clock.schedule_once(ui_thing)
+        if animation:
+            # Deferred because the drawer is mid-hide when this is called; applying it in the
+            # same frame fights that transition. Hence pending_show, which hide() cancels.
+            self.pending_show = Clock.schedule_once(ui_thing)
+        else:
+            # Nothing is animating (set_state cancels any in-flight open/close first), so
+            # there is no transition to wait for and nothing to cancel. Applying it inline
+            # avoids a frame with no nav bar: the caller removes its scrim in this same tick,
+            # which used to leave the bottom of the screen bare until the queued restore ran.
+            ui_thing()
         self.hidden=False
         return None
 

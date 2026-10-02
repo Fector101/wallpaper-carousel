@@ -266,11 +266,11 @@ class IconTextButton(MDButton):
                                         )
         self.add_widget(self.text_object)
         self.app.bind(device_theme=self._set_theme_color)
-
+        self._set_theme_color()
         Clock.schedule_once(self.fix_width)
 
-    def _set_theme_color(self, _, theme):
-        is_dark = theme == "dark"
+    def _set_theme_color(self, *_):
+        is_dark = self.app.device_theme == "dark"
         self.md_bg_color = [.2, .2, .2, 1] if is_dark else [.85, .85, .85, 1]
         self.text_object.text_color = 'white' if is_dark else 'black'
 
@@ -363,9 +363,10 @@ class BorderInput(BorderMDBoxLayout):
         self.radius = dp(20)
         self.disabled_color = [1, 1, 1, .3]
         self.app.bind(device_theme=self._set_theme_color)
+        self._set_theme_color()
 
-    def _set_theme_color(self, _, theme):
-        is_dark = theme == "dark"
+    def _set_theme_color(self, *_):
+        is_dark = self.app.device_theme == "dark"
         self.disabled_color = [1, 1, 1, .3] if is_dark else [.5, .5, .5, .5]
         if self.input and not self.input.focus:
             self.bg_color_instr.rgba = [.7, .7, .7, .6] if not is_dark else [.5, .5, .5, .8]
@@ -407,7 +408,8 @@ class ToggleSliderRow(Row):
             adaptive_height=1,
             spacing=dp(1),
             pos_hint={"center_y": .5})  # ,md_bg_color=[1,0,0,.5])
-        title_widget = AdaptiveLabel(text=self.title_text, size_hint=[None, None], color=[1, 1, 1, 1])
+        title_widget = AdaptiveLabel(text=self.title_text, size_hint=[None, None],
+                                     color=theme_colors.TEXT_PRIMARY)
 
         self.title_widget_ref = title_widget
         self.text_layout.add_widget(title_widget)
@@ -423,14 +425,15 @@ class ToggleSliderRow(Row):
 
         self.bind(sub_title_text=self.add_subtitle, title_text=title_widget.setter("text"))
         self.app.bind(device_theme=self._set_theme_color)
+        self._set_theme_color()
         # self.bind(title_text=title_widget.setter("text"))
 
     #
     def add_subtitle(self, _, v):
         if v and not self.__is_subtitle_added:
             self.__is_subtitle_added = True
-            self.sub_text_widget = AdaptiveLabel(text=self.sub_title_text, size_hint=[None, None], color="grey",
-                                                 font_size=sp(14))
+            self.sub_text_widget = AdaptiveLabel(text=self.sub_title_text, size_hint=[None, None],
+                                                 color="grey", font_size=sp(14))
             self.text_layout.bind(width=self.wrap_text_width)
             self.text_layout.add_widget(self.sub_text_widget)
             self.bind(sub_title_text=self.sub_text_widget.setter("text"))
@@ -438,10 +441,8 @@ class ToggleSliderRow(Row):
     def set_from_user_key(self, instance,pos=None):
         instance.from_user = True
 
-    def _set_theme_color(self, _, theme):
-        is_dark = theme == "dark"
-        if hasattr(self, 'title_widget_ref'):
-            self.title_widget_ref.color = [1, 1, 1, 1] if is_dark else [0, 0, 0, 1]
+    def _set_theme_color(self, *_):
+        self.title_widget_ref.color = theme_colors.TEXT_PRIMARY
 
     def do_thing(self, instance, *args):
         if self.change_function:
@@ -519,6 +520,7 @@ class MyMDButton(MDButton):
         self.theme_bg_color = "Custom"
         self.md_bg_color = theme_colors.BUTTON_BG
         self.app.bind(device_theme=self._set_theme_color)
+        self._set_theme_color()
 
     def _set_theme_color(self, *_):
         self.md_bg_color = theme_colors.BUTTON_BG

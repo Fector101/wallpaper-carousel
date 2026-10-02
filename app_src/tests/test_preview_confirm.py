@@ -248,13 +248,14 @@ def test_set_preview_props_reports_failure(tmp_path):
 
 # --- wallpaper setting uses the crop --------------------------------------
 
-def _stub_java_classes(monkeypatch, sdk_int, decode_file):
+def _stub_java_classes(monkeypatch, sdk_int, bitmap_factory=None):
     """Make change_wallpaper's internal imports resolve to a deterministic fake."""
     import sys
     import types
     fake = types.ModuleType("android_notify.internal.java_classes")
     fake.BuildVersion = type("BuildVersion", (), {"SDK_INT": sdk_int})
-    fake.BitmapFactory = type("BitmapFactory", (), {"decodeFile": staticmethod(decode_file)})
+    if bitmap_factory is not None:
+        fake.BitmapFactory = bitmap_factory
     fake.__path__ = []
     monkeypatch.setitem(sys.modules, "android_notify.internal.java_classes", fake)
     for parent in ("android_notify", "android_notify.internal"):
@@ -264,25 +265,33 @@ def _stub_java_classes(monkeypatch, sdk_int, decode_file):
     return fake
 
 
-def _run_change_wallpaper(monkeypatch, tmp_path, src, decoded, recorded):
+def _run_change_wallpaper(monkeypatch, tmp_path, src, opened, recorded):
+    """Runs change_wallpaper against fakes, recording the path handed to the Java side."""
     monkeypatch.setattr(helper, "appFolder", lambda: str(tmp_path))
 
     class FakeWallpaperManager:
+        FLAG_SYSTEM = 1
         FLAG_LOCK = 2
 
         @staticmethod
         def getInstance(*_):
             return FakeWallpaperManager()
 
-        def setBitmap(self, bitmap, *_, **__):
+        def setBitmap(self, bitmap, *_args):
             pass
+
+    class FakeBitmap:
+        def __init__(self, path):
+            opened.append(str(path))
 
     monkeypatch.setattr(helper, "WallpaperManager", FakeWallpaperManager)
     monkeypatch.setattr(helper, "_toast", lambda *_: None)
+    # change_wallpaper decodes the file itself (setBitmap), so the path it decodes is what
+    # tells us which file was used.
     _stub_java_classes(
         monkeypatch,
         sdk_int=26,
-        decode_file=lambda p: decoded.append(str(p)) and f"bitmap({p})",
+        bitmap_factory=type("BitmapFactory", (), {"decodeFile": staticmethod(lambda path: FakeBitmap(path))}),
     )
 
     class FakeDB:
@@ -300,7 +309,7 @@ def test_change_wallpaper_uses_saved_crop(tmp_path, monkeypatch):
     crop = helper.crop_path_for(src)
     crop.write_bytes(b"crop")
 
-    decoded = []
+    opened = []
     recorded = []
     real_exists = os.path.exists
     monkeypatch.setattr(
@@ -309,10 +318,10 @@ def test_change_wallpaper_uses_saved_crop(tmp_path, monkeypatch):
         lambda p: real_exists(p) or str(p) == src or str(p) == str(crop),
     )
 
-    result = _run_change_wallpaper(monkeypatch, tmp_path, src, decoded, recorded)
+    result = _run_change_wallpaper(monkeypatch, tmp_path, src, opened, recorded)
 
     assert result is True
-    assert decoded == [str(crop)]
+    assert opened == [str(crop)]
     assert recorded == [src]
 
 
@@ -322,7 +331,7 @@ def test_change_wallpaper_uses_source_without_crop(tmp_path, monkeypatch):
     (tmp_path / "wallpapers").mkdir()
     (tmp_path / "wallpapers" / "b.jpg").write_bytes(b"b")
 
-    decoded = []
+    opened = []
     recorded = []
     real_exists = os.path.exists
     monkeypatch.setattr(
@@ -331,10 +340,10 @@ def test_change_wallpaper_uses_source_without_crop(tmp_path, monkeypatch):
         lambda p: real_exists(p) or str(p) == src,
     )
 
-    result = _run_change_wallpaper(monkeypatch, tmp_path, src, decoded, recorded)
+    result = _run_change_wallpaper(monkeypatch, tmp_path, src, opened, recorded)
 
     assert result is True
-    assert decoded == [src]
+    assert opened == [src]
     assert recorded == [src]
 
 
