@@ -2,7 +2,10 @@ from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
+import sys
+import threading
 
+import pytest
 from jnius import JavaException
 from kivy.event import EventDispatcher
 from kivy.properties import BooleanProperty, ListProperty, StringProperty
@@ -13,6 +16,7 @@ resource_add_path(str(Path(__file__).resolve().parent.parent))
 import utils.helper as helper
 from utils.constants import ServiceStatus
 
+import ui.screens.full_screen as fullscreen_module
 import ui.screens.settings_screen as settings_module
 import ui.widgets.layouts as layouts
 import main
@@ -981,3 +985,112 @@ def test_monitor_never_propagates_an_unresolvable_device_theme():
 
     # ThemeColors.on_theme indexes _COLORS[value] and would raise KeyError otherwise
     settings_module.theme_colors.theme = app.monitor_dark_and_light_device_change()
+
+# --- set-as wallpaper menu -------------------------------------------------
+#
+# The rows used to carry `on_release=print`, so tapping either one only printed its text.
+
+def _make_fullscreen_screen(current_image="/data/user/0/app/wall.jpg"):
+    screen = fullscreen_module.FullscreenScreen.__new__(fullscreen_module.FullscreenScreen)
+    screen.app = SimpleNamespace(device_theme="dark")
+    screen.set_wallpaper_btn = SimpleNamespace()
+    if current_image is not None:
+        screen.current_image = current_image
+    return screen
+
+
+def _capture_dropdown_menu(monkeypatch):
+    """Stands in for the real DropdownMenu, so the menu can be built without a Window."""
+    captured = {}
+
+    class FakeDropdownMenu:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.setattr(fullscreen_module, "DropdownMenu", FakeDropdownMenu)
+    return captured
+
+
+def _patch_set_as_side(monkeypatch, on_android=True):
+    """Records what the set-as path hands to change_wallpaper, without running it."""
+    config = sys.modules["android_notify.config"]
+    monkeypatch.setattr(config, "on_android_platform", lambda: on_android)
+    monkeypatch.setattr(fullscreen_module, "LoadingLayout", lambda: SimpleNamespace(remove=lambda *_a: None))
+
+    calls = []
+    threads = []
+
+    def fake_change_wallpaper(*args, **kwargs):
+        calls.append((args, kwargs))
+
+    class FakeThread:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            threads.append(kwargs)
+
+        def start(self):
+            # What the real thread does, just inline.
+            self.kwargs["target"](
+                *self.kwargs.get("args", ()), **self.kwargs.get("kwargs", {})
+            )
+
+    monkeypatch.setattr(helper, "change_wallpaper", fake_change_wallpaper)
+    monkeypatch.setattr(threading, "Thread", FakeThread)
+    return calls, threads
+
+
+@pytest.mark.parametrize(
+    "row, target",
+    [(0, helper.WALLPAPER_TARGET_HOME), (1, helper.WALLPAPER_TARGET_LOCK)],
+)
+def test_set_as_row_sets_that_screen(monkeypatch, row, target):
+    screen = _make_fullscreen_screen()
+    captured = _capture_dropdown_menu(monkeypatch)
+    calls, threads = _patch_set_as_side(monkeypatch)
+
+    screen._build_dropdown_menu_wallpaper_setter()
+    assert [item.text for item in captured["items"]] == ["Home Screen", "Lock Screen"]
+    assert captured["header_text"] == "Set as"
+    assert captured["caller"] is screen.set_wallpaper_btn
+
+    captured["items"][row].on_release()
+
+    assert len(calls) == 1
+    args, kwargs = calls[0]
+    # The wallpapers on screen, not the lower-resolution carousel texture.
+    assert list(args) == ["/data/user/0/app/wall.jpg"]
+    assert kwargs["target"] == target
+    # do_ui_thing tears the LoadingLayout down, so a set that never finishes would otherwise
+    # leave a spinner on screen.
+    assert callable(kwargs["do_ui_thing"])
+    # setBitmap decodes and hands the bitmap to the system, so it cannot run on the frame the
+    # tap was handled on.
+    assert threads[0]["target"] is helper.change_wallpaper
+    assert threads[0]["args"] == ["/data/user/0/app/wall.jpg"]
+    assert threads[0]["kwargs"] == kwargs
+    assert threads[0]["daemon"] is True
+
+
+def test_set_as_row_without_a_wallpaper_does_nothing(monkeypatch):
+    # current_image is only assigned by on_current_slide, so it can be absent entirely.
+    screen = _make_fullscreen_screen(current_image=None)
+    captured = _capture_dropdown_menu(monkeypatch)
+    calls, threads = _patch_set_as_side(monkeypatch)
+
+    screen._build_dropdown_menu_wallpaper_setter()
+    captured["items"][0].on_release()
+
+    assert calls == []
+    assert threads == []
+
+
+def test_set_as_row_off_android_does_nothing(monkeypatch):
+    screen = _make_fullscreen_screen()
+    captured = _capture_dropdown_menu(monkeypatch)
+    calls, threads = _patch_set_as_side(monkeypatch, on_android=False)
+
+    screen._build_dropdown_menu_wallpaper_setter()
+    captured["items"][1].on_release()
+
+    assert calls == []
+    assert threads == []

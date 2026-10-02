@@ -17,7 +17,12 @@ from ui.widgets.dropdown_menu import DropdownMenu, MenuItem
 from ui.widgets.layouts import MyMDScreen, LoadingLayout
 
 from utils.config_manager import ConfigManager
-from utils.helper import format_size, remove_images_from_app
+from utils.helper import (
+    WALLPAPER_TARGET_HOME,
+    WALLPAPER_TARGET_LOCK,
+    format_size,
+    remove_images_from_app,
+)
 from utils.image_operations import get_or_create_scaled_down_image, thumbnail_path_for
 from utils.model import get_app, GalleryTabs
 from utils.logger import app_logger
@@ -472,14 +477,16 @@ class FullscreenScreen(MyMDScreen):
 
         self._set_as_items = [
             MenuItem(
-                text="Home Screen", on_release=print,
+                text="Home Screen",
+                on_release=lambda *_args: self._set_as_wallpaper(WALLPAPER_TARGET_HOME),
                 icon_image="assets/icons/home.png",
                 icon_image_light="assets/icons/home-dark.png",
                 text_color=text_color,
                 height=dp(56),
             ),
             MenuItem(
-                text="Lock Screen ", on_release=print,
+                text="Lock Screen",
+                on_release=lambda *_args: self._set_as_wallpaper(WALLPAPER_TARGET_LOCK),
                 icon="lock",
                 icon_color=text_color,
                 text_color=text_color,
@@ -494,15 +501,40 @@ class FullscreenScreen(MyMDScreen):
             text_color=text_color,
         )
 
+    def _set_as_wallpaper(self, target, *_args):
+        """Sets the wallpaper on a worker thread and clears itself when that thread finishes.
+
+        Called straight from the menu row, without the `_run_dropdown_action` wrapper the
+        header menu's rows use: every row dismisses its own menu on release
+        (`DropdownItemWidget.on_release` calls `self.dismiss` before `item.on_release`), and
+        that wrapper would only dismiss `header_dropdown_menu`, which is not the menu on
+        screen here.
+
+        `current_image` is only assigned by `on_current_slide`, so it can be missing entirely
+        when the carousel never got any wallpapers -- hence getattr rather than self.current_image.
+        """
+        from android_notify.config import on_android_platform
+        if not on_android_platform():
+            app_logger.warning("Set as tapped off Android, ignoring")
+            return
+        image_path = getattr(self, "current_image", None)
+        if not image_path:
+            app_logger.warning("Set as tapped with no wallpaper on the carousel, ignoring")
+            return
+        from utils.helper import change_wallpaper
+        import threading
+        spinner_layout = LoadingLayout()
+        # Keywords, not positional: do_ui_thing is the second positional parameter and a
+        # silent signature change here would hand it the target string.
+        threading.Thread(
+            target=change_wallpaper,
+            args=[image_path],
+            kwargs={"target": target, "do_ui_thing": spinner_layout.remove},
+            daemon=True,
+        ).start()
+
     def set_as_wallpaper(self, *_):
         self.menu.open()
-        return
-        import threading
-        from utils.helper import change_wallpaper
-        spinner_layout = LoadingLayout()
-        def remove_spinner(_):
-            spinner_layout.remove()
-        threading.Thread(target=change_wallpaper, args=[self.carousel.current_slide.higher_format, remove_spinner], daemon=True).start()
 
     def add_widget_to_home_screen(self, *_):
         from utils.android import add_home_screen_widget
