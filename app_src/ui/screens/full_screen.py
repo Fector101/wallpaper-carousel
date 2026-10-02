@@ -4,21 +4,18 @@ from pathlib import Path
 from kivymd.uix.label import MDLabel
 
 from kivy.clock import Clock
-from kivy.graphics import Color, Rectangle
 from kivy.properties import ListProperty, ObjectProperty, NumericProperty, StringProperty
 from kivy.metrics import dp, sp
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.carousel import Carousel
 from kivy.uix.image import Image
-from kivy.uix.recycleview.views import RecycleDataViewBehavior
 
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDIconButton
-from kivymd.uix.menu import MDDropdownMenu
-from kivymd.uix.menu.menu import MDDropdownLeadingIconItem
 from kivymd.uix.relativelayout import MDRelativeLayout
 
 from kivy.utils import get_color_from_hex
+from ui.widgets.dropdown_menu import DropdownMenu, MenuItem
 from ui.widgets.layouts import MyMDScreen, LoadingLayout
 
 from utils.config_manager import ConfigManager
@@ -81,93 +78,6 @@ class MyMDIconButton(MDIconButton):
         self.bg_color = 'black'
         self.theme_text_color = 'Custom'
         self.text_color = 'white'
-
-
-class FullscreenDropdownItem(RecycleDataViewBehavior, MDDropdownLeadingIconItem):
-    # MDIcon resolves `leading_icon` through md_icons and silently falls back to
-    # the "blank" glyph for anything unknown, so an image path there renders
-    # nothing. Images go through MDIcon.source instead; menu.kv never sets it and
-    # there is no item-dict key for it, so it is driven from here.
-    icon_path = StringProperty("")
-    # icon = StringProperty("")
-    # IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg")
-
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # `leading_icon` is still empty while on_kv_post runs, so bind instead.
-        self.bind(icon_path=self._apply_icon)
-
-    def refresh_view_attrs(self, rv, index, data_item):
-        # The menu's item list is a RecycleView, so this widget is reused for any
-        # item that has the same viewclass -- including items from the *other*
-        # menu in this screen, since Kivy's view cache is a process-wide global
-        # keyed by widget class only. The base implementation only setattrs the
-        # keys present in the dict, so anything missing keeps the value the
-        # previous item left behind (e.g. an "icon_path" leaking into the item
-        # that follows an image item). Reset our own key before syncing.
-        super().refresh_view_attrs(rv, index, data_item)
-        if "icon_path" not in data_item:
-            self.icon_path = ""
-
-    def on_kv_post(self, base_widget):
-        super().on_kv_post(base_widget)
-        self.ids.label.pos_hint = {"center_y": .44}
-        Clock.schedule_once(self._hide_divider, 0)
-
-    def _apply_icon(self, *_):
-        icon = self.ids.leading_icon
-        print(self.leading_icon,'--',self.icon_path)
-
-        if not self.leading_icon:
-            return
-        print('passed')
-        # icon.canvas.remove_group("fullscreen-icon")
-        icon.adaptive_size = False
-        icon.theme_width = "Custom"
-        icon.theme_height = "Custom"
-        icon.size_hint = None, None
-        icon.height=sp(20)
-        icon.width=sp(24)
-        icon.pos_hint = {"center_y": .5}
-        icon.source = self.icon_path
-
-        icon.canvas.remove_group("rectangle")
-        with icon.canvas:
-            Color(rgba=(1, 1, 1, 1))
-            Rectangle(pos=icon.pos, size=icon.size, source=icon.source)
-        icon.unbind(pos=self._sync_rect, size=self._sync_rect)
-        icon.bind(pos=self._sync_rect, size=self._sync_rect)
-
-    def _sync_rect(self, *_):
-        icon = self.ids.leading_icon
-        if self.leading_icon:
-            return
-        for instruction in icon.canvas.children:
-            if isinstance(instruction, Rectangle):
-                instruction.pos = icon.pos
-                instruction.size = icon.size
-
-    def _hide_divider(self, *args):
-        for child in self.children:
-            if child.__class__.__name__ == "MDDivider":
-                child.opacity = 0
-                child.size_hint_y = None
-                child.height = 0
-                break
-
-
-def _fullscreen_menu_item(**kwargs):
-    """Builds one MDDropdownMenu item dict for FullscreenDropdownItem.
-
-    Every item must carry the same set of keys: the menu's item list is a
-    RecycleView that reuses one widget per viewclass, and it only applies keys
-    present in the dict, so a key missing from a later item keeps whatever value
-    the widget had when it was used for an earlier one.
-    """
-    item = {"viewclass": "FullscreenDropdownItem", "icon_path": ""}
-    item.update(kwargs)
-    return item
 
 
 class PictureButton(ButtonBehavior,MDRelativeLayout):
@@ -278,32 +188,6 @@ class MyImage(Image):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-class MyMDDropdownMenu(MDDropdownMenu):
-    def set_target_height(self) -> None:
-        # open() sets self.height = self.target_height, so a height passed to the
-        # constructor is always discarded; only the summed item heights survive.
-        # The base implementation sums items alone and never counts header_cls,
-        # which leaves the item list short by the header height. Fold the header
-        # into the sum before delegating so KivyMD's own max_height cap and
-        # window-bounds clamp still apply to the whole card; adding it afterwards
-        # would bypass that clamp and push the menu off the top of the screen.
-        header_height = self.header_cls.height if self.header_cls is not None else 0
-        items = self.menu.data
-        if not header_height or not items:
-            super().set_target_height()
-            return
-        first = items[0]
-        had_height = "height" in first
-        original = first.get("height", self.min_height)
-        first["height"] = original + header_height
-        try:
-            super().set_target_height()
-        finally:
-            if had_height:
-                first["height"] = original
-            else:
-                del first["height"]
-
 
 class FullscreenScreen(MyMDScreen):
     current_image: str # used in toggle btn
@@ -323,8 +207,7 @@ class FullscreenScreen(MyMDScreen):
         self.header_dropdown_menu = None
 
         self.menu = None
-        self.set_as_header = None
-        self._set_as_items_data = []
+        self._set_as_items = []
 
         self.btn_fullscreen=None
         self.original_carousel_pos_hint = None
@@ -516,25 +399,22 @@ class FullscreenScreen(MyMDScreen):
         is_dark = self.app.device_theme == "dark"
         text_color = [1, 1, 1, 1] if is_dark else [0, 0, 0, 1]
         bg_color = [.15, .15, .15, 1] if is_dark else [1, 1, 1, 1]
-        self._menu_items_data = [
-            _fullscreen_menu_item(
-                text="Delete", leading_icon="trash-can-outline", on_release=delete_callback,
-                theme_text_color="Custom", theme_bg_color="Custom",
-                text_color=text_color, leading_icon_color=text_color, md_bg_color=bg_color,
+        self._menu_items = [
+            MenuItem(
+                text="Delete", icon="trash-can-outline", on_release=delete_callback,
+                text_color=text_color, icon_color=text_color,
             ),
-            _fullscreen_menu_item(
-                text="Info", leading_icon="information-outline", on_release=info_callback,
-                theme_text_color="Custom", theme_bg_color="Custom",
-                text_color=text_color, leading_icon_color=text_color, md_bg_color=bg_color,
+            MenuItem(
+                text="Info", icon="information-outline", on_release=info_callback,
+                text_color=text_color, icon_color=text_color,
             ),
         ]
-        self.header_dropdown_menu = MDDropdownMenu(
+        self.header_dropdown_menu = DropdownMenu(
             caller=self.dropdown_btn,
-            items=self._menu_items_data,
-            width_mult=2.5,
-            theme_bg_color="Custom",
-            ver_growth="down",
-            hor_growth="left",
+            items=self._menu_items,
+            card_bg_color=bg_color,
+            text_color=text_color,
+            icon_color=text_color,
         )
 
     def _run_dropdown_action(self, action, *_args):
@@ -547,20 +427,9 @@ class FullscreenScreen(MyMDScreen):
         # not exist yet on the first device_theme change. Each menu is guarded
         # separately: one early return would skip the other menu's colours.
         if self.header_dropdown_menu is not None:
-            self.header_dropdown_menu.md_bg_color = bg_color
-            for item in self._menu_items_data:
-                item["md_bg_color"] = bg_color
-                item["text_color"] = text_color
-                item["leading_icon_color"] = text_color
-            self.header_dropdown_menu.items = self._menu_items_data
+            self.header_dropdown_menu.apply_theme(bg_color, text_color)
         if self.menu is not None:
-            self.menu.md_bg_color = bg_color
-            self.set_as_header.md_bg_color = bg_color
-            for item in self._set_as_items_data:
-                item["md_bg_color"] = bg_color
-                item["text_color"] = text_color
-                item["leading_icon_color"] = text_color
-            self.menu.items = self._set_as_items_data
+            self.menu.apply_theme(bg_color, text_color)
 
     def _set_theme_color(self, _, theme):
         is_dark = theme == "dark"
@@ -599,60 +468,28 @@ class FullscreenScreen(MyMDScreen):
         is_dark = self.app.device_theme == "dark"
         text_color = [1, 1, 1, 1] if is_dark else [0, 0, 0, 1]
         bg_color = [.15, .15, .15, 1] if is_dark else [1, 1, 1, 1]
-        self._set_as_items_data = [
-            # leading_icon is a Material Design Icons *name*. An image path there is
-            # detected by extension and drawn via MDIcon.source instead.
-            _fullscreen_menu_item(
+        self._set_as_items = [
+            MenuItem(
                 text="Home Screen", on_release=print,
-                icon_path="/home/fabian/Documents/python-android/app_src/assets/icons/home.png",
-                leading_icon="",
-                theme_text_color="Custom", theme_bg_color="Custom",
+                icon_image="assets/icons/home.png",
                 text_color=text_color,
-                md_bg_color=bg_color,
                 height=dp(56),
             ),
-
-            _fullscreen_menu_item(
+            MenuItem(
                 text="Lock Screen ", on_release=print,
-                leading_icon="lock",
-                leading_icon_color=text_color,
-                theme_text_color="Custom", theme_bg_color="Custom",
-                text_color=text_color, md_bg_color=bg_color,
+                icon="lock",
+                icon_color=text_color,
+                text_color=text_color,
                 height=dp(56),
             ),
-
         ]
-        self.set_as_header = MDBoxLayout(
-            MDLabel(
-                text="Set as",
-                adaptive_size=True,
-                pos_hint={"center_y": .5},
-                bold=True,
-                theme_font_size="Custom",
-                # font_size="15sp",
-                theme_font_name="Custom",
-                theme_text_color="Custom",
-                text_color=text_color,
-                font_name="RobotoMono",
-            ),
-            spacing="12dp",
-            padding="10dp",
-            md_bg_color="black",
-            size_hint_y=None,
-            height=dp(45),
-            # menu.kv gives content_header `adaptive_size: True`, so its height
-            # is its minimum_size. Kivy's BoxLayout._get_minimum_size only folds
-            # a child's height in when size_hint_y is None; with size_hint_y=1
-            # the header contributes nothing, content_header collapses to 0 and
-            # do_layout then stretches the header to that 0.
+        self.menu = DropdownMenu(
+            caller=self.set_wallpaper_btn,
+            header_text="Set as",
+            items=self._set_as_items,
+            card_bg_color=get_color_from_hex("#252424"),
+            text_color=text_color,
         )
-        self.menu = MyMDDropdownMenu(
-            header_cls=self.set_as_header,
-            items=self._set_as_items_data,
-            theme_bg_color="Custom",
-            md_bg_color=get_color_from_hex("#1D1C1C"),
-        )
-        self.menu.caller = self.set_wallpaper_btn
 
     def set_as_wallpaper(self, *_):
         self.menu.open()
@@ -704,7 +541,7 @@ class FullscreenScreen(MyMDScreen):
             gallery_screen = self.manager.gallery_screen
             self.wallpapers_data=gallery_screen.wallpapers
         else:
-            self.wallpapers_data = ["/home/fabian/Pictures/1065154.jpg"]
+            # self.wallpapers_data = ["/home/fabian/Pictures/1065154.jpg"]
             app_logger.warning("Using hot reload data")
         if not self.wallpapers_data:
             return

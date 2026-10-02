@@ -18,14 +18,12 @@ from kivymd.uix.button import MDButton, MDButtonIcon, MDButtonText, MDIconButton
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.label import MDLabel, MDIcon
-from kivymd.uix.menu import MDDropdownMenu
-from kivymd.uix.menu.menu import MDDropdownLeadingIconItem
-from kivy.factory import Factory
 from kivymd.uix.relativelayout import MDRelativeLayout
 from kivymd.uix.widget import MDWidget
 
 
 from utils.logger import app_logger
+from ui.widgets.dropdown_menu import DropdownMenu, MenuItem
 from ui.widgets.layouts import MyMDScreen, Column, Row, get_nav_bar_height, get_status_bar_height, \
     PlaceOnMainScreen, GenericStatusBarSpacer  # used in .kv file
 from utils.config_manager import ConfigManager
@@ -41,24 +39,6 @@ from utils.permissions import ask_permission_to_images, has_permission_to_images
 my_config = ConfigManager()
 gs=None # hot reload
 load_kv_file(py_file_absolute_path=__file__)
-
-
-class GalleryDropdownItem(MDDropdownLeadingIconItem):
-    def on_kv_post(self, base_widget):
-        super().on_kv_post(base_widget)
-        self.ids.label.pos_hint = {"center_y": .44}
-        Clock.schedule_once(self._hide_divider, 0)
-
-    def _hide_divider(self, *args):
-        for child in self.children:
-            if child.__class__.__name__ == "MDDivider":
-                child.opacity = 0
-                child.size_hint_y = None
-                child.height = 0
-                break
-
-
-Factory.register("GalleryDropdownItem", cls=GalleryDropdownItem)
 
 
 min_box_size = dp(80)
@@ -1050,28 +1030,17 @@ class GalleryScreen(MyMDScreen):
         # self.load_saved()
         
         self.multi_select_manager = MultiSelectManager(gallery_screen=self)
-        self._menu_items_data = [
-                {
-                    'text': 'Enter select mode',
-                    'on_release': self.enter_select_mode,
-                    "leading_icon": "check-all",
-                    "theme_text_color": "Custom",
-                    "theme_bg_color": "Custom",
-                    "viewclass": "GalleryDropdownItem",
-                },
-            ]
-        self.select_menu = MDDropdownMenu(
-                    caller=self.ids.select_mode_button,
-                    items=self._menu_items_data,
-                    width_mult=4,
-                    theme_bg_color="Custom",
-                    theme_elevation_level= "Custom",
-                    theme_shadow_softness= "Custom",
-                    theme_shadow_color= "Custom",
-                    elevation_level= 0,
-                    shadow_color= [0, 0, 0, 0],
-                    shadow_softness= 0,
-                )
+        self._menu_items = [
+            MenuItem(
+                text="Enter select mode",
+                on_release=self.enter_select_mode,
+                icon="check-all",
+            ),
+        ]
+        self.select_menu = DropdownMenu(
+            caller=self.ids.select_mode_button,
+            items=self._menu_items,
+        )
         self._update_menu_theme(None, self.app.device_theme)
         self.app.bind(device_theme=self._update_menu_theme)
         # Clock.schedule_once(self.enter_select_mode, 0) # hot reload
@@ -1081,21 +1050,8 @@ class GalleryScreen(MyMDScreen):
         text_color = [1,1,1,1] if is_dark else [0,0,0,1]
         bg_color = [.15,.15,.15,1] if is_dark else [1,1,1,1]
 
-        self._menu_items_data = [
-            {
-                "text": "Enter select mode",
-                "on_release": self.enter_select_mode,
-                "leading_icon": "check-all",
-                "theme_text_color": "Custom",
-                "theme_bg_color": "Custom",
-                "text_color": text_color,
-                "leading_icon_color": text_color,
-                "md_bg_color": bg_color,
-                "viewclass": "GalleryDropdownItem",
-            },
-        ]
-        self.select_menu.md_bg_color = bg_color
-        self.select_menu.items = self._menu_items_data
+        # No dicts to rebuild any more: apply_theme() recolours the rows that already exist.
+        self.select_menu.apply_theme(bg_color, text_color)
 
     def open_select_mode_menu(self, *args):
         self.select_menu.open()
