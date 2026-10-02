@@ -433,7 +433,7 @@ class ToggleSliderRow(Row):
         if v and not self.__is_subtitle_added:
             self.__is_subtitle_added = True
             self.sub_text_widget = AdaptiveLabel(text=self.sub_title_text, size_hint=[None, None],
-                                                 color=theme_colors.TEXT_SECONDARY, font_size=sp(14))
+                                                 color="grey", font_size=sp(14))
             self.text_layout.bind(width=self.wrap_text_width)
             self.text_layout.add_widget(self.sub_text_widget)
             self.bind(sub_title_text=self.sub_text_widget.setter("text"))
@@ -443,8 +443,6 @@ class ToggleSliderRow(Row):
 
     def _set_theme_color(self, *_):
         self.title_widget_ref.color = theme_colors.TEXT_PRIMARY
-        if self.sub_text_widget:
-            self.sub_text_widget.color = theme_colors.TEXT_SECONDARY
 
     def do_thing(self, instance, *args):
         if self.change_function:

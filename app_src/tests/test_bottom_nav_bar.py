@@ -5,6 +5,10 @@ because the drawer is still mid-hide when it is called. That deferral used to be
 `hide()` landing in the same frame was silently undone by the queued callback, leaving the
 navbar on screen while `self.hidden` said it was gone.
 
+The deferral only applies to the animated path. With `animation=False` nothing is in flight
+(`set_state` cancels any running open/close first), so the restore is applied inline -- see
+`test_unanimated_restore_is_applied_inline_*` below.
+
 The concrete symptom this fixes: in the gallery, tapping "enter multi-select mode" runs
 DropdownMenu.dismiss() -> bottom_bar.show(hidden_by=menu) and then, in the same frame,
 MultiSelectManager.show() -> bottom_bar.hide(hidden_by=manager). The queued show then landed
@@ -93,7 +97,7 @@ def test_hide_cancels_a_restore_that_was_queued_earlier_in_the_same_frame(bar):
     """The gallery bug: dismiss() shows the bar, then the overlay hides it. The queued
     restore must not run, or the navbar lands back on screen in multi-select mode."""
     bar.hide(animation=False, hidden_by="menu")
-    bar.show(animation=False, hidden_by="menu")  # allowed: the menu really did hide it
+    bar.show(hidden_by="menu")  # allowed: the menu really did hide it
     bar.hide(animation=False, hidden_by="manager")  # another owner, same frame
 
     bar.clock.run_all()
@@ -105,7 +109,7 @@ def test_hide_cancels_a_restore_that_was_queued_earlier_in_the_same_frame(bar):
 
 def test_a_cancelled_restore_never_touches_the_drawer(bar):
     bar.hide(animation=False, hidden_by="menu")
-    bar.show(animation=False, hidden_by="menu")
+    bar.show(hidden_by="menu")
     queued = bar.clock.events[-1]
     bar.hide(animation=False, hidden_by="manager")
 
@@ -118,7 +122,7 @@ def test_hide_claims_ownership_when_the_bar_was_restored_in_the_same_frame(bar):
     immediately), so the second owner legitimately takes over -- and the queued restore must
     still not fire behind its back."""
     bar.hide(animation=False, hidden_by="menu")
-    bar.show(animation=False, hidden_by="menu")
+    bar.show(hidden_by="menu")
     queued = bar.clock.events[-1]
 
     bar.hide(animation=False, hidden_by="pic")
@@ -130,11 +134,13 @@ def test_hide_claims_ownership_when_the_bar_was_restored_in_the_same_frame(bar):
 
 
 # --- the deferral itself still works ------------------------------------------
+# These use the animated path (the default). The un-animated path applies the restore inline,
+# so it has no queued callback to cancel -- see the next section.
 
-def test_show_defers_the_restore_instead_of_applying_it_inline(bar):
+def test_show_defers_the_animated_restore_instead_of_applying_it_inline(bar):
     bar.hide(animation=False, hidden_by="menu")
 
-    bar.show(animation=False, hidden_by="menu")
+    bar.show(hidden_by="menu")
 
     # Deferred: the drawer was still closing when show() was called.
     assert bar.states[-1][0] == "close"
@@ -144,7 +150,7 @@ def test_show_defers_the_restore_instead_of_applying_it_inline(bar):
 
 def test_queued_restore_applies_when_nothing_hides_after_it(bar):
     bar.hide(animation=False, hidden_by="menu")
-    bar.show(animation=False, hidden_by="menu")
+    bar.show(hidden_by="menu")
 
     bar.clock.run_all()
 
@@ -155,7 +161,7 @@ def test_queued_restore_applies_when_nothing_hides_after_it(bar):
 
 def test_pending_handle_is_cleared_once_the_restore_has_run(bar):
     bar.hide(animation=False, hidden_by="menu")
-    bar.show(animation=False, hidden_by="menu")
+    bar.show(hidden_by="menu")
 
     bar.clock.run_all()
 
@@ -165,7 +171,7 @@ def test_pending_handle_is_cleared_once_the_restore_has_run(bar):
 def test_restored_bar_can_be_hidden_again_normally(bar):
     """The everyday path, to prove the cancel did not break ordinary use."""
     bar.hide(animation=False, hidden_by="menu")
-    bar.show(animation=False, hidden_by="menu")
+    bar.show(hidden_by="menu")
     bar.clock.run_all()
 
     bar.hide(animation=False, hidden_by="manager")
@@ -173,6 +179,49 @@ def test_restored_bar_can_be_hidden_again_normally(bar):
     assert bar.hidden is True
     assert bar.hidden_by == "manager"
     assert bar.button_box.pos_hint == {"center_x": .5, "y": -1}
+
+
+# --- the un-animated path applies inline --------------------------------------
+
+def test_unanimated_restore_is_applied_inline(bar):
+    """Nothing is animating, so there is no transition to wait for.
+
+    Deferring it anyway left the caller (e.g. DropdownMenu.hide(), which removes the scrim in
+    the same tick) showing a screen with no nav bar for one frame.
+    """
+    bar.hide(animation=False, hidden_by="menu")
+
+    bar.show(animation=False, hidden_by="menu")
+
+    assert bar.states[-1] == ("open", False)
+    assert bar.button_box.pos_hint == {"center_x": .5, "center_y": .5}
+    assert bar.hidden is False
+
+
+def test_unanimated_restore_queues_nothing(bar):
+    bar.hide(animation=False, hidden_by="menu")
+
+    bar.show(animation=False, hidden_by="menu")
+
+    assert bar.pending_show is None
+    assert bar.clock.events == []
+
+
+def test_unanimated_restore_can_still_be_undone_by_a_hide_in_the_same_frame(bar):
+    """The gallery case again, on the path the app actually uses.
+
+    dismiss() shows the bar and the overlay hides it in the same frame. With the restore
+    already applied there is no queued callback left to fire, so the later hide simply wins.
+    """
+    bar.hide(animation=False, hidden_by="menu")
+    bar.show(animation=False, hidden_by="menu")
+
+    bar.hide(animation=False, hidden_by="manager")
+    bar.clock.run_all()
+
+    assert bar.states[-1][0] == "close"
+    assert bar.button_box.pos_hint == {"center_x": .5, "y": -1}
+    assert bar.hidden is True
 
 
 # --- ownership rules are untouched --------------------------------------------

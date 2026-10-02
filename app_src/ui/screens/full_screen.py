@@ -1,8 +1,6 @@
 import os
 from pathlib import Path
 
-from kivymd.uix.label import MDLabel
-
 from kivy.clock import Clock
 from kivy.properties import ListProperty, ObjectProperty, NumericProperty, StringProperty
 from kivy.metrics import dp, sp
@@ -232,9 +230,9 @@ class FullscreenScreen(MyMDScreen):
         self.app_dir = Path(appFolder())
         self.wallpapers_dir = self.app_dir / "wallpapers"
         self.built_ui = False
-        self.build_ui()# hot_reload
-        self.create_menu()
-        Clock.schedule_once(lambda x:self.menu.open(),1)
+        # self.build_ui()# hot_reload
+        # self._build_dropdown_menu_wallpaper_setter()# hot_reload
+        # Clock.schedule_once(lambda x:self.menu.open(),1)# hot_reload
 
     def on_enter(self, *args):
         super().on_enter(*args)
@@ -392,6 +390,8 @@ class FullscreenScreen(MyMDScreen):
         # self.set_wallpaper_btn.bind(on_release=lambda x: change_wallpaper(self.carousel.current_slide.higher_format))
         self.set_wallpaper_btn.bind(on_release=self.set_as_wallpaper)
         self.btn_home_widget.bind(on_release=self.add_widget_to_home_screen)
+
+        self._build_dropdown_menu_wallpaper_setter()
         # p("using hot reload stuff")
         # self.update_images(0)  # for hot_reload
 
@@ -423,9 +423,9 @@ class FullscreenScreen(MyMDScreen):
         action()
 
     def _update_menu_theme(self, bg_color, text_color):
-        # create_menu() runs after this handler is bound, so the set-as menu may
+        # _build_dropdown_menu_wallpaper_setter() runs after this handler is bound, so the set-as menu may
         # not exist yet on the first device_theme change. Each menu is guarded
-        # separately: one early return would skip the other menu's colours.
+        # separately: one early return would skip the other menu's colors.
         if self.header_dropdown_menu is not None:
             header_bg = [.1, .1, .1, 1] if self.app.device_theme == "dark" else [.9, .9, .9, 1]
             self.header_dropdown_menu.apply_theme(bg_color, text_color, header_bg_color=header_bg, theme=self.app.device_theme)
@@ -465,11 +465,11 @@ class FullscreenScreen(MyMDScreen):
     def handle_going_back(self, *_):
         self.back_to_gallery_screen()
 
-    def create_menu(self):
+    def _build_dropdown_menu_wallpaper_setter(self):
 
         is_dark = self.app.device_theme == "dark"
         text_color = [1, 1, 1, 1] if is_dark else [0, 0, 0, 1]
-        bg_color = [.15, .15, .15, 1] if is_dark else [1, 1, 1, 1]
+
         self._set_as_items = [
             MenuItem(
                 text="Home Screen", on_release=print,

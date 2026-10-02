@@ -355,15 +355,24 @@ class _FakeScreen:
 
     def __init__(self):
         self.children = []
+        # Opacity as it was at the moment each widget was added, i.e. as the very next frame
+        # would have drawn it. See _added_visibility.
+        self.on_add = []
 
     def add_widget(self, widget):
         self.children.append(widget)
         widget.parent = self
+        self.on_add.append(_added_visibility(widget))
 
     def remove_widget(self, widget):
         if widget in self.children:
             self.children.remove(widget)
         widget.parent = None
+
+
+def _added_visibility(widget):
+    """(root opacity, scrim opacity) of `widget` as it was when it entered the tree."""
+    return widget.opacity, widget.scrim.opacity
 
 
 @pytest.fixture
@@ -517,6 +526,89 @@ def test_open_after_a_back_key_dismissal_works_again():
     menu.open()
     assert menu._is_open is True
     menu.dismiss()
+
+
+# --- the frame it is added in -------------------------------------------------
+#
+# `open()` is called from the dispatch of the tap, which happens *after* `Clock.tick()`, so the
+# placement scheduled for the next tick cannot land until the next frame -- but this frame is
+# still drawn. The state the menu enters the tree in is therefore exactly what the user sees for
+# one frame. It has to be invisible, or that frame shows the menu in the state the *previous*
+# open left it in.
+
+def test_the_menu_is_invisible_in_the_frame_it_enters_the_tree(_nav_host):
+    menu = _menu(items=[MenuItem(text="a")])
+
+    menu.open()
+
+    assert _nav_host.sm.current_screen.on_add[-1] == (0, 0)
+    menu.dismiss()
+
+
+def test_reopening_does_not_flash_the_scrim_left_behind_by_the_last_open(_nav_host):
+    """The original flicker.
+
+    A completed open leaves `scrim.opacity` at 1, and `hide()` only cancels the in-flight
+    animation, so the next open drew one frame of full-screen black before snapping it back
+    to 0 and fading in again.
+    """
+    menu = _menu(items=[MenuItem(text="a")])
+    menu.open()
+    menu._place_and_fade()
+    menu.scrim.opacity = 1  # the fade ran to completion
+    menu.dismiss()
+
+    menu.open()
+
+    assert menu.scrim.opacity == 0
+    assert _nav_host.sm.current_screen.on_add[-1] == (0, 0)
+    menu.dismiss()
+
+
+def test_a_menu_that_was_never_placed_still_has_default_card_geometry(_nav_host):
+    """Why resetting only the scrim would not have been enough.
+
+    `card.size`/`card.pos` are written by _position_card and nothing else, so until that runs
+    the card is a default 100x100 box in the top-left corner rather than under the caller.
+    """
+    menu = _menu(items=[MenuItem(text="a")])
+
+    # Only the width is set at construction; _position_card is what fills in the rest, so
+    # until it runs the card is an unstaged box in the top-left corner, not under the caller.
+    assert list(menu.card.size) == [menu.card_width, 100]
+    assert tuple(menu.card.pos) == (0, 0)
+
+    menu.open()
+
+    assert menu.opacity == 0
+    menu.dismiss()
+
+
+def test_the_menu_is_shown_once_it_has_been_placed(_nav_host):
+    menu = _menu(items=[MenuItem(text="a")])
+    menu.open()
+    assert menu.opacity == 0
+
+    menu._place_and_fade()
+
+    assert menu.opacity == 1
+    # Positioned, and the scrim still transparent -- the fade brings it in from here.
+    # card.size is a list, so compare it element-wise.
+    assert list(menu.card.size) == [menu.card_width, menu._measure_card_height()]
+    assert menu.scrim.opacity == 0
+    menu.dismiss()
+
+
+def test_a_dismiss_before_the_placement_frame_leaves_the_menu_invisible(_nav_host):
+    """The guard in _place_and_fade. A menu closed before that frame must not be revealed by
+    the queued callback."""
+    menu = _menu(items=[MenuItem(text="a")])
+    menu.open()
+    menu.dismiss()
+
+    menu._place_and_fade()
+
+    assert menu.opacity == 0
 
 
 # --- positioning --------------------------------------------------------------

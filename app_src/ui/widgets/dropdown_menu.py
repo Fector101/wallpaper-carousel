@@ -1,3 +1,4 @@
+# TODO: Remove this on new kivyMD version, also check if list item can set custom icon or just remove custom path icon and add font awesome ttf
 """Hand-rolled dropdown menu.
 
 Replaces KivyMD's `MDDropdownMenu` in this app. KivyMD builds its item list out of a
@@ -423,6 +424,14 @@ class DropdownMenu(MDFloatLayout, PlaceOnMainScreen):
         screen = self._target_screen()
         if screen is None:
             return
+        # Invisible until _place_and_fade has positioned it. open() runs from dispatch_input(),
+        # which is *after* Clock.tick(), so the scheduled placement cannot run until the next
+        # tick -- but this frame is still drawn. Anything still visible at add time therefore
+        # shows up for a frame in its previous state: the scrim left at opacity 1 by the last
+        # open flashes full-screen black, and the card sits at its old position (or at its
+        # default 100x100/0,0 on the first open) before it jumps to the caller.
+        self.opacity = 0
+        self.scrim.opacity = 0
         screen.add_widget(self)
         self._is_open = True
         Window.bind(on_resize=self.on_window_resize)
@@ -461,6 +470,9 @@ class DropdownMenu(MDFloatLayout, PlaceOnMainScreen):
         if not self._is_open:
             return
         self._position_card()
+        # Placed, so it can be shown. open() left it invisible precisely because the first
+        # drawn frame would otherwise be an unplaced one.
+        self.opacity = 1
         self.scrim.opacity = 0
         # Only the scrim fades; the card itself never scales, slides, or blinks in.
         self._fade = Animation(
