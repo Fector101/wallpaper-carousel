@@ -191,7 +191,11 @@ def patch_sdlactivity_keep_native_alive_on_config_change(java_file):
     java_file = Path(java_file)
     source = java_file.read_text(encoding="utf-8")
 
-    if "isChangingConfigurations()" in source:
+    # Marker must be the replacement blocks themselves, not just the isChangingConfigurations()
+    # call: upstream SDL never calls that method today, so a bare substring check would start
+    # matching the day SDL uses it in any unrelated lifecycle method, silently skipping this
+    # patch and letting the double-Py_InitializeFromConfig crash return with a green build.
+    if SDL_ONDESTROY_KEPT_ALIVE in source and SDL_ONDESTROY_QUIT_KEPT_ALIVE in source:
         print(f"SDL keep-alive guard already present in {java_file}")
         return
 
