@@ -85,10 +85,10 @@ class MyBoxLayout(BoxLayout):
 
 from kivy.clock import Clock
 
-
 class PreviewScreen(MyMDScreen):
     scaled_down_img_texture=ObjectProperty(None, allownone=True)
-    # abs_img_path=StringProperty("/data/user/0/org.wally.waller/files/wallpapers/486306-1920x1080-desktop-full-hd-blade-runner-2049-background-image.jpg")
+    # abs_img_path=StringProperty("/data/user/0/org.wally.waller/files/wallpapers/2112956-3840x2160-desktop-4k-minimalist-background-image.jpg") # hot_reload
+    # abs_img_path=StringProperty("/home/fabian/Pictures/1065154.jpg") # hot_reload
     abs_img_path=StringProperty("")
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -106,6 +106,9 @@ class PreviewScreen(MyMDScreen):
         self.how_to_modal = None
         self.high_res_badge = None
         self._maybe_show_how_to()
+        # self.build_ui(None) # hot_reload
+        # self.update_cover_size(None) # hot_reload
+        # self._show_high_res_badge() # hot_reload
 
 
     def build_ui(self,_):
@@ -225,7 +228,6 @@ class PreviewScreen(MyMDScreen):
             self.set_image_data()
             self.image_widget.texture = self.scaled_down_img_texture
             self.image_widget.opacity=1
-
 
     def format_widget(self, *_):
         if not self.abs_img_path: # safe hot reload

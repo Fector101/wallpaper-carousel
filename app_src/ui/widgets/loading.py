@@ -32,7 +32,7 @@ class HighResLoadingBadge(Row):
     def __init__(self, **kwargs):
         super().__init__(
             adaptive_width=True, adaptive_height=True,
-            spacing=dp(9), padding=[dp(14), dp(9), dp(14), dp(9)],
+            spacing=dp(9), padding=[dp(10), dp(10), dp(10), dp(10)],
             radius=dp(16), md_bg_color=theme_colors.BG_CARD,
             **kwargs,
         )
@@ -40,7 +40,10 @@ class HighResLoadingBadge(Row):
         self.label = MDLabel(
             text=self.text,
             theme_text_color="Custom", text_color=theme_colors.TEXT_PRIMARY,
-            font_size=dp(15), size_hint_x=None,
+            font_size=dp(15),
+            adaptive_size=1,
+            pos_hint={"center_y":0.5}
+            # md_bg_color=[1,0,1,1]
         )
         self.bind(text=lambda _, value: setattr(self.label, "text", value))
         self.spinner = SpinningArcWidget(
