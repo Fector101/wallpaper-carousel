@@ -1,0 +1,18 @@
+This version contains a lot of little changes to improve the app's stability and performance. Please report any issues you find and thank you for using Waller!
+
+[color=#4CAF50][b]New[/b][/color]
+• New zoom-and-pan preview screen that remembers your crop and position when setting a wallpaper
+• Set wallpaper button allows to choose between your Home or Lock screen
+• Carousel Background service now auto-retries if it fails to start
+
+[color=#82C8E5][b]Improvements[/b][/color]
+• Better handling of large number of images for in-app carousel screen
+• Better handling of High Res Images in App
+
+[color=#FFFF00][b]Fixes[/b][/color]
+• App no longer closes when a wallpaper changes on MIUI/Xiaomi
+• Home screen widget showing the wrong preview message
+• Collapsed date groups now expand automatically when selection begins.
+• Main select All button didn't know when all items were selected by hand, now it does
+• Case of missing scrollviews in gallery and settings fixed
+• Patches to Light theme

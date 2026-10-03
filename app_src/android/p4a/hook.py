@@ -329,6 +329,20 @@ def after_apk_build(toolchain: ToolchainCL):
     'android:screenOrientation="fullSensor"'
     )
 
+    # Cleartext HTTP is off by default at targetSdk 36, which blocks a laptop-hosted
+    # release server during local update testing. The config file is gitignored, so a
+    # clean checkout (CI, release builds) never gets this attribute at all.
+    network_security_config = Path(__file__).resolve().parent.parent / "res" / "xml" / "network_security_config.xml"
+    if network_security_config.exists():
+        manifest_file_content = manifest_file_content.replace(
+            "<application ",
+            '<application android:networkSecurityConfig="@xml/network_security_config" ',
+            1,
+        )
+        print(f"{network_security_config} present, allowing cleartext HTTP for local update tests")
+    else:
+        print(f"{network_security_config} absent, keeping cleartext HTTP disabled")
+
     receiver_xml = generate_receivers(package)
     manifest_file_content = insert_to_end_of_xml(receiver_xml, manifest_file_content)
 

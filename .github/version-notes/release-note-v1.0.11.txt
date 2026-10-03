@@ -1,0 +1,21 @@
+# Waller V1.0.11
+
+## New
+- **Set wallpaper to Home *or* Lock screen**: the "Set as" menu now has working Home Screen and Lock Screen rows, and tells you which screen it changed (#108)
+- **New zoomable preview screen**: tap the expand button for a full-screen, pinch-to-zoom and drag-to-pan preview and set coords text, that's used to set wallpaper (#94)
+- **Carousel service now auto-retries**: if Android refuses to start it, the app retries 4 times, 15 seconds apart, with a live "Retrying in Ns (x/4)" countdown and a working Cancel button (#105)
+
+## Improvements
+- **Much faster gallery and carousel scrolling** the carousel keeps only 3 slides and loads screen-sized downscales instead of full-resolution images; the cache is backfilled in the background at startup (#94, #99, #106)
+- **Faster app start** Android bitmap classes and the native JPEG codec are warmed up once at launch instead of on the first image
+- **Settings wallpaper previews load instantly** from the scaled-down cache (#106)
+- **Stale downloaded APKs are actually cleaned up** regardless of version (#90)
+- Smaller APK: test suite and vendored Kivy source are no longer compiled in, and `android-notify` is pinned instead of tracking `main`
+
+## Fixes
+- Collapsed date groups now **expand automatically when selection begins**.
+- **App no longer closes itself when you change a wallpaper on MIUI/Xiaomi** — SDLActivity and manifest patches stop the theme overlay from destroying and re-creating the activity (#108)
+- **Home screen widget showed the wrong preview message** (#97)
+- **Light theme** renders correctly from the first frame in Settings and bottom sheet, instead of after the first theme change
+- **Main Select All Button** didn't know when all items were selected by hand, now it does
+- **Case of missing scrollviews** in gallery and settings fixed

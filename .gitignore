@@ -25,3 +25,6 @@ crash-samples
 kivy
 kivy_src
 venv
+
+# dev-only: allows cleartext HTTP to a laptop-hosted release server (see DEV.md)
+app_src/android/res/xml/network_security_config.xml
