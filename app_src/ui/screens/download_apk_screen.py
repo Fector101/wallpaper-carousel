@@ -94,42 +94,46 @@ def _download_apk_once(requests, url, apk_path, existing_size, progress_callback
     if existing_size > 0:
         headers["Range"] = f"bytes={existing_size}-"
 
-    r = requests.get(url, headers=headers, stream=True, timeout=DOWNLOAD_TIMEOUT)
-    if r.status_code == 416 and existing_size > 0:
-        # 416 code means that a server cannot provide the specific portion of a file or resource requested by a client.
-        raise RestartDownload()
-    r.raise_for_status()
-    if existing_size > 0 and r.status_code != 206:
-        # 206 means the server successfully processed a Range request and is returning only a specific portion of the requested resource.
-        raise RestartDownload()
-    if existing_size > 0:
-        claimed_offset = _resume_offset(r.headers)
-        if claimed_offset != existing_size:
-            # Appending a body that does not continue at existing_size would silently
-            # corrupt the APK, and the file keeps the expected length so only a hash catches it.
-            app_logger.warning(f"Server resumed at byte {claimed_offset}, expected {existing_size}"
-                               f" (Content-Range: {r.headers.get('Content-Range')!r})")
+    # The context manager matters here: a streamed response only gives its connection back
+    # once the body is read or close() runs, and every RestartDownload below abandons the
+    # body to retry immediately. Leaking it stalls the retry against a server that serves
+    # one connection at a time.
+    with requests.get(url, headers=headers, stream=True, timeout=DOWNLOAD_TIMEOUT) as r:
+        if r.status_code == 416 and existing_size > 0:
+            # 416 code means that a server cannot provide the specific portion of a file or resource requested by a client.
             raise RestartDownload()
+        r.raise_for_status()
+        if existing_size > 0 and r.status_code != 206:
+            # 206 means the server successfully processed a Range request and is returning only a specific portion of the requested resource.
+            raise RestartDownload()
+        if existing_size > 0:
+            claimed_offset = _resume_offset(r.headers)
+            if claimed_offset != existing_size:
+                # Appending a body that does not continue at existing_size would silently
+                # corrupt the APK, and the file keeps the expected length so only a hash catches it.
+                app_logger.warning(f"Server resumed at byte {claimed_offset}, expected {existing_size}"
+                                   f" (Content-Range: {r.headers.get('Content-Range')!r})")
+                raise RestartDownload()
 
-    # total file size
-    total_size = int(r.headers.get("content-length", 0)) + existing_size
-    downloaded = existing_size
-    sent_percent = 0
+        # total file size
+        total_size = int(r.headers.get("content-length", 0)) + existing_size
+        downloaded = existing_size
+        sent_percent = 0
 
-    # append mode if resuming
-    mode = "ab" if existing_size > 0 else "wb"
+        # append mode if resuming
+        mode = "ab" if existing_size > 0 else "wb"
 
-    with open(apk_path, mode) as f:
-        for chunk in r.iter_content(8192):
-            if chunk:
-                f.write(chunk)
-                downloaded += len(chunk)
+        with open(apk_path, mode) as f:
+            for chunk in r.iter_content(8192):
+                if chunk:
+                    f.write(chunk)
+                    downloaded += len(chunk)
 
-                if total_size and progress_callback:
-                    percent = int((downloaded / total_size) * 100)
-                    if sent_percent != percent:
-                        sent_percent=percent
-                        progress_callback(percent)
+                    if total_size and progress_callback:
+                        percent = int((downloaded / total_size) * 100)
+                        if sent_percent != percent:
+                            sent_percent=percent
+                            progress_callback(percent)
 
     app_logger.info(f"Download completed: {apk_path}")
     return apk_path

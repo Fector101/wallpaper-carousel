@@ -277,6 +277,14 @@ class _FakeResponse:
         self.status_code = status_code
         self.headers = headers
         self._body = body
+        self.closed = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc):
+        self.closed = True
+        return False
 
     def raise_for_status(self):
         if self.status_code >= 400:
@@ -294,18 +302,23 @@ def _lying_about_the_offset(data, content_range, replayed):
     `data` intact means it restarted, and a doubled-up first half means it appended.
     """
     requested = []
+    served = []
 
     def get(_url, headers=None, **_kwargs):
         headers = headers or {}
         requested.append(headers)
         if "Range" not in headers:
-            return _FakeResponse(200, {"content-length": str(len(data))}, data)
-        ranged_headers = {"content-length": str(len(replayed))}
-        if content_range is not None:
-            ranged_headers["Content-Range"] = content_range
-        return _FakeResponse(206, ranged_headers, replayed)
+            response = _FakeResponse(200, {"content-length": str(len(data))}, data)
+        else:
+            ranged_headers = {"content-length": str(len(replayed))}
+            if content_range is not None:
+                ranged_headers["Content-Range"] = content_range
+            response = _FakeResponse(206, ranged_headers, replayed)
+        served.append(response)
+        return response
 
     get.requested = requested
+    get.served = served
     return get
 
 
@@ -345,6 +358,20 @@ def test_download_apk_restarts_when_the_206_omits_content_range(apk_file, downlo
 
     assert len(fake.requested) == 2, "the download was retried from byte 0"
     assert apk_bytes(path) == data
+
+
+def test_download_apk_closes_the_response_it_abandons_when_restarting(apk_file, download_dir):
+    data = apk_bytes(apk_file)
+    partial = download_dir / d.get_apk_filename(NEW_VERSION)
+    partial.write_bytes(data[:1000])
+    fake = _lying_about_the_offset(data, "bytes 0-999/2000", data[:1000])
+
+    with mock.patch("requests.get", fake):
+        d.download_apk("http://local/apk", filename=d.get_apk_filename(NEW_VERSION))
+
+    # A streamed response only hands its connection back once the body is read or close()
+    # runs, so the abandoned ranged response has to be closed or the retry can stall.
+    assert [response.closed for response in fake.served] == [True, True]
 
 
 def test_download_apk_appends_when_the_206_offset_matches(apk_file, download_dir):
