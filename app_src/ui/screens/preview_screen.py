@@ -81,7 +81,7 @@ class MyBoxLayout(BoxLayout):
     def update_rect(self, *_):
         # Manually update the rectangle coordinates when the widget resizes
         self.rect.pos = self.pos
-        self.rect.size = self.sizex
+        self.rect.size = self.size
 
 from kivy.clock import Clock
 
