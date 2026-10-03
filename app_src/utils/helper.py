@@ -713,13 +713,14 @@ def patch_kivymd_switch_press_events():
     # thumb with no arguments. The kv handlers are fbind observers, so these
     # class methods are only reached as the empty default handler -> make them
     # tolerant, otherwise tapping the thumb raises a TypeError.
-    from kivymd.uix.selectioncontrol import MDSwitch
+    from kivymd.uix.selectioncontrol import MDSwitch,MDCheckbox
 
     def ignore(*args, **kwargs):
         pass
 
     MDSwitch.on_press = ignore
     MDSwitch.on_release = ignore
+    MDCheckbox.state = ignore
 
     # Other KivyMD widgets that re-dispatch these events without a touch, and
     # therefore need the same patch if they ever get used here:

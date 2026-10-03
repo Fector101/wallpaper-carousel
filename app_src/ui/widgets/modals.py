@@ -794,3 +794,5 @@ class InfoPopUpModal(MDRelativeLayout,PlaceOnMainScreen):
     def on_touch_down(self, touch):
         super().on_touch_down(touch)# for the children touch
         return True # consume the touch for self
+
+

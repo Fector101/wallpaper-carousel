@@ -1,16 +1,23 @@
+from kivymd.uix.label import MDLabel
+from kivymd.uix.relativelayout import MDRelativeLayout
+from kivymd.uix.selectioncontrol import MDCheckbox
+
 from kivy.core.window import Window
 from kivy.metrics import dp
 from kivy.properties import ListProperty, StringProperty, ObjectProperty
 from kivy.graphics import Color, Rectangle
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.checkbox import CheckBox
 from kivy.uix.image import AsyncImage
 from kivy.uix.scatterlayout import ScatterLayout
 
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.button import MDIconButton
 
-from ui.widgets.modals import MyTextButton
-from ui.widgets.layouts import MyMDScreen
+from kivy.utils import get_color_from_hex
+from ui.screens.welcome_screen import Row
+from ui.widgets.modals import MyTextButton#, HowToPopUpModal
+from ui.widgets.layouts import MyMDScreen, PlaceOnMainScreen, Column, AdaptiveLabel
 from utils.constants import _rgba, theme_colors
 from utils.logger import app_logger
 
@@ -74,11 +81,79 @@ class MyBoxLayout(BoxLayout):
     def update_rect(self, *_):
         # Manually update the rectangle coordinates when the widget resizes
         self.rect.pos = self.pos
-        self.rect.size = self.size
+        self.rect.size = self.sizex
 
 
 from kivy.clock import Clock
 
+
+class HowToPopUpModal(MDRelativeLayout,PlaceOnMainScreen):
+    title = "How To"
+    message = """You can in any direction
+• swipe
+• pinch and spread
+
+When Saved
+• The new positioning and zoom will be used by app when ever changing wallpaper"""
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        root=Column(
+            spacing=dp(10),
+            adaptive_height=True, md_bg_color=get_color_from_hex("#151515"),
+            pos_hint={"center_x": .5, "center_y": .5},
+            radius=dp(10),padding=[0,0,0,dp(20)]
+        )
+        root.size_hint_x=.8
+        # root.adaptive_width=1
+        self.title_label = MDLabel(
+            text=self.title,
+            md_bg_color=get_color_from_hex("#1D1C1C"),
+            bold=True,
+            theme_font_name="Custom",font_name="RobotoMono",
+            theme_text_color="Custom",text_color=[1,1,1,1],
+            size_hint=[1,None],
+            height=dp(50),
+            padding=[dp(10),0,0,0],
+            radius=[dp(10),dp(10),0,0],
+
+        )
+        p=dp(15)
+        self.content_label = MDLabel(
+            text=self.message,size_hint_x=1,adaptive_height=1,markup=True,
+            theme_text_color="Custom", text_color=[1, 1, 1, 1],
+            padding=[p,0,p,0],
+        )
+        checkbox_layout=Row(
+            # md_bg_color=[1,0,0,1],
+            height=30,size_hint=[1,None],
+            padding=[p,0,p,0],spacing=dp(10)
+        )
+        checkbox_layout.add_widget(
+            MDCheckbox(pos_hint={"center_y":.5})
+        )
+        checkbox_layout.add_widget(MDLabel(
+            text="Don't show again",
+        theme_text_color = "Custom", text_color = [1, 1, 1, 1],
+            # md_bg_color=[1, 0, 1, 1],
+        ))
+
+        btn=MyTextButton(
+                text="Got, it",
+                on_release=self.hide,
+                size_hint_y=None, height=dp(40),
+                theme_bg_color="Custom",
+                md_bg_color=theme_colors.BUTTON_ACCENT_BG,
+                text_color=theme_colors.BUTTON_ACCENT_TEXT,
+                pos_hint={"right":.9},
+                adaptive_size=True,
+                size_padding=dp(30),
+                radius=[dp(5)]
+        )
+        root.add_widget(self.title_label)
+        root.add_widget(self.content_label)
+        root.add_widget(checkbox_layout)
+        root.add_widget(btn)
+        self.add_widget(root)
 
 class PreviewScreen(MyMDScreen):
     scaled_down_img_texture=ObjectProperty(None, allownone=True)
@@ -97,6 +172,8 @@ class PreviewScreen(MyMDScreen):
         self._preview_entry_source = None
         self.name="preview"
         self.built_ui = False
+        self.add_widget(HowToPopUpModal())
+        print(111)
 
     def build_ui(self,_):
         self.set_image_data()
