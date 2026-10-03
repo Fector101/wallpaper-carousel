@@ -1,22 +1,9 @@
-from kivy.core.window import Window
-from kivy.metrics import dp
-from kivy.properties import ListProperty, StringProperty, ObjectProperty
-from kivy.graphics import Color, Rectangle
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.image import AsyncImage
+from kivy.properties import StringProperty, ObjectProperty
 from kivy.uix.scatterlayout import ScatterLayout
-
-from kivymd.uix.floatlayout import MDFloatLayout
-from kivymd.uix.button import MDIconButton
+from kivy.clock import Clock
 
 from ui.widgets.layouts import MyMDScreen
-from ui.widgets.loading import HighResLoadingBadge
-from ui.widgets.modals import HowToPopUpModal, MyTextButton
-from utils.config_manager import ConfigManager
-from utils.constants import _rgba, theme_colors
 from utils.logger import app_logger
-
-my_config = ConfigManager()
 
 
 class MyScatter(ScatterLayout):
@@ -25,6 +12,8 @@ class MyScatter(ScatterLayout):
         self.do_rotation=False
         self.min_scale = 1
         self.pos=(0,0)
+        from kivy.graphics import Color, Rectangle
+        from utils.constants import _rgba
 
         with self.canvas.before:
             Color(*_rgba(26, 27, 27))
@@ -68,22 +57,6 @@ class MyScatter(ScatterLayout):
         self.pos = (x, y)
 
 
-class MyBoxLayout(BoxLayout):
-    background_color = ListProperty([1,0,0,1])
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        with self.canvas:
-            Color(*self.background_color)
-            self.rect = Rectangle(pos=self.pos, size=self.size)
-
-        self.bind(pos=self.update_rect, size=self.update_rect)
-
-    def update_rect(self, *_):
-        # Manually update the rectangle coordinates when the widget resizes
-        self.rect.pos = self.pos
-        self.rect.size = self.size
-
-from kivy.clock import Clock
 
 class PreviewScreen(MyMDScreen):
     scaled_down_img_texture=ObjectProperty(None, allownone=True)
@@ -114,6 +87,14 @@ class PreviewScreen(MyMDScreen):
 
 
     def build_ui(self,_):
+        from kivy.metrics import dp
+        from kivy.uix.image import AsyncImage
+        from kivymd.uix.floatlayout import MDFloatLayout
+        from kivymd.uix.button import MDIconButton
+        from ui.widgets.loading import HighResLoadingBadge
+        from ui.widgets.modals import MyTextButton
+        from utils.constants import theme_colors
+
         self.set_image_data()
         # print("building ui")
         self.built_ui = True
@@ -158,7 +139,6 @@ class PreviewScreen(MyMDScreen):
         self.image_widget.bind(texture=self.update_cover_size)
         if self.scaled_down_img_texture is not None: # safe for hot reload
             self.image_widget.texture = self.scaled_down_img_texture
-        # Window.bind(size=self.update_cover_size)
 
         self.scatter.add_widget(self.image_widget)
         root.add_widget(self.scatter)
@@ -189,12 +169,16 @@ class PreviewScreen(MyMDScreen):
         in the modal, whose ``hide()`` also removes it from the widget tree. The card
         itself is built here too, so an opted-out user never pays for it.
         """
+        from utils.config_manager import ConfigManager
+        my_config = ConfigManager()
+
         if self._how_to_shown_this_session or self._how_to_modal_is_up():
             return
         self._how_to_shown_this_session = True
         if my_config.get_hide_preview_how_to():
             return
         if self.how_to_modal is None:
+            from ui.widgets.modals import HowToPopUpModal
             self.how_to_modal = HowToPopUpModal()
         Clock.schedule_once(lambda *_: self.how_to_modal.show(self), 0)
 
@@ -301,7 +285,6 @@ class PreviewScreen(MyMDScreen):
                 state["ok"] = True
             except Exception as error_saving_selected_wallpaper:
                 app_logger.error(f"Failed to save selected wallpaper: {error_saving_selected_wallpaper}")
-            from kivy.clock import Clock
             Clock.schedule_once(finish)
 
         threading.Thread(target=do_save, daemon=True).start()
@@ -309,6 +292,7 @@ class PreviewScreen(MyMDScreen):
     def _preview_crop_info(self):
         if not self.image_widget.texture:
             return None
+        from kivy.core.window import Window
         from utils.image_operations import compute_preview_crop
         win_w, win_h = Window.size
         return compute_preview_crop(
@@ -320,6 +304,7 @@ class PreviewScreen(MyMDScreen):
         )
 
     def update_cover_size(self, *_):
+        from kivy.core.window import Window
         win_w, win_h = Window.size
         if not self.image_widget.texture:
             self.scatter.scale = self.scatter.min_scale

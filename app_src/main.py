@@ -1,3 +1,4 @@
+# For optimzation dark screen starts after "[INFO   ] [Base        ] Start application main loop"
 from utils.boot_log import boot_log
 boot_log("main: imports started")
 from utils.helper import write_logs_to_file
@@ -118,14 +119,15 @@ class WallpaperCarouselApp(MDApp):
         boot_log("build_ui: BottomNavigationBar done")
 
         boot_log("build_ui: has_permission() start")
-        if not NotificationHandler.has_permission():
+        per=NotificationHandler.has_permission()
+        boot_log("build_ui: has_permission() done")
+        if not per:
             self.sm.ensure_welcome_screen()
             self.sm.current = "welcome"
         else:
             boot_log("build_ui: moving to thumbs screen")
             self.sm.current = "thumbs"
             boot_log("build_ui: moved to thumbs screen")
-        boot_log("build_ui: has_permission() done")
 
         root_layout.add_widget(self.bottom_bar)
         boot_log("build_ui: bind_change start")
@@ -142,7 +144,7 @@ class WallpaperCarouselApp(MDApp):
 
     def build(self):
         self.bind(device_theme=self._sync_theme_colors)
-        self._sync_theme_colors()
+        self._sync_theme_colors() # +0.439s
         boot_log("build: build_ui start")
         self.root_layout = self.build_ui()
         boot_log("build: build_ui done")

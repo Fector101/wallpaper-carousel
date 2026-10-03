@@ -19,10 +19,8 @@ from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.label import MDLabel, MDIcon
 from kivymd.uix.relativelayout import MDRelativeLayout
-from kivymd.uix.widget import MDWidget
 
 
-from utils.logger import app_logger
 from ui.widgets.dropdown_menu import DropdownMenu, MenuItem
 from ui.widgets.layouts import MyMDScreen, Column, Row, get_nav_bar_height, get_status_bar_height, \
     PlaceOnMainScreen, GenericStatusBarSpacer  # used in .kv file
@@ -116,6 +114,7 @@ class IconTextButton(MDButton):
             return True
         return super().on_touch_down(touch)
 
+
 class LowResDisplayerWithLoader(Image):
     low_res_abs_path=StringProperty("")
     def __init__(self, **kwargs):
@@ -124,6 +123,17 @@ class LowResDisplayerWithLoader(Image):
         self.opacity=0
         self.load_low_res_image()
         self.bind(low_res_abs_path=self.load_low_res_image)
+        # Dark placeholder background to avoid white flash before image loads
+        from kivy.graphics import Color, Rectangle
+        with self.canvas.after:
+            Color(0.07, 0.07, 0.07, 1)
+            self._bg_rect = Rectangle(size=self.size, pos=self.pos)
+        self.bind(size=self._update_bg, pos=self._update_bg)
+
+    def _update_bg(self, *_):
+        if hasattr(self, '_bg_rect'):
+            self._bg_rect.pos = self.pos
+            self._bg_rect.size = self.size
 
     def load_low_res_image(self, _=None,source=None):
         from kivy.loader import Loader
@@ -138,7 +148,11 @@ class LowResDisplayerWithLoader(Image):
         if proxy_image.image.texture:
             self.texture = proxy_image.image.texture
             self.source = self.low_res_abs_path
-            Clock.schedule_once(lambda dt: setattr(self, 'opacity', 1),1)
+            # Remove placeholder graphics and unbind size updates
+            self.canvas.after.clear()
+            self.unbind(size=self._update_bg, pos=self._update_bg)
+
+            Clock.schedule_once(lambda dt: setattr(self, 'opacity', 1), 1)
 
 
 class PreviewImage(ButtonBehavior, MDRelativeLayout):
@@ -156,7 +170,6 @@ class PreviewImage(ButtonBehavior, MDRelativeLayout):
         self._long_press_triggered = False
         self._normal_image_pos = None
         self._normal_image_size = None
-        # self.md_bg_color=[1,1,0,1]
         self.checkmark_widget = None
         self.image_widget = LowResDisplayerWithLoader(
             low_res_abs_path=source,
@@ -347,7 +360,7 @@ class DateGroupLayout(Column):
         self.adaptive_height = 1
         self.size_hint_x = 1
 
-        Clock.schedule_once(self.build_grid)
+        Clock.schedule_once(self.build_grid,1)
         self.image_elements = []
 
         self.bind(cols=self.change_preview_img_size)
