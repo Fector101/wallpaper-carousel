@@ -9,7 +9,7 @@ package.name = waller
 package.domain = org.wally
 author = Fabian © Copyright Info
 # Don't use pattern 0.0.0.0 i get some Gradle Error "can't find application path waller." unless using android.numeric_version
-version = 1.0.10
+version = 1.0.11
 
 source.dir = app_src
 
@@ -35,7 +35,6 @@ android.permissions = RECEIVE_BOOT_COMPLETED, INTERNET, VIBRATE, USE_EXACT_ALARM
 android.add_src = %(source.dir)s/android/src
 android.add_resources = %(source.dir)s/android/res
 #android.gradle_dependencies = androidx.core:core:1.12.0, com.google.android.material:material:1.12.0
-#android.gradle_dependencies = androidx.core:core-ktx:1.12.0, com.google.android.material:material:1.12.0
 android.gradle_dependencies = androidx.core:core-ktx:1.12.0, com.google.android.material:material:1.12.0, androidx.work:work-runtime:2.9.0
 android.enable_androidx = True
 p4a.hook = %(source.dir)s/android/p4a/hook.py
