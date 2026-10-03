@@ -71,9 +71,11 @@ def _download_apk_once(requests, url, apk_path, existing_size, progress_callback
 
     r = requests.get(url, headers=headers, stream=True, timeout=DOWNLOAD_TIMEOUT)
     if r.status_code == 416 and existing_size > 0:
+        # 416 code means that a server cannot provide the specific portion of a file or resource requested by a client.
         raise RestartDownload()
     r.raise_for_status()
     if existing_size > 0 and r.status_code != 206:
+        # 206 means the server successfully processed a Range request and is returning only a specific portion of the requested resource.
         raise RestartDownload()
 
     # total file size

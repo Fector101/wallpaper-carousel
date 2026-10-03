@@ -257,7 +257,7 @@ Cleared cached APKs first, so the download always runs for real.
 | `--range-mode {honor,ignore,reject}` | how the server answers `Range` |
 | `--lan --host IP` | reach the laptop by LAN IP instead of `adb reverse` |
 | `--port N` | server port, default 8000 |
-| `--timeout N` | seconds to wait per stage, default 120 |
+| `--timeout N` | seconds to wait per stage, default 180 |
 | `--serial` / `--adb` | pick a device or an adb binary |
 | `--keep-endpoint` | leave the endpoint override on the phone (debugging) |
 
