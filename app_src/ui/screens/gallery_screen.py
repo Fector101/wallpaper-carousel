@@ -688,9 +688,10 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
                 if isinstance(value, DateGroupLayout):
                     value.set_selection_mode(1)
 
+        self.multi_select_top.refresh_select_all_state()
+
     def hide(self, *_):
         super().hide()
-        self.multi_select_top.select_all_ = False
         self.multi_select_top.deselect_all()
         if hasattr(self.gallery_screen.ids,"head_section"):
             self.gallery_screen.ids.head_section.disabled = False
@@ -720,7 +721,8 @@ class MultiselectTop(MDFloatLayout):
     status_bar_height = NumericProperty(get_status_bar_height())
     gallery_screen = ObjectProperty()  # will be set by GalleryScreen when creating this manager
     hide = ObjectProperty()
-    select_all_=BooleanProperty(False)
+    all_selected = BooleanProperty(False)
+    inactive_icon_color = ListProperty()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         app = get_app()
@@ -739,8 +741,9 @@ class MultiselectTop(MDFloatLayout):
         btn_box = Row(orientation="horizontal", pos_hint={"top":1}, adaptive_height=True)
         self.cancel_selection_mode_btn = MDIconButton(icon="close", theme_icon_color="Custom", icon_color=tc)
         self.toggle_select_all_btn = MDIconButton(icon="playlist-check", theme_icon_color="Custom", icon_color=tc)
+        self.inactive_icon_color = tc
         self.cancel_selection_mode_btn.bind(on_release=self.hide)
-        self.toggle_select_all_btn.bind(on_release=lambda *_: setattr(self, "select_all_", not self.select_all_))
+        self.toggle_select_all_btn.bind(on_release=self.toggle_select_all)
         btn_box.add_widget(self.cancel_selection_mode_btn)
         btn_box.add_widget(Widget())
         btn_box.add_widget(self.toggle_select_all_btn)
@@ -757,7 +760,6 @@ class MultiselectTop(MDFloatLayout):
         self.root_layout.add_widget(self.title_widget)
         self.add_widget(self.root_layout)
         app.bind(device_theme=self._set_theme)
-        self.bind(select_all_=self.on_select_all_changed)
         Clock.schedule_once(self._bind_head_height, 0)
 
     def _set_theme(self, _, theme):
@@ -768,6 +770,8 @@ class MultiselectTop(MDFloatLayout):
         self.generic_status_bar_spacer.md_bg_color = bg
         self.cancel_selection_mode_btn.icon_color = tc
         self.title_widget.text_color = tc
+        self.inactive_icon_color = tc
+        self.refresh_select_all_state()
         # self.gallery_screen = get_app().sm.get_screen("thumbs")
     # def cancel_selection_mode_btn(self, *args):
     def _bind_head_height(self, *args):
@@ -777,17 +781,61 @@ class MultiselectTop(MDFloatLayout):
             self.height = head.height + parent_spacing
             head.bind(height=lambda _, h: setattr(self, 'height', h + parent_spacing))
 
-    def on_select_all_changed(self, _,v):
-        if v:
-            self.select_all()
-        else:
+    def _current_tab_selection(self):
+        """(selected, total) PreviewImage counts for the tab on screen.
+
+        Tab scoped on purpose: select_all() only selects the visible tab, so a
+        total taken across every tab could never be reached and the button would
+        never report all selected. Stray non-PreviewImage children are skipped
+        so they cannot skew the comparison."""
+        gallery_screen = self.gallery_screen
+        if not gallery_screen:
+            return 0, 0
+        tab_instances = getattr(gallery_screen, "tab_instances", None) or {}
+        tab_data = tab_instances.get(gallery_screen.current_tab) or {}
+        selected = 0
+        total = 0
+        for value in tab_data.values():
+            if not isinstance(value, DateGroupLayout):
+                continue
+            for child in value.images_container.children:
+                if not isinstance(child, PreviewImage):
+                    continue
+                total += 1
+                if child.selected:
+                    selected += 1
+        return selected, total
+
+    def refresh_select_all_state(self, *_):
+        """Derive the button state from the real selection instead of a stored flag.
+
+        A stored flag desyncs the moment anything is selected by hand or by a
+        group's own "Select all", which made the next tap do the opposite of
+        what the user expected. Safe to call at any time: nothing here changes a
+        selection, so it cannot recurse back into select_all/deselect_all.
+
+        The icon stays playlist-check either way; only the colour carries the
+        state, going to the accent when the tab is fully selected."""
+        selected, total = self._current_tab_selection()
+        self.all_selected = bool(total) and selected == total
+        self.toggle_select_all_btn.icon_color = (
+            theme_colors.CHECKBOX_SELECTED if self.all_selected else self.inactive_icon_color
+        )
+
+    def toggle_select_all(self, *_):
+        """Select the rest of the visible tab, or clear everything when it is full."""
+        self.refresh_select_all_state()
+        if self.all_selected:
             self.deselect_all()
+        else:
+            self.select_all()
     
     def update_selection_count(self) -> int:
         """Update the displayed selection count."""
         count_selected = self.get_selected_items_count()
         txt = "item" if count_selected == 1 else "items"
         self.title_widget.text = f"{count_selected} {txt} selected"
+        self.refresh_select_all_state()
         return count_selected
     
     def select_all(self, *args):
@@ -1219,6 +1267,11 @@ class GalleryScreen(MyMDScreen):
         self.ids.header_info_label.text = tab_data["title"]
         scrollView_container.add_widget(tab_data["widget"])
         self.wallpapers = tab_data["wallpapers"]
+        # the select all button is scoped to the tab on screen, so it has to be
+        # re-derived after a tab switch, not only after a selection change
+        multi_select_manager = getattr(self, "multi_select_manager", None)
+        if multi_select_manager and multi_select_manager.parent:
+            multi_select_manager.multi_select_top.refresh_select_all_state()
         # app_logger.info(f"on_tab {tab_name} wp_len={len(self.wallpapers)} wp_list_id={id(tab_data['wallpapers'])} swp_id={id(self.wallpapers)} wallpapers={tab_data['wallpapers']} widget_children={tab_data['widget'].children}")
 
     def load_day_wallpapers(self):

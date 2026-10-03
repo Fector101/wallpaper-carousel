@@ -20,7 +20,7 @@ from android_widgets import Layout, RemoteViews, AppWidgetManager
 from utils.config_manager import ConfigManager
 from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, DEFAULT_SERVICE_PORT, \
     DEFAULT_UI_PORT, ServiceServerAddress, ServiceStatus, SERVICE_LIFESPAN_HOURS
-from utils.helper import change_wallpaper, appFolder, format_time_remaining, format_countdown, service_port_store_path, ui_port_store_path
+from utils.helper import change_wallpaper, appFolder, format_time_remaining, service_port_store_path, ui_port_store_path
 from utils.logger import app_logger
 
 if on_android_platform():
@@ -381,7 +381,7 @@ class WallpaperServerReceiver:
         else:
             seconds = self.current_wait_seconds
         value_ = format_time_remaining(seconds)
-        self.__update_notification_texts(f"Next in {format_countdown(seconds)}", "")
+        self.__update_notification_texts(f"Next in {value_}", "")
         self.__send_data_to_ui("/countdown_change", {"seconds": value_})
 
     def __write_wallpaper_path_to_file(self, wallpaper_path):
