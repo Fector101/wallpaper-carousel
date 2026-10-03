@@ -729,8 +729,12 @@ def patch_kivymd_switch_press_events():
     #   MDSegmentedButton    uix/segmentedbutton/segmentedbutton.py (on_release)
     #   MDNavigationBar      uix/navigationbar/navigationbar.py (`on_release(self)`)
     #   MDDatePicker/MDTimePicker -> dispatch("on_cancel") from their cancel btn
-    # MDCheckbox is a different break: it still reads/writes ButtonBehavior's
-    # removed `state` option (uix/selectioncontrol/selectioncontrol.py).
+    #
+    # MDCheckbox deliberately gets no patch: it is broken beyond a signature fix,
+    # because it reads/writes ButtonBehavior's removed `state` option instead of
+    # Kivy 3's `activated` (uix/selectioncontrol/selectioncontrol.py), so a stub
+    # only makes it look tappable while silently ignoring the touch. Use
+    # `ui.widgets.checkbox.MyCheckbox` instead.
 
     return None
 

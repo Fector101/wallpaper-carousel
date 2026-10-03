@@ -9,16 +9,21 @@ from kivymd.uix.fitimage import FitImage
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.label import MDLabel, MDIcon
 from kivymd.uix.relativelayout import MDRelativeLayout
+from ui.widgets.checkbox import MyCheckbox, MyCheckboxLabel
 from ui.widgets.generic import LineDivider
 from kivy.utils import get_color_from_hex
 from kivymd.uix.gridlayout import MDGridLayout
 
 from ui.widgets.layouts import Column, AdaptiveLabel, Row, PlaceOnMainScreen
+from utils.config_manager import ConfigManager
+from utils.constants import theme_colors
 from utils.helper import load_kv_file  # type
 from utils.image_operations import get_image_info
 from utils.logger import app_logger
 
 from utils.model import get_app
+
+my_config = ConfigManager()
 
 load_kv_file(py_file_absolute_path=__file__)
 # with open(os.path.join(appFolder(),"ui","components","templates.kv"), encoding="utf-8") as kv_file:
@@ -422,6 +427,147 @@ class CarouselConfirmPopup(MDRelativeLayout, PlaceOnMainScreen):
         return True
 
 
+class HowToPopUpModal(MDRelativeLayout, PlaceOnMainScreen):
+    """The one-off "how to pan and zoom" card shown on the preview screen.
+
+    Held as a single instance by ``PreviewScreen`` and re-added on every ``show()``,
+    because ``PlaceOnMainScreen.hide()`` takes the modal out of the widget tree.
+    """
+
+    title = StringProperty("How To")
+    message = StringProperty(
+        """You can in any direction
+• swipe
+• pinch and spread
+
+When saved
+• The new positioning and zoom will be used by the app whenever it changes your wallpaper"""
+    )
+    checkbox_text = StringProperty("Don't show again")
+    button_text = StringProperty("Got it")
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.app = get_app()
+        self.md_bg_color = [0, 0, 0, 0.6]
+        # True until the first show() so nothing is written to the config on construction.
+        self._dismissal_recorded = True
+
+        p = dp(15)
+        self.card = Column(
+            spacing=dp(10),
+            adaptive_height=True,
+            md_bg_color=theme_colors.BG_CARD,
+            pos_hint={"center_x": .5, "center_y": .5},
+            radius=dp(10),
+            padding=[0, 0, 0, dp(20)],
+            size_hint_x=.8,
+        )
+        self.title_label = MDLabel(
+            text=self.title,
+            md_bg_color=theme_colors.BG_CARD_SUBTLE,
+            bold=True,
+            theme_font_name="Custom", font_name="RobotoMono",
+            theme_text_color="Custom", text_color=theme_colors.TEXT_PRIMARY,
+            size_hint=[1, None],
+            height=dp(50),
+            padding=[dp(10), 0, 0, 0],
+            radius=[dp(10), dp(10), 0, 0],
+        )
+        self.content_label = MDLabel(
+            text=self.message,
+            size_hint_x=1, adaptive_height=1, markup=True,
+            theme_text_color="Custom", text_color=theme_colors.TEXT_PRIMARY,
+            padding=[p, 0, p, 0],
+        )
+        self.checkbox = MyCheckbox(pos_hint={"center_y": .5})
+        self.checkbox_label = MyCheckboxLabel(
+            text=self.checkbox_text,
+            on_release=self._toggle_checkbox,
+            theme_text_color="Custom", text_color=theme_colors.TEXT_SECONDARY,
+            pos_hint={"center_y": .45},
+        )
+        self.checkbox_layout = Row(
+            # Tall enough for MyCheckbox's 44dp touch target, so it cannot
+            # overlap the labels above/below and steal their touches.
+            height=dp(44), size_hint=[1, None],
+            padding=[p, 0, p, 0], spacing=dp(10),
+        )
+        self.checkbox_layout.add_widget(self.checkbox)
+        self.checkbox_layout.add_widget(self.checkbox_label)
+
+        self.button = MyTextButton(
+            text=self.button_text,
+            on_release=self.hide,
+            size_hint_y=None, height=dp(40),
+            theme_bg_color="Custom",
+            md_bg_color=theme_colors.BUTTON_ACCENT_BG,
+            text_color=theme_colors.BUTTON_ACCENT_TEXT,
+            pos_hint={"right": .9},
+            adaptive_size=True,
+            size_padding=dp(30),
+            radius=[dp(5)],
+        )
+
+        self.card.add_widget(self.title_label)
+        self.card.add_widget(self.content_label)
+        self.card.add_widget(self.checkbox_layout)
+        self.card.add_widget(self.button)
+        self.add_widget(self.card)
+
+        self.app.bind(device_theme=self._set_theme_color)
+        self._set_theme_color()
+
+    def _set_theme_color(self, *_):
+        self.card.md_bg_color = theme_colors.BG_CARD
+        self.title_label.md_bg_color = theme_colors.BG_CARD_SUBTLE
+        self.title_label.text_color = theme_colors.TEXT_PRIMARY
+        self.content_label.text_color = theme_colors.TEXT_PRIMARY
+        self.checkbox_label.text_color = theme_colors.TEXT_SECONDARY
+        self.checkbox.refresh_theme()
+        self.button.md_bg_color = theme_colors.BUTTON_ACCENT_BG
+        self.button.text_color = theme_colors.BUTTON_ACCENT_TEXT
+
+    def _toggle_checkbox(self, *_):
+        """Tapping the words is the same as tapping the box.
+
+        Driven off ``checkbox.active`` rather than the label's own state, so the
+        persisted choice in ``hide()`` stays the single source of truth.
+        """
+        self.checkbox.active = not self.checkbox.active
+
+    def show(self, host_screen=None, *_):
+        if host_screen is None:
+            if not hasattr(self.app, "sm"):
+                app_logger.warning("HowToPopUpModal only usable when on hot reload")
+                return
+            host_screen = self.app.sm.current_screen
+        self._dismissal_recorded = False
+        host_screen.add_widget(self)
+        super().show()
+
+    def hide(self, *_):
+        self._record_dismissal()
+        super().hide()
+
+    def _record_dismissal(self):
+        """Stores the checkbox choice once per showing.
+
+        Reached from the button *and* from the back key, which
+        ``PlaceOnMainScreen`` routes to ``hide()``, so either way the choice sticks.
+        """
+        if self._dismissal_recorded:
+            return
+        self._dismissal_recorded = True
+        my_config.set_hide_preview_how_to(bool(self.checkbox.active))
+
+    def on_touch_down(self, touch):
+        # Children first, then consume, so the scatter underneath cannot be
+        # dragged while the instructions are up.
+        super().on_touch_down(touch)
+        return True
+
+
 class IconCard(Row):
     icon=StringProperty("clock")
     title=StringProperty("clock")
@@ -794,3 +940,5 @@ class InfoPopUpModal(MDRelativeLayout,PlaceOnMainScreen):
     def on_touch_down(self, touch):
         super().on_touch_down(touch)# for the children touch
         return True # consume the touch for self
+
+

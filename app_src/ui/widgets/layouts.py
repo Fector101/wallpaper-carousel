@@ -21,7 +21,7 @@ from kivymd.uix.floatlayout import MDFloatLayout
 
 from kivymd.app import MDApp
 from kivy.clock import Clock
-from kivy.graphics import Color, Line, Rotate
+from kivy.graphics import Color, Line, PopMatrix, PushMatrix, Rotate
 from kivy.uix.widget import Widget
 
 from android_notify.internal.java_classes import BuildVersion
@@ -505,6 +505,9 @@ class BorderMDRelativeLayout(MDRelativeLayout):
         with self.canvas.after:
             self.bg_color_instr = Color(*self.line_color)
             self.border = Line(width=1, rounded_rectangle=self.round_rect_args)
+            # canvas.after is drawn after this widget's children, so without this the
+            # border colour stays ambient for the rest of the frame.
+            Color(1, 1, 1, 1)
         self.bind(pos=self.update_border, size=self.update_border)
 
     @property
@@ -540,30 +543,82 @@ class LoadingLayout1(MDFloatLayout):
 
 
 class SpinningArcWidget(Widget):
-    def __init__(self, **kwargs):
+    """A rotating arc, used by `LoadingLayout` and `HighResLoadingBadge`.
+
+    The defaults reproduce the original look (100x100, radius 40, width 4), so the
+    existing `LoadingLayout` call sites are unaffected. Pass a smaller `radius`/
+    `line_width` for a mini spinner.
+
+    The rotation is driven by an interval that has to be cancelled - it used to be
+    scheduled in `__init__` and never stopped, leaving a 60fps callback running for
+    the life of the process behind every overlay ever created. Callers now `start()`
+    it once parented and `stop()` it on removal; `update_arc` also stops itself if it
+    ever finds itself orphaned.
+    """
+
+    def __init__(self, radius=40, line_width=4, color=None, **kwargs):
         super().__init__(**kwargs)
-        # Set a fixed size for the spinner widget
-        self.size = (100, 100)
-        # Draw spinner on the canvas
-        with self.canvas:
-            # Create a rotation instruction; note the origin will be updated as the widget size changes
+        # Set a fixed size for the spinner widget, unless the caller sized it.
+        if "size" not in kwargs:
+            self.size = (100, 100)
+        self.radius = radius
+        self.line_width = line_width
+        self._arc_color = color
+        self._arc_clock = None
+        # Drawn as one bracketed group. Kivy does not wrap a plain widget's canvas in
+        # a matrix of its own, so a bare `Rotate` here stays active for every
+        # instruction drawn after it in the frame - which is why the badge's label and
+        # whatever else came later (the how-to card) used to spin with the arc. Same
+        # pattern as `camera_screen.CameraScreen._apply_transform` and
+        # `welcome_screen.RotatedLayout`.
+        with self.canvas.before:
+            PushMatrix()
+            self.color_instr = Color(*(self._arc_color or theme_colors.PRIMARY))
             self.rotation = Rotate(angle=0, origin=self.center)
-            # Set a visible color; here white is typical for many spinners, but you can adjust as needed.
-            Color(*theme_colors.PRIMARY)
-            # Draw an arc: (center_x, center_y, radius, start_angle, end_angle)
-            # A partial circle (e.g. 270°) gives a "spinner" look.
-            self.arc = Line(circle=(self.center_x, self.center_y, 40, 0, 270), width=4)
+            self.arc = Line(circle=self._arc_tuple, width=line_width)
+        with self.canvas.after:
+            PopMatrix()
+            # There is no PushColor/PopColor in this kivy, so the arc's colour would
+            # stay ambient for the rest of the frame. Back to the default white.
+            Color(1, 1, 1, 1)
         # Ensure that the rotation origin updates when the widget is resized or repositioned.
         self.bind(pos=self._update_origin, size=self._update_origin)
-        # Schedule an update at roughly 60 frames per second.
-        Clock.schedule_interval(self.update_arc, 0.016)
+
+    @property
+    def _arc_tuple(self):
+        return (self.center_x, self.center_y, self.radius, 0, 270)
+
+    def set_color(self, color):
+        """Repaints the arc, e.g. after the app's theme changed under it."""
+        self._arc_color = color
+        self.color_instr.rgba = color
+
+    def start(self):
+        """Schedules the rotation. Safe to call twice."""
+        if self._arc_clock is None:
+            # Roughly 60 frames per second.
+            self._arc_clock = Clock.schedule_interval(self.update_arc, 0.016)
+
+    def stop(self):
+        """Cancels the rotation. Safe to call when not running."""
+        if self._arc_clock is not None:
+            self._arc_clock.cancel()
+            self._arc_clock = None
+
+    @property
+    def spinning(self):
+        return self._arc_clock is not None
 
     def _update_origin(self, *args):
         # Update the rotation's origin to keep it centered
         self.rotation.origin = self.center
-        self.arc.circle = (self.center_x, self.center_y, 40, 0, 270)
+        self.arc.circle = self._arc_tuple
 
     def update_arc(self, dt):
+        # Whoever removed us forgot to stop, most likely.
+        if self.parent is None:
+            self.stop()
+            return
         # Increase the rotation angle to create the spinning effect.
         self.rotation.angle += 5
 
@@ -585,6 +640,7 @@ class LoadingLayout(MDRelativeLayout):
         # Position the spinner in the middle of the screen:
         self.spinner.pos = ((self.width - self.spinner.width) / 2, (self.height - self.spinner.height) / 2)
         self.add_widget(self.spinner)
+        self.spinner.start()
         # Update the spinner's position when the screen size changes.
         self.bind(size=self._update_spinner_pos)
 
@@ -604,6 +660,8 @@ class LoadingLayout(MDRelativeLayout):
     def _update_spinner_pos(self, *args):
         self.spinner.pos = ((self.width - self.spinner.width) / 2, (self.height - self.spinner.height) / 2)
     def remove(self,dt=None):
+        # Stop before detaching, or the rotation keeps ticking at 60fps forever.
+        self.spinner.stop()
         if self.parent:
             self.parent.remove_widget(self)  # Hides the spinner by removing it
 

@@ -10,7 +10,7 @@ from kivy.properties import BooleanProperty, StringProperty
 from kivy import Config
 from kivy.core.text import LabelBase
 from kivy.clock import Clock
-from utils.android import is_device_on_light_mode
+from utils.helper import patch_kivymd_switch_press_events
 
 #Linux has some weirdness with the touchpad by default... remove it
 options = Config.options('input')
@@ -20,6 +20,7 @@ for option in options:
 Window.size = (390, 740)
 
 
+patch_kivymd_switch_press_events()
 
 class Font:
     def __init__(self, name, base_folder):
@@ -80,7 +81,7 @@ class MDLive(App,MDApp):
     def build_app(self, *args):
         # return Factory.MyPopUp()
         # return Factory.DialogScreen(ok_callback=None)
-        return Factory.FullscreenScreen()
+        return Factory.PreviewScreen()
 
     def on_start(self):
         # self.theme_cls.theme_style = "Light"
