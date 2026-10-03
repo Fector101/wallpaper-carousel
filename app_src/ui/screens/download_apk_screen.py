@@ -1,3 +1,4 @@
+import json
 import os
 
 from android_notify.config import on_android_platform
@@ -25,16 +26,87 @@ def get_apk_directory():
         return context.getFilesDir().getAbsolutePath()
     return "./"
 
+DEFAULT_RELEASE_API_URL = "https://api.github.com/repos/Fector101/wallpaper-carousel/releases/latest"
+DEFAULT_RELEASE_BASE_URL = "https://github.com/Fector101/wallpaper-carousel/releases/download"
+UPDATE_ENDPOINT_FILENAME = "update_endpoint.json"
+DOWNLOAD_TIMEOUT = (10, 30)
+
+def get_update_endpoint_config():
+    """Read <filesDir>/update_endpoint.json, used to point update checks at a local server.
+
+    Living next to the downloaded APK means a debug build can be re-pointed by pushing
+    the file into the app's files dir, with no rebuild.
+    """
+    path = os.path.join(get_apk_directory(), UPDATE_ENDPOINT_FILENAME)
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            config = json.load(f)
+    except Exception:
+        app_logger.exception(f"Ignoring unreadable update endpoint config: {path}")
+        return {}
+    if not isinstance(config, dict):
+        app_logger.warning(f"Ignoring non-object update endpoint config: {path}")
+        return {}
+    return config
+
+def get_release_api_url():
+    return (os.environ.get("WALLER_UPDATE_API_URL")
+            or get_update_endpoint_config().get("api_url")
+            or DEFAULT_RELEASE_API_URL)
+
+def get_release_base_url():
+    return (os.environ.get("WALLER_UPDATE_BASE_URL")
+            or get_update_endpoint_config().get("base_url")
+            or DEFAULT_RELEASE_BASE_URL)
+
+class RestartDownload(Exception):
+    """Raised when a resume attempt cannot be trusted and has to start over from byte 0."""
+
+def _download_apk_once(requests, url, apk_path, existing_size, progress_callback):
+    headers = {}
+    if existing_size > 0:
+        headers["Range"] = f"bytes={existing_size}-"
+
+    r = requests.get(url, headers=headers, stream=True, timeout=DOWNLOAD_TIMEOUT)
+    if r.status_code == 416 and existing_size > 0:
+        raise RestartDownload()
+    r.raise_for_status()
+    if existing_size > 0 and r.status_code != 206:
+        raise RestartDownload()
+
+    # total file size
+    total_size = int(r.headers.get("content-length", 0)) + existing_size
+    downloaded = existing_size
+    sent_percent = 0
+
+    # append mode if resuming
+    mode = "ab" if existing_size > 0 else "wb"
+
+    with open(apk_path, mode) as f:
+        for chunk in r.iter_content(8192):
+            if chunk:
+                f.write(chunk)
+                downloaded += len(chunk)
+
+                if total_size and progress_callback:
+                    percent = int((downloaded / total_size) * 100)
+                    if sent_percent != percent:
+                        sent_percent=percent
+                        progress_callback(percent)
+
+    app_logger.info(f"Download completed: {apk_path}")
+    return apk_path
+
 def download_apk(url, filename="waller.apk", progress_callback=None):
     """Download APK with resume support"""
     import traceback
     import requests
     try:
-        sent_percent = 0
         app_logger.info(f"Entered download apk: {url}")
 
-        files_dir = get_apk_directory()
-        apk_path = os.path.join(files_dir, filename)
+        apk_path = os.path.join(get_apk_directory(), filename)
 
         # check existing partial file
         existing_size = 0
@@ -42,34 +114,11 @@ def download_apk(url, filename="waller.apk", progress_callback=None):
             existing_size = os.path.getsize(apk_path)
             app_logger.info(f"Resuming download from: {existing_size}")
 
-        headers = {}
-        if existing_size > 0:
-            headers["Range"] = f"bytes={existing_size}-"
-
-        r = requests.get(url, headers=headers, stream=True)
-        r.raise_for_status()
-
-        # total file size
-        total_size = int(r.headers.get("content-length", 0)) + existing_size
-        downloaded = existing_size
-
-        # append mode if resuming
-        mode = "ab" if existing_size > 0 else "wb"
-
-        with open(apk_path, mode) as f:
-            for chunk in r.iter_content(8192):
-                if chunk:
-                    f.write(chunk)
-                    downloaded += len(chunk)
-
-                    if total_size and progress_callback:
-                        percent = int((downloaded / total_size) * 100)
-                        if sent_percent != percent:
-                            sent_percent=percent
-                            progress_callback(percent)
-
-        app_logger.info(f"Download completed: {apk_path}")
-        return apk_path
+        try:
+            return _download_apk_once(requests, url, apk_path, existing_size, progress_callback)
+        except RestartDownload:
+            app_logger.warning(f"Resume unusable for {url}, restarting download from the beginning")
+            return _download_apk_once(requests, url, apk_path, 0, progress_callback)
 
     except Exception as e:
         app_logger.exception(f"Download failed: {e}")
@@ -246,7 +295,7 @@ class DownloadApkScreen(MyMDScreen):
         get_app().bind(device_theme=self._set_theme)
 
         from utils.helper import is_running_debug_build
-        if not is_running_debug_build():#0:
+        if not is_running_debug_build() or get_update_endpoint_config():#0:
             self.checking_for_new_version_clock = Clock.schedule_once(lambda dt: thread_check_for_update(dt, self.show),3)
 
     def on_enter(self, *args):
@@ -476,9 +525,7 @@ def check_update(download_apk_screen__show,download_apk_screen__do_not_show=None
     """Check GitHub latest release version"""
     import traceback
     import requests
-    repo_owner = "Fector101"
-    repo_name = "wallpaper-carousel"
-    api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest"
+    api_url = get_release_api_url()
     release_notes = None
     latest_version = None
     apk_size = 0
@@ -561,7 +608,7 @@ def get_apk_filename(version):
 
 def get_apk_download_url(version):
     filename = get_apk_filename(version)
-    return f"https://github.com/Fector101/wallpaper-carousel/releases/download/v{version}/{filename}"
+    return f"{get_release_base_url()}/v{version}/{filename}"
 
 def get_apk_size(data):
     for asset in data["assets"]:

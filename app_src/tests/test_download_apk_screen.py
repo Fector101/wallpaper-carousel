@@ -45,6 +45,8 @@ def test_apk_is_valid_rejects_wrong_size(tmp_path):
 
 
 class _FakeResponse:
+    status_code = 200
+
     def __init__(self, content):
         self.content = content
         self.headers = {"content-length": str(len(content))}
@@ -76,6 +78,7 @@ def test_download_apk_resumes_partial_file_with_range(fake_download_dir):
     captured = {}
 
     class _ResumeResponse:
+        status_code = 206
         headers = {"content-length": "60"}
 
         def raise_for_status(self):
@@ -84,14 +87,16 @@ def test_download_apk_resumes_partial_file_with_range(fake_download_dir):
         def iter_content(self, _):
             yield b"b" * 60
 
-    def fake_get(url, headers=None, stream=None):
+    def fake_get(url, headers=None, stream=None, timeout=None):
         captured["headers"] = headers
+        captured["timeout"] = timeout
         return _ResumeResponse()
 
     with mock.patch("requests.get", side_effect=fake_get):
         path = d.download_apk(EXPECTED_URL, filename=EXPECTED_FILENAME)
 
     assert captured["headers"] == {"Range": "bytes=40-"}
+    assert captured["timeout"] == d.DOWNLOAD_TIMEOUT
     assert path == str(target)
     assert target.read_bytes() == b"a" * 40 + b"b" * 60
 

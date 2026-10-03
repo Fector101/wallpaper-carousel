@@ -15,6 +15,7 @@ import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -31,7 +32,17 @@ public class UpdateNotifier {
     private static final String CHANNEL_ID = "update_channel";
     private static final String CHANNEL_NAME = "App Updates";
     private static final int NOTIFICATION_ID = 999;
-    private static final String API_URL = "https://api.github.com/repos/Fector101/wallpaper-carousel/releases/latest";
+
+    /** The latest release's version plus the byte size of its APK asset. */
+    static final class ReleaseInfo {
+        final String version;
+        final long apkSize;
+
+        ReleaseInfo(String version, long apkSize) {
+            this.version = version;
+            this.apkSize = apkSize;
+        }
+    }
 
     public static boolean isCooldownActive(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -62,11 +73,12 @@ public class UpdateNotifier {
             String currentVersion = getCurrentVersion(context);
             Log.d(TAG, "Current version: " + currentVersion);
 
-            String latestVersion = fetchLatestVersion();
-            if (latestVersion == null) {
+            ReleaseInfo latest = fetchLatestRelease(context);
+            if (latest == null) {
                 Log.e(TAG, "Failed to fetch latest version");
                 return true;
             }
+            String latestVersion = latest.version;
             Log.d(TAG, "Latest version: " + latestVersion);
 
             if (latestVersion.equals(currentVersion)) {
@@ -75,8 +87,8 @@ public class UpdateNotifier {
             }
 
             Log.d(TAG, "New version available: " + latestVersion);
-            String releaseNotes = fetchReleaseNotes(latestVersion);
-            boolean posted = sendNotification(context, latestVersion, releaseNotes);
+            String releaseNotes = fetchReleaseNotes(context, latestVersion);
+            boolean posted = sendNotification(context, latestVersion, releaseNotes, latest.apkSize);
             if (!posted) {
                 Log.w(TAG, "Notification not eligible to post, cooldown timestamp NOT saved");
                 return true;
@@ -103,9 +115,9 @@ public class UpdateNotifier {
         }
     }
 
-    private static String fetchLatestVersion() {
+    private static ReleaseInfo fetchLatestRelease(Context context) {
         try {
-            URL url = new URL(API_URL);
+            URL url = new URL(UpdateEndpoints.getApiUrl(context));
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Accept", "application/vnd.github.v3+json");
@@ -129,7 +141,8 @@ public class UpdateNotifier {
 
             JSONObject json = new JSONObject(sb.toString());
             String tag = json.getString("tag_name");
-            return tag.startsWith("v") ? tag.substring(1) : tag;
+            String version = tag.startsWith("v") ? tag.substring(1) : tag;
+            return new ReleaseInfo(version, findApkSize(json));
 
         } catch (Exception e) {
             Log.e(TAG, "Failed to fetch latest version", e);
@@ -137,11 +150,30 @@ public class UpdateNotifier {
         }
     }
 
-    private static String fetchReleaseNotes(String version) {
+    /** Byte size of the release's first .apk asset, so the app can reuse an existing download. */
+    private static long findApkSize(JSONObject json) {
         try {
-            String fileUrl = "https://github.com/Fector101/wallpaper-carousel/releases/download/v"
-                    + version + "/update-note-v" + version + ".txt";
-            URL url = new URL(fileUrl);
+            JSONArray assets = json.optJSONArray("assets");
+            if (assets == null) {
+                return 0;
+            }
+            for (int i = 0; i < assets.length(); i++) {
+                JSONObject asset = assets.optJSONObject(i);
+                if (asset != null && asset.optString("name", "").endsWith(".apk")) {
+                    long size = asset.optLong("size", 0);
+                    Log.d(TAG, "Release APK size: " + size);
+                    return size;
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Could not read the release APK size", e);
+        }
+        return 0;
+    }
+
+    private static String fetchReleaseNotes(Context context, String version) {
+        try {
+            URL url = new URL(UpdateEndpoints.releaseNotesUrl(context, version));
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(10000);
@@ -210,7 +242,7 @@ public class UpdateNotifier {
         }
     }
 
-    private static boolean sendNotification(Context context, String version, String releaseNotes) {
+    private static boolean sendNotification(Context context, String version, String releaseNotes, long apkSize) {
         if (!canPostNotification(context)) {
             return false;
         }
@@ -223,6 +255,7 @@ public class UpdateNotifier {
         launchIntent.putExtra("action", "open_update");
         launchIntent.putExtra("version", version);
         launchIntent.putExtra("release_notes", releaseNotes);
+        launchIntent.putExtra("apk_size", apkSize);
         launchIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
 
         PendingIntent pendingIntent = PendingIntent.getActivity(
