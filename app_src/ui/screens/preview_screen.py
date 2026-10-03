@@ -1,25 +1,21 @@
-from kivymd.uix.label import MDLabel
-from kivymd.uix.relativelayout import MDRelativeLayout
-from kivymd.uix.selectioncontrol import MDCheckbox
-
 from kivy.core.window import Window
 from kivy.metrics import dp
 from kivy.properties import ListProperty, StringProperty, ObjectProperty
 from kivy.graphics import Color, Rectangle
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.checkbox import CheckBox
 from kivy.uix.image import AsyncImage
 from kivy.uix.scatterlayout import ScatterLayout
 
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.button import MDIconButton
 
-from kivy.utils import get_color_from_hex
-from ui.screens.welcome_screen import Row
-from ui.widgets.modals import MyTextButton#, HowToPopUpModal
-from ui.widgets.layouts import MyMDScreen, PlaceOnMainScreen, Column, AdaptiveLabel
+from ui.widgets.layouts import MyMDScreen
+from ui.widgets.modals import HowToPopUpModal, MyTextButton
+from utils.config_manager import ConfigManager
 from utils.constants import _rgba, theme_colors
 from utils.logger import app_logger
+
+my_config = ConfigManager()
 
 
 class MyScatter(ScatterLayout):
@@ -83,83 +79,13 @@ class MyBoxLayout(BoxLayout):
         self.rect.pos = self.pos
         self.rect.size = self.sizex
 
-
 from kivy.clock import Clock
 
-
-class HowToPopUpModal(MDRelativeLayout,PlaceOnMainScreen):
-    title = "How To"
-    message = """You can in any direction
-• swipe
-• pinch and spread
-
-When Saved
-• The new positioning and zoom will be used by app when ever changing wallpaper"""
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        root=Column(
-            spacing=dp(10),
-            adaptive_height=True, md_bg_color=get_color_from_hex("#151515"),
-            pos_hint={"center_x": .5, "center_y": .5},
-            radius=dp(10),padding=[0,0,0,dp(20)]
-        )
-        root.size_hint_x=.8
-        # root.adaptive_width=1
-        self.title_label = MDLabel(
-            text=self.title,
-            md_bg_color=get_color_from_hex("#1D1C1C"),
-            bold=True,
-            theme_font_name="Custom",font_name="RobotoMono",
-            theme_text_color="Custom",text_color=[1,1,1,1],
-            size_hint=[1,None],
-            height=dp(50),
-            padding=[dp(10),0,0,0],
-            radius=[dp(10),dp(10),0,0],
-
-        )
-        p=dp(15)
-        self.content_label = MDLabel(
-            text=self.message,size_hint_x=1,adaptive_height=1,markup=True,
-            theme_text_color="Custom", text_color=[1, 1, 1, 1],
-            padding=[p,0,p,0],
-        )
-        checkbox_layout=Row(
-            # md_bg_color=[1,0,0,1],
-            height=30,size_hint=[1,None],
-            padding=[p,0,p,0],spacing=dp(10)
-        )
-        checkbox_layout.add_widget(
-            MDCheckbox(pos_hint={"center_y":.5})
-        )
-        checkbox_layout.add_widget(MDLabel(
-            text="Don't show again",
-        theme_text_color = "Custom", text_color = [1, 1, 1, 1],
-            # md_bg_color=[1, 0, 1, 1],
-        ))
-
-        btn=MyTextButton(
-                text="Got, it",
-                on_release=self.hide,
-                size_hint_y=None, height=dp(40),
-                theme_bg_color="Custom",
-                md_bg_color=theme_colors.BUTTON_ACCENT_BG,
-                text_color=theme_colors.BUTTON_ACCENT_TEXT,
-                pos_hint={"right":.9},
-                adaptive_size=True,
-                size_padding=dp(30),
-                radius=[dp(5)]
-        )
-        root.add_widget(self.title_label)
-        root.add_widget(self.content_label)
-        root.add_widget(checkbox_layout)
-        root.add_widget(btn)
-        self.add_widget(root)
 
 class PreviewScreen(MyMDScreen):
     scaled_down_img_texture=ObjectProperty(None, allownone=True)
     # abs_img_path=StringProperty("/data/user/0/org.wally.waller/files/wallpapers/486306-1920x1080-desktop-full-hd-blade-runner-2049-background-image.jpg")
     abs_img_path=StringProperty("")
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.proxy = None
@@ -172,8 +98,8 @@ class PreviewScreen(MyMDScreen):
         self._preview_entry_source = None
         self.name="preview"
         self.built_ui = False
-        self.add_widget(HowToPopUpModal())
-        print(111)
+        self._how_to_shown_this_session = False
+        self.how_to_modal = HowToPopUpModal()
 
     def build_ui(self,_):
         self.set_image_data()
@@ -232,15 +158,32 @@ class PreviewScreen(MyMDScreen):
 
     def on_enter(self, *args):
         super().on_enter(*args)
+        self._maybe_show_how_to()
         if not self.built_ui:
             Clock.schedule_once(self._timer_set)
         else:
             self.format_widget()
 
+    def _maybe_show_how_to(self):
+        """Once per app session, and never again once the user ticked the box.
+
+        The screen outlives a single preview visit, so the flag lives here rather than
+        in the modal, whose ``hide()`` also removes it from the widget tree.
+        """
+        if self._how_to_shown_this_session or self.how_to_modal.parent:
+            return
+        self._how_to_shown_this_session = True
+        if my_config.get_hide_preview_how_to():
+            return
+        # Scheduled so the modal lands after the image build this same entry schedules.
+        Clock.schedule_once(lambda *_: self.how_to_modal.show(self), 0)
+
     def _timer_set(self,_):
         Clock.schedule_once(self.build_ui)
 
     def on_leave(self, *args):
+        if self.how_to_modal.parent:
+            self.how_to_modal.hide()
         # hiding img widget and removing texture data to help avoid flickers on_enter
         self.image_widget.opacity = 0
         self.scaled_down_img_texture = None
@@ -248,8 +191,9 @@ class PreviewScreen(MyMDScreen):
         # resetting texture to call self.update_cover_size which is bound to texture to get it to reset scatter size & pos.
         self.image_widget.texture = None
         # Unbinding to avoid errors with large images
-        self.proxy.unbind(on_load=self.apply_proxy_image_texture)
-        self.proxy=None
+        if self.proxy: # hot_reload
+            self.proxy.unbind(on_load=self.apply_proxy_image_texture)
+            self.proxy=None
 
     def on_pre_enter(self, *args):
         self.set_scaled_down_texture()
@@ -277,6 +221,11 @@ class PreviewScreen(MyMDScreen):
         return None
 
     def handle_going_back(self, *_):
+        # Both this screen and the how-to card listen for the back key while the card is
+        # up, and Kivy calls every bound handler, so leave the navigation to the card,
+        # which hides itself on the same press.
+        if self.how_to_modal.parent:
+            return
         self.show_system_ui()
         if self.manager is not None:
             self.manager.go_to_fullscreen()
@@ -416,5 +365,3 @@ def _save_crop_and_props(abs_img_path, box, scale, cx, cy):
             except FileNotFoundError:
                 pass
         raise Exception("Failed to persist preview viewport")
-
-

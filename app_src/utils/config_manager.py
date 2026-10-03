@@ -18,6 +18,7 @@ class ConfigManager:
         "theme_preference": "dark",
         "start_on_app_launch": True,
         "start_on_boot": True,
+        "hide_preview_how_to": False,
     }
 
     def __init__(self):
@@ -261,3 +262,17 @@ class ConfigManager:
             boot_flag = Path(cls.config_dir()) / "start_on_boot.txt"
             with open(boot_flag, "w") as f:
                 f.write("true" if state else "false")
+
+    # ---------- PREVIEW HOW-TO MODAL ----------
+    @classmethod
+    def get_hide_preview_how_to(cls):
+        # An existing config.json has no such key, so it reads as False and the
+        # modal still shows once for installs that predate it.
+        return bool(cls.read().get("hide_preview_how_to", cls.DEFAULT_CONFIG["hide_preview_how_to"]))
+
+    @classmethod
+    def set_hide_preview_how_to(cls, state: bool):
+        with cls._lock:
+            data = cls.read()
+            data["hide_preview_how_to"] = bool(state)
+            cls.write(data)

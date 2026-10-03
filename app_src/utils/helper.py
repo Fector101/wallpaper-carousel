@@ -713,14 +713,13 @@ def patch_kivymd_switch_press_events():
     # thumb with no arguments. The kv handlers are fbind observers, so these
     # class methods are only reached as the empty default handler -> make them
     # tolerant, otherwise tapping the thumb raises a TypeError.
-    from kivymd.uix.selectioncontrol import MDSwitch,MDCheckbox
+    from kivymd.uix.selectioncontrol import MDSwitch
 
     def ignore(*args, **kwargs):
         pass
 
     MDSwitch.on_press = ignore
     MDSwitch.on_release = ignore
-    MDCheckbox.state = ignore
 
     # Other KivyMD widgets that re-dispatch these events without a touch, and
     # therefore need the same patch if they ever get used here:
@@ -730,8 +729,12 @@ def patch_kivymd_switch_press_events():
     #   MDSegmentedButton    uix/segmentedbutton/segmentedbutton.py (on_release)
     #   MDNavigationBar      uix/navigationbar/navigationbar.py (`on_release(self)`)
     #   MDDatePicker/MDTimePicker -> dispatch("on_cancel") from their cancel btn
-    # MDCheckbox is a different break: it still reads/writes ButtonBehavior's
-    # removed `state` option (uix/selectioncontrol/selectioncontrol.py).
+    #
+    # MDCheckbox deliberately gets no patch: it is broken beyond a signature fix,
+    # because it reads/writes ButtonBehavior's removed `state` option instead of
+    # Kivy 3's `activated` (uix/selectioncontrol/selectioncontrol.py), so a stub
+    # only makes it look tappable while silently ignoring the touch. Use
+    # `ui.widgets.checkbox.MyCheckbox` instead.
 
     return None
 
