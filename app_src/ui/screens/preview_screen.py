@@ -99,7 +99,9 @@ class PreviewScreen(MyMDScreen):
         self.name="preview"
         self.built_ui = False
         self._how_to_shown_this_session = False
-        self.how_to_modal = HowToPopUpModal()
+        self.how_to_modal = None
+        self._maybe_show_how_to()
+
 
     def build_ui(self,_):
         self.set_image_data()
@@ -155,10 +157,12 @@ class PreviewScreen(MyMDScreen):
         self.add_widget(root)
         self.format_widget()
         self.image_widget.opacity=1
+        # Last, so the card is built and shown over a screen that already has its
+        # content, instead of one frame before it.
+        self._maybe_show_how_to()
 
     def on_enter(self, *args):
         super().on_enter(*args)
-        self._maybe_show_how_to()
         if not self.built_ui:
             Clock.schedule_once(self._timer_set)
         else:
@@ -168,21 +172,28 @@ class PreviewScreen(MyMDScreen):
         """Once per app session, and never again once the user ticked the box.
 
         The screen outlives a single preview visit, so the flag lives here rather than
-        in the modal, whose ``hide()`` also removes it from the widget tree.
+        in the modal, whose ``hide()`` also removes it from the widget tree. The card
+        itself is built here too, so an opted-out user never pays for it.
         """
-        if self._how_to_shown_this_session or self.how_to_modal.parent:
+        if self._how_to_shown_this_session or self._how_to_modal_is_up():
             return
         self._how_to_shown_this_session = True
         if my_config.get_hide_preview_how_to():
             return
-        # Scheduled so the modal lands after the image build this same entry schedules.
+        if self.how_to_modal is None:
+            self.how_to_modal = HowToPopUpModal()
         Clock.schedule_once(lambda *_: self.how_to_modal.show(self), 0)
+
+    def _how_to_modal_is_up(self):
+        """Whether the card is currently in the tree. It may not exist yet: a back
+        press can leave the screen before the clock gets round to build_ui()."""
+        return self.how_to_modal is not None and self.how_to_modal.parent is not None
 
     def _timer_set(self,_):
         Clock.schedule_once(self.build_ui)
 
     def on_leave(self, *args):
-        if self.how_to_modal.parent:
+        if self._how_to_modal_is_up():
             self.how_to_modal.hide()
         # hiding img widget and removing texture data to help avoid flickers on_enter
         self.image_widget.opacity = 0
@@ -224,7 +235,7 @@ class PreviewScreen(MyMDScreen):
         # Both this screen and the how-to card listen for the back key while the card is
         # up, and Kivy calls every bound handler, so leave the navigation to the card,
         # which hides itself on the same press.
-        if self.how_to_modal.parent:
+        if self._how_to_modal_is_up():
             return
         self.show_system_ui()
         if self.manager is not None:

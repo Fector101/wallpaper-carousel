@@ -9,7 +9,7 @@ from kivymd.uix.fitimage import FitImage
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.label import MDLabel, MDIcon
 from kivymd.uix.relativelayout import MDRelativeLayout
-from ui.widgets.checkbox import MyCheckbox
+from ui.widgets.checkbox import MyCheckbox, MyCheckboxLabel
 from ui.widgets.generic import LineDivider
 from kivy.utils import get_color_from_hex
 from kivymd.uix.gridlayout import MDGridLayout
@@ -481,9 +481,11 @@ When saved
             padding=[p, 0, p, 0],
         )
         self.checkbox = MyCheckbox(pos_hint={"center_y": .5})
-        self.checkbox_label = MDLabel(
+        self.checkbox_label = MyCheckboxLabel(
             text=self.checkbox_text,
+            on_release=self._toggle_checkbox,
             theme_text_color="Custom", text_color=theme_colors.TEXT_SECONDARY,
+            pos_hint={"center_y": .45},
         )
         self.checkbox_layout = Row(
             # Tall enough for MyCheckbox's 44dp touch target, so it cannot
@@ -525,6 +527,14 @@ When saved
         self.checkbox.refresh_theme()
         self.button.md_bg_color = theme_colors.BUTTON_ACCENT_BG
         self.button.text_color = theme_colors.BUTTON_ACCENT_TEXT
+
+    def _toggle_checkbox(self, *_):
+        """Tapping the words is the same as tapping the box.
+
+        Driven off ``checkbox.active`` rather than the label's own state, so the
+        persisted choice in ``hide()`` stays the single source of truth.
+        """
+        self.checkbox.active = not self.checkbox.active
 
     def show(self, host_screen=None, *_):
         if host_screen is None:

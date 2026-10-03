@@ -1,8 +1,8 @@
 from kivy.metrics import dp
 from kivy.properties import AliasProperty, StringProperty
-from kivy.uix.behaviors import ToggleButtonBehavior
+from kivy.uix.behaviors import ButtonBehavior, ToggleButtonBehavior
 
-from kivymd.uix.label import MDIcon
+from kivymd.uix.label import MDLabel, MDIcon
 
 from utils.constants import theme_colors
 
@@ -59,3 +59,15 @@ class MyCheckbox(ToggleButtonBehavior, MDIcon):
             if self.activated
             else theme_colors.CHECKBOX_UNSELECTED
         )
+
+
+class MyCheckboxLabel(ButtonBehavior, MDLabel):
+    """The text next to a ``MyCheckbox``, tappable so it counts as ticking the box.
+
+    ``ButtonBehavior`` is load-bearing rather than decorative: a parent
+    ``BoxLayout`` dispatches touches to *every* child without a collide-point
+    check, so a bare ``Label`` would also fire for a tap that landed on the glyph
+    and toggle twice, cancelling itself out. ``ButtonBehavior`` grabs only when the
+    touch is inside the text, and only dispatches ``on_release`` when it ends
+    there too - so a drag off the words does nothing.
+    """

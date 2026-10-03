@@ -19,6 +19,7 @@ APP_SRC = Path(__file__).resolve().parent.parent
 if str(APP_SRC) not in sys.path:
     sys.path.insert(0, str(APP_SRC))
 
+from kivy.metrics import dp  # noqa: E402
 from kivy.properties import StringProperty  # noqa: E402
 from kivy.uix.widget import Widget  # noqa: E402
 
@@ -167,6 +168,36 @@ def _tap(widget):
     widget._do_release(None)
 
 
+def _touch(widget, inside=True, at=None):
+    """A stand-in MotionEvent covering everything Kivy 3's ButtonBehavior touches:
+    `is_mouse_scrolling`, `x`/`y`/`pos`, `ud`, and `grab`/`ungrab`
+    (`kivy/uix/behaviors/button.py`, on_touch_down/on_touch_up)."""
+    touch = mock.MagicMock()
+    touch.is_mouse_scrolling = False
+    touch.ud = {}
+    touch.grab_current = None
+    if at is None:
+        at = (widget.center_x, widget.center_y) if inside else (
+            widget.right + dp(50), widget.top + dp(50),
+        )
+    touch.x, touch.y = at
+    touch.pos = at
+
+    def grab(target, exclusive=False):
+        touch.grab_current = target
+
+    touch.grab = grab
+    return touch
+
+
+def _tap_the_widget(widget, inside=True, at=None):
+    """A full press/release through the real ButtonBehavior handlers, so the
+    collide-point checks run the way they do on a device."""
+    touch = _touch(widget, inside, at)
+    widget.on_touch_down(touch)
+    widget.on_touch_up(touch)
+
+
 def test_tapping_the_box_ticks_it(isolated_config):
     modal = _modal()
 
@@ -213,12 +244,93 @@ def test_leaving_the_box_untapped_keeps_the_card_scheduled(isolated_config):
 def test_the_box_is_a_finger_sized_target(isolated_config):
     """A 22dp box is hard to hit on a phone, and the row it sits in has to be at least
     as tall, or the target overlaps the labels above and below and steals their touches."""
-    from kivy.metrics import dp
-
     modal = _modal()
 
     assert modal.checkbox.height >= dp(44)
     assert modal.checkbox.height <= modal.checkbox_layout.height
+
+
+# --- the text toggles it too -----------------------------------------------------
+
+def test_tapping_the_text_ticks_the_box(isolated_config):
+    modal = _modal()
+
+    _tap_the_widget(modal.checkbox_label)
+
+    assert modal.checkbox.active is True
+    assert modal.checkbox.icon == "checkbox-marked"
+    assert list(modal.checkbox.text_color) == list(theme_colors.CHECKBOX_SELECTED)
+
+
+def test_tapping_the_text_twice_unticks_the_box(isolated_config):
+    modal = _modal()
+
+    _tap_the_widget(modal.checkbox_label)
+    _tap_the_widget(modal.checkbox_label)
+
+    assert modal.checkbox.active is False
+    assert modal.checkbox.icon == "checkbox-blank-outline"
+
+
+def _lay_the_row_out(modal):
+    """Gives the box and the text side by side, as the row does. Needed before routing a
+    touch through the row, otherwise both children still sit at the origin, overlap, and
+    both claim it - a geometry problem that would look like a double toggle."""
+    modal.checkbox.pos = (0, 0)
+    modal.checkbox.size = (dp(44), dp(44))
+    modal.checkbox_label.pos = (dp(54), 0)
+    modal.checkbox_label.size = (dp(140), dp(44))
+    return modal
+
+
+def test_a_tap_on_the_box_does_not_also_fire_the_text(isolated_config):
+    """A BoxLayout hands a touch to *every* child without a collide-point check, so if the
+    text were a plain Label it would fire as well and the two toggles would cancel out -
+    which is exactly the "tapping the box does nothing" bug ButtonBehavior prevents."""
+    modal = _lay_the_row_out(_modal())
+
+    _tap_the_widget(modal.checkbox_layout, at=(dp(22), dp(22)))  # on the box
+
+    assert modal.checkbox.active is True
+
+
+def test_a_tap_on_the_text_does_not_also_fire_the_box(isolated_config):
+    modal = _lay_the_row_out(_modal())
+
+    _tap_the_widget(modal.checkbox_layout, at=(dp(100), dp(22)))  # on the words
+
+    assert modal.checkbox.active is True
+
+
+def test_a_touch_that_ends_off_the_text_does_not_toggle(isolated_config):
+    modal = _modal()
+
+    touch = _touch(modal.checkbox_label)
+    modal.checkbox_label.on_touch_down(touch)
+    touch.x, touch.y = modal.checkbox_label.right + dp(50), modal.checkbox_label.top + dp(50)
+    touch.pos = (touch.x, touch.y)
+    modal.checkbox_label.on_touch_up(touch)
+
+    assert modal.checkbox.active is False
+
+
+def test_tapping_the_text_stops_the_card_coming_back(isolated_config):
+    host = _host()
+    modal = _modal()
+
+    _tap_the_widget(modal.checkbox_label)
+    modal.show(host)
+    modal.hide()
+
+    assert ConfigManager.get_hide_preview_how_to() is True
+
+
+def test_the_text_still_carries_its_own_colour(isolated_config):
+    """It became a button, but it must not pick up a button background or padding."""
+    modal = _modal()
+
+    assert modal.checkbox_label.text == modal.checkbox_text
+    assert list(modal.checkbox_label.text_color) == list(theme_colors.TEXT_SECONDARY)
 
 
 def test_light_mode_recolours_the_card_in_place(isolated_config, _kivymd_app):
@@ -332,30 +444,92 @@ def test_nothing_is_written_before_the_first_showing(isolated_config):
 
 # --- when it appears ----------------------------------------------------------
 
-def test_the_screen_holds_the_card_without_showing_it(isolated_config):
-    """It used to be added as a child in __init__, i.e. permanently on top of the preview."""
+def test_the_card_is_not_built_with_the_screen_instance(isolated_config):
+    """It used to be constructed in __init__ (and added as a child, so it never came
+    back once dismissed), which paid for a whole card per screen instance - hot reload
+    included - even for users who ticked the box."""
     from ui.screens.preview_screen import PreviewScreen
 
     screen = PreviewScreen()
 
-    assert screen.how_to_modal is not None
-    assert screen.how_to_modal.parent is None
+    assert screen.how_to_modal is None
     assert screen._how_to_shown_this_session is False
 
 
-def test_the_card_is_added_above_the_screen_content(isolated_config):
+def test_building_the_ui_builds_the_card_without_showing_it(monkeypatch, isolated_config):
+    clock = _run_scheduled(monkeypatch)
+    from ui.screens.preview_screen import PreviewScreen
+
+    screen = PreviewScreen()
+    screen._maybe_show_how_to()  # the call build_ui ends with
+
+    assert isinstance(screen.how_to_modal, HowToPopUpModal)
+    assert screen.how_to_modal.parent is None  # only scheduled, not up yet
+    clock.schedule_once.assert_called_once()
+
+
+def test_the_card_is_never_built_once_the_user_opted_out(monkeypatch, isolated_config):
+    clock = _run_scheduled(monkeypatch)
+    ConfigManager.set_hide_preview_how_to(True)
+    from ui.screens.preview_screen import PreviewScreen
+
+    screen = PreviewScreen()
+    screen._maybe_show_how_to()
+
+    assert screen.how_to_modal is None
+    clock.schedule_once.assert_not_called()
+
+
+def test_the_screen_holds_the_card_without_showing_it(monkeypatch, isolated_config):
+    """The card is owned by the screen and re-added per showing; build_ui must not leave
+    it parented, or it would sit over the preview permanently."""
+    _run_scheduled(monkeypatch)
+    from ui.screens.preview_screen import PreviewScreen
+
+    screen = PreviewScreen()
+    screen._maybe_show_how_to()
+
+    assert screen.how_to_modal is not None
+    assert screen.how_to_modal.parent is None
+
+
+def test_the_card_is_added_above_the_screen_content(monkeypatch, isolated_config):
     """`MyMDScreen.add_widget` puts overlays on the screen itself and the rest inside
     `screen_content`. Kivy inserts new children at index 0, so the card has to land there
     to draw over the image."""
+    clock = _run_scheduled(monkeypatch)
     from ui.screens.preview_screen import PreviewScreen
 
     screen = PreviewScreen()
     screen.add_widget(Widget())  # the same call build_ui makes, which creates screen_content
-    screen.how_to_modal.show(screen)
+    screen._maybe_show_how_to()
+    clock.schedule_once.call_args[0][0]()  # the lambda that actually shows it
     try:
         assert screen.children[0] is screen.how_to_modal
     finally:
         screen.how_to_modal.hide()
+
+
+def test_leaving_before_the_card_is_built_does_not_crash(isolated_config):
+    """`how_to_modal` is None until build_ui gets round to building it, so the cleanup on
+    leave has to cope with the card not existing yet."""
+    screen = _preview(how_to_modal=None)
+
+    screen.on_leave()
+
+    assert screen._how_to_modal_is_up() is False
+
+
+def test_going_back_before_the_ui_is_built_still_navigates(isolated_config):
+    from ui.screens.preview_screen import PreviewScreen
+
+    screen = PreviewScreen()
+    screen.show_system_ui = mock.MagicMock()
+    screen.manager = mock.MagicMock()
+
+    screen.handle_going_back()
+
+    screen.manager.go_to_fullscreen.assert_called_once()
 
 
 def _run_scheduled(monkeypatch):
