@@ -10,6 +10,7 @@ from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.button import MDIconButton
 
 from ui.widgets.layouts import MyMDScreen
+from ui.widgets.loading import HighResLoadingBadge
 from ui.widgets.modals import HowToPopUpModal, MyTextButton
 from utils.config_manager import ConfigManager
 from utils.constants import _rgba, theme_colors
@@ -28,6 +29,9 @@ class MyScatter(ScatterLayout):
         with self.canvas.before:
             Color(*_rgba(26, 27, 27))
             self.rect = Rectangle(pos=self.pos, size=self.size)
+            # This opaque background would otherwise stay the active colour for
+            # everything drawn after the scatter in the frame.
+            Color(1, 1, 1, 1)
 
         self.bind(pos=self.update_rect, size=self.update_rect)
 
@@ -100,6 +104,7 @@ class PreviewScreen(MyMDScreen):
         self.built_ui = False
         self._how_to_shown_this_session = False
         self.how_to_modal = None
+        self.high_res_badge = None
         self._maybe_show_how_to()
 
 
@@ -154,6 +159,10 @@ class PreviewScreen(MyMDScreen):
         root.add_widget(self.scatter)
         root.add_widget(self.btn_close)
         root.add_widget(self.save_btn)
+        self.high_res_badge = HighResLoadingBadge(pos_hint={'center_x': .5, 'y': .05})
+        # Added last: root draws children[0] last, and add_widget inserts at 0, so
+        # this ends up on top of the image without disabling anything.
+        root.add_widget(self.high_res_badge)
         self.add_widget(root)
         self.format_widget()
         self.image_widget.opacity=1
@@ -195,6 +204,8 @@ class PreviewScreen(MyMDScreen):
     def on_leave(self, *args):
         if self._how_to_modal_is_up():
             self.how_to_modal.hide()
+        # A preview visit can be left with the sharp texture still on its way.
+        self._hide_high_res_badge()
         # hiding img widget and removing texture data to help avoid flickers on_enter
         self.image_widget.opacity = 0
         self.scaled_down_img_texture = None
@@ -221,15 +232,37 @@ class PreviewScreen(MyMDScreen):
             return None
 
         from kivy.loader import Loader
+        self.image_widget._high_res_loaded = False
         self.proxy = Loader.image(self.abs_img_path)
         if self.proxy.loaded:
             self.apply_proxy_image_texture(self.proxy)
+        else:
+            # Straight away, and taken down by apply_proxy_image_texture (or on_leave),
+            # so the badge is up for exactly as long as the sharp texture is missing.
+            # A cached load never shows it at all: nothing gets rendered between that
+            # call and the hide below, because Kivy only draws on frame ticks.
+            self._show_high_res_badge()
         self.proxy.bind(
             on_load=self.apply_proxy_image_texture
         )
 
         self.hide_system_ui()
         return None
+
+    def _show_high_res_badge(self):
+        """Raises the badge. Optional like the badge itself: a hot-reloaded instance
+        may predate it, and format_widget() can run against a bare screen."""
+        badge = getattr(self, "high_res_badge", None)
+        if badge is not None:
+            badge.show()
+
+    def _hide_high_res_badge(self):
+        """Lowers the badge. Optional: a back press can land before build_ui() has even
+        run, and getattr rather than a plain attribute read because an instance from
+        before this existed has none (hot reload)."""
+        badge = getattr(self, "high_res_badge", None)
+        if badge is not None:
+            badge.hide()
 
     def handle_going_back(self, *_):
         # Both this screen and the how-to card listen for the back key while the card is
@@ -339,10 +372,17 @@ class PreviewScreen(MyMDScreen):
         app_logger.debug(f"got image data: {self.image_placement_data}")
 
     def apply_proxy_image_texture(self,proxy_image):
+        # Whatever happened, the wait is over - hiding unconditionally keeps a failed
+        # decode from stranding the spinner on screen.
+        self._hide_high_res_badge()
         if proxy_image.image.texture:
             self.image_widget.texture = proxy_image.image.texture
             self.image_widget._high_res_loaded = True
             self.image_widget.source = self.abs_img_path
+        else:
+            app_logger.warning(
+                f"High resolution image loaded without a texture: {self.abs_img_path}"
+            )
 
 
 def _save_crop_and_props(abs_img_path, box, scale, cx, cy):
