@@ -61,8 +61,33 @@ def get_release_base_url():
             or get_update_endpoint_config().get("base_url")
             or DEFAULT_RELEASE_BASE_URL)
 
+def _has_update_api_override():
+    """True when an update check would reach something other than the GitHub default.
+
+    Deliberately about api_url alone: a config that only sets base_url leaves the version
+    check on api.github.com, so counting it as an override would put a debug build back on
+    the network and break the point of pointing the check at a local server.
+    """
+    return bool(os.environ.get("WALLER_UPDATE_API_URL")
+                or get_update_endpoint_config().get("api_url"))
+
 class RestartDownload(Exception):
     """Raised when a resume attempt cannot be trusted and has to start over from byte 0."""
+
+def _resume_offset(headers):
+    """Return the offset a 206 response claims to start at, or None when it says nothing usable.
+
+    A 206 has to carry Content-Range, and the start it reports has to match the offset we
+    asked for. Without this check a server can answer 206 while replaying bytes from the
+    start of the file, and appending those would duplicate a block instead of completing it.
+    """
+    unit, separator, range_spec = headers.get("Content-Range", "").partition(" ")
+    start, dash, _end = range_spec.partition("-")
+    if not separator or not dash or unit.lower() != "bytes":
+        return None
+    if not start.isascii() or not start.isdigit():
+        return None
+    return int(start)
 
 def _download_apk_once(requests, url, apk_path, existing_size, progress_callback):
     headers = {}
@@ -77,6 +102,14 @@ def _download_apk_once(requests, url, apk_path, existing_size, progress_callback
     if existing_size > 0 and r.status_code != 206:
         # 206 means the server successfully processed a Range request and is returning only a specific portion of the requested resource.
         raise RestartDownload()
+    if existing_size > 0:
+        claimed_offset = _resume_offset(r.headers)
+        if claimed_offset != existing_size:
+            # Appending a body that does not continue at existing_size would silently
+            # corrupt the APK, and the file keeps the expected length so only a hash catches it.
+            app_logger.warning(f"Server resumed at byte {claimed_offset}, expected {existing_size}"
+                               f" (Content-Range: {r.headers.get('Content-Range')!r})")
+            raise RestartDownload()
 
     # total file size
     total_size = int(r.headers.get("content-length", 0)) + existing_size
@@ -297,7 +330,7 @@ class DownloadApkScreen(MyMDScreen):
         get_app().bind(device_theme=self._set_theme)
 
         from utils.helper import is_running_debug_build
-        if not is_running_debug_build() or get_update_endpoint_config():#0:
+        if not is_running_debug_build() or _has_update_api_override():#0:
             self.checking_for_new_version_clock = Clock.schedule_once(lambda dt: thread_check_for_update(dt, self.show),3)
 
     def on_enter(self, *args):

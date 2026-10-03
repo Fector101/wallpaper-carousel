@@ -114,6 +114,27 @@ def test_a_non_object_override_file_falls_back_to_github(download_dir):
     assert d.get_release_api_url() == d.DEFAULT_RELEASE_API_URL
 
 
+def test_a_base_url_only_override_is_not_an_api_override(download_dir):
+    (download_dir / d.UPDATE_ENDPOINT_FILENAME).write_text(
+        json.dumps({"base_url": "http://127.0.0.1:8000/downloads"})
+    )
+
+    # The version check only reads api_url, so this config leaves it on GitHub. Counting it
+    # as an override would let a debug build auto-check against api.github.com.
+    assert d.get_release_api_url() == d.DEFAULT_RELEASE_API_URL
+    assert d._has_update_api_override() is False
+
+
+def test_a_config_api_url_is_an_api_override(pointed_at):
+    assert d._has_update_api_override() is True
+
+
+def test_an_env_var_is_an_api_override_without_a_file(download_dir, monkeypatch):
+    monkeypatch.setenv("WALLER_UPDATE_API_URL", "http://127.0.0.1:8000/api")
+
+    assert d._has_update_api_override() is True
+
+
 def test_check_update_offers_the_new_release(pointed_at, inline_clock):
     shown, not_shown = _collect()
 
@@ -249,6 +270,117 @@ def test_download_apk_restarts_when_the_range_is_rejected(apk_file, download_dir
 
         assert path == str(partial)
         assert apk_bytes(path) == apk_bytes(apk_file)
+
+
+class _FakeResponse:
+    def __init__(self, status_code, headers, body):
+        self.status_code = status_code
+        self.headers = headers
+        self._body = body
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise AssertionError(f"unexpected HTTP {self.status_code}")
+
+    def iter_content(self, _chunk_size):
+        yield self._body
+
+
+def _lying_about_the_offset(data, content_range, replayed):
+    """A server that answers a ranged request with a 206 whose Content-Range lies.
+
+    `replayed` is what it sends instead of the bytes we asked for, and the retry after a
+    restart carries no Range header and gets the whole file. So the caller ending up with
+    `data` intact means it restarted, and a doubled-up first half means it appended.
+    """
+    requested = []
+
+    def get(_url, headers=None, **_kwargs):
+        headers = headers or {}
+        requested.append(headers)
+        if "Range" not in headers:
+            return _FakeResponse(200, {"content-length": str(len(data))}, data)
+        ranged_headers = {"content-length": str(len(replayed))}
+        if content_range is not None:
+            ranged_headers["Content-Range"] = content_range
+        return _FakeResponse(206, ranged_headers, replayed)
+
+    get.requested = requested
+    return get
+
+
+@pytest.mark.parametrize(
+    "content_range",
+    [
+        "bytes 0-999/2000",  # starts at 0 while we asked for 1000
+        "bytes */2000",  # reports no offset at all
+        "bytes 1000",  # no dash
+        "1000-1999/2000",  # no unit
+        "items 1000-1999/2000",  # wrong unit
+    ],
+    ids=["wrong-offset", "star", "no-dash", "no-unit", "wrong-unit"],
+)
+def test_download_apk_restarts_when_a_206_cannot_be_trusted(apk_file, download_dir, content_range):
+    data = apk_bytes(apk_file)
+    partial = download_dir / d.get_apk_filename(NEW_VERSION)
+    partial.write_bytes(data[:1000])
+    fake = _lying_about_the_offset(data, content_range, data[:1000])
+
+    with mock.patch("requests.get", fake):
+        path = d.download_apk("http://local/apk", filename=d.get_apk_filename(NEW_VERSION))
+
+    assert "Range" in fake.requested[0], "a resume was attempted"
+    assert len(fake.requested) == 2, "the download was retried from byte 0"
+    assert apk_bytes(path) == data
+
+
+def test_download_apk_restarts_when_the_206_omits_content_range(apk_file, download_dir):
+    data = apk_bytes(apk_file)
+    partial = download_dir / d.get_apk_filename(NEW_VERSION)
+    partial.write_bytes(data[:1000])
+    fake = _lying_about_the_offset(data, None, data[:1000])
+
+    with mock.patch("requests.get", fake):
+        path = d.download_apk("http://local/apk", filename=d.get_apk_filename(NEW_VERSION))
+
+    assert len(fake.requested) == 2, "the download was retried from byte 0"
+    assert apk_bytes(path) == data
+
+
+def test_download_apk_appends_when_the_206_offset_matches(apk_file, download_dir):
+    data = apk_bytes(apk_file)
+    partial = download_dir / d.get_apk_filename(NEW_VERSION)
+    partial.write_bytes(data[:1000])
+    fake = _lying_about_the_offset(
+        data, f"bytes 1000-{len(data) - 1}/{len(data)}", data[1000:]
+    )
+
+    with mock.patch("requests.get", fake):
+        path = d.download_apk("http://local/apk", filename=d.get_apk_filename(NEW_VERSION))
+
+    assert len(fake.requested) == 1, "a matching offset must not trigger a restart"
+    assert apk_bytes(path) == data
+
+
+@pytest.mark.parametrize(
+    "header,expected",
+    [
+        ("bytes 1000-1999/2000", 1000),
+        ("bytes 0-999/1000", 0),
+        ("BYTES 5-9/10", 5),
+        ("bytes */2000", None),
+        ("bytes 1000", None),
+        ("1000-1999/2000", None),
+        ("items 1000-1999/2000", None),
+        ("bytes\u0663-9/10", None),  # non-ASCII digits are not an offset we asked for
+        ("", None),
+        (None, None),
+    ],
+)
+def test_resume_offset_only_accepts_a_well_formed_bytes_range(header, expected):
+    headers = {} if header is None else {"Content-Range": header}
+
+    assert d._resume_offset(headers) == expected
 
 
 def test_download_apk_gives_up_on_a_stalled_server(apk_file, download_dir, monkeypatch):

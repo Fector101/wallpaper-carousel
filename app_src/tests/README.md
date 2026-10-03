@@ -178,15 +178,24 @@ Two hardcoded GitHub URLs became overridable:
 | release JSON | `https://api.github.com/repos/Fector101/wallpaper-carousel/releases/latest` | `WALLER_UPDATE_API_URL` / `api_url` |
 | APK + notes | `https://github.com/Fector101/wallpaper-carousel/releases/download` | `WALLER_UPDATE_BASE_URL` / `base_url` |
 
-Resolution order, identical in Python and Java:
+Python resolves in three steps, `get_release_api_url()` /
+`get_release_base_url()` in `app_src/ui/screens/download_apk_screen.py`:
 
 1. environment variable
 2. `<filesDir>/update_endpoint.json`
 3. the GitHub default
 
-- Python: `get_release_api_url()` / `get_release_base_url()` in
-  `app_src/ui/screens/download_apk_screen.py`
-- Java: `app_src/android/src/UpdateEndpoints.java`
+Java resolves in two steps, `app_src/android/src/UpdateEndpoints.java`. It has
+no environment variable step, because an Android app process has no
+environment to read one from:
+
+1. `<filesDir>/update_endpoint.json`
+2. the GitHub default
+
+Both sides read the same `files/update_endpoint.json` file, which is why the E2E
+only has to push that one file to reach the Python UI *and* the Java notifier.
+An override set through a `WALLER_UPDATE_*` environment variable reaches the
+Python path only.
 
 The E2E writes `files/update_endpoint.json` and removes it again in a `finally`
 block, so a failed run does not leave the phone pointing at your laptop.

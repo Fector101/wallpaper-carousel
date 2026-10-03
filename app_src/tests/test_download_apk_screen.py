@@ -79,7 +79,8 @@ def test_download_apk_resumes_partial_file_with_range(fake_download_dir):
 
     class _ResumeResponse:
         status_code = 206
-        headers = {"content-length": "60"}
+        # A 206 has to report where it starts, otherwise the resumed bytes cannot be trusted
+        headers = {"content-length": "60", "Content-Range": "bytes 40-99/100"}
 
         def raise_for_status(self):
             return None
