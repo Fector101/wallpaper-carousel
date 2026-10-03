@@ -431,11 +431,12 @@ def test_a_decode_that_produced_no_texture_still_takes_the_badge_down(monkeypatc
     warning = mock.MagicMock()
     monkeypatch.setattr(preview_module, "app_logger", mock.MagicMock(warning=warning))
     screen = _screen()
+    screen.image_widget._high_res_loaded = False
 
     screen.apply_proxy_image_texture(_proxy(loaded=True, texture=None))
 
     screen.high_res_badge.hide.assert_called_once()
-    screen.image_widget._high_res_loaded is False
+    assert screen.image_widget._high_res_loaded is False
     warning.assert_called_once()
     assert screen.abs_img_path in warning.call_args[0][0]
 

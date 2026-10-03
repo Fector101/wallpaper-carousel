@@ -105,7 +105,9 @@ class PreviewScreen(MyMDScreen):
         self._how_to_shown_this_session = False
         self.how_to_modal = None
         self.high_res_badge = None
-        self._maybe_show_how_to()
+        # Deliberately not _maybe_show_how_to() here: it would spend the session flag
+        # before build_ui has run, so the card would be shown over an empty screen and
+        # the call at the end of build_ui would do nothing.
         # self.build_ui(None) # hot_reload
         # self.update_cover_size(None) # hot_reload
         # self._show_high_res_badge() # hot_reload
