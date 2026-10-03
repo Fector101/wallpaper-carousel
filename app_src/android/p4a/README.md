@@ -89,20 +89,65 @@ if (!isChangingConfigurations()) {   // only a real finish tears down
 
 `isChangingConfigurations()` is true for config-change destroys (our wallpaper case) and false
 when the user actually leaves (back button, app closed). That's why the comment on
-`hook.py:106-108` stresses using this rather than `!isFinishing()` — a real exit must still tear
+`hook.py:135-137` stresses using this rather than `!isFinishing()` — a real exit must still tear
 down, otherwise we leak the thread.
 
 ---
 
-## Patch 4 — prevent it entirely (`hook.py:235`)
+## Patch 4 — prevent it entirely (`hook.py:265`)
 
 Layers 2 and 3 make re-creation survivable. But not re-creating at all is better.
 `android:configChanges` lists config changes the activity handles itself instead of being
 destroyed for. The hook adds `assetsPaths` to it, so MIUI's overlay calls
 `onConfigurationChanged()` and nothing happens.
 
-Cheapest layer first: **prevent → survive → keep alive**. If patch 4 works, patches 2 and 3 never
-fire.
+Cheapest layer first: **prevent → survive → keep alive**. Patch 4 is the one that actually stops
+the flicker; patches 2 and 3 are safety nets for ROMs that re-create anyway.
+
+### Why the `@hide` constant still works
+
+Worth writing down, because the flag looks like it should not work and a lot of writing says it
+doesn't.
+
+`ActivityInfo.CONFIG_ASSETS_PATHS = 0x80000000` is marked `@hide`, and in API 35's *public*
+`ActivityInfo` the highest named flag is still `CONFIG_FONT_SCALE = 0x40000000` — so
+`assetsPaths` does not appear in the public constant list at all. Plenty of 2021-era sources
+(Stack Overflow, a Commonsware blog post) conclude it is an unblockable config change that apps
+cannot opt out of.
+
+That conclusion was correct for Android 12 and has since been reversed upstream. AOSP commit
+`9fd99967` deleted the `@hide We do not want apps handling this yet` line from the constant and
+replaced it with `@FlaggedApi(FLAG_HANDLE_ALL_CONFIG_CHANGES)`. The constant's Javadoc now reads
+*"can itself handle asset path changes"*.
+
+Three things make it work in practice:
+
+1. **aapt2 resolves the flag name to a bit at build time.** The compiled `AndroidManifest.xml`
+   stores `android:configChanges` as the integer `0xc0003fff` and contains no `assetsPaths`
+   string anywhere. The platform never has to parse the name, it only compares bits.
+2. **The decision is plain bitmask arithmetic.** `ActivityRecord.shouldRelaunchLocked()`:
+
+   ```java
+   private boolean shouldRelaunchLocked(int changes, Configuration changesConfig) {
+       int configChanged = info.getRealConfigChanged();
+       ...
+       return (changes & (~configChanged)) != 0;
+   }
+   ```
+
+   Declare the bit, that expression is `0`, no relaunch. The only special case in the whole
+   method is `CONFIG_RESOURCES_UNUSED`, and it *suppresses* a relaunch. Nothing forces one for
+   `CONFIG_ASSETS_PATHS`.
+3. **The diff actually carries the bit.** `Configuration.diff(delta, compareUndefined,
+   publicOnly)` sets `CONFIG_ASSETS_PATHS` when `assetsSeq` differs even when `publicOnly` is
+   true, so the diff is non-zero and reaches `shouldRelaunchLocked()` in the first place.
+
+Also worth knowing: `ActivityInfo.getRealConfigChanged()` only ORs in
+`CONFIG_SCREEN_SIZE|CONFIG_SMALLEST_SCREEN_SIZE` when `targetSdkVersion < 13`. This app is
+`minSdk 24`, so it never interferes.
+
+**Do not delete patch 4 on the strength of the older write-ups.** Confirm the manifest bit is set
+in the built APK (see Verification) before assuming it is inert.
 
 ---
 
@@ -170,6 +215,18 @@ Patch 4, from the built APK:
 aapt2 dump xmltree bin/waller-*-debug.apk --file AndroidManifest.xml
 # A: android:configChanges(0x0101001f)=0xc0003fff     # bit 0x80000000 (assetsPaths) SET
 ```
+
+That single integer is the whole verification. There is no `assetsPaths` string to grep for —
+aapt2 resolved the name away at build time — so the *value* is the only evidence the patch
+worked:
+
+```bash
+unzip -p bin/waller-*-debug.apk AndroidManifest.xml | strings | grep -c assetsPaths
+# 0  <- expected, and fine
+```
+
+If the int ever comes back without bit `0x80000000` set, patch 4 has silently stopped applying
+and you are relying on patches 2 and 3 alone.
 
 Note the two `System;.exit:(I)V` calls remain in `finishLoad` bytecode — they are now on
 constant-`true`-dead paths, which is why checking for their *absence* is the wrong test.

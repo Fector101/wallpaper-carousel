@@ -88,9 +88,8 @@ SDL_GUARDED_RESUME = "if (mSurface != null && mSurface.mIsSurfaceReady && (mHasF
 
 # --- Activity re-creation on a wallpaper change -----------------------------------------
 # Applying a wallpaper makes MIUI install a runtime theme/resource overlay. That reaches us as a
-# config change carrying bit 0x80000000, which on API 35 stock Android has no name for
-# (ActivityInfo's highest named flag is CONFIG_FONT_SCALE = 0x40000000), and it is dispatched
-# through performDisplayOverrideConfigUpdate, so it destroys and re-creates the activity.
+# config change carrying bit 0x80000000, dispatched through performDisplayOverrideConfigUpdate,
+# which destroys and re-creates the activity.
 #
 # Setting the very same image again does NOT crash, which is what identifies the trigger: no
 # overlay means no config change means no re-creation. It also means the damage accumulates --
@@ -99,9 +98,39 @@ SDL_GUARDED_RESUME = "if (mSurface != null && mSurface.mIsSurfaceReady && (mHasF
 # Three layers, cheapest first:
 #   1. prevent  -- declare the bit in android:configChanges so the platform calls
 #                  onConfigurationChanged() instead of re-creating. Handled in after_apk_build.
+#                  This is the layer that actually stops the flicker; 2 and 3 are safety nets
+#                  for ROMs that re-create anyway.
 #   2. survive  -- let SDL re-create instead of calling System.exit(0).
 #   3. keep alive -- skip the native teardown on a config-change destroy, so the Python/SDL side
 #                  is not restarted underneath us. This is what stops the accumulation.
+#
+# Layer 1 is verified working, despite CONFIG_ASSETS_PATHS being marked @hide and unnamed in
+# API 35's *public* ActivityInfo (its highest named flag there is CONFIG_FONT_SCALE =
+# 0x40000000). It works because aapt2 resolves the flag NAME to a bitmask at build time: the
+# compiled AndroidManifest.xml stores android:configChanges as the integer 0xc0003fff, with no
+# "assetsPaths" string in it at all. The platform therefore compares bits it never has to name.
+# Confirmed with `strings AndroidManifest.xml` on the built APK.
+#
+# The decision itself is plain bitmask arithmetic in ActivityRecord.shouldRelaunchLocked():
+#     return (changes & (~configChanged)) != 0;
+# where configChanged is the activity's declared configChanges. Declare the bit and that
+# expression is 0, so there is no relaunch. The only special case is CONFIG_RESOURCES_UNUSED,
+# which suppresses relaunch rather than forcing one; nothing forces a relaunch for
+# CONFIG_ASSETS_PATHS.
+#
+# Widely-cited 2021 sources (a Stack Overflow pair and a Commonsware post) claim this config
+# change is unblockable and apps cannot opt out. That was true of Android 12 and has since been
+# reversed upstream: AOSP commit 9fd99967 deleted the "@hide We do not want apps handling this
+# yet" line from the constant and replaced it with @FlaggedApi(FLAG_HANDLE_ALL_CONFIG_CHANGES),
+# and the constant's Javadoc now reads "can itself handle asset path changes". Do not trust the
+# older write-ups over the current source.
+#
+# Two supporting details for layer 1:
+#   - Configuration.diff(delta, compareUndefined, publicOnly) sets CONFIG_ASSETS_PATHS when
+#     assetsSeq differs even when publicOnly is true, so the diff is non-zero and reaches
+#     shouldRelaunchLocked() at all.
+#   - ActivityInfo.getRealConfigChanged() only ORs in CONFIG_SCREEN_SIZE|CONFIG_SMALLEST_SCREEN_SIZE
+#     when targetSdkVersion < 13. We are minSdk 24, so it never interferes.
 #
 # Layer 3 relies on isChangingConfigurations() rather than !isFinishing(): only a config-change
 # destroy should preserve native state. A real finish (back button, task removal) must still tear
@@ -239,10 +268,16 @@ MANIFEST_CONFIG_CHANGES = re.compile(r'(android:configChanges=")([^"]*)(")')
 def patch_manifest_config_changes(manifest_file):
     """Declare assetsPaths in android:configChanges (layer 1 of the wallpaper re-creation
     problem). MIUI's runtime theme overlay arrives as bit 0x80000000, which is
-    ActivityInfo.CONFIG_ASSETS_PATHS when compiled against SDK 36 -- the api this app builds
-    with -- and the platform compares the config-change bitmask as plain ints, so declaring it
-    makes the platform call onConfigurationChanged() instead of destroying and re-creating the
-    activity. Preventing the re-creation entirely is much better than surviving it.
+    ActivityInfo.CONFIG_ASSETS_PATHS as compiled against SDK 36 -- the api this app builds
+    with. aapt2 resolves that flag name to a bit at build time, so the compiled manifest holds
+    android:configChanges as an int (0xc0003fff) with no flag name in it, and
+    ActivityRecord.shouldRelaunchLocked() decides with plain bitmask arithmetic
+    (`changes & ~configChanged != 0`). Declaring the bit makes that expression 0, so the
+    platform calls onConfigurationChanged() instead of destroying and re-creating the activity.
+
+    Verified working. See the long note above for why the constant being @hide and unnamed in
+    API 35's public ActivityInfo does not stop it, and why the 2021 "unblockable config change"
+    write-ups are outdated.
 
     The remaining two layers in before_apk_build still apply, so this is belt-and-braces: if a
     ROM reports the change in a way configChanges cannot absorb, the app re-creates safely
