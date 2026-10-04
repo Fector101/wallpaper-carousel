@@ -120,14 +120,15 @@ class LowResDisplayerWithLoader(Image):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.proxy = None
-        self.load_low_res_image()
-        self.bind(low_res_abs_path=self.load_low_res_image)
         # Dark placeholder background to avoid white flash before image loads
         from kivy.graphics import Color, Rectangle
         with self.canvas.after:
             Color(0.07, 0.07, 0.07, 1)
             self._bg_rect = Rectangle(size=self.size, pos=self.pos)
         self.bind(size=self._update_bg, pos=self._update_bg)
+        
+        self.load_low_res_image()
+        self.bind(low_res_abs_path=self.load_low_res_image)
 
     def _update_bg(self, *_):
         if hasattr(self, '_bg_rect'):
