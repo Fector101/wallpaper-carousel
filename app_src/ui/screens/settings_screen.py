@@ -679,8 +679,23 @@ class ScaledLoaderImage(FitImage):
         self.bind(high_res_abs_path=self.load_scaled_image)
 
     def load_scaled_image(self, _=None,source=None):
+        
+        if not self.high_res_abs_path:
+            return
+
+        higher_format = str(self.high_res_abs_path) # could be POSTINX TODO Remove path module for app so path is always str v1.0.12
+        if not os.path.exists(higher_format):
+            return
+
+        scaled_path = get_or_create_scaled_down_image(higher_format,size=None)
+        if not scaled_path:
+            return
+
         from kivy.loader import Loader
-        self.proxy = Loader.image(get_or_create_scaled_down_image(self.high_res_abs_path,size=None))
+        try:
+            self.proxy = Loader.image(scaled_path)
+        except:
+            print("here")
         if self.proxy.loaded:
             self.apply_proxy_image_texture(self.proxy)
         self.proxy.bind(

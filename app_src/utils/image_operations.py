@@ -861,6 +861,8 @@ def create_scaled_down_img(src_path, dest_path, max_width, max_height, quality=7
                         pass
                     return str(src_path)
         except OSError as os_error:
+            print("")
+            traceback.print_exc()
             app_logger.exception(f"OSError creating scaled down image for: {src_path}, os_error:{os_error}")
             return str(src_path)
         except Exception as error_making_scaled_down_img:
@@ -1083,6 +1085,8 @@ def get_or_create_scaled_down_image(src, size):
     destination_path = scaled_down_path_for(src)
     if os.path.exists(destination_path):
         return destination_path
+    elif not os.path.exists(src):
+        return None
     if not size:
         from kivy.core.window import Window
         running_app = MDApp.get_running_app()

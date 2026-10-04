@@ -732,13 +732,23 @@ class FullscreenScreen(MyMDScreen):
             self.high_res_on_load = None
 
     def _load_high_res(self, slide):
+        if not slide.higher_format:
+            return
+        
+        higher_format = str(slide.higher_format) # could be POSTINX TODO Remove path module for app so path is always str v1.0.12
+        if not os.path.exists(higher_format):
+            return
+
         from kivy.loader import Loader
         self._cancel_high_res()
-        higher_format = str(slide.higher_format)
-        proxy = Loader.image(get_or_create_scaled_down_image(
+        scaled_path = get_or_create_scaled_down_image(
             src=higher_format,
             size=self.carousel.size
-        ))
+        )
+        if not scaled_path:
+            return
+        
+        proxy = Loader.image(scaled_path)
         if proxy.loaded:
             self._apply_high_res(proxy, slide, higher_format)
             return

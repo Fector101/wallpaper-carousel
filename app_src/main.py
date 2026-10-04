@@ -2,8 +2,10 @@
 from utils.boot_log import boot_log
 boot_log("main: imports started")
 from utils.helper import write_logs_to_file
+boot_log("main: write_logs_to_file import done")
 write_logs_to_file()
-boot_log("main: write_logs_to_file imports done")
+boot_log("main: write_logs_to_file call done")
+
 
 
 import logging, threading, traceback # +0.024s
@@ -143,6 +145,7 @@ class WallpaperCarouselApp(MDApp):
         return root_layout
 
     def build(self):
+        boot_log("build: build() entered")
         self.bind(device_theme=self._sync_theme_colors)
         self._sync_theme_colors() # +0.439s
         boot_log("build: build_ui start")
@@ -447,4 +450,8 @@ class WallpaperCarouselApp(MDApp):
 
 
 if __name__ == '__main__':
-    WallpaperCarouselApp().run()
+    try:
+        WallpaperCarouselApp().run()
+    except Exception as e:
+        print(f"app failed: {e}")
+        traceback.print_stack()

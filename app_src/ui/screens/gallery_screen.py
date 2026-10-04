@@ -120,7 +120,6 @@ class LowResDisplayerWithLoader(Image):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.proxy = None
-        self.opacity=0
         self.load_low_res_image()
         self.bind(low_res_abs_path=self.load_low_res_image)
         # Dark placeholder background to avoid white flash before image loads
@@ -136,8 +135,14 @@ class LowResDisplayerWithLoader(Image):
             self._bg_rect.size = self.size
 
     def load_low_res_image(self, _=None,source=None):
+        if not self.low_res_abs_path:
+            return
+        low_res_abs_path = str(self.low_res_abs_path)  # could be POSTINX TODO Remove path module for app so path is always str v1.0.12
+        if not os.path.exists(low_res_abs_path):
+            return
+
         from kivy.loader import Loader
-        self.proxy = Loader.image(self.low_res_abs_path)
+        self.proxy = Loader.image(low_res_abs_path)
         if self.proxy.loaded:
             self.apply_proxy_image_texture(self.proxy)
         self.proxy.bind(
@@ -151,8 +156,6 @@ class LowResDisplayerWithLoader(Image):
             # Remove placeholder graphics and unbind size updates
             self.canvas.after.clear()
             self.unbind(size=self._update_bg, pos=self._update_bg)
-
-            Clock.schedule_once(lambda dt: setattr(self, 'opacity', 1), 1)
 
 
 class PreviewImage(ButtonBehavior, MDRelativeLayout):
@@ -360,7 +363,7 @@ class DateGroupLayout(Column):
         self.adaptive_height = 1
         self.size_hint_x = 1
 
-        Clock.schedule_once(self.build_grid,1)
+        Clock.schedule_once(self.build_grid)
         self.image_elements = []
 
         self.bind(cols=self.change_preview_img_size)
