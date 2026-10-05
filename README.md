@@ -6,7 +6,7 @@
 [![Downloads](https://img.shields.io/github/downloads/Fector101/wallpaper-carousel/total?style=flat)](https://github.com/Fector101/wallpaper-carousel/releases)
 [![GitHub release](https://img.shields.io/github/release/Fector101/wallpaper-carousel.svg?style=flat)](https://github.com/Fector101/wallpaper-carousel/releases/latest)
 
-**[Download APK](https://github.com/Fector101/wallpaper-carousel/releases/download/v1.0.10/waller-v1.0.10.apk)**
+**[Download APK](https://github.com/Fector101/wallpaper-carousel/releases/download/v1.0.11/waller-v1.0.11.apk)**
 
 ---
 
