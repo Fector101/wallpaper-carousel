@@ -1,8 +1,13 @@
+# For optimization: the dark screen shows from here on, so anything above this line
+# is on-screen wait time. The app prints "[INFO   ] [Base        ] Start application
+# main loop" once the Kivy window is up.
 from utils.boot_log import boot_log
 boot_log("main: imports started")
 from utils.helper import write_logs_to_file
+boot_log("main: write_logs_to_file import done")
 write_logs_to_file()
-boot_log("main: write_logs_to_file imports done")
+boot_log("main: write_logs_to_file call done")
+
 
 
 import logging, threading, traceback # +0.024s
@@ -118,14 +123,15 @@ class WallpaperCarouselApp(MDApp):
         boot_log("build_ui: BottomNavigationBar done")
 
         boot_log("build_ui: has_permission() start")
-        if not NotificationHandler.has_permission():
+        per = NotificationHandler.has_permission()
+        boot_log("build_ui: has_permission() done")
+        if not per:
             self.sm.ensure_welcome_screen()
             self.sm.current = "welcome"
         else:
             boot_log("build_ui: moving to thumbs screen")
             self.sm.current = "thumbs"
             boot_log("build_ui: moved to thumbs screen")
-        boot_log("build_ui: has_permission() done")
 
         root_layout.add_widget(self.bottom_bar)
         boot_log("build_ui: bind_change start")
@@ -141,8 +147,9 @@ class WallpaperCarouselApp(MDApp):
         return root_layout
 
     def build(self):
+        boot_log("build: build() entered")
         self.bind(device_theme=self._sync_theme_colors)
-        self._sync_theme_colors()
+        self._sync_theme_colors() # +0.439s
         boot_log("build: build_ui start")
         self.root_layout = self.build_ui()
         boot_log("build: build_ui done")
@@ -445,4 +452,12 @@ class WallpaperCarouselApp(MDApp):
 
 
 if __name__ == '__main__':
-    WallpaperCarouselApp().run()
+    try:
+        WallpaperCarouselApp().run()
+    except Exception as startup_failure:
+        # Log it, then let it crash: the traceback in logcat and a nonzero exit
+        # are how a broken startup gets noticed, so swallowing it here would hide
+        # exactly the failure this is here to surface.
+        boot_log(f"main: app failed: {startup_failure}")
+        traceback.print_exc()
+        raise

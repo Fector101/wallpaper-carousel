@@ -8,9 +8,12 @@ This version contains a lot of little changes to improve the app's stability and
 [color=#82C8E5][b]Improvements[/b][/color]
 • Better handling of large number of images for in-app carousel screen
 • Better handling of High Res Images in App
+• Faster startup: the app gets to its dark screen sooner
 
 [color=#FFFF00][b]Fixes[/b][/color]
-• App no longer closes when a wallpaper changes on MIUI/Xiaomi
+• App no longer crashes when a wallpaper file goes missing or is unreadable
+• Startup errors now log their full traceback to the log file
+• White gif spans while images load
 • Home screen widget showing the wrong preview message
 • Collapsed date groups now expand automatically when selection begins.
 • Main select All button didn't know when all items were selected by hand, now it does

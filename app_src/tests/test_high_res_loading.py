@@ -20,9 +20,11 @@ What is easy to get wrong here, and what these tests pin down:
 """
 
 import sys
+import tempfile
 from pathlib import Path
 from unittest import mock
 
+import image_samples
 import pytest
 
 APP_SRC = Path(__file__).resolve().parent.parent
@@ -40,6 +42,12 @@ from ui.widgets.loading import HighResLoadingBadge  # noqa: E402
 from utils.constants import theme_colors  # noqa: E402
 
 FONT_DIR = APP_SRC / "assets" / "fonts" / "Roboto_Mono" / "static"
+
+#: A real, decodable wallpaper. ``format_widget`` reads the header before it asks the
+#: loader for anything, so the path this module used to hardcode (never on disk) would
+#: make every badge test pass for the wrong reason: the load gets skipped and there is
+#: nothing left to assert about the badge.
+WALLPAPER = image_samples.write_png(Path(tempfile.mkdtemp()) / "example.png")
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -103,7 +111,7 @@ def _screen(**attrs):
     """A PreviewScreen without running __init__ (see test_preview_how_to._preview)."""
     screen = preview_module.PreviewScreen.__new__(preview_module.PreviewScreen)
     screen.built_ui = True
-    screen.abs_img_path = "/tmp/wallpapers/example.jpg"
+    screen.abs_img_path = attrs.pop("abs_img_path", WALLPAPER)
     screen.image_widget = mock.MagicMock()
     screen.proxy = None
     screen.how_to_modal = None

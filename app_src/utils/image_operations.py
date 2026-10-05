@@ -1071,6 +1071,22 @@ def is_image_uri(uri):
     mime = _get_content_resolver().getType(uri)
     return mime and mime.startswith("image/")
 
+def is_loadable_image(path):
+    """
+        File "kivy/loader.py", line 445, in _update
+            if not image.nocache:
+        AttributeError: 'NoneType' object has no attribute 'nocache'
+
+    """
+    if not path:
+        return False
+    path = str(path)
+
+    if not os.path.exists(path):
+        return False
+
+
+
 def get_or_create_thumbnail(src, destination_dir=None, size=(320, 320)):
     """Convenience wrapper to obtain a thumbnail path, creating it if necessary."""
     return create_thumbnail(src, destination_dir=destination_dir, size=size)
@@ -1083,6 +1099,8 @@ def get_or_create_scaled_down_image(src, size):
     destination_path = scaled_down_path_for(src)
     if os.path.exists(destination_path):
         return destination_path
+    elif not os.path.exists(src):
+        return None
     if not size:
         from kivy.core.window import Window
         running_app = MDApp.get_running_app()

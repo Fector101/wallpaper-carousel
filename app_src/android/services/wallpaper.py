@@ -1,4 +1,4 @@
-import logging
+import logging, os
 
 from utils.helper import write_logs_to_file
 write_logs_to_file()
@@ -9,10 +9,12 @@ from android_notify.internal.java_classes import BuildVersion, autoclass
 
 from utils.logger import app_logger
 from utils.service_helper import start_service_server
-
+from utils.helper import appFolder
 
 android_notify_logger.setLevel(logging.WARNING if on_android_platform() else logging.ERROR)
 app_logger.setLevel(logging.INFO)
+
+Notification.app_icon = os.path.join(appFolder(),"app","assets","icons","icon.png")
 
 service = get_python_service()
 foreground_type = autoclass("android.content.pm.ServiceInfo").FOREGROUND_SERVICE_TYPE_SPECIAL_USE if on_android_platform() and BuildVersion.SDK_INT >= 34 else 0

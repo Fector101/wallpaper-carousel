@@ -26,7 +26,7 @@ from utils.android import add_home_screen_widget
 from utils.config_manager import ConfigManager
 from utils.constants import DEV, ServiceStatus, theme_colors, VERSION
 from utils.helper import Service, appFolder, smart_convert_minutes, is_running_debug_build
-from utils.image_operations import get_or_create_scaled_down_image
+from utils.image_operations import get_or_create_scaled_down_image, is_loadable_image
 from utils.logger import app_logger
 from utils.model import get_app
 
@@ -679,8 +679,20 @@ class ScaledLoaderImage(FitImage):
         self.bind(high_res_abs_path=self.load_scaled_image)
 
     def load_scaled_image(self, _=None,source=None):
+        
+        if not self.high_res_abs_path:
+            return
+
+        higher_format = str(self.high_res_abs_path) # could be POSTINX TODO Remove path module for app so path is always str v1.0.12
+        if not is_loadable_image(higher_format):
+            return
+
+        scaled_path = get_or_create_scaled_down_image(higher_format,size=None)
+        if not scaled_path or not is_loadable_image(scaled_path):
+            return
+
         from kivy.loader import Loader
-        self.proxy = Loader.image(get_or_create_scaled_down_image(self.high_res_abs_path,size=None))
+        self.proxy = Loader.image(scaled_path)
         if self.proxy.loaded:
             self.apply_proxy_image_texture(self.proxy)
         self.proxy.bind(

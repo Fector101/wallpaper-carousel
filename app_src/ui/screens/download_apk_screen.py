@@ -328,10 +328,7 @@ class DownloadApkScreen(MyMDScreen):
         self.update_button = None
         self.later_button = None
         self.built_ui = False
-        self.name = "update_screen"
-
-        from utils.model import get_app
-        get_app().bind(device_theme=self._set_theme)
+        self.name = "update_screen"     
 
         from utils.helper import is_running_debug_build
         if not is_running_debug_build() or _has_update_api_override():#0:
@@ -434,6 +431,7 @@ class DownloadApkScreen(MyMDScreen):
         root.add_widget(body_content)
         root.add_widget(bottom_container)
         self.add_widget(root)
+        app.bind(device_theme=self._set_theme)
 
     def _set_theme(self, _, theme):
         if not self.built_ui:

@@ -1,4 +1,3 @@
-from ui.screens.preview_screen import PreviewScreen
 from utils.boot_log import boot_log
 import traceback
 
@@ -9,7 +8,6 @@ from kivy.uix.screenmanager import SlideTransition, NoTransition
 from kivymd.uix.screenmanager import MDScreenManager
 
 
-from ui.screens.stats_screen import StatsScreen
 from ui.widgets.layouts import MyMDScreen
 from utils.android import DisplayListener
 
@@ -22,6 +20,8 @@ from ui.screens.full_screen import FullscreenScreen
 from ui.screens.welcome_screen import WelcomeScreen
 from ui.screens.logs_screen import LogsScreen
 from ui.screens.download_apk_screen import DownloadApkScreen
+from ui.screens.stats_screen import StatsScreen
+from ui.screens.preview_screen import PreviewScreen
 boot_log("sm: MDScreenManager import done")
 
 
@@ -44,6 +44,8 @@ class ScreenManager(MDScreenManager):
         boot_log("sm: DownloadApkScreen done")
         self.stats_screen = StatsScreen()
         boot_log("sm: StatsScreen done")
+        self.preview_screen= PreviewScreen()
+        boot_log("sm: PreviewScreen done")
 
         self.add_widget(self.gallery_screen)
         self.add_widget(self.full_screen)
@@ -51,7 +53,6 @@ class ScreenManager(MDScreenManager):
         self.add_widget(self.log_screen)
         self.add_widget(self.download_apk_screen)
         self.add_widget(self.stats_screen)
-        self.preview_screen= PreviewScreen()
         self.add_widget(self.preview_screen)
         boot_log("sm: screens added")
         self.__register_rotate_listener()
