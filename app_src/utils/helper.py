@@ -53,7 +53,7 @@ def appFolder() -> str:
             folder_path = android_private
         else:
             from android.storage import app_storage_path  # type: ignore # , primary_external_storage_path
-            folder_path = str(os.path.join(app_storage_path()))
+            folder_path = str(os.path.join(app_storage_path())) # /data/user/0/org.wally.waller/files - android_notify  app  config.json  port.txt  profileInstalled  scaled_down_images  ui_port.txt  wallpapers
     else:
         folder_path = os.getcwd()
 

@@ -861,8 +861,6 @@ def create_scaled_down_img(src_path, dest_path, max_width, max_height, quality=7
                         pass
                     return str(src_path)
         except OSError as os_error:
-            print("")
-            traceback.print_exc()
             app_logger.exception(f"OSError creating scaled down image for: {src_path}, os_error:{os_error}")
             return str(src_path)
         except Exception as error_making_scaled_down_img:
@@ -1072,6 +1070,53 @@ def _try_java_native_copy(input_stream, destination_path):
 def is_image_uri(uri):
     mime = _get_content_resolver().getType(uri)
     return mime and mime.startswith("image/")
+
+def is_loadable_image(path):
+    """
+        File "kivy/loader.py", line 445, in _update
+            if not image.nocache:
+        AttributeError: 'NoneType' object has no attribute 'nocache'
+
+    """
+    if not path:
+        return False
+    path = str(path)
+
+    if not os.path.exists(path):
+        return False
+
+
+    if _on_android_platform():
+        try:
+            bounds = Options()
+            bounds.inJustDecodeBounds = True
+            BitmapFactory.decodeFile(path, bounds)
+            # An undecodable header leaves these at -1; a real image never is.
+            return bounds.outWidth > 0 and bounds.outHeight > 0
+        except Exception as error_reading_image_header:
+            app_logger.exception(f"Could not read image header of {path}: {error_reading_image_header}")
+            return False
+
+    try:
+        from PIL import Image
+    except ImportError:
+        # No Pillow off-device: fall back to a size check rather than rejecting
+        # perfectly good files. This cannot see a corrupt file, but it is only the
+        # desktop/test path.
+        try:
+            return os.path.getsize(path) > 0
+        except OSError:
+            return False
+
+    try:
+        # Touching .size forces the header parse; PIL does not validate the body
+        # until load(), which is the expensive part we are avoiding. A truncated
+        # file still has a valid magic number, so a magic-byte check would pass it.
+        with Image.open(path) as image:
+            return image.size[0] > 0 and image.size[1] > 0
+    except Exception as error_opening_image:
+        app_logger.info(f"Not a loadable image, {path}: {error_opening_image}")
+        return False
 
 def get_or_create_thumbnail(src, destination_dir=None, size=(320, 320)):
     """Convenience wrapper to obtain a thumbnail path, creating it if necessary."""

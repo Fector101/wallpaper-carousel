@@ -27,7 +27,7 @@ from ui.widgets.layouts import MyMDScreen, Column, Row, get_nav_bar_height, get_
 from utils.config_manager import ConfigManager
 from utils.helper import appFolder, load_kv_file, remove_images_from_app  # type
 from utils.boot_log import boot_log
-from utils.image_operations import get_or_create_thumbnail, get_image_info, share_image_to_other_app, share_images_to_other_app
+from utils.image_operations import get_or_create_thumbnail, get_image_info, is_loadable_image, share_image_to_other_app, share_images_to_other_app
 from ui.widgets.modals import DialogScreen, MyTextButton
 from utils.logger import app_logger
 from utils.model import get_app, GalleryTabs
@@ -139,7 +139,8 @@ class LowResDisplayerWithLoader(Image):
         if not self.low_res_abs_path:
             return
         low_res_abs_path = str(self.low_res_abs_path)  # could be POSTINX TODO Remove path module for app so path is always str v1.0.12
-        if not os.path.exists(low_res_abs_path):
+        
+        if not is_loadable_image(low_res_abs_path):
             return
 
         from kivy.loader import Loader

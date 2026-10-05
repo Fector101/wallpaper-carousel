@@ -23,7 +23,7 @@ from utils.helper import (
     format_size,
     remove_images_from_app,
 )
-from utils.image_operations import get_or_create_scaled_down_image, thumbnail_path_for
+from utils.image_operations import get_or_create_scaled_down_image, is_loadable_image, thumbnail_path_for
 from utils.model import get_app, GalleryTabs
 from utils.logger import app_logger
 
@@ -736,7 +736,9 @@ class FullscreenScreen(MyMDScreen):
             return
         
         higher_format = str(slide.higher_format) # could be POSTINX TODO Remove path module for app so path is always str v1.0.12
-        if not os.path.exists(higher_format):
+        # Header-only check, not os.path.exists: a corrupt-but-present wallpaper used
+        # to reach Loader.image and take the process down from a Clock callback.
+        if not is_loadable_image(higher_format):
             return
 
         from kivy.loader import Loader
@@ -745,7 +747,7 @@ class FullscreenScreen(MyMDScreen):
             src=higher_format,
             size=self.carousel.size
         )
-        if not scaled_path:
+        if not scaled_path or not is_loadable_image(scaled_path):
             return
         
         proxy = Loader.image(scaled_path)

@@ -155,4 +155,4 @@ class ServiceStatus(Enum):
     ATTEMPT_FAILED = "attempt_failed"
 
 DEV=0
-VERSION="1.0.10"
+VERSION="1.0.11"

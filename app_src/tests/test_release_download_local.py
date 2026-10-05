@@ -12,8 +12,12 @@ from unittest import mock
 import pytest
 import ui.screens.download_apk_screen as d
 from local_release_server import DEFAULT_NOTES, ReleaseServer
+from update_download_e2e import next_version
 
-NEW_VERSION = "1.0.11"
+# The version this suite advertises must be *newer* than the one the app reports,
+# because `check_update` answers "Already up to date." when the two match. Deriving
+# it keeps a release bump in utils/constants.py from turning these tests red.
+NEW_VERSION = next_version(d.VERSION)
 APK_BYTES = 250_000
 
 

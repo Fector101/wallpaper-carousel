@@ -219,6 +219,12 @@ class PreviewScreen(MyMDScreen):
         if not self.abs_img_path: # safe hot reload
             return None
 
+        from utils.image_operations import is_loadable_image
+        if not is_loadable_image(self.abs_img_path):
+            self._hide_high_res_badge()
+            self.image_widget.opacity = 0
+            return None
+
         from kivy.loader import Loader
         self.image_widget._high_res_loaded = False
         self.proxy = Loader.image(self.abs_img_path)

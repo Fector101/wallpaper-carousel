@@ -1,4 +1,6 @@
-# For optimzation dark screen starts after "[INFO   ] [Base        ] Start application main loop"
+# For optimization: the dark screen shows from here on, so anything above this line
+# is on-screen wait time. The app prints "[INFO   ] [Base        ] Start application
+# main loop" once the Kivy window is up.
 from utils.boot_log import boot_log
 boot_log("main: imports started")
 from utils.helper import write_logs_to_file
@@ -121,7 +123,7 @@ class WallpaperCarouselApp(MDApp):
         boot_log("build_ui: BottomNavigationBar done")
 
         boot_log("build_ui: has_permission() start")
-        per=NotificationHandler.has_permission()
+        per = NotificationHandler.has_permission()
         boot_log("build_ui: has_permission() done")
         if not per:
             self.sm.ensure_welcome_screen()
@@ -452,6 +454,10 @@ class WallpaperCarouselApp(MDApp):
 if __name__ == '__main__':
     try:
         WallpaperCarouselApp().run()
-    except Exception as e:
-        print(f"app failed: {e}")
-        traceback.print_stack()
+    except Exception as startup_failure:
+        # Log it, then let it crash: the traceback in logcat and a nonzero exit
+        # are how a broken startup gets noticed, so swallowing it here would hide
+        # exactly the failure this is here to surface.
+        boot_log(f"main: app failed: {startup_failure}")
+        traceback.print_exc()
+        raise

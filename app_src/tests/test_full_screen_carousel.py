@@ -1,4 +1,7 @@
+from pathlib import Path
 from unittest import mock
+
+import image_samples
 
 from ui.screens import full_screen as fs_module
 from ui.screens.full_screen import FullscreenScreen
@@ -252,6 +255,44 @@ def _high_res_screen(**attrs):
     return fs
 
 
+def _wallpaper(tmp_path, name):
+    """A wallpaper path that is genuinely decodable.
+
+    ``_load_high_res`` bails out on a path it cannot read (a wallpaper deleted behind
+    our back, or one truncated on disk), so a test that wants to exercise the load
+    path has to hand it a real file. A bare ``"w0"`` makes the test pass for the
+    wrong reason: nothing loads, so nothing can be asserted about the listener.
+    """
+    return image_samples.write_png(tmp_path / f"{name}.png")
+
+
+def _wallpapers(tmp_path, count):
+    return [_wallpaper(tmp_path, f"w{i}") for i in range(count)]
+
+
+def _scaled(tmp_path, src):
+    """The path a real scaled-down cache entry would have for ``src``.
+
+    ``_load_high_res`` now checks that what ``get_or_create_scaled_down_image``
+    returned is readable before it goes near the loader, so a stub returning a
+    ``"scaled/w0.png"`` string that was never written makes the test pass for the
+    wrong reason: the load is skipped and the assertions are vacuous.
+    """
+    return str(tmp_path / f"scaled_{Path(src).name}")
+
+
+def _scaled_stub(tmp_path):
+    """``get_or_create_scaled_down_image`` that writes the file it claims to return."""
+
+    def get_or_create(src, size):
+        path = tmp_path / f"scaled_{Path(src).name}"
+        if not path.exists():
+            image_samples.write_png(path)
+        return str(path)
+
+    return get_or_create
+
+
 class _CountingSlide(_FakeSlide):
     """A slide that records how often its texture is written."""
 
@@ -348,14 +389,15 @@ def test_apply_high_res_replaces_a_texture_from_another_wallpaper():
     assert slide.texture == "tex_of_w1"
 
 
-def test_load_high_res_applies_immediately_when_proxy_already_loaded(monkeypatch):
+def test_load_high_res_applies_immediately_when_proxy_already_loaded(monkeypatch, tmp_path):
     fs = _high_res_screen()
-    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", _scaled_stub(tmp_path))
+    w0 = _wallpaper(tmp_path, "w0")
     slide = fs.carousel.slides[0]
-    slide.higher_format = "w0"
+    slide.higher_format = w0
     fs.carousel.index = 0
     proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=True)
-    _patch_loader(monkeypatch, {"scaled/w0": proxy})
+    _patch_loader(monkeypatch, {_scaled(tmp_path, w0): proxy})
 
     fs._load_high_res(slide)
 
@@ -363,14 +405,15 @@ def test_load_high_res_applies_immediately_when_proxy_already_loaded(monkeypatch
     assert slide.source == ""
 
 
-def test_load_high_res_defers_to_on_load_when_not_loaded(monkeypatch):
+def test_load_high_res_defers_to_on_load_when_not_loaded(monkeypatch, tmp_path):
     fs = _high_res_screen()
-    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", _scaled_stub(tmp_path))
+    w0 = _wallpaper(tmp_path, "w0")
     slide = fs.carousel.slides[0]
-    slide.higher_format = "w0"
+    slide.higher_format = w0
     fs.carousel.index = 0
     proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=False)
-    _patch_loader(monkeypatch, {"scaled/w0": proxy})
+    _patch_loader(monkeypatch, {_scaled(tmp_path, w0): proxy})
 
     fs._load_high_res(slide)
     assert slide.texture is None
@@ -380,38 +423,40 @@ def test_load_high_res_defers_to_on_load_when_not_loaded(monkeypatch):
     assert slide.texture == "tex"
 
 
-def test_load_high_res_ignores_load_that_finished_after_swiping(monkeypatch):
+def test_load_high_res_ignores_load_that_finished_after_swiping(monkeypatch, tmp_path):
     fs = _high_res_screen()
-    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", _scaled_stub(tmp_path))
+    w0 = _wallpaper(tmp_path, "w0")
     slide = fs.carousel.slides[0]
-    slide.higher_format = "w0"
+    slide.higher_format = w0
     fs.carousel.index = 0
     proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=False)
-    _patch_loader(monkeypatch, {"scaled/w0": proxy})
+    _patch_loader(monkeypatch, {_scaled(tmp_path, w0): proxy})
 
     fs._load_high_res(slide)
     # user swipes on while the load is still in flight
     fs.carousel.index = 1
-    fs.carousel.slides[1].higher_format = "w1"
+    fs.carousel.slides[1].higher_format = _wallpaper(tmp_path, "w1")
     proxy.on_load_callbacks[0](proxy)
 
     assert slide.texture is None
 
 
-def test_load_high_res_keeps_high_res_texture_when_swiping_back(monkeypatch):
+def test_load_high_res_keeps_high_res_texture_when_swiping_back(monkeypatch, tmp_path):
     fs = _high_res_screen()
-    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", _scaled_stub(tmp_path))
+    w0 = _wallpaper(tmp_path, "w0")
     slide = _CountingSlide()
-    slide.higher_format = "w0"
+    slide.higher_format = w0
     fs.carousel.index = 0
     fs.carousel.slides[0] = slide
     proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=True)
-    _patch_loader(monkeypatch, {"scaled/w0": proxy})
+    _patch_loader(monkeypatch, {_scaled(tmp_path, w0): proxy})
 
     fs._load_high_res(slide)
     writes_after_first = slide.texture_writes
     # swiping away sets the neighbour's source back to the thumbnail path
-    slide.source = "thumb/w0"
+    slide.source = f"thumb/{w0}"
     # swiping back loads the same image again
     fs._load_high_res(slide)
 
@@ -477,7 +522,7 @@ def test_apply_high_res_without_a_slide_does_not_raise():
     assert fs.carousel.current_slide is None
 
 
-def test_late_load_never_paints_a_slide_that_is_not_current(monkeypatch):
+def test_late_load_never_paints_a_slide_that_is_not_current(monkeypatch, tmp_path):
     """A load that finishes after swiping must never touch an off-screen slide.
 
     Walks the real ``on_current_slide`` over many library sizes and swipe orders
@@ -486,7 +531,7 @@ def test_late_load_never_paints_a_slide_that_is_not_current(monkeypatch):
     """
     import itertools
 
-    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", _scaled_stub(tmp_path))
     monkeypatch.setattr(fs_module, "app_logger", mock.MagicMock())  # this rejects thousands of loads
     monkeypatch.setattr(fs_module, "Clock", mock.MagicMock())  # real Clock is slow, we never need the timer
     _patch_carousel_deps(monkeypatch)
@@ -526,14 +571,15 @@ def test_late_load_never_paints_a_slide_that_is_not_current(monkeypatch):
     assert applied, "no load was ever accepted, so the loop proved nothing"
 
 
-def test_load_high_res_stores_one_listener_for_a_cold_proxy(monkeypatch):
+def test_load_high_res_stores_one_listener_for_a_cold_proxy(monkeypatch, tmp_path):
     fs = _high_res_screen()
-    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", _scaled_stub(tmp_path))
+    w0 = _wallpaper(tmp_path, "w0")
     slide = fs.carousel.slides[0]
-    slide.higher_format = "w0"
+    slide.higher_format = w0
     fs.carousel.index = 0
     proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=False)
-    _patch_loader(monkeypatch, {"scaled/w0": proxy})
+    _patch_loader(monkeypatch, {_scaled(tmp_path, w0): proxy})
 
     fs._load_high_res(slide)
 
@@ -542,14 +588,15 @@ def test_load_high_res_stores_one_listener_for_a_cold_proxy(monkeypatch):
     assert fs.high_res_on_load in proxy.on_load_callbacks
 
 
-def test_load_high_res_binds_nothing_when_already_loaded(monkeypatch):
+def test_load_high_res_binds_nothing_when_already_loaded(monkeypatch, tmp_path):
     fs = _high_res_screen()
-    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", _scaled_stub(tmp_path))
+    w0 = _wallpaper(tmp_path, "w0")
     slide = fs.carousel.slides[0]
-    slide.higher_format = "w0"
+    slide.higher_format = w0
     fs.carousel.index = 0
     proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=True)
-    _patch_loader(monkeypatch, {"scaled/w0": proxy})
+    _patch_loader(monkeypatch, {_scaled(tmp_path, w0): proxy})
 
     fs._load_high_res(slide)
 
@@ -559,17 +606,19 @@ def test_load_high_res_binds_nothing_when_already_loaded(monkeypatch):
     assert fs.high_res_on_load is None
 
 
-def test_load_high_res_drops_the_previous_listener(monkeypatch):
+def test_load_high_res_drops_the_previous_listener(monkeypatch, tmp_path):
     fs = _high_res_screen()
-    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", _scaled_stub(tmp_path))
+    w0 = _wallpaper(tmp_path, "w0")
+    w1 = _wallpaper(tmp_path, "w1")
     fs.carousel.index = 0
     first = fs.carousel.slides[0]
-    first.higher_format = "w0"
+    first.higher_format = w0
     second = fs.carousel.slides[1]
-    second.higher_format = "w1"
+    second.higher_format = w1
     fs.carousel.index = 1
     stale_proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=False)
-    _patch_loader(monkeypatch, {"scaled/w0": stale_proxy, "scaled/w1": stale_proxy})
+    _patch_loader(monkeypatch, {_scaled(tmp_path, w0): stale_proxy, _scaled(tmp_path, w1): stale_proxy})
 
     fs._load_high_res(first)
     fs._load_high_res(second)
@@ -578,14 +627,15 @@ def test_load_high_res_drops_the_previous_listener(monkeypatch):
     assert fs.high_res_proxy is stale_proxy
 
 
-def test_cancel_high_res_unbinds_and_clears(monkeypatch):
+def test_cancel_high_res_unbinds_and_clears(monkeypatch, tmp_path):
     fs = _high_res_screen()
-    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", _scaled_stub(tmp_path))
+    w0 = _wallpaper(tmp_path, "w0")
     slide = fs.carousel.slides[0]
-    slide.higher_format = "w0"
+    slide.higher_format = w0
     fs.carousel.index = 0
     proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=False)
-    _patch_loader(monkeypatch, {"scaled/w0": proxy})
+    _patch_loader(monkeypatch, {_scaled(tmp_path, w0): proxy})
     clock = mock.MagicMock()
     fs.clock_for_higher_format = clock
 
@@ -609,17 +659,17 @@ def test_cancel_high_res_without_a_pending_load_is_safe():
     assert fs.clock_for_higher_format is None
 
 
-def test_on_current_slide_unbinds_the_previous_listener(monkeypatch):
+def test_on_current_slide_unbinds_the_previous_listener(monkeypatch, tmp_path):
     _patch_carousel_deps(monkeypatch)
-    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
-    wallpapers = [f"w{i}" for i in range(3)]
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", _scaled_stub(tmp_path))
+    wallpapers = _wallpapers(tmp_path, 3)
     fs = _high_res_screen()
     fs.wallpapers_data = wallpapers
     fs.manager.gallery_screen.wallpapers = wallpapers
     fs.carousel_index = 0
     fs.update_images(index=0)
     proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=False)
-    _patch_loader(monkeypatch, {f"scaled/{p}": proxy for p in wallpapers})
+    _patch_loader(monkeypatch, {_scaled(tmp_path, p): proxy for p in wallpapers})
 
     fs._load_high_res(fs.carousel.current_slide)
     assert proxy.listener_count == 1
@@ -631,17 +681,17 @@ def test_on_current_slide_unbinds_the_previous_listener(monkeypatch):
     assert fs.high_res_proxy is None
 
 
-def test_update_images_unbinds_before_dropping_the_slides(monkeypatch):
+def test_update_images_unbinds_before_dropping_the_slides(monkeypatch, tmp_path):
     _patch_carousel_deps(monkeypatch)
-    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", lambda src, size: f"scaled/{src}")
-    wallpapers = [f"w{i}" for i in range(3)]
+    monkeypatch.setattr(fs_module, "get_or_create_scaled_down_image", _scaled_stub(tmp_path))
+    wallpapers = _wallpapers(tmp_path, 3)
     fs = _high_res_screen()
     fs.wallpapers_data = wallpapers
     fs.manager.gallery_screen.wallpapers = wallpapers
     fs.carousel_index = 0
     fs.update_images(index=0)
     proxy = _FakeProxy(image=_FakeImageLoader(texture="tex"), loaded=False)
-    _patch_loader(monkeypatch, {f"scaled/{p}": proxy for p in wallpapers})
+    _patch_loader(monkeypatch, {_scaled(tmp_path, p): proxy for p in wallpapers})
     fs._load_high_res(fs.carousel.current_slide)
     dropped = fs.carousel.current_slide
     listeners_when_dropped = []
