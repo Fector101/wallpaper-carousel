@@ -1086,37 +1086,6 @@ def is_loadable_image(path):
         return False
 
 
-    if _on_android_platform():
-        try:
-            bounds = Options()
-            bounds.inJustDecodeBounds = True
-            BitmapFactory.decodeFile(path, bounds)
-            # An undecodable header leaves these at -1; a real image never is.
-            return bounds.outWidth > 0 and bounds.outHeight > 0
-        except Exception as error_reading_image_header:
-            app_logger.exception(f"Could not read image header of {path}: {error_reading_image_header}")
-            return False
-
-    try:
-        from PIL import Image
-    except ImportError:
-        # No Pillow off-device: fall back to a size check rather than rejecting
-        # perfectly good files. This cannot see a corrupt file, but it is only the
-        # desktop/test path.
-        try:
-            return os.path.getsize(path) > 0
-        except OSError:
-            return False
-
-    try:
-        # Touching .size forces the header parse; PIL does not validate the body
-        # until load(), which is the expensive part we are avoiding. A truncated
-        # file still has a valid magic number, so a magic-byte check would pass it.
-        with Image.open(path) as image:
-            return image.size[0] > 0 and image.size[1] > 0
-    except Exception as error_opening_image:
-        app_logger.info(f"Not a loadable image, {path}: {error_opening_image}")
-        return False
 
 def get_or_create_thumbnail(src, destination_dir=None, size=(320, 320)):
     """Convenience wrapper to obtain a thumbnail path, creating it if necessary."""
