@@ -18,59 +18,45 @@ So the check has to happen before the loader is handed the path. These pin that.
 """
 
 import builtins
-import struct
-import zlib
+import sys
+import types
+from unittest import mock
 
 import pytest
 
+import image_samples
 from utils import image_operations as io
 from utils.image_operations import is_loadable_image
 
-
-def _png_bytes(width=4, height=4):
-    """A complete, decodable 1-frame PNG."""
-
-    def chunk(kind, payload):
-        body = kind + payload
-        return struct.pack(">I", len(payload)) + body + struct.pack(">I", zlib.crc32(body))
-
-    ihdr = chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
-    raw = b"".join(b"\x00" + b"\xff\x00\x00" * width for _ in range(height))
-    idat = chunk(b"IDAT", zlib.compress(raw))
-    return b"\x89PNG\r\n\x1a\n" + ihdr + idat + chunk(b"IEND", b"")
+_png_bytes = image_samples.png_bytes
 
 
 @pytest.fixture
 def good_png(tmp_path):
-    path = tmp_path / "good.png"
-    path.write_bytes(_png_bytes())
-    return path
+    return image_samples.write_png(tmp_path / "good.png")
 
 
 @pytest.fixture
-def truncated_png(tmp_path, good_png):
+def truncated_png(tmp_path):
     """A PNG cut off after 20 bytes: the 8-byte magic number is intact.
 
     This is the case a size check and a magic-byte check both wave through, which is
-    why it gets its own fixture.
+    why it gets its own fixture. Kept as a Path so the assertions below can inspect
+    the bytes.
     """
     path = tmp_path / "truncated.png"
-    path.write_bytes(good_png.read_bytes()[:20])
+    image_samples.write_truncated_png(path)
     return path
 
 
 @pytest.fixture
 def garbage_png(tmp_path):
-    path = tmp_path / "garbage.png"
-    path.write_bytes(b"this is definitely not a png")
-    return path
+    return image_samples.write_garbage(tmp_path / "garbage.png")
 
 
 @pytest.fixture
 def empty_png(tmp_path):
-    path = tmp_path / "empty.png"
-    path.write_bytes(b"")
-    return path
+    return image_samples.write_empty(tmp_path / "empty.png")
 
 
 def test_a_complete_png_is_loadable(good_png):
@@ -181,6 +167,188 @@ def test_the_android_branch_rejects_an_undecodable_header(tmp_path, monkeypatch)
     monkeypatch.setattr(io, "BitmapFactory", FakeBitmapFactory, raising=False)
 
     assert is_loadable_image(str(path)) is False
+
+
+# --- the four call sites -----------------------------------------------------------
+#
+# Each of these hands a path to ``kivy.loader.Loader.image``. The loader does not raise
+# for a file it cannot read, it fails later on a Clock callback, so the guard has to be
+# *before* the call. These assert the loader is never reached with an unreadable path,
+# because that is the only place the failure can still be stopped.
+
+
+def _stub_loader(monkeypatch):
+    """A ``kivy.loader.Loader`` whose ``image`` raises if anything calls it.
+
+    A silent stub would let a regression look like a pass: the load is skipped, the
+    assertions below are still true, and the app crashes in the field instead.
+    """
+    loader = mock.MagicMock()
+    loader.image.side_effect = AssertionError("Loader.image reached with an unreadable path")
+    loader_module = types.ModuleType("kivy.loader")
+    loader_module.Loader = loader
+    monkeypatch.setitem(sys.modules, "kivy.loader", loader_module)
+    return loader
+
+
+def _unreadable_paths(tmp_path):
+    """One path per way a file can be present but unreadable."""
+    return image_samples.write_broken_variants(tmp_path)
+
+
+def test_the_gallery_placeholder_never_hands_the_loader_a_broken_file(monkeypatch, tmp_path):
+    from ui.screens.gallery_screen import LowResDisplayerWithLoader
+
+    _stub_loader(monkeypatch)
+
+    widget = LowResDisplayerWithLoader.__new__(LowResDisplayerWithLoader)
+    widget.proxy = None
+
+    for label, path in _unreadable_paths(tmp_path).items():
+        widget.low_res_abs_path = path
+        widget.load_low_res_image()
+
+        assert widget.proxy is None, f"{label} was accepted"
+
+
+def test_the_gallery_placeholder_still_loads_a_good_file(monkeypatch, tmp_path):
+    """The guard has to reject only what is broken, or the gallery goes blank."""
+    from ui.screens.gallery_screen import LowResDisplayerWithLoader
+
+    proxy = mock.MagicMock()
+    proxy.loaded = False
+    loader = mock.MagicMock()
+    loader.image.return_value = proxy
+    loader_module = types.ModuleType("kivy.loader")
+    loader_module.Loader = loader
+    monkeypatch.setitem(sys.modules, "kivy.loader", loader_module)
+
+    widget = LowResDisplayerWithLoader.__new__(LowResDisplayerWithLoader)
+    widget.proxy = None
+    widget.low_res_abs_path = image_samples.write_png(tmp_path / "good.png")
+
+    widget.load_low_res_image()
+
+    loader.image.assert_called_once_with(widget.low_res_abs_path)
+    assert widget.proxy is proxy
+
+
+def test_the_settings_preview_never_hands_the_loader_a_broken_file(monkeypatch, tmp_path):
+    from ui.screens.settings_screen import ScaledLoaderImage
+
+    _stub_loader(monkeypatch)
+
+    widget = ScaledLoaderImage.__new__(ScaledLoaderImage)
+    widget.proxy = None
+
+    for label, path in _unreadable_paths(tmp_path).items():
+        widget.high_res_abs_path = path
+        widget.load_scaled_image()
+
+        assert widget.proxy is None, f"{label} was accepted"
+
+
+def test_the_settings_preview_rejects_a_broken_scaled_down_cache_entry(monkeypatch, tmp_path):
+    """A stale scaled-down file can be truncated even when the original is fine.
+
+    ``get_or_create_scaled_down_image`` only returns the cache path when it already
+    exists, so the cached copy is what reaches the loader and it gets the same check.
+    """
+    from ui.screens import settings_screen as settings_module
+
+    good = image_samples.write_png(tmp_path / "original.png")
+    broken_cache = image_samples.write_truncated_png(tmp_path / "scaled.png")
+
+    monkeypatch.setattr(
+        settings_module,
+        "get_or_create_scaled_down_image",
+        lambda src, size: broken_cache,
+    )
+    _stub_loader(monkeypatch)
+
+    widget = settings_module.ScaledLoaderImage.__new__(settings_module.ScaledLoaderImage)
+    widget.proxy = None
+    widget.high_res_abs_path = good
+
+    widget.load_scaled_image()
+
+    assert widget.proxy is None
+
+
+def test_the_preview_screen_never_hands_the_loader_a_broken_file(monkeypatch, tmp_path):
+    """The preview screen had no guard at all, not even the ``os.path.exists`` one."""
+    from ui.screens import preview_screen as preview_module
+
+    _stub_loader(monkeypatch)
+
+    screen = preview_module.PreviewScreen.__new__(preview_module.PreviewScreen)
+    screen.proxy = None
+    screen.image_widget = mock.MagicMock()
+    screen.high_res_badge = mock.MagicMock()
+    screen.how_to_modal = None
+
+    for label, path in _unreadable_paths(tmp_path).items():
+        screen.abs_img_path = path
+
+        assert screen.format_widget() is None
+        assert screen.proxy is None, f"{label} was accepted"
+
+
+def test_the_preview_screen_leaves_nothing_behind_when_it_bails(monkeypatch, tmp_path):
+    """The sharp texture is missing forever, so nothing may be left spinning.
+
+    The badge comes down and the image stays hidden: a preview showing the blurry
+    version with a spinner that never resolves would be worse than the blur alone.
+    """
+    from ui.screens import preview_screen as preview_module
+
+    _stub_loader(monkeypatch)
+
+    screen = preview_module.PreviewScreen.__new__(preview_module.PreviewScreen)
+    screen.proxy = None
+    screen.image_widget = mock.MagicMock()
+    screen.high_res_badge = mock.MagicMock()
+    screen.how_to_modal = None
+    screen.abs_img_path = image_samples.write_truncated_png(tmp_path / "truncated.png")
+
+    screen.format_widget()
+
+    screen.high_res_badge.hide.assert_called()
+    assert screen.image_widget.opacity == 0
+
+
+def test_the_fullscreen_carousel_never_hands_the_loader_a_broken_file(monkeypatch, tmp_path):
+    from ui.screens.full_screen import FullscreenScreen
+
+    _stub_loader(monkeypatch)
+
+    class _Slide:
+        def __init__(self, path):
+            self.higher_format = path
+            self.texture = None
+
+    class _Carousel:
+        size = (100, 200)
+
+        def __init__(self, slide):
+            self.slides = [slide]
+            self.index = 0
+
+        @property
+        def current_slide(self):
+            return self.slides[0]
+
+    fs = FullscreenScreen.__new__(FullscreenScreen)
+    fs.high_res_proxy = None
+    fs.high_res_on_load = None
+    fs.proxy = None
+
+    for label, path in _unreadable_paths(tmp_path).items():
+        slide = _Slide(path)
+        fs.carousel = _Carousel(slide)
+        fs._load_high_res(slide)
+
+        assert fs.high_res_proxy is None, f"{label} was accepted"
 
 
 def test_without_pillow_it_falls_back_to_a_size_check(tmp_path, monkeypatch):
