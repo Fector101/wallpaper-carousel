@@ -1084,7 +1084,8 @@ def is_loadable_image(path):
 
     if not os.path.exists(path):
         return False
-
+    
+    return True
 
 
 def get_or_create_thumbnail(src, destination_dir=None, size=(320, 320)):
