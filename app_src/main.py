@@ -33,8 +33,9 @@ from ui.widgets.bottom_sheet import MyBtmSheet
 
 from utils.android import is_device_on_light_mode
 from utils.config_manager import ConfigManager
-from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, \
-    theme_colors as _theme_colors
+from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY
+from ui.theming import theme_colors as _theme_colors, get_device_theme
+
 boot_log("main: local imports done2")
 from utils.helper import Service, get_free_port, register_fonts, fix_input_on_linux, \
     patch_kivymd_switch_press_events, patch_kivymd_hover_on_touch, \
@@ -426,26 +427,12 @@ class WallpaperCarouselApp(MDApp):
                 on_activity_result=set_intent_for_file_operation_class)
 
     def monitor_dark_and_light_device_change(self):
-        if self.theme_preference == "adaptive":
-            self.device_theme = self._coerce_device_theme(is_device_on_light_mode())
-        else:
-            self.device_theme = self._coerce_device_theme(self.theme_preference)
-        return self.device_theme
+        self.device_theme = get_device_theme(self.theme_preference)
 
     def set_theme_preference(self, preference):
         self.theme_preference = preference
         ConfigManager.set_theme_preference(preference)
-        if preference == "adaptive":
-            self.device_theme = self._coerce_device_theme(is_device_on_light_mode())
-        else:
-            self.device_theme = self._coerce_device_theme(preference)
-
-    def _coerce_device_theme(self, value):
-        if value in ("dark", "light"):
-            return value
-        if self.device_theme in ("dark", "light"):
-            return self.device_theme
-        return "dark"
+        self.device_theme = get_device_theme(preference)
 
     def _sync_theme_colors(self, *args):
         _theme_colors.theme = self.device_theme

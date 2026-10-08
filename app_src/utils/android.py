@@ -103,33 +103,6 @@ def refresh_widget(provider_name, app_widget_id):
     Clock.schedule_once(_do_refresh, 0)
 
 
-def is_device_on_light_mode():
-    if not on_android_platform():
-        return "dark"
-    try:
-        _, autoclass = _get_jnius()
-        Configuration = autoclass("android.content.res.Configuration")
-        activity = get_python_activity_context()
-        config = activity.getResources().getConfiguration()
-
-        ui_mode = config.uiMode & Configuration.UI_MODE_NIGHT_MASK
-
-        if ui_mode == Configuration.UI_MODE_NIGHT_YES:
-            theme = "dark"
-        elif ui_mode == Configuration.UI_MODE_NIGHT_NO:
-            theme = "light"
-        else:
-            theme = "unknown"
-        return theme
-    except Exception as error_getting_device_in_light_or_dark_mode:
-        if on_android_platform():
-            print("error_getting_device_in_light_or_dark_mode:", error_getting_device_in_light_or_dark_mode)
-            traceback.print_exc()
-        else:
-            pass
-            # print("error_getting_device_in_light_or_dark_mode:", error_getting_device_in_light_or_dark_mode)
-            # TODO get dark/light theme from PC
-        return "dark"
 
 
 def test_java_action():
