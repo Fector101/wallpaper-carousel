@@ -31,6 +31,7 @@ Wally automatically rotates your wallpapers using images you choose.
 ### Home Screen Widget
 
 * View current lock-screen wallpaper from your home screen
+* Add any image as home screen widget
 * Tap the widget to quickly open the app
 
 ### Notification Controls
