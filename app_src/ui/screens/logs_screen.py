@@ -5,7 +5,7 @@ from kivy.metrics import dp, sp
 
 from ui.widgets.android import toast
 from ui.widgets.layouts import MyMDScreen, GenericStatusBarSpacer
-from utils.constants import theme_colors
+from ui.theming import theme_colors
 
 # ---------- CONFIG ----------
 LOG_HORIZONTAL_PADDING = dp(10)

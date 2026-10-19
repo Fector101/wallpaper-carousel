@@ -33,7 +33,7 @@ from ui.screens.gallery_screen import (  # noqa: E402
     DateGroupLayout,
     PreviewImage,
 )
-from utils.constants import theme_colors  # noqa: E402
+from ui.theming import theme_colors  # noqa: E402
 
 
 class _Group(mock.MagicMock):

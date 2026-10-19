@@ -11,7 +11,7 @@ from kivy.metrics import dp
 from ui.widgets.layouts import MyMDScreen, GenericStatusBarSpacer, Row, Column
 from ui.widgets.modals import DialogScreen
 from utils.config_manager import ConfigManager
-from utils.constants import theme_colors
+from ui.theming import theme_colors
 from utils.database import ImageDatabase
 from utils.helper import appFolder, format_size, get_folder_size, get_files_size
 

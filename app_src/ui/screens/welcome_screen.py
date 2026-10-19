@@ -21,7 +21,7 @@ from ui.widgets.layouts import MyMDScreen,GenericStatusBarSpacer
 from ui.widgets.buttons import MyRoundButton
 from ui.widgets.android import toast
 from utils.helper import load_kv_file, appFolder
-from utils.constants import theme_colors
+from ui.theming import theme_colors
 
 from utils.model import get_app
 

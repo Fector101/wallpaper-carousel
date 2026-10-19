@@ -4,7 +4,7 @@ from kivy.properties import StringProperty
 from kivymd.uix.label import MDLabel
 
 from ui.widgets.layouts import Row, SpinningArcWidget
-from utils.constants import theme_colors
+from ui.theming import theme_colors
 from utils.model import get_app
 
 

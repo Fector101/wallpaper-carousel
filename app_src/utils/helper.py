@@ -267,6 +267,8 @@ class Service:
 
     def start(self):
         import json
+        from android_notify.config import get_package_name
+
         if not _on_android_platform():
             self.__run_service_file()
             return True
@@ -310,7 +312,7 @@ class Service:
             if bad_process:
                 app_logger.error(
                     f"[Service.start] {self.get_name()} can only recover via "
-                    f"`adb shell am force-stop org.wally.waller` or an app restart; "
+                    f"`adb shell am force-stop {get_package_name()}` or an app restart; "
                     f"retries may not help until the bad-process flag clears."
                 )
             return False

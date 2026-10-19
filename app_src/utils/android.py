@@ -131,7 +131,7 @@ def test_java_action():
     PendingIntent = autoclass("android.app.PendingIntent")
 
     # Autoclass your own Java class
-    action1 = autoclass("org.wally.waller.Action1")
+    action1 = autoclass(f"{get_package_name()}.Action1")
 
     # Variables
     channel_id = "channel_id"

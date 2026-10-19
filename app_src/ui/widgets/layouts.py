@@ -26,7 +26,7 @@ from kivy.uix.widget import Widget
 
 from android_notify.internal.java_classes import BuildVersion
 from utils.logger import app_logger
-from utils.constants import theme_colors
+from ui.theming import theme_colors
 
 # Add this before creating your main widget or in your build method
 Window.softinput_mode = 'below_target' # or 'pan'
@@ -286,8 +286,10 @@ class PlaceOnMainScreen:
 
     def hide(self,*_):
         self._clear_back_state()
-        Window.unbind(on_key_down=self._on_key_down)
-        Window.unbind(on_key_up=self._on_key_up)
+        Window.unbind(
+            on_key_down=self._on_key_down,
+            on_key_up=self._on_key_up
+        )
         # app_logger.info("[BackKey] PlaceOnMainScreen.hide() -> unbound on_key_down + on_key_up")
         parent = self.parent
         if parent:
@@ -460,14 +462,18 @@ class MyMDScreen(MDScreen):
             self._back_key_scheduled = None
 
     def on_enter(self, *args):
-        Window.bind(on_key_down=self._on_key_down)
-        Window.bind(on_key_up=self._on_key_up)
+        Window.bind(
+            on_key_down=self._on_key_down,
+            on_key_up=self._on_key_up
+        )
         # app_logger.info(f"[BackKey] MyMDScreen.on_enter screen='{self.name}' -> bound on_key_down + on_key_up")
 
     def on_leave(self, *args):
         self._clear_back_state()
-        Window.unbind(on_key_down=self._on_key_down)
-        Window.unbind(on_key_up=self._on_key_up)
+        Window.unbind(
+            on_key_down=self._on_key_down,
+            on_key_up=self._on_key_up
+        )
         # app_logger.info(f"[BackKey] MyMDScreen.on_leave screen='{self.name}' -> unbound on_key_down + on_key_up")
     
     def show_system_ui(self):

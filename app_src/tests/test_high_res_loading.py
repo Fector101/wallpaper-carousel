@@ -39,7 +39,7 @@ from ui.screens import preview_screen as preview_module  # noqa: E402
 from ui.widgets import layouts as layouts_module  # noqa: E402
 from ui.widgets.layouts import LoadingLayout, SpinningArcWidget  # noqa: E402
 from ui.widgets.loading import HighResLoadingBadge  # noqa: E402
-from utils.constants import theme_colors  # noqa: E402
+from ui.theming import theme_colors  # noqa: E402
 
 FONT_DIR = APP_SRC / "assets" / "fonts" / "Roboto_Mono" / "static"
 

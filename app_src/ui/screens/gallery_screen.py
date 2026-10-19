@@ -31,7 +31,7 @@ from utils.image_operations import get_or_create_thumbnail, get_image_info, is_l
 from ui.widgets.modals import DialogScreen, MyTextButton
 from utils.logger import app_logger
 from utils.model import get_app, GalleryTabs
-from utils.constants import theme_colors
+from ui.theming import theme_colors
 from utils.permissions import ask_permission_to_images, has_permission_to_images, ACCESS_GRANTED, ACCESS_PARTIAL
 
 my_config = ConfigManager()

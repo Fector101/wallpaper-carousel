@@ -1,6 +1,6 @@
 import traceback
 
-from android_notify.config import on_android_platform
+from android_notify.config import on_android_platform, get_package_name
 
 from utils.logger import app_logger
 
@@ -15,7 +15,7 @@ def schedule_update_check():
         PythonActivity = autoclass("org.kivy.android.PythonActivity")
         context = PythonActivity.mActivity.getApplicationContext()
 
-        WorkScheduler = autoclass("org.wally.waller.WorkScheduler")
+        WorkScheduler = autoclass(f"{get_package_name()}.WorkScheduler")
         WorkScheduler.scheduleUpdateCheck(context)
         app_logger.info("Update check WorkManager task scheduled (7 day interval, network required)")
     except Exception:
