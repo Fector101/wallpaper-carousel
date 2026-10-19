@@ -1,4 +1,4 @@
-from utils.boot_log import boot_log
+#from utils.boot_log import boot_log
 import traceback
 
 from android_notify.internal.java_classes import autoclass
@@ -22,30 +22,30 @@ from ui.screens.logs_screen import LogsScreen
 from ui.screens.download_apk_screen import DownloadApkScreen
 from ui.screens.stats_screen import StatsScreen
 from ui.screens.preview_screen import PreviewScreen
-boot_log("sm: MDScreenManager import done")
+#boot_log("sm: MDScreenManager import done")
 
 
 class ScreenManager(MDScreenManager):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        boot_log("sm: init start")
+        #boot_log("sm: init start")
         self.app = get_app()
         self.welcome_screen = None
         self.gallery_screen = GalleryScreen()
-        boot_log("sm: GalleryScreen done")
+        #boot_log("sm: GalleryScreen done")
         self.full_screen = FullscreenScreen()
-        boot_log("sm: FullscreenScreen done")
+        #boot_log("sm: FullscreenScreen done")
         self.settings_screen = SettingsScreen()
-        boot_log("sm: SettingsScreen done")
+        #boot_log("sm: SettingsScreen done")
         self.log_screen = LogsScreen()
-        boot_log("sm: LogsScreen done")
+        #boot_log("sm: LogsScreen done")
         self.download_apk_screen = DownloadApkScreen()
-        boot_log("sm: DownloadApkScreen done")
+        #boot_log("sm: DownloadApkScreen done")
         self.stats_screen = StatsScreen()
-        boot_log("sm: StatsScreen done")
+        #boot_log("sm: StatsScreen done")
         self.preview_screen= PreviewScreen()
-        boot_log("sm: PreviewScreen done")
+        #boot_log("sm: PreviewScreen done")
 
         self.add_widget(self.gallery_screen)
         self.add_widget(self.full_screen)
@@ -54,9 +54,9 @@ class ScreenManager(MDScreenManager):
         self.add_widget(self.download_apk_screen)
         self.add_widget(self.stats_screen)
         self.add_widget(self.preview_screen)
-        boot_log("sm: screens added")
+        #boot_log("sm: screens added")
         self.__register_rotate_listener()
-        boot_log("sm: rotate listener done")
+        #boot_log("sm: rotate listener done")
         # self.__run_rotate_method_for_each_screen("BOTTOM")
 
         # self.current = "update_screen"
@@ -65,7 +65,7 @@ class ScreenManager(MDScreenManager):
         if self.welcome_screen is None:
             self.welcome_screen = WelcomeScreen()
             self.add_widget(self.welcome_screen)
-            boot_log("sm: WelcomeScreen built")
+            #boot_log("sm: WelcomeScreen built")
     def __register_rotate_listener(self):
         if on_android_platform():
             try:

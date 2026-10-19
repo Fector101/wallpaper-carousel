@@ -1,4 +1,4 @@
-from utils.boot_log import boot_log
+#from utils.boot_log import boot_log
 import os, time
 import shutil
 import threading
@@ -27,26 +27,26 @@ def _get_mActivity():
     global _mActivity
     with _mActivity_lock:
         if _mActivity is None:
-            boot_log("image_operations: _get_mActivity start")
+            #boot_log("image_operations: _get_mActivity start")
             PythonActivity = _LazyJavaClass("PythonActivity", "org.kivy.android.PythonActivity")
             _mActivity = PythonActivity.mActivity
-            boot_log("image_operations: _get_mActivity done")
+            #boot_log("image_operations: _get_mActivity done")
     return _mActivity
 
 def _get_content_resolver():
     global _content_resolver
     with _content_resolver_lock:
         if _content_resolver is None:
-            boot_log("image_operations: _get_content_resolver start")
+            #boot_log("image_operations: _get_content_resolver start")
             _content_resolver = _get_mActivity().getContentResolver()
-            boot_log("image_operations: _get_content_resolver done")
+            #boot_log("image_operations: _get_content_resolver done")
     return _content_resolver
 
 def _get_package_name():
-    boot_log("image_operations: _get_package_name start")
+    #boot_log("image_operations: _get_package_name start")
     from android_notify.config import get_package_name
     result = get_package_name()
-    boot_log("image_operations: _get_package_name done")
+    #boot_log("image_operations: _get_package_name done")
     return result
 
 if _on_android_platform():
@@ -76,9 +76,9 @@ if _on_android_platform():
     ArrayList = _LazyJavaClass("ArrayList", "java.util.ArrayList")
     ContentUris = _LazyJavaClass("ContentUris", "android.content.ContentUris")
 
-boot_log("image_operations: lazy classes created")
+#boot_log("image_operations: lazy classes created")
 
-boot_log("image_operations: creating configmanager and dirs")
+#boot_log("image_operations: creating configmanager and dirs")
 
 my_config = ConfigManager()
 app_dir = Path(appFolder())
@@ -89,7 +89,7 @@ wallpapers_dir.mkdir(parents=True, exist_ok=True)
 scaled_down_images_dir = app_dir / "scaled_down_images"
 scaled_down_images_dir.mkdir(parents=True, exist_ok=True)
 
-boot_log("image_operations: configmanager and dirs done")
+#boot_log("image_operations: configmanager and dirs done")
 
 _ANDROID_THUMBNAIL_LOCK = threading.Lock()
 _SCALED_IMG_LOCK = threading.Lock()
@@ -221,7 +221,7 @@ def seed_numbered_wallpapers():
 
 class ImageOperation:
     def __init__(self,load_saved):
-        boot_log("image_operations: ImageOperation.__init__")
+        #boot_log("image_operations: ImageOperation.__init__")
         self.app = MDApp.get_running_app()
         self.load_saved = load_saved
         self.user_carousel_size = [0,0]
@@ -1306,4 +1306,4 @@ def _compute_in_sample_size(req_width, req_height, src_width, src_height):
 
 
 
-boot_log("image_operations: module imported")
+#boot_log("image_operations: module imported")

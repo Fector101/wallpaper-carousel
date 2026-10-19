@@ -1,4 +1,4 @@
-from utils.boot_log import boot_log
+#from utils.boot_log import boot_log
 import time
 import traceback
 
@@ -166,7 +166,7 @@ def get_dimensions(bypass_android_version=False):
 
     try:
         WindowInsetsType = autoclass("android.view.WindowInsets$Type")
-        boot_log("sm: ui.widgets.layouts status_bar_height and nav_bar_height retrieval started")
+        #boot_log("sm: ui.widgets.layouts status_bar_height and nav_bar_height retrieval started")
         # +0.464s
         window = activity.getWindow()
         decor = window.getDecorView()
@@ -179,7 +179,7 @@ def get_dimensions(bypass_android_version=False):
             nav_bar_height = insets.getInsets(
                 WindowInsetsType.navigationBars()
             ).bottom
-        boot_log("sm: ui.widgets.layouts status_bar_height and nav_bar_height retrieved")
+        #boot_log("sm: ui.widgets.layouts status_bar_height and nav_bar_height retrieved")
 
     except Exception as Error_using_first_method_to_get_Status_Bar_and_Nav_Bar_Height:
         app_logger.exception(Error_using_first_method_to_get_Status_Bar_and_Nav_Bar_Height)
