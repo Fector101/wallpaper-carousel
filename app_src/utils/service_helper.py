@@ -288,7 +288,7 @@ class WallpaperServerReceiver:
         if not self.next_wallpaper_path:  # check if wallpaper already set from on wake
             self.choseAndShowPreviewForNextWallpaper()
 
-        print(f"running on wake")
+        app_logger.info(f"running on wake")
         marked_time = time.monotonic()
         while self.live and self.using_on_wake and self.running_on_wake_loop:
             time.sleep(2)
@@ -304,7 +304,7 @@ class WallpaperServerReceiver:
                 marked_time = time.monotonic()
                 prevent_log_file_overflow()
                 
-        print(
+        app_logger.debug(
             f"ended on wake live: {self.live}, using_on_wake: {self.using_on_wake}, running_on_wake_loop: {self.running_on_wake_loop}")
         self.running_on_wake_loop = False
 
