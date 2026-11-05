@@ -59,8 +59,8 @@ class RotatedLayout(MDFloatLayout):
 class Row(MDBoxLayout):
     my_widgets = ListProperty([])
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self,  *args,**kwargs):
+        super().__init__( *args,**kwargs)
         for each_widget in self.my_widgets:
             self.add_widget(each_widget)
 
@@ -68,8 +68,8 @@ class Row(MDBoxLayout):
 class Column(MDBoxLayout):
     my_widgets = ListProperty([])
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, *args,**kwargs):
+        super().__init__( *args,**kwargs)
         self.orientation = "vertical"
         for each_widget in self.my_widgets:
             self.add_widget(each_widget)
