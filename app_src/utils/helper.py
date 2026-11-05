@@ -1,6 +1,7 @@
 # DO NOT IMPORT ANY UI THING TOP GLOBAL LEVEL
 import sys
 
+from utils.logger import app_logger
 from utils.platform_compat import on_android_platform as _on_android_platform, on_pydroid_app as _on_pydroid_app, LazyJavaClass as _LazyJavaClass, toast as _toast
 
 if _on_android_platform():
@@ -287,7 +288,6 @@ class Service:
             return True
 
         import jnius.jnius
-        from utils.logger import app_logger
         self.start_error = None
         try:
             self.__get_static_method('start', 2).invoke(None, (self.mActivity, arg))
@@ -758,6 +758,7 @@ def patch_kivymd_hover_on_touch():
 
     return None
 
+
 def patch_kivymd_disabled_text_color():
     # KivyMD PR #1897: MDLabel/MDButtonText always used the MD3
     # onSurfaceColor @ label_opacity_value_disabled_text for `disabled_color`,
@@ -797,6 +798,12 @@ def patch_kivymd_disabled_text_color():
 """)
 
     return None
+
+
+def patch_kivymd_for_kivy3():
+    patch_kivymd_switch_press_events()
+    patch_kivymd_hover_on_touch()
+    patch_kivymd_disabled_text_color()
 
 
 def register_fonts():
@@ -957,3 +964,22 @@ def remove_images_from_app(abs_paths: list):
         except Exception as error_removing_image_from_db:
             print(error_removing_image_from_db)
             traceback.print_exc()
+
+
+def register_connectivity_receiver():
+    if not _on_android_platform():
+        return
+    try:
+        from android_notify.internal.java_classes import autoclass
+        from android_notify.config import get_python_activity_context
+        context = get_python_activity_context()
+        ConnectivityReceiver = autoclass('org.wally.waller.ConnectivityReceiver')
+        receiver = ConnectivityReceiver()
+        IntentFilter = autoclass('android.content.IntentFilter')
+        filter_ = IntentFilter()
+        filter_.addAction("android.net.conn.CONNECTIVITY_CHANGE")
+        filter_.addAction("android.net.wifi.WIFI_STATE_CHANGED")
+        context.registerReceiver(receiver, filter_)
+        app_logger.info("ConnectivityReceiver registered dynamically")
+    except Exception as e:
+        app_logger.exception(f"Failed to register ConnectivityReceiver: {e}")

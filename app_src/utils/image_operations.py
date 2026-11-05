@@ -1303,6 +1303,23 @@ def _compute_in_sample_size(req_width, req_height, src_width, src_height):
             in_sample_size *= 2
     return in_sample_size
 
+def warm_scaled_down_cache():
+    """Generate scaled-down cache images for wallpapers that lack them.
+
+    Old installations predate the scaled-down image cache, so the first launch
+    after the upgrade has nothing cached. Run the backfill on a background
+    thread; on-demand callers skip straight to the cache file once it exists.
+    """
+    try:
+        size = _default_scaled_down_size()
+        threading.Thread(
+            target=backfill_scaled_down_images,
+            args=(size,),
+            daemon=True,
+            name="scaled_down_backfill",
+        ).start()
+    except Exception as error_warming_scaled_down_cache:
+        app_logger.exception(f"Failed to start scaled-down cache warmup: {error_warming_scaled_down_cache}")
 
 
 
