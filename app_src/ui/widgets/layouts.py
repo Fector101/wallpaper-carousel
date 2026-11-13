@@ -168,17 +168,13 @@ def get_dimensions(bypass_android_version=False):
         WindowInsetsType = autoclass("android.view.WindowInsets$Type")
         #boot_log("sm: ui.widgets.layouts status_bar_height and nav_bar_height retrieval started")
         # +0.464s
-        window = activity.getWindow()
-        decor = window.getDecorView()
+        # t = time.time() # strange it only records 0.0076
+        decor = activity.getWindow().getDecorView()
         insets = decor.getRootWindowInsets()
         if insets:
-            status_bar_height = insets.getInsets(
-                WindowInsetsType.statusBars()
-            ).top
-
-            nav_bar_height = insets.getInsets(
-                WindowInsetsType.navigationBars()
-            ).bottom
+            status_bar_height = insets.getInsets(WindowInsetsType.statusBars()).top
+            nav_bar_height = insets.getInsets( WindowInsetsType.navigationBars() ).bottom
+        # print(f"------------------------------->{time.time()-t}")
         #boot_log("sm: ui.widgets.layouts status_bar_height and nav_bar_height retrieved")
 
     except Exception as Error_using_first_method_to_get_Status_Bar_and_Nav_Bar_Height:

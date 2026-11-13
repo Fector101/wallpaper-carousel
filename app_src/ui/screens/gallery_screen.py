@@ -1144,7 +1144,8 @@ class GalleryScreen(MyMDScreen):
         # if selected_image:
         #     selected_image.selected = True
         #     self.multi_select_manager.update_selection_count()
-        self.select_menu.dismiss()
+        if self.select_menu: # the menu isn't created if user does not click on it
+            self.select_menu.dismiss()
 
     def initialize_tabs(self, no_clock=False, has_files=True):
         if hasattr(self.app, "bottom_bar") and self.app.bottom_bar:
