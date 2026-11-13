@@ -1104,15 +1104,8 @@ def get_or_create_scaled_down_image(src, size):
         return None
     if not size:
         from kivy.core.window import Window
-        running_app = MDApp.get_running_app()
-        screen_manager = running_app.sm
-        full_screen = screen_manager.full_screen
-        carousel = full_screen.carousel
         win_w, win_h = Window.size
-        if carousel:
-            carousel_height = carousel.size[1]
-        else:
-            carousel_height=win_h*0.8
+        carousel_height=win_h*0.8
         size = (win_w, carousel_height)
 
     try:

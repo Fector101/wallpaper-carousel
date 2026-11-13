@@ -971,9 +971,9 @@ def register_connectivity_receiver():
         return
     try:
         from android_notify.internal.java_classes import autoclass
-        from android_notify.config import get_python_activity_context
+        from android_notify.config import get_python_activity_context, get_package_name
         context = get_python_activity_context()
-        ConnectivityReceiver = autoclass('org.wally.waller.ConnectivityReceiver')
+        ConnectivityReceiver = autoclass(get_package_name()+'.ConnectivityReceiver')
         receiver = ConnectivityReceiver()
         IntentFilter = autoclass('android.content.IntentFilter')
         filter_ = IntentFilter()

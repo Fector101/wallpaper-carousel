@@ -43,14 +43,10 @@ class ScreenManager(MDScreenManager):
             "update_screen": self.__create_download_apk_screen,
             "stats": self.__create_stats_screen,
             "preview": self.__create_preview_screen,
+            "welcome": self.__create_welcome_screen,
         }
         self.__register_rotate_listener()
 
-    def ensure_welcome_screen(self):
-        if self.welcome_screen is None:
-            self.welcome_screen = WelcomeScreen()
-            self.add_widget(self.welcome_screen)
-            #boot_log("sm: WelcomeScreen built")
     def __register_rotate_listener(self):
         if on_android_platform():
             try:
@@ -75,8 +71,6 @@ class ScreenManager(MDScreenManager):
 
     def btm_nav_patch(self, screen_name):
         is_fullscreen = screen_name in ["welcome", "fullscreen", "logs", "update_screen","stats","preview"]
-        if screen_name == "welcome":
-            self.ensure_welcome_screen()
         if is_fullscreen and self.app.bottom_bar:
             self.app.bottom_bar.hide(animation=False, hidden_by=self)
         elif self.app.bottom_bar:
@@ -201,7 +195,7 @@ class ScreenManager(MDScreenManager):
         self.preview_screen= PreviewScreen()
         return self.preview_screen
 
-    def __create_preview_screen(self):
+    def __create_welcome_screen(self):
         from ui.screens.welcome_screen import WelcomeScreen
         self.welcome_screen= WelcomeScreen()
         return self.welcome_screen

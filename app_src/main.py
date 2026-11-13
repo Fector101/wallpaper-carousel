@@ -91,7 +91,6 @@ class WallpaperCarouselApp(MDApp):
         )
         per = NotificationHandler.has_permission()
         if not per:
-            self.sm.ensure_welcome_screen()
             self.sm.current = "welcome"
         else:
             self.sm.current = "thumbs"
@@ -99,8 +98,10 @@ class WallpaperCarouselApp(MDApp):
         root_layout.add_widget(self.bottom_bar)
         self.bottom_bar.bind_change()
 
+        self.sm.ensure_screen("thumbs")
         self.btm_sheet = MyBtmSheet(change_number_or_cols=self.sm.gallery_screen.change_amount_of_columns)
         root_layout.add_widget(self.btm_sheet)
+        Clock.schedule_once(self.on_startup_clock_scheduler, 1)
 
         return root_layout
 
@@ -350,6 +351,13 @@ class WallpaperCarouselApp(MDApp):
     def _sync_theme_colors(self, *args):
         _theme_colors.theme = self.device_theme
 
+
+    def on_startup_clock_scheduler(self, dt):
+        
+        Clock.schedule_once(self._get_tabs_for_gallery_screen, 0.7)
+
+    def _get_tabs_for_gallery_screen(self, dt):
+        self.sm.gallery_screen.initialize_tabs(no_clock=True)
 
 if __name__ == '__main__':
     try:

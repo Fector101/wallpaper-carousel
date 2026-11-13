@@ -1091,7 +1091,7 @@ class GalleryScreen(MyMDScreen):
         #
         # self.add_widget(self.bottom_bar)
         #boot_log("gallery: initialize_tabs start")
-        self.initialize_tabs(no_clock=True)
+        # self.initialize_tabs(no_clock=True)
         #boot_log("gallery: initialize_tabs done")
         # self.btm_sheet = MyBtmSheet()
         # self.add_widget(self.btm_sheet)
