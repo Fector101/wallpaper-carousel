@@ -691,7 +691,7 @@ class MultiSelectManager(MDFloatLayout,PlaceOnMainScreen):
         super().show()
 
         self.gallery_screen.ids.head_section.disabled = True
-        if self.gallery_screen and hasattr(self.gallery_screen.ids, "chooser_btn"):
+        if self.gallery_screen.ids.chooser_btn:
             self.gallery_screen.ids.chooser_btn.opacity = 0
             self.gallery_screen.ids.chooser_btn.disabled = True
 
@@ -1096,21 +1096,9 @@ class GalleryScreen(MyMDScreen):
         # self.btm_sheet = MyBtmSheet()
         # self.add_widget(self.btm_sheet)
         # self.load_saved()
-        
-        self.multi_select_manager = MultiSelectManager(gallery_screen=self)
-        self._menu_items = [
-            MenuItem(
-                text="Enter select mode",
-                on_release=self.enter_select_mode,
-                icon="check-all",
-            ),
-        ]
-        self.select_menu = DropdownMenu(
-            caller=self.ids.select_mode_button,
-            items=self._menu_items,
-        )
-        self._update_menu_theme(None, self.app.device_theme)
-        self.app.bind(device_theme=self._update_menu_theme)
+        self.multi_select_manager =None
+        self.select_menu = None
+
         # Clock.schedule_once(self.enter_select_mode, 0) # hot reload
 
     def _update_menu_theme(self, _, theme):
@@ -1123,9 +1111,34 @@ class GalleryScreen(MyMDScreen):
         self.select_menu.apply_theme(bg_color, text_color, header_bg_color=header_bg, theme=theme)
 
     def open_select_mode_menu(self, *args):
+        self.ensure_select_menu()
         self.select_menu.open()
 
+    def ensure_select_menu(self):
+        if self.select_menu:
+            return
+        self._menu_items = [
+                    MenuItem(
+                        text="Enter select mode",
+                        on_release=self.enter_select_mode,
+                        icon="check-all",
+                    ),
+        ]
+        self.select_menu = DropdownMenu(
+                    caller=self.ids.select_mode_button,
+                    items=self._menu_items,
+        )
+
+        self._update_menu_theme(None, self.app.device_theme)
+        self.app.bind(device_theme=self._update_menu_theme)
+        
+    def ensure_multi_select_widget(self):
+        if self.multi_select_manager:
+            return
+        self.multi_select_manager = MultiSelectManager(gallery_screen=self)
+    
     def enter_select_mode(self, *args):
+        self.ensure_multi_select_widget()
         # selected_image = args[0] if args and isinstance(args[0], PreviewImage) else None
         self.multi_select_manager.show()
         # if selected_image:
