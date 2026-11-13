@@ -141,7 +141,7 @@ class WallpaperCarouselApp(MDApp):
             error_message = str(error_finish_image_operation_init)
             Clock.schedule_once(lambda dt: toast(error_message))
 
-    def on_start(self):
+    def start_up_jobs(self, dt):
         Clock.schedule_once(lambda dt: self.setup_service(), 2)
         Clock.schedule_interval(lambda dt: self.monitor_dark_and_light_device_change(), 1)
         warm_scaled_down_cache()
@@ -355,6 +355,7 @@ class WallpaperCarouselApp(MDApp):
     def on_startup_clock_scheduler(self, dt):
         
         Clock.schedule_once(self._get_tabs_for_gallery_screen, 0.7)
+        Clock.schedule_once(self.start_up_jobs, 1)
 
     def _get_tabs_for_gallery_screen(self, dt):
         self.sm.gallery_screen.initialize_tabs(no_clock=True)

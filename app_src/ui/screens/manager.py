@@ -102,8 +102,8 @@ class ScreenManager(MDScreenManager):
 
     def open_image_in_full_screen(self, index):
         self.transition = NoTransition()
-        self.full_screen.carousel_index = index
         self.current = "fullscreen"
+        self.full_screen.carousel_index = index
         self.full_screen.update_images(index)
 
     def on_rotation(self, rotation):
