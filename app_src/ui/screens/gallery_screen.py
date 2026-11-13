@@ -1054,6 +1054,7 @@ class MultiselectBottom(Row):
         # Touch is outside our bounds, pass it through to the rest of the widget tree
         return super().on_touch_down(touch)
 
+
 class GalleryScreen(MyMDScreen):
     current_tab = StringProperty(GalleryTabs.BOTH.value)
     wallpapers = ListProperty([])
