@@ -101,7 +101,7 @@ class WallpaperCarouselApp(MDApp):
         self.sm.ensure_screen("thumbs")
         self.btm_sheet = MyBtmSheet(change_number_or_cols=self.sm.gallery_screen.change_amount_of_columns)
         root_layout.add_widget(self.btm_sheet)
-        Clock.schedule_once(self.on_startup_clock_scheduler, 1)
+        # Clock.schedule_once(self.on_startup_clock_scheduler, 1)
 
         return root_layout
 
@@ -111,11 +111,11 @@ class WallpaperCarouselApp(MDApp):
 
         self.root_layout = self.build_ui()
 
-        threading.Thread(
-            target=self._init_image_operation_on_background_thread,
-            daemon=True,
-            name="image_operation_thread",
-        ).start()
+        # threading.Thread(
+        #     target=self._init_image_operation_on_background_thread,
+        #     daemon=True,
+        #     name="image_operation_thread",
+        # ).start()
 
         return self.root_layout
 
