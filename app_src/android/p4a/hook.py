@@ -37,19 +37,6 @@ def generate_receivers(package_: str = None) -> str:
             actions=["android.appwidget.action.APPWIDGET_UPDATE"],
             meta_resource="@xml/image_widget_info",
         ),
-        Receiver(
-            name="SimpleWidget",
-            label="Simple Text",
-            actions=["android.appwidget.action.APPWIDGET_UPDATE"],
-            meta_resource="@xml/widgetproviderinfo",
-        ),
-        Receiver(
-            name="ButtonWidget",
-            label="Counter Button Demo",
-            actions=["android.appwidget.action.APPWIDGET_UPDATE"],
-            meta_resource="@xml/button_widget_provider",
-        ),
-
         # Receiver(
         #     name="TheReceiver",
         #     actions=["ALARM_ACTION"]
