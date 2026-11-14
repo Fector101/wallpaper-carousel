@@ -66,6 +66,7 @@ class ScreenManager(MDScreenManager):
                 traceback.print_exc()
 
     def on_current(self,instance, value):
+        self.ensure_screen(value)
         self.btm_nav_patch(value)
         super().on_current(instance=instance,value=value)
 
@@ -145,10 +146,6 @@ class ScreenManager(MDScreenManager):
         else:
             text = "UNKNOWN"
         return text
-
-    def on_current(self, instance, value):
-        self.ensure_screen(value)
-        super().on_current(instance, value)
 
     def ensure_screen(self, name: str):
         """Build and add the screen called ``name`` if it does not exist yet."""

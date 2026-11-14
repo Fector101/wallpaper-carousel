@@ -977,10 +977,10 @@ def test_monitor_never_propagates_an_unresolvable_device_theme():
     app.device_theme = "light"
     app.theme_preference = "adaptive"
 
-    with mock.patch.object(main, "is_device_on_light_mode", return_value="unknown"):
+    with mock.patch("ui.theming.is_device_on_light_mode", return_value="unknown"):
         assert app.monitor_dark_and_light_device_change() == "light"
 
-    with mock.patch.object(main, "is_device_on_light_mode", return_value="dark"):
+    with mock.patch("ui.theming.is_device_on_light_mode", return_value="dark"):
         assert app.monitor_dark_and_light_device_change() == "dark"
 
     # ThemeColors.on_theme indexes _COLORS[value] and would raise KeyError otherwise

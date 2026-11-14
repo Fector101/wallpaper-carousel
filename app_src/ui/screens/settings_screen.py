@@ -1774,6 +1774,7 @@ class SettingsScreen(MyMDScreen):
         self.start_on_boot = value
 
     def check_for_update(self, *args):
+        self.app.sm.ensure_screen("update_screen")
         from ui.screens.download_apk_screen import thread_check_for_update
         spinner_layout = LoadingLayout()
 

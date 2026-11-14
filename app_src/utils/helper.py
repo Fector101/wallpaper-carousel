@@ -1,7 +1,6 @@
 # DO NOT IMPORT ANY UI THING TOP GLOBAL LEVEL
 import sys
 
-from utils.logger import app_logger
 from utils.platform_compat import on_android_platform as _on_android_platform, on_pydroid_app as _on_pydroid_app, LazyJavaClass as _LazyJavaClass, toast as _toast
 
 if _on_android_platform():
@@ -269,6 +268,7 @@ class Service:
     def start(self):
         import json
         from android_notify.config import get_package_name
+        from utils.logger import app_logger
 
         if not _on_android_platform():
             self.__run_service_file()
@@ -967,6 +967,7 @@ def remove_images_from_app(abs_paths: list):
 
 
 def register_connectivity_receiver():
+    from utils.logger import app_logger
     if not _on_android_platform():
         return
     try:
