@@ -254,3 +254,16 @@ jobs:
 
 
 ```
+PKG=app.vercel.androidnotify
+```shell
+PKG=org.wally.waller
+REL=main.py  # e.g. change to your file
+adb push app_src/$REL /data/local/tmp/tmp.py && \
+adb shell "run-as $PKG sh -c 'cp /data/local/tmp/tmp.py files/app/$REL'" && \
+adb shell "run-as $PKG sh -c 'rm -f files/app/${REL%.*}.pyc'" 2>/dev/null && \
+adb shell am force-stop $PKG && adb logcat -c && \
+adb shell monkey -p $PKG -c android.intent.category.LAUNCHER 1 >/dev/null && \
+echo "launched; waiting for python logs..." && \
+for i in $(seq 1 30); do adb logcat -d -s python 2>/dev/null | grep -q . && break; sleep 1; done && \
+adb logcat -s python
+```

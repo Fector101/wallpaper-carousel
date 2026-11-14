@@ -1,4 +1,4 @@
-from utils.boot_log import boot_log
+#from utils.boot_log import boot_log
 import time
 import traceback
 
@@ -26,7 +26,7 @@ from kivy.uix.widget import Widget
 
 from android_notify.internal.java_classes import BuildVersion
 from utils.logger import app_logger
-from utils.constants import theme_colors
+from ui.theming import theme_colors
 
 # Add this before creating your main widget or in your build method
 Window.softinput_mode = 'below_target' # or 'pan'
@@ -75,8 +75,8 @@ def _set_system_ui_visibility(hide):
 class Row(MDBoxLayout):
     my_widgets = ListProperty([])
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self,  *args,**kwargs):
+        super().__init__( *args,**kwargs)
         for each_widget in self.my_widgets:
             self.add_widget(each_widget)
 
@@ -84,8 +84,8 @@ class Row(MDBoxLayout):
 class Column(MDBoxLayout):
     my_widgets = ListProperty([])
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self,  *args,**kwargs):
+        super().__init__( *args,**kwargs)
         self.orientation = "vertical"
         for each_widget in self.my_widgets:
             self.add_widget(each_widget)
@@ -166,20 +166,16 @@ def get_dimensions(bypass_android_version=False):
 
     try:
         WindowInsetsType = autoclass("android.view.WindowInsets$Type")
-        boot_log("sm: ui.widgets.layouts status_bar_height and nav_bar_height retrieval started")
+        #boot_log("sm: ui.widgets.layouts status_bar_height and nav_bar_height retrieval started")
         # +0.464s
-        window = activity.getWindow()
-        decor = window.getDecorView()
+        # t = time.time() # strange it only records 0.0076
+        decor = activity.getWindow().getDecorView()
         insets = decor.getRootWindowInsets()
         if insets:
-            status_bar_height = insets.getInsets(
-                WindowInsetsType.statusBars()
-            ).top
-
-            nav_bar_height = insets.getInsets(
-                WindowInsetsType.navigationBars()
-            ).bottom
-        boot_log("sm: ui.widgets.layouts status_bar_height and nav_bar_height retrieved")
+            status_bar_height = insets.getInsets(WindowInsetsType.statusBars()).top
+            nav_bar_height = insets.getInsets( WindowInsetsType.navigationBars() ).bottom
+        # print(f"------------------------------->{time.time()-t}")
+        #boot_log("sm: ui.widgets.layouts status_bar_height and nav_bar_height retrieved")
 
     except Exception as Error_using_first_method_to_get_Status_Bar_and_Nav_Bar_Height:
         app_logger.exception(Error_using_first_method_to_get_Status_Bar_and_Nav_Bar_Height)
@@ -286,8 +282,10 @@ class PlaceOnMainScreen:
 
     def hide(self,*_):
         self._clear_back_state()
-        Window.unbind(on_key_down=self._on_key_down)
-        Window.unbind(on_key_up=self._on_key_up)
+        Window.unbind(
+            on_key_down=self._on_key_down,
+            on_key_up=self._on_key_up
+        )
         # app_logger.info("[BackKey] PlaceOnMainScreen.hide() -> unbound on_key_down + on_key_up")
         parent = self.parent
         if parent:
@@ -460,14 +458,18 @@ class MyMDScreen(MDScreen):
             self._back_key_scheduled = None
 
     def on_enter(self, *args):
-        Window.bind(on_key_down=self._on_key_down)
-        Window.bind(on_key_up=self._on_key_up)
+        Window.bind(
+            on_key_down=self._on_key_down,
+            on_key_up=self._on_key_up
+        )
         # app_logger.info(f"[BackKey] MyMDScreen.on_enter screen='{self.name}' -> bound on_key_down + on_key_up")
 
     def on_leave(self, *args):
         self._clear_back_state()
-        Window.unbind(on_key_down=self._on_key_down)
-        Window.unbind(on_key_up=self._on_key_up)
+        Window.unbind(
+            on_key_down=self._on_key_down,
+            on_key_up=self._on_key_up
+        )
         # app_logger.info(f"[BackKey] MyMDScreen.on_leave screen='{self.name}' -> unbound on_key_down + on_key_up")
     
     def show_system_ui(self):

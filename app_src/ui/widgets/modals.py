@@ -16,7 +16,7 @@ from kivymd.uix.gridlayout import MDGridLayout
 
 from ui.widgets.layouts import Column, AdaptiveLabel, Row, PlaceOnMainScreen
 from utils.config_manager import ConfigManager
-from utils.constants import theme_colors
+from ui.theming import theme_colors
 from utils.helper import load_kv_file  # type
 from utils.image_operations import get_image_info
 from utils.logger import app_logger

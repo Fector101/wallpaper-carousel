@@ -26,7 +26,7 @@ from kivy.uix.widget import Widget  # noqa: E402
 from ui.screens import preview_screen as preview_module  # noqa: E402
 from ui.widgets.modals import HowToPopUpModal  # noqa: E402
 from utils.config_manager import ConfigManager  # noqa: E402
-from utils.constants import theme_colors  # noqa: E402
+from ui.theming import theme_colors  # noqa: E402
 
 FONT_DIR = APP_SRC / "assets" / "fonts" / "Roboto_Mono" / "static"
 

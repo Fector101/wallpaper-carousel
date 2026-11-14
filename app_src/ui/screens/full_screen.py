@@ -115,7 +115,7 @@ class PictureButton(ButtonBehavior,MDRelativeLayout):
         elif self.images[index] == self.images[1]:  # Only Noon
             tab_name = GalleryTabs.NOON.value
         elif self.images[index] == self.images[2]:  # Only Day
-            tab_name = GalleryTabs.DAY.value
+                tab_name = GalleryTabs.DAY.value
 
         return tab_name
 

@@ -13,7 +13,7 @@ from datetime import datetime, time as dt_time
 
 from pythonosc import dispatcher, osc_server, udp_client
 from android_notify import Notification
-from android_notify.config import get_python_activity_context, on_android_platform, _get_jnius, get_python_service
+from android_notify.config import get_python_activity_context, on_android_platform, _get_jnius, get_python_service, get_package_name
 from android_notify.internal.java_classes import BitmapFactory, BuildVersion
 from android_widgets import Layout, RemoteViews, AppWidgetManager
 
@@ -112,7 +112,7 @@ def register_screen_receiver():
     activity = get_python_activity_context()  # PythonActivity.mActivity
 
     # Import your Java BroadcastReceiver
-    DetectReceiver = autoclass('org.wally.waller.DetectReceiver')
+    DetectReceiver = autoclass(f'{get_package_name()}.DetectReceiver')
     receiver = DetectReceiver()  # create an instance
 
     # Create the IntentFilter
@@ -258,7 +258,7 @@ class WallpaperServerReceiver:
     def __unregister_screen_state_receiver():
         try:
             app_logger.debug("trying to unregister")
-            DetectReceiver = autoclass('org.wally.waller.DetectReceiver')
+            DetectReceiver = autoclass(f'{get_package_name}.DetectReceiver')
             receiver = DetectReceiver()
             unregister_screen_receiver(receiver)
         except Exception as error_getting_screen_receiver:
@@ -288,7 +288,7 @@ class WallpaperServerReceiver:
         if not self.next_wallpaper_path:  # check if wallpaper already set from on wake
             self.choseAndShowPreviewForNextWallpaper()
 
-        print(f"running on wake")
+        app_logger.info(f"running on wake")
         marked_time = time.monotonic()
         while self.live and self.using_on_wake and self.running_on_wake_loop:
             time.sleep(2)
@@ -304,7 +304,7 @@ class WallpaperServerReceiver:
                 marked_time = time.monotonic()
                 prevent_log_file_overflow()
                 
-        print(
+        app_logger.debug(
             f"ended on wake live: {self.live}, using_on_wake: {self.using_on_wake}, running_on_wake_loop: {self.running_on_wake_loop}")
         self.running_on_wake_loop = False
 

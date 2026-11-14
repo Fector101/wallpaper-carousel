@@ -1,5 +1,5 @@
-from utils.boot_log import boot_log
 import traceback
+from typing import Callable
 
 from android_notify.internal.java_classes import autoclass
 
@@ -14,58 +14,39 @@ from utils.android import DisplayListener
 from utils.logger import app_logger
 
 from utils.model import get_app
-from ui.screens.gallery_screen import GalleryScreen
-from ui.screens.settings_screen import SettingsScreen
-from ui.screens.full_screen import FullscreenScreen
-from ui.screens.welcome_screen import WelcomeScreen
-from ui.screens.logs_screen import LogsScreen
-from ui.screens.download_apk_screen import DownloadApkScreen
-from ui.screens.stats_screen import StatsScreen
-from ui.screens.preview_screen import PreviewScreen
-boot_log("sm: MDScreenManager import done")
+
+
+
+
+
+
+#boot_log("sm: MDScreenManager import done")
+
+# A screen name and a function that takes no arguments and returns a Screen.
+ScreenFactory = Callable[[], MyMDScreen]
+ScreenFactories = dict[str, ScreenFactory]
 
 
 class ScreenManager(MDScreenManager):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        boot_log("sm: init start")
+        #boot_log("sm: init start")
         self.app = get_app()
         self.welcome_screen = None
-        self.gallery_screen = GalleryScreen()
-        boot_log("sm: GalleryScreen done")
-        self.full_screen = FullscreenScreen()
-        boot_log("sm: FullscreenScreen done")
-        self.settings_screen = SettingsScreen()
-        boot_log("sm: SettingsScreen done")
-        self.log_screen = LogsScreen()
-        boot_log("sm: LogsScreen done")
-        self.download_apk_screen = DownloadApkScreen()
-        boot_log("sm: DownloadApkScreen done")
-        self.stats_screen = StatsScreen()
-        boot_log("sm: StatsScreen done")
-        self.preview_screen= PreviewScreen()
-        boot_log("sm: PreviewScreen done")
 
-        self.add_widget(self.gallery_screen)
-        self.add_widget(self.full_screen)
-        self.add_widget(self.settings_screen)
-        self.add_widget(self.log_screen)
-        self.add_widget(self.download_apk_screen)
-        self.add_widget(self.stats_screen)
-        self.add_widget(self.preview_screen)
-        boot_log("sm: screens added")
+        self._screen_factories: ScreenFactories = {
+            "thumbs": self.__create_gallery_screen,
+            "fullscreen": self.__create_full_screen,
+            "settings": self.__create_settings_screen,
+            "logs": self.__create_logs_screen,
+            "update_screen": self.__create_download_apk_screen,
+            "stats": self.__create_stats_screen,
+            "preview": self.__create_preview_screen,
+            "welcome": self.__create_welcome_screen,
+        }
         self.__register_rotate_listener()
-        boot_log("sm: rotate listener done")
-        # self.__run_rotate_method_for_each_screen("BOTTOM")
 
-        # self.current = "update_screen"
-
-    def ensure_welcome_screen(self):
-        if self.welcome_screen is None:
-            self.welcome_screen = WelcomeScreen()
-            self.add_widget(self.welcome_screen)
-            boot_log("sm: WelcomeScreen built")
     def __register_rotate_listener(self):
         if on_android_platform():
             try:
@@ -85,13 +66,12 @@ class ScreenManager(MDScreenManager):
                 traceback.print_exc()
 
     def on_current(self,instance, value):
+        self.ensure_screen(value)
         self.btm_nav_patch(value)
         super().on_current(instance=instance,value=value)
 
     def btm_nav_patch(self, screen_name):
         is_fullscreen = screen_name in ["welcome", "fullscreen", "logs", "update_screen","stats","preview"]
-        if screen_name == "welcome":
-            self.ensure_welcome_screen()
         if is_fullscreen and self.app.bottom_bar:
             self.app.bottom_bar.hide(animation=False, hidden_by=self)
         elif self.app.bottom_bar:
@@ -123,8 +103,8 @@ class ScreenManager(MDScreenManager):
 
     def open_image_in_full_screen(self, index):
         self.transition = NoTransition()
-        self.full_screen.carousel_index = index
         self.current = "fullscreen"
+        self.full_screen.carousel_index = index
         self.full_screen.update_images(index)
 
     def on_rotation(self, rotation):
@@ -166,3 +146,54 @@ class ScreenManager(MDScreenManager):
         else:
             text = "UNKNOWN"
         return text
+
+    def ensure_screen(self, name: str):
+        """Build and add the screen called ``name`` if it does not exist yet."""
+        if not name or self.has_screen(name):
+            return
+        if name not in self._screen_factories:
+            raise KeyError(f"No screen registered for '{name}'")
+        screen = self._screen_factories[name]()
+        screen.name = name
+        self.add_widget(screen)
+
+    def __create_gallery_screen(self):
+        from ui.screens.gallery_screen import GalleryScreen
+        self.gallery_screen = GalleryScreen()
+        return self.gallery_screen
+
+    def __create_full_screen(self):
+        from ui.screens.full_screen import FullscreenScreen
+        self.full_screen = FullscreenScreen()
+        return self.full_screen
+
+    def __create_settings_screen(self):
+        from ui.screens.settings_screen import SettingsScreen
+        self.settings_screen = SettingsScreen()
+        return self.settings_screen
+
+    def __create_logs_screen(self):
+        from ui.screens.logs_screen import LogsScreen
+        self.log_screen = LogsScreen()
+        return self.log_screen
+
+    def __create_download_apk_screen(self):
+        from ui.screens.download_apk_screen import DownloadApkScreen
+        self.download_apk_screen = DownloadApkScreen()
+        return self.download_apk_screen
+
+    def __create_stats_screen(self):
+        from ui.screens.stats_screen import StatsScreen
+        self.stats_screen = StatsScreen()
+        return self.stats_screen
+
+    def __create_preview_screen(self):
+        from ui.screens.preview_screen import PreviewScreen
+        self.preview_screen= PreviewScreen()
+        return self.preview_screen
+
+    def __create_welcome_screen(self):
+        from ui.screens.welcome_screen import WelcomeScreen
+        self.welcome_screen= WelcomeScreen()
+        return self.welcome_screen
+

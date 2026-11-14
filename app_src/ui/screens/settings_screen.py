@@ -24,7 +24,8 @@ from ui.widgets.modals import CarouselConfirmPopup, MyTextButton
 
 from utils.android import add_home_screen_widget
 from utils.config_manager import ConfigManager
-from utils.constants import DEV, ServiceStatus, theme_colors, VERSION
+from ui.theming import theme_colors
+from utils.constants import DEV, ServiceStatus, VERSION
 from utils.helper import Service, appFolder, smart_convert_minutes, is_running_debug_build
 from utils.image_operations import get_or_create_scaled_down_image, is_loadable_image
 from utils.logger import app_logger
@@ -53,6 +54,7 @@ def start_short_task_service():
 
 def schedule_workmanager(seconds=20, message="Arg from Python"):
     from jnius import autoclass
+    from android_notify.config import get_package_name
 
     PythonActivity = autoclass('org.kivy.android.PythonActivity')
     WorkManager = autoclass('androidx.work.WorkManager')
@@ -61,7 +63,7 @@ def schedule_workmanager(seconds=20, message="Arg from Python"):
     )
     DataBuilder = autoclass('androidx.work.Data$Builder')
     TimeUnit = autoclass('java.util.concurrent.TimeUnit')
-    MyWorker = autoclass('org.wally.waller.MyWorker')
+    MyWorker = autoclass(f'{get_package_name()}.MyWorker')
     context = PythonActivity.mActivity
 
     data = (
@@ -1772,6 +1774,7 @@ class SettingsScreen(MyMDScreen):
         self.start_on_boot = value
 
     def check_for_update(self, *args):
+        self.app.sm.ensure_screen("update_screen")
         from ui.screens.download_apk_screen import thread_check_for_update
         spinner_layout = LoadingLayout()
 

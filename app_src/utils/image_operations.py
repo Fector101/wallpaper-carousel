@@ -1,4 +1,4 @@
-from utils.boot_log import boot_log
+#from utils.boot_log import boot_log
 import os, time
 import shutil
 import threading
@@ -27,26 +27,26 @@ def _get_mActivity():
     global _mActivity
     with _mActivity_lock:
         if _mActivity is None:
-            boot_log("image_operations: _get_mActivity start")
+            #boot_log("image_operations: _get_mActivity start")
             PythonActivity = _LazyJavaClass("PythonActivity", "org.kivy.android.PythonActivity")
             _mActivity = PythonActivity.mActivity
-            boot_log("image_operations: _get_mActivity done")
+            #boot_log("image_operations: _get_mActivity done")
     return _mActivity
 
 def _get_content_resolver():
     global _content_resolver
     with _content_resolver_lock:
         if _content_resolver is None:
-            boot_log("image_operations: _get_content_resolver start")
+            #boot_log("image_operations: _get_content_resolver start")
             _content_resolver = _get_mActivity().getContentResolver()
-            boot_log("image_operations: _get_content_resolver done")
+            #boot_log("image_operations: _get_content_resolver done")
     return _content_resolver
 
 def _get_package_name():
-    boot_log("image_operations: _get_package_name start")
+    #boot_log("image_operations: _get_package_name start")
     from android_notify.config import get_package_name
     result = get_package_name()
-    boot_log("image_operations: _get_package_name done")
+    #boot_log("image_operations: _get_package_name done")
     return result
 
 if _on_android_platform():
@@ -76,9 +76,9 @@ if _on_android_platform():
     ArrayList = _LazyJavaClass("ArrayList", "java.util.ArrayList")
     ContentUris = _LazyJavaClass("ContentUris", "android.content.ContentUris")
 
-boot_log("image_operations: lazy classes created")
+#boot_log("image_operations: lazy classes created")
 
-boot_log("image_operations: creating configmanager and dirs")
+#boot_log("image_operations: creating configmanager and dirs")
 
 my_config = ConfigManager()
 app_dir = Path(appFolder())
@@ -89,7 +89,7 @@ wallpapers_dir.mkdir(parents=True, exist_ok=True)
 scaled_down_images_dir = app_dir / "scaled_down_images"
 scaled_down_images_dir.mkdir(parents=True, exist_ok=True)
 
-boot_log("image_operations: configmanager and dirs done")
+#boot_log("image_operations: configmanager and dirs done")
 
 _ANDROID_THUMBNAIL_LOCK = threading.Lock()
 _SCALED_IMG_LOCK = threading.Lock()
@@ -221,7 +221,7 @@ def seed_numbered_wallpapers():
 
 class ImageOperation:
     def __init__(self,load_saved):
-        boot_log("image_operations: ImageOperation.__init__")
+        #boot_log("image_operations: ImageOperation.__init__")
         self.app = MDApp.get_running_app()
         self.load_saved = load_saved
         self.user_carousel_size = [0,0]
@@ -356,7 +356,7 @@ class ImageOperation:
                             max_height=carousel_size[1],
                         )
                         t3 = time.time()
-                        print(f"image_operations: process_one [{i+1}/{len(uris)}] meta={t1-t0:.3f}s copy={t2-t1:.3f}s thumb={t3-t2:.3f}s")
+                        # print(f"image_operations: process_one [{i+1}/{len(uris)}] meta={t1-t0:.3f}s copy={t2-t1:.3f}s thumb={t3-t2:.3f}s")
                         with images_lock:
                             new_images.append(str(destination_path))
                         # app_logger.info(
@@ -510,7 +510,6 @@ def get_uri_name_and_path(uri):
                     p = cursor.getString(data_idx)
                     if p and os.path.exists(p):
                         path = p
-                        print(f"path: {path}")
                 # name
                 name_idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                 if name_idx != -1:
@@ -631,12 +630,12 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
         bitmap = BitmapFactory.decodeFile(src_path_)
         if bitmap is None:
             raise Exception("Failed to decode image")
-        print(f"  [thumb] decodeFile {time.time()-_t:.3f}s") # 0.590s
+        # print(f"  [thumb] decodeFile {time.time()-_t:.3f}s") # 0.590s
 
         _t2 = time.time()
         # 2. Convert to RGB (ARGB_8888 ≈ RGB)
         bitmap = bitmap.copy(BitmapConfig.ARGB_8888, False)
-        print(f"  [thumb] bitmap.copy {time.time()-_t2:.3f}s")#0.065s
+        # print(f"  [thumb] bitmap.copy {time.time()-_t2:.3f}s")#0.065s
 
         # 3. Compute thumbnail size (keep aspect ratio)
         _t2 = time.time()
@@ -653,19 +652,19 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
 
         # High-quality resize (Android internal filter)
         resized = Bitmap.createScaledBitmap(bitmap, new_w, new_h, True)
-        print(f"  [thumb] createScaledBitmap {time.time()-_t2:.3f}s")#0.568s
+        # print(f"  [thumb] createScaledBitmap {time.time()-_t2:.3f}s")#0.568s
 
         # 4. Save as JPEG
         _t2 = time.time()
         out = FileOutputStream(destination_path)
         resized.compress(CompressFormat.JPEG, quality, out)
         out.close()
-        print(f"  [thumb] compress+write {time.time()-_t2:.3f}s")#0.099s
+        # print(f"  [thumb] compress+write {time.time()-_t2:.3f}s")#0.099s
 
         # Cleanup
         bitmap.recycle()
         resized.recycle()
-        print(f"  [thumb] android total {time.time()-_t:.3f}s")#1.331s
+        # print(f"  [thumb] android total {time.time()-_t:.3f}s")#1.331s
 
     if str(src_path).endswith(".webp"):
         return str(src_path)
@@ -769,8 +768,8 @@ def create_scaled_down_img(src_path, dest_path, max_width, max_height, quality=7
         resized.compress(CompressFormat.JPEG, quality, out)
         out.close()
 
-        print(f"src_path: {format_size(os.path.getsize(src_path))}")
-        print(f"dest_path: {format_size(os.path.getsize(dest_path))}")
+        # print(f"src_path: {format_size(os.path.getsize(src_path))}")
+        # print(f"dest_path: {format_size(os.path.getsize(dest_path))}")
 
         bitmap.recycle()
         resized.recycle()
@@ -842,7 +841,7 @@ def create_scaled_down_img(src_path, dest_path, max_width, max_height, quality=7
             return str(src_path)
 
     with _SCALED_IMG_LOCK:
-        print(f"{dest_path} os.path.exists(dest_path): {os.path.exists(dest_path)}")
+        # print(f"{dest_path} os.path.exists(dest_path): {os.path.exists(dest_path)}")
         if os.path.exists(dest_path):
             return str(dest_path)
         try:
@@ -1104,15 +1103,8 @@ def get_or_create_scaled_down_image(src, size):
         return None
     if not size:
         from kivy.core.window import Window
-        running_app = MDApp.get_running_app()
-        screen_manager = running_app.sm
-        full_screen = screen_manager.full_screen
-        carousel = full_screen.carousel
         win_w, win_h = Window.size
-        if carousel:
-            carousel_height = carousel.size[1]
-        else:
-            carousel_height=win_h*0.8
+        carousel_height=win_h*0.8
         size = (win_w, carousel_height)
 
     try:
@@ -1303,7 +1295,24 @@ def _compute_in_sample_size(req_width, req_height, src_width, src_height):
             in_sample_size *= 2
     return in_sample_size
 
+def warm_scaled_down_cache():
+    """Generate scaled-down cache images for wallpapers that lack them.
+
+    Old installations predate the scaled-down image cache, so the first launch
+    after the upgrade has nothing cached. Run the backfill on a background
+    thread; on-demand callers skip straight to the cache file once it exists.
+    """
+    try:
+        size = _default_scaled_down_size()
+        threading.Thread(
+            target=backfill_scaled_down_images,
+            args=(size,),
+            daemon=True,
+            name="scaled_down_backfill",
+        ).start()
+    except Exception as error_warming_scaled_down_cache:
+        app_logger.exception(f"Failed to start scaled-down cache warmup: {error_warming_scaled_down_cache}")
 
 
 
-boot_log("image_operations: module imported")
+#boot_log("image_operations: module imported")

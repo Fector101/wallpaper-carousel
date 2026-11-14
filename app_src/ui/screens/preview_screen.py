@@ -13,7 +13,7 @@ class MyScatter(ScatterLayout):
         self.min_scale = 1
         self.pos=(0,0)
         from kivy.graphics import Color, Rectangle
-        from utils.constants import _rgba
+        from ui.theming import _rgba
 
         with self.canvas.before:
             Color(*_rgba(26, 27, 27))
@@ -93,7 +93,7 @@ class PreviewScreen(MyMDScreen):
         from kivymd.uix.button import MDIconButton
         from ui.widgets.loading import HighResLoadingBadge
         from ui.widgets.modals import MyTextButton
-        from utils.constants import theme_colors
+        from ui.theming import theme_colors
 
         self.set_image_data()
         # print("building ui")

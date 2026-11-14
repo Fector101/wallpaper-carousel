@@ -45,7 +45,7 @@ from ui.widgets import layouts as layouts_module  # noqa: E402
 from ui.widgets.layouts import (  # noqa: E402
     BorderMDRelativeLayout, LoadingLayout, SpinningArcWidget,
 )
-from utils.constants import theme_colors  # noqa: E402
+from ui.theming import theme_colors  # noqa: E402
 
 
 @pytest.fixture(scope="module", autouse=True)

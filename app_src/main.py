@@ -1,67 +1,44 @@
-# For optimization: the dark screen shows from here on, so anything above this line
-# is on-screen wait time. The app prints "[INFO   ] [Base        ] Start application
-# main loop" once the Kivy window is up.
-from utils.boot_log import boot_log
-boot_log("main: imports started")
 from utils.helper import write_logs_to_file
-boot_log("main: write_logs_to_file import done")
 write_logs_to_file()
-boot_log("main: write_logs_to_file call done")
-
-
 
 import logging, threading, traceback # +0.024s
 
-from kivy.properties import BooleanProperty, StringProperty, ObjectProperty # +0.997s
-from kivy.utils import platform # +0.001s
-from kivy.clock import Clock # +1.403s
-from kivymd.app import MDApp # +0.955s
-from kivymd.uix.navigationdrawer import MDNavigationLayout # +0.259s
-boot_log("main: kivymd/MDApp imports done")
+from kivy.properties import BooleanProperty, StringProperty, ObjectProperty
+from kivy.utils import platform
+from kivy.clock import Clock
+from kivy.core.window import Window
+from kivy.lang import Builder
+
+from kivymd.app import MDApp
+from kivymd.uix.navigationdrawer import MDNavigationLayout
 
 
-# +0.001s
 from android_notify import NotificationHandler, logger as android_notify_logger
-from android_notify.config import on_android_platform, on_pydroid_app, get_python_activity_context
-boot_log("main: android_notify imports done")
+from android_notify.config import on_android_platform, on_pydroid_app
 
 from ui.screens.manager import ScreenManager
-boot_log("main: local imports done3")
 from ui.widgets.android import toast
 from ui.widgets.buttons import BottomNavigationBar
 from ui.widgets.bottom_sheet import MyBtmSheet
 
-from utils.android import is_device_on_light_mode
 from utils.config_manager import ConfigManager
-from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY, \
-    theme_colors as _theme_colors
-boot_log("main: local imports done2")
-from utils.helper import Service, get_free_port, register_fonts, fix_input_on_linux, \
-    patch_kivymd_switch_press_events, patch_kivymd_hover_on_touch, \
-    patch_kivymd_disabled_text_color, \
-    get_stored_running_ui_server_port, get_stored_running_service_server_port
-boot_log("main: local imports done1")
-from utils.image_operations import ImageOperation, warm_up_android_bitmap_stack # JNI call — app_storage_path() - 0.697s
+from utils.constants import SERVICE_PORT_ARGUMENT_KEY, SERVICE_UI_PORT_ARGUMENT_KEY
+from ui.theming import theme_colors as _theme_colors, get_device_theme
+
+from utils.helper import (Service, get_free_port, register_fonts, fix_input_on_linux, patch_kivymd_for_kivy3,
+                          get_stored_running_ui_server_port, get_stored_running_service_server_port, register_connectivity_receiver)
+from utils.image_operations import ImageOperation, warm_up_android_bitmap_stack, warm_scaled_down_cache
 from utils.logger import app_logger
 from utils.ui_service_bridge import UIListenToServicer, UIMessengerToService
-boot_log("main: local imports done")
 
-android_notify_logger.setLevel(logging.DEBUG if on_android_platform() else logging.ERROR)
+android_notify_logger.setLevel(logging.DEBUG if 0 else logging.ERROR)
 
-fix_input_on_linux()
-patch_kivymd_switch_press_events()
-patch_kivymd_hover_on_touch()
-
-# Must run before any MDLabel is built, so that the kv overrides below it
-# apply; the carousel buttons rely on text_color_disabled.
-patch_kivymd_disabled_text_color()
+patch_kivymd_for_kivy3()
 register_fonts()
-boot_log("--------------main: module setup done--------------")
 
 if platform == 'linux':
-    from kivy.core.window import Window # +0.738s
+    fix_input_on_linux()
     Window.size = (390, 740)
-
 
 
 class WallpaperCarouselApp(MDApp):
@@ -73,7 +50,6 @@ class WallpaperCarouselApp(MDApp):
     image_operation_ready = BooleanProperty(False)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        boot_log("app: __init__ done")
         self.btm_sheet = None
         self.service_port = None
         self.ui_messenger_to_service = None
@@ -86,8 +62,6 @@ class WallpaperCarouselApp(MDApp):
         self._carousel_service = None
 
     def build_ui(self):
-        from kivy.lang import Builder
-        boot_log("build_ui: Builder.load_string start")
         Builder.load_string("""
 <MDButton>:
     theme_elevation_level: "Custom"
@@ -104,55 +78,39 @@ class WallpaperCarouselApp(MDApp):
     shadow_color: [0,0,0,0]
     shadow_softness: 0
 """)
-        boot_log("build_ui: Builder.load_string done")
         root_layout = MDNavigationLayout()
-        # self.root_layout = MDRelativeLayout()
 
-        boot_log("build_ui: ScreenManager() start")
         self.sm = ScreenManager()
-        boot_log("build_ui: ScreenManager() done")
         root_layout.add_widget(self.sm)
 
-        boot_log("build_ui: BottomNavigationBar start")
         self.bottom_bar = BottomNavigationBar(
             on_camera=self.sm.go_to_thumbs,
             on_settings=self.sm.go_to_settings,
             on_double_click_camera = self.sm.scroll_to_to_thumbs,
             on_double_click_settings = self.sm.scroll_to_to_settings
         )
-        boot_log("build_ui: BottomNavigationBar done")
-
-        boot_log("build_ui: has_permission() start")
         per = NotificationHandler.has_permission()
-        boot_log("build_ui: has_permission() done")
         if not per:
-            self.sm.ensure_welcome_screen()
             self.sm.current = "welcome"
         else:
-            boot_log("build_ui: moving to thumbs screen")
             self.sm.current = "thumbs"
-            boot_log("build_ui: moved to thumbs screen")
 
         root_layout.add_widget(self.bottom_bar)
-        boot_log("build_ui: bind_change start")
-        self.bottom_bar.bind_change()  # needs theme from monitor_dark_and_light_device_change
-        boot_log("build_ui: bind_change done")
+        self.bottom_bar.bind_change()
 
-        # get_number_of_cols()
-        boot_log("build_ui: MyBtmSheet start")
+        self.sm.ensure_screen("thumbs")
         self.btm_sheet = MyBtmSheet(change_number_or_cols=self.sm.gallery_screen.change_amount_of_columns)
         root_layout.add_widget(self.btm_sheet)
-        boot_log("build_ui: MyBtmSheet done")
+        Clock.schedule_once(self.on_startup_clock_scheduler, 2)
 
         return root_layout
 
     def build(self):
-        boot_log("build: build() entered")
         self.bind(device_theme=self._sync_theme_colors)
         self._sync_theme_colors() # +0.439s
-        boot_log("build: build_ui start")
+
         self.root_layout = self.build_ui()
-        boot_log("build: build_ui done")
+
         threading.Thread(
             target=self._init_image_operation_on_background_thread,
             daemon=True,
@@ -163,10 +121,8 @@ class WallpaperCarouselApp(MDApp):
 
     def _init_image_operation_on_background_thread(self):
         try:
-            boot_log("build: ImageOperation start")
             warm_up_android_bitmap_stack()
             self.file_operation = ImageOperation(load_saved=self.sm.gallery_screen.initialize_tabs)
-            boot_log("build: ImageOperation done")
             Clock.schedule_once(self._finish_image_operation_init, 0)
         except Exception as error_init_image_operation:
             traceback.print_exc()
@@ -179,61 +135,23 @@ class WallpaperCarouselApp(MDApp):
         # the main thread -- so this must stay here, off the background thread.
         try:
             self.bind_plyer_fix()
-            boot_log("build: bind_plyer_fix done")
             self.image_operation_ready = True
         except Exception as error_finish_image_operation_init:
             traceback.print_exc()
             error_message = str(error_finish_image_operation_init)
             Clock.schedule_once(lambda dt: toast(error_message))
 
-    def on_start(self):
-        boot_log("on_start: scheduling")
+    def start_up_jobs(self, dt):
         Clock.schedule_once(lambda dt: self.setup_service(), 2)
         Clock.schedule_interval(lambda dt: self.monitor_dark_and_light_device_change(), 1)
-        self.warm_scaled_down_cache()
+        warm_scaled_down_cache()
         if on_android_platform():
             from utils.update_checker import schedule_update_check
-            Clock.schedule_once(lambda dt: self._register_connectivity_receiver(), 0)
+            Clock.schedule_once(lambda dt: register_connectivity_receiver(), 0)
             Clock.schedule_once(lambda dt: self._bind_update_intent_listener(), 0)
             Clock.schedule_once(lambda dt: schedule_update_check(), 0)
             # Handle initial intent if app was launched via share/widget/update
             Clock.schedule_once(lambda dt: self._handle_initial_intent(), 1)
-
-    def warm_scaled_down_cache(self):
-        """Generate scaled-down cache images for wallpapers that lack them.
-
-        Old installs predate the scaled-down image cache, so the first launch
-        after the upgrade has nothing cached. Run the backfill on a background
-        thread; on-demand callers skip straight to the cache file once it exists.
-        """
-        try:
-            from utils.image_operations import backfill_scaled_down_images, _default_scaled_down_size
-            size = _default_scaled_down_size()
-            threading.Thread(
-                target=backfill_scaled_down_images,
-                args=(size,),
-                daemon=True,
-                name="scaled_down_backfill",
-            ).start()
-        except Exception as error_warming_scaled_down_cache:
-            app_logger.exception(f"Failed to start scaled-down cache warmup: {error_warming_scaled_down_cache}")
-
-    def _register_connectivity_receiver(self):
-        if not on_android_platform():
-            return
-        try:
-            from android_notify.internal.java_classes import autoclass
-            context = get_python_activity_context()
-            ConnectivityReceiver = autoclass('org.wally.waller.ConnectivityReceiver')
-            receiver = ConnectivityReceiver()
-            IntentFilter = autoclass('android.content.IntentFilter')
-            filter_ = IntentFilter()
-            filter_.addAction("android.net.conn.CONNECTIVITY_CHANGE")
-            filter_.addAction("android.net.wifi.WIFI_STATE_CHANGED")
-            context.registerReceiver(receiver, filter_)
-            app_logger.info("ConnectivityReceiver registered dynamically")
-        except Exception as e:
-            app_logger.exception(f"Failed to register ConnectivityReceiver: {e}")
 
     def _bind_update_intent_listener(self):
         try:
@@ -285,8 +203,7 @@ class WallpaperCarouselApp(MDApp):
             app_logger.exception(f"Failed to handle initial intent: {e}")
 
     def setup_service(self):
-        boot_log("setup_service: start")
-        print(f"ConfigManager.get_start_on_app_launch(): {ConfigManager.get_start_on_app_launch()}")
+        # print(f"ConfigManager.get_start_on_app_launch(): {ConfigManager.get_start_on_app_launch()}")
         threading.Thread(
             target=self._setup_service_on_background_thread,
             daemon=True,
@@ -305,12 +222,10 @@ class WallpaperCarouselApp(MDApp):
                 self.service_was_running = True
 
             self.service_port = service_port or get_free_port()
-            boot_log("setup_service: service/ports done")
             self.ui_messenger_to_service = UIMessengerToService(self.service_port)
 
             self.ui_service_listener = UIListenToServicer(ui_port)
             self.ui_service_listener.start()
-            boot_log("setup_service: messenger+listener started")
             Clock.schedule_once(self._finish_setup_service, 0)
         except Exception as error_call_service_on_start:
             traceback.print_exc()
@@ -319,6 +234,7 @@ class WallpaperCarouselApp(MDApp):
 
     def _finish_setup_service(self, _):
         try:
+            self.sm.ensure_screen("settings")
             self.sm.settings_screen.build_ui()
             self.sm.settings_screen.ids.skip_upcoming_wallpaper_button.on_release = lambda x=None, motion=None: self.ui_messenger_to_service.change_next()
             self.sm.settings_screen.ids.pause_home_screen_widget_loop_button.on_release = lambda x=None, motion=None: self.ui_messenger_to_service.toggle_home_screen_widget_changes()
@@ -330,7 +246,6 @@ class WallpaperCarouselApp(MDApp):
             
             if ConfigManager.get_start_on_app_launch():
                 self.start_service()
-            boot_log("setup_service: done")
         except Exception as error_call_service_on_start:
             toast(str(error_call_service_on_start))
             traceback.print_exc()
@@ -411,13 +326,12 @@ class WallpaperCarouselApp(MDApp):
                         self.bottom_bar.show(hidden_by="pic")
                     return
                 try:
-                    print("intent must be before chooser callback",activity_id,some_int,intent)
                     if intent:
                         # Fix for permission Error when choosing from Internal Storage section Android FileExplorer
                         self.file_operation.intent = intent
                         # Process URIs in background immediately, bypassing plyer's main-thread path resolution.
                         if self.file_operation._file_picker_active:
-                            print("bind_plyer_fix: starting async import_from_intent")
+                            # print("bind_plyer_fix: starting async import_from_intent")
                             self.file_operation.import_images_from_android()
                 except Exception as error_getting_path:
                     app_logger.exception(f"error_getting_path: {error_getting_path}")
@@ -426,38 +340,32 @@ class WallpaperCarouselApp(MDApp):
                 on_activity_result=set_intent_for_file_operation_class)
 
     def monitor_dark_and_light_device_change(self):
-        if self.theme_preference == "adaptive":
-            self.device_theme = self._coerce_device_theme(is_device_on_light_mode())
-        else:
-            self.device_theme = self._coerce_device_theme(self.theme_preference)
-        return self.device_theme
+        self.device_theme = get_device_theme(self.theme_preference)
 
     def set_theme_preference(self, preference):
         self.theme_preference = preference
         ConfigManager.set_theme_preference(preference)
-        if preference == "adaptive":
-            self.device_theme = self._coerce_device_theme(is_device_on_light_mode())
-        else:
-            self.device_theme = self._coerce_device_theme(preference)
-
-    def _coerce_device_theme(self, value):
-        if value in ("dark", "light"):
-            return value
-        if self.device_theme in ("dark", "light"):
-            return self.device_theme
-        return "dark"
+        self.device_theme = get_device_theme(preference)
 
     def _sync_theme_colors(self, *args):
         _theme_colors.theme = self.device_theme
 
 
+    def on_startup_clock_scheduler(self, dt):
+        
+        Clock.schedule_once(self._get_tabs_for_gallery_screen, 0.7)
+        Clock.schedule_once(self.start_up_jobs, 1)
+
+    def _get_tabs_for_gallery_screen(self, dt):
+        self.sm.gallery_screen.initialize_tabs(no_clock=True)
+
 if __name__ == '__main__':
     try:
         WallpaperCarouselApp().run()
     except Exception as startup_failure:
-        # Log it, then let it crash: the traceback in logcat and a nonzero exit
+        # Log it, then let it crash: the traceback in Logcat and a nonzero exit
         # are how a broken startup gets noticed, so swallowing it here would hide
         # exactly the failure this is here to surface.
-        boot_log(f"main: app failed: {startup_failure}")
+        print(f"main: app failed: {startup_failure}")
         traceback.print_exc()
         raise

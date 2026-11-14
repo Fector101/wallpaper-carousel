@@ -6,8 +6,7 @@ from android_widgets.maker import Receiver, inject_foreground_service_types
 
 spec_file_path = "/home/fabian/Documents/Laner/mobile/buildozer.spec"
 package = "org.wally.waller"# if not os.path.exists(spec_file_path) else None
-# package = "vercel.app.androidNotify"
-
+# package = "app.vercel.androidnotify"
 
 def insert_to_end_of_xml(new_content,xml_file_content) -> str:
     return xml_file_content.replace("</application>", f"{new_content}\n</application>")
@@ -37,19 +36,6 @@ def generate_receivers(package_: str = None) -> str:
             actions=["android.appwidget.action.APPWIDGET_UPDATE"],
             meta_resource="@xml/image_widget_info",
         ),
-        Receiver(
-            name="SimpleWidget",
-            label="Simple Text",
-            actions=["android.appwidget.action.APPWIDGET_UPDATE"],
-            meta_resource="@xml/widgetproviderinfo",
-        ),
-        Receiver(
-            name="ButtonWidget",
-            label="Counter Button Demo",
-            actions=["android.appwidget.action.APPWIDGET_UPDATE"],
-            meta_resource="@xml/button_widget_provider",
-        ),
-
         # Receiver(
         #     name="TheReceiver",
         #     actions=["ALARM_ACTION"]

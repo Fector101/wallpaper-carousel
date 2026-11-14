@@ -1,5 +1,7 @@
 // package app.vercel.androidnotify;
+// import app.vercel.androidnotify.R;
 package org.wally.waller;
+import org.wally.waller.R;
 
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
@@ -27,8 +29,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 
-// import app.vercel.androidnotify.R;
-import org.wally.waller.R;
 
 public class CarouselWidgetProvider extends AppWidgetProvider {
 

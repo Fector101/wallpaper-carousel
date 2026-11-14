@@ -11,7 +11,8 @@ from kivymd.uix.button import MDButtonText, MDButton
 
 from ui.widgets.android import toast
 from ui.widgets.layouts import MyMDScreen
-from utils.constants import VERSION, theme_colors
+from ui.theming import theme_colors
+from utils.constants import VERSION
 from utils.logger import app_logger
 
 def get_apk_path(version):

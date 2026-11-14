@@ -4,7 +4,7 @@ from kivy.uix.behaviors import ButtonBehavior, ToggleButtonBehavior
 
 from kivymd.uix.label import MDLabel, MDIcon
 
-from utils.constants import theme_colors
+from ui.theming import theme_colors
 
 
 class MyCheckbox(ToggleButtonBehavior, MDIcon):

@@ -2,7 +2,7 @@ import os
 import traceback
 
 from ui.widgets.generic import LineDivider
-from utils.boot_log import boot_log
+#from utils.boot_log import boot_log
 from kivy.clock import Clock
 from kivy.properties import StringProperty
 from kivy.utils import get_color_from_hex
@@ -11,7 +11,7 @@ from kivy.metrics import dp
 from ui.widgets.layouts import MyMDScreen, GenericStatusBarSpacer, Row, Column
 from ui.widgets.modals import DialogScreen
 from utils.config_manager import ConfigManager
-from utils.constants import theme_colors
+from ui.theming import theme_colors
 from utils.database import ImageDatabase
 from utils.helper import appFolder, format_size, get_folder_size, get_files_size
 
@@ -488,4 +488,4 @@ def total_and_free_storage_in_android_device():
     data["free"]=free_storage_in_bytes
     return data
 
-boot_log("sm: StatsScreen end of file")
+#boot_log("sm: StatsScreen end of file")

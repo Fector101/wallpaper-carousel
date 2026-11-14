@@ -267,6 +267,9 @@ class Service:
 
     def start(self):
         import json
+        from android_notify.config import get_package_name
+        from utils.logger import app_logger
+
         if not _on_android_platform():
             self.__run_service_file()
             return True
@@ -285,7 +288,6 @@ class Service:
             return True
 
         import jnius.jnius
-        from utils.logger import app_logger
         self.start_error = None
         try:
             self.__get_static_method('start', 2).invoke(None, (self.mActivity, arg))
@@ -310,7 +312,7 @@ class Service:
             if bad_process:
                 app_logger.error(
                     f"[Service.start] {self.get_name()} can only recover via "
-                    f"`adb shell am force-stop org.wally.waller` or an app restart; "
+                    f"`adb shell am force-stop {get_package_name()}` or an app restart; "
                     f"retries may not help until the bad-process flag clears."
                 )
             return False
@@ -756,6 +758,7 @@ def patch_kivymd_hover_on_touch():
 
     return None
 
+
 def patch_kivymd_disabled_text_color():
     # KivyMD PR #1897: MDLabel/MDButtonText always used the MD3
     # onSurfaceColor @ label_opacity_value_disabled_text for `disabled_color`,
@@ -795,6 +798,12 @@ def patch_kivymd_disabled_text_color():
 """)
 
     return None
+
+
+def patch_kivymd_for_kivy3():
+    patch_kivymd_switch_press_events()
+    patch_kivymd_hover_on_touch()
+    patch_kivymd_disabled_text_color()
 
 
 def register_fonts():
@@ -955,3 +964,23 @@ def remove_images_from_app(abs_paths: list):
         except Exception as error_removing_image_from_db:
             print(error_removing_image_from_db)
             traceback.print_exc()
+
+
+def register_connectivity_receiver():
+    from utils.logger import app_logger
+    if not _on_android_platform():
+        return
+    try:
+        from android_notify.internal.java_classes import autoclass
+        from android_notify.config import get_python_activity_context, get_package_name
+        context = get_python_activity_context()
+        ConnectivityReceiver = autoclass(get_package_name()+'.ConnectivityReceiver')
+        receiver = ConnectivityReceiver()
+        IntentFilter = autoclass('android.content.IntentFilter')
+        filter_ = IntentFilter()
+        filter_.addAction("android.net.conn.CONNECTIVITY_CHANGE")
+        filter_.addAction("android.net.wifi.WIFI_STATE_CHANGED")
+        context.registerReceiver(receiver, filter_)
+        app_logger.info("ConnectivityReceiver registered dynamically")
+    except Exception as e:
+        app_logger.exception(f"Failed to register ConnectivityReceiver: {e}")
