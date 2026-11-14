@@ -1,4 +1,7 @@
+// package app.vercel.androidnotify;
+// import app.vercel.androidnotify.R;
 package org.wally.waller;
+import org.wally.waller.R;
 
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
@@ -29,7 +32,6 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 
-import org.wally.waller.R;
 
 /**
  * A widget that shows one fixed image pinned by the user from the app.

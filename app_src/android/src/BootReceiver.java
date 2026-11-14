@@ -1,4 +1,8 @@
+
+// package app.vercel.androidnotify;
+// import app.vercel.androidnotify.ServiceWallpapercarousel;
 package org.wally.waller;
+import org.wally.waller.ServiceWallpapercarousel;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -14,7 +18,6 @@ import java.util.List;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.File;
-import org.wally.waller.ServiceWallpapercarousel;
 
 public class BootReceiver extends BroadcastReceiver {
 

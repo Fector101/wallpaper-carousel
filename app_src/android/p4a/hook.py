@@ -6,8 +6,7 @@ from android_widgets.maker import Receiver, inject_foreground_service_types
 
 spec_file_path = "/home/fabian/Documents/Laner/mobile/buildozer.spec"
 package = "org.wally.waller"# if not os.path.exists(spec_file_path) else None
-# package = "vercel.app.androidNotify"
-
+# package = "app.vercel.androidnotify"
 
 def insert_to_end_of_xml(new_content,xml_file_content) -> str:
     return xml_file_content.replace("</application>", f"{new_content}\n</application>")

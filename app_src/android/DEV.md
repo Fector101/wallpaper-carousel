@@ -254,8 +254,9 @@ jobs:
 
 
 ```
-```shell
 PKG=app.vercel.androidnotify
+```shell
+PKG=org.wally.waller
 REL=main.py  # e.g. change to your file
 adb push app_src/$REL /data/local/tmp/tmp.py && \
 adb shell "run-as $PKG sh -c 'cp /data/local/tmp/tmp.py files/app/$REL'" && \
