@@ -1,0 +1,31 @@
+name: APK download badge
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  badge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: badges        # an orphan/branch just for badge files
+      - name: Count APK downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TOTAL=$(gh api --paginate "repos/${{ github.repository }}/releases?per_page=100" \
+            --jq '[.[].assets[] | select(.name | endswith(".apk")) | .download_count] | add' \
+            | paste -sd+ | bc)
+          echo "{\"schemaVersion\":1,\"label\":\"APK downloads\",\"message\":\"${TOTAL:-0}\",\"color\":\"blue\"}" > apk-downloads.json
+      - name: Commit
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add apk-downloads.json
+          git commit -m "Update APK download count" || exit 0
+          git push/
