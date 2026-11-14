@@ -356,7 +356,7 @@ class ImageOperation:
                             max_height=carousel_size[1],
                         )
                         t3 = time.time()
-                        print(f"image_operations: process_one [{i+1}/{len(uris)}] meta={t1-t0:.3f}s copy={t2-t1:.3f}s thumb={t3-t2:.3f}s")
+                        # print(f"image_operations: process_one [{i+1}/{len(uris)}] meta={t1-t0:.3f}s copy={t2-t1:.3f}s thumb={t3-t2:.3f}s")
                         with images_lock:
                             new_images.append(str(destination_path))
                         # app_logger.info(
@@ -510,7 +510,6 @@ def get_uri_name_and_path(uri):
                     p = cursor.getString(data_idx)
                     if p and os.path.exists(p):
                         path = p
-                        print(f"path: {path}")
                 # name
                 name_idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                 if name_idx != -1:
@@ -631,12 +630,12 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
         bitmap = BitmapFactory.decodeFile(src_path_)
         if bitmap is None:
             raise Exception("Failed to decode image")
-        print(f"  [thumb] decodeFile {time.time()-_t:.3f}s") # 0.590s
+        # print(f"  [thumb] decodeFile {time.time()-_t:.3f}s") # 0.590s
 
         _t2 = time.time()
         # 2. Convert to RGB (ARGB_8888 ≈ RGB)
         bitmap = bitmap.copy(BitmapConfig.ARGB_8888, False)
-        print(f"  [thumb] bitmap.copy {time.time()-_t2:.3f}s")#0.065s
+        # print(f"  [thumb] bitmap.copy {time.time()-_t2:.3f}s")#0.065s
 
         # 3. Compute thumbnail size (keep aspect ratio)
         _t2 = time.time()
@@ -653,19 +652,19 @@ def create_thumbnail(src_path, destination_dir=None, size=(320, 320), quality=60
 
         # High-quality resize (Android internal filter)
         resized = Bitmap.createScaledBitmap(bitmap, new_w, new_h, True)
-        print(f"  [thumb] createScaledBitmap {time.time()-_t2:.3f}s")#0.568s
+        # print(f"  [thumb] createScaledBitmap {time.time()-_t2:.3f}s")#0.568s
 
         # 4. Save as JPEG
         _t2 = time.time()
         out = FileOutputStream(destination_path)
         resized.compress(CompressFormat.JPEG, quality, out)
         out.close()
-        print(f"  [thumb] compress+write {time.time()-_t2:.3f}s")#0.099s
+        # print(f"  [thumb] compress+write {time.time()-_t2:.3f}s")#0.099s
 
         # Cleanup
         bitmap.recycle()
         resized.recycle()
-        print(f"  [thumb] android total {time.time()-_t:.3f}s")#1.331s
+        # print(f"  [thumb] android total {time.time()-_t:.3f}s")#1.331s
 
     if str(src_path).endswith(".webp"):
         return str(src_path)
@@ -769,8 +768,8 @@ def create_scaled_down_img(src_path, dest_path, max_width, max_height, quality=7
         resized.compress(CompressFormat.JPEG, quality, out)
         out.close()
 
-        print(f"src_path: {format_size(os.path.getsize(src_path))}")
-        print(f"dest_path: {format_size(os.path.getsize(dest_path))}")
+        # print(f"src_path: {format_size(os.path.getsize(src_path))}")
+        # print(f"dest_path: {format_size(os.path.getsize(dest_path))}")
 
         bitmap.recycle()
         resized.recycle()
@@ -842,7 +841,7 @@ def create_scaled_down_img(src_path, dest_path, max_width, max_height, quality=7
             return str(src_path)
 
     with _SCALED_IMG_LOCK:
-        print(f"{dest_path} os.path.exists(dest_path): {os.path.exists(dest_path)}")
+        # print(f"{dest_path} os.path.exists(dest_path): {os.path.exists(dest_path)}")
         if os.path.exists(dest_path):
             return str(dest_path)
         try:

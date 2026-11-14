@@ -373,7 +373,7 @@ class DateGroupLayout(Column):
         # self.md_bg_color=[.1,1,.3,1]
 
     def build_grid(self, *args):
-        app_logger.info(f"DGL_BUILD: starting batch_len={len(self.batch)} parent={self.parent}")
+        # app_logger.info(f"DGL_BUILD: starting batch_len={len(self.batch)} parent={self.parent}")
         header_layout = MDRelativeLayout(
             adaptive_height=1,
             size_hint_x=1,
@@ -473,7 +473,7 @@ class DateGroupLayout(Column):
 
         self.add_widget(line)
         self.app.bind(device_theme=self._set_theme)
-        app_logger.info(f"DGL_BUILD: done self.children={len(self.children)} parent={self.parent}")
+        # app_logger.info(f"DGL_BUILD: done self.children={len(self.children)} parent={self.parent}")
         return None
 
     def _set_theme(self, _, theme):
@@ -1166,7 +1166,6 @@ class GalleryScreen(MyMDScreen):
             Clock.schedule_once(run_widgets_creation)
 
     def open_file_chooser(self, *_):
-        print(f"[DBG] open_file_chooser: entered")
         if not self.app.image_operation_ready:
             app_logger.warning("[DBG] open_file_chooser: ignored - image operation not ready yet")
             return
@@ -1193,7 +1192,7 @@ class GalleryScreen(MyMDScreen):
         self.app.bottom_bar.hide(animation=False, hidden_by="pic")
 
         def show_chooser(dt=None):
-            print("[DBG] open_file_chooser: launching custom file picker")
+            app_logger.debug("[DBG] open_file_chooser: launching custom file picker")
             self.app.file_operation.launch_file_picker()
 
         if not on_android_platform():
@@ -1217,17 +1216,17 @@ class GalleryScreen(MyMDScreen):
                     if self.app.file_operation.processing_intent:
                         print("open_file_chooser: permission granted, import_from_intent already running")
                     elif self.app.file_operation.has_pending_intent():
-                        print("open_file_chooser: permission granted, processing pending intent")
+                        app_logger.debug("open_file_chooser: permission granted, processing pending intent")
                         self.app.file_operation.import_images_from_android()
                     else:
-                        print("open_file_chooser: full access granted, opening file chooser")
+                        app_logger.debug("open_file_chooser: full access granted, opening file chooser")
                         Clock.schedule_once(show_chooser)
                 elif status == ACCESS_PARTIAL:
                     # READ_MEDIA_VISUAL_USER_SELECTED only → system already showed picker
-                    print("open_file_chooser: limited access granted, querying MediaStore directly")
+                    app_logger.debug("open_file_chooser: limited access granted, querying MediaStore directly")
                     self.app.file_operation.import_images_from_android(only_limited_access=True)
                 else:
-                    print("open_file_chooser: permission denied by user")
+                    app_logger.debug("open_file_chooser: permission denied by user")
                     self.app.file_operation._file_picker_active = False
                     self.app.file_operation.hide_spinner()
                     self.app.bottom_bar.show(animation=False, hidden_by="pic")
@@ -1277,7 +1276,7 @@ class GalleryScreen(MyMDScreen):
         self.tab_instances[tab_name]["wallpapers"] = sorted_wallpapers
         self.tab_instances[tab_name]["widget"] = tab_container
         #boot_log(f"generate_tab: {tab_name} done")
-        app_logger.info(f"GENERATE_TAB: tab={tab_name} wallpapers={len(sorted_wallpapers)} list_id={id(sorted_wallpapers)} swp_id={id(self.wallpapers)} batches={list(data_of_batch_dict_of_lists.keys())} widget_children={len(tab_container.children)}")
+        app_logger.debug(f"GENERATE_TAB: tab={tab_name} wallpapers={len(sorted_wallpapers)} list_id={id(sorted_wallpapers)} swp_id={id(self.wallpapers)} batches={list(data_of_batch_dict_of_lists.keys())} widget_children={len(tab_container.children)}")
 
     def open_fullscreen_for_image(self, wallpaper_path = None, wallpaper_index = -1):
         try:

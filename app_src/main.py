@@ -6,6 +6,7 @@ import logging, threading, traceback # +0.024s
 from kivy.properties import BooleanProperty, StringProperty, ObjectProperty
 from kivy.utils import platform
 from kivy.clock import Clock
+from kivy.core.window import Window
 from kivy.lang import Builder
 
 from kivymd.app import MDApp
@@ -36,7 +37,6 @@ patch_kivymd_for_kivy3()
 register_fonts()
 
 if platform == 'linux':
-    from kivy.core.window import Window # +0.738s
     fix_input_on_linux()
     Window.size = (390, 740)
 
@@ -101,7 +101,7 @@ class WallpaperCarouselApp(MDApp):
         self.sm.ensure_screen("thumbs")
         self.btm_sheet = MyBtmSheet(change_number_or_cols=self.sm.gallery_screen.change_amount_of_columns)
         root_layout.add_widget(self.btm_sheet)
-        # Clock.schedule_once(self.on_startup_clock_scheduler, 1)
+        Clock.schedule_once(self.on_startup_clock_scheduler, 2)
 
         return root_layout
 
@@ -111,11 +111,11 @@ class WallpaperCarouselApp(MDApp):
 
         self.root_layout = self.build_ui()
 
-        # threading.Thread(
-        #     target=self._init_image_operation_on_background_thread,
-        #     daemon=True,
-        #     name="image_operation_thread",
-        # ).start()
+        threading.Thread(
+            target=self._init_image_operation_on_background_thread,
+            daemon=True,
+            name="image_operation_thread",
+        ).start()
 
         return self.root_layout
 
@@ -326,13 +326,12 @@ class WallpaperCarouselApp(MDApp):
                         self.bottom_bar.show(hidden_by="pic")
                     return
                 try:
-                    print("intent must be before chooser callback",activity_id,some_int,intent)
                     if intent:
                         # Fix for permission Error when choosing from Internal Storage section Android FileExplorer
                         self.file_operation.intent = intent
                         # Process URIs in background immediately, bypassing plyer's main-thread path resolution.
                         if self.file_operation._file_picker_active:
-                            print("bind_plyer_fix: starting async import_from_intent")
+                            # print("bind_plyer_fix: starting async import_from_intent")
                             self.file_operation.import_images_from_android()
                 except Exception as error_getting_path:
                     app_logger.exception(f"error_getting_path: {error_getting_path}")
