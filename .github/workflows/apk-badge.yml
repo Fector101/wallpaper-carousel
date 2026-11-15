@@ -12,20 +12,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: badges        # an orphan/branch just for badge files
+
       - name: Count APK downloads
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TOTAL=$(gh api --paginate "repos/${{ github.repository }}/releases?per_page=100" \
-            --jq '[.[].assets[] | select(.name | endswith(".apk")) | .download_count] | add' \
+            --jq '[.[].assets[] | select(.name | endswith(".apk")) | .download_count] | add // 0' \
             | paste -sd+ | bc)
-          echo "{\"schemaVersion\":1,\"label\":\"APK downloads\",\"message\":\"${TOTAL:-0}\",\"color\":\"blue\"}" > apk-downloads.json
-      - name: Commit
+          echo "{\"schemaVersion\":1,\"label\":\"APK downloads\",\"message\":\"${TOTAL:-0}\",\"color\":\"blue\"}" > /tmp/apk-downloads.json
+          cat /tmp/apk-downloads.json
+
+      - name: Commit to badges branch
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add apk-downloads.json
+          if git ls-remote --exit-code --heads origin badges >/dev/null; then
+            git fetch origin badges
+            git checkout -B badges origin/badges
+          else
+            git checkout --orphan badges
+            git rm -rf . >/dev/null
+          fi
+          cp /tmp/apk-downloads.json apk-downloads.json
+          git add -f apk-downloads.json
           git commit -m "Update APK download count" || exit 0
-          git push/
+          git push origin badges
